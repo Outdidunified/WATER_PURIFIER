@@ -664,7 +664,7 @@ h6 {
 section,
 .section {
   color: var(--default-color);
-  background-color: var(--background-color);
+  /* background-color: var(--background-color); */
   padding: 60px 0;
   scroll-margin-top: 90px;
   overflow: clip;
@@ -2328,3 +2328,84 @@ section,
 .starter-section {
   /* Add your styles here */
 }
+
+
+/*--------------------------------------------------------------
+# Dev css section
+--------------------------------------------------------------*/
+.scroll-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.scroll-container {
+    overflow: hidden;
+    width: 100%;
+}
+
+.scroll-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: nowrap;
+    animation: autoScroll 20s linear infinite;
+}
+
+@keyframes autoScroll {
+    0% {
+        transform: translateX(0%);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+.pricing-card-container {
+    min-width: 300px;
+    flex: 0 0 auto;
+}
+
+.scroll-btn {
+    background-color: #61dafb;
+    border: none;
+    color: white;
+    font-size: 24px;
+    padding: 10px;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.scroll-btn.left {
+    margin-right: 10px;
+}
+
+.scroll-btn.right {
+    margin-left: 10px;
+}
+
+/* Optional fade-in animation */
+.react-tagline {
+    opacity: 0;
+    animation: fadeIn 5.2s ease forwards;
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scrollLeft {
+    0% {
+        transform: translateX(0%);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+/*--------------------------------------------------------------
+# Dev css section
+--------------------------------------------------------------*/

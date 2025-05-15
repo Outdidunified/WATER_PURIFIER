@@ -1,9 +1,9 @@
-import { useState } from "react";
+import React, { useState, useEffect, useRef } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Swal from 'sweetalert2';
+const ProductList = ({ }) => {
 
-const Home = ({ }) => {
     // copper
     const [usage, setUsage] = useState("SOLO");
     const [tenure, setTenure] = useState(28);
@@ -179,18 +179,6 @@ const Home = ({ }) => {
         }
     };
 
-    const cities = [
-        { name: 'bengaluru', src: 'https://cdn.ionHive.in/production/images/cities/bangalore.webp' },
-        { name: 'delhi', src: 'https://cdn.ionHive.in/production/images/cities/delhi.webp' },
-        { name: 'faridabad', src: 'https://cdn.ionHive.in/production/images/cities/faridabad.webp' },
-        { name: 'ghaziabad', src: 'https://cdn.ionHive.in/production/images/cities/ghaziabad.webp' },
-        { name: 'gurgaon', src: 'https://cdn.ionHive.in/production/images/cities/gurgaon.webp' },
-        { name: 'hyderabad', src: 'https://cdn.ionHive.in/production/images/cities/hyderabad.webp' },
-        { name: 'mumbai', src: 'https://cdn.ionHive.in/production/images/cities/mumbai.webp' },
-        { name: 'noida', src: 'https://cdn.ionHive.in/production/images/cities/noida.webp' },
-        { name: 'pune', src: 'https://cdn.ionHive.in/production/images/cities/pune.webp' },
-    ];
-
     // Set the first item (index 0) as default open
     const [activeIndex, setActiveIndex] = useState(0);
 
@@ -227,50 +215,34 @@ const Home = ({ }) => {
         setActiveIndex(index === activeIndex ? null : index);
     };
 
+    const slides = [
+        {
+            src: 'assets/img/IOT-1-cu-alive-production.webp',
+            alt: 'Slide 1: IOT Enabled Water Purifier 1',
+        },
+        {
+            src: 'assets/img/IOT-2-cu-alive-production.webp',
+            alt: 'Slide 2: IOT Enabled Water Purifier 2',
+        },
+        {
+            src: 'assets/img/IOT-3-cu-alive-production.webp',
+            alt: 'Slide 3: IOT Enabled Water Purifier 3',
+        },
+    ];
 
-    const [formData, setFormData] = useState({
-        name: "",
-        email: "",
-        subject: "",
-        message: "",
-    });
+    const [currentSlide, setCurrentSlide] = useState(0);
+    const timeoutRef = useRef(null);
 
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
+    useEffect(() => {
+        const next = (currentSlide + 1) % slides.length;
+        timeoutRef.current = setTimeout(() => {
+            setCurrentSlide(next);
+        }, 3000); // Change slide every 3 seconds
 
-    const validateEmail = (email) => {
-        // Basic email validation
-        return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email);
-    };
+        return () => clearTimeout(timeoutRef.current);
+    }, [currentSlide]);
 
-    const handleSubmits = async (e) => {
-        e.preventDefault();
-
-        const { name, email, subject, message } = formData;
-
-        if (!validateEmail(email)) {
-            Swal.fire("Invalid Email", "Please enter a valid email address.", "error");
-            return;
-        }
-
-        try {
-            const response = await fetch("/contact", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, email, subject, message }),
-            });
-
-            if (response.ok) {
-                Swal.fire("Success", "Your message has been sent.", "success");
-                setFormData({ name: "", email: "", subject: "", message: "" });
-            } else {
-                throw new Error("Failed to send message");
-            }
-        } catch (error) {
-            Swal.fire("Error", "Something went wrong. Please try again later.", "error");
-        }
-    };
+    const [isOpen, setIsOpen] = useState(false); // This will toggle the accordion
 
     return (
         <div>
@@ -278,173 +250,10 @@ const Home = ({ }) => {
             {/* Header */}
             < Header />
 
-            <main className="main">
-
-                {/* <!-- Hero Section --> */}
-                <section id="hero" className="hero section">
-
-                    <div className="container" data-aos="fade-up" data-aos-delay="100">
-
-                        <div className="row align-items-center">
-                            <div className="col-lg-6">
-                                <div className="hero-content" data-aos="fade-up" data-aos-delay="200">
-                                    <div className="company-badge mb-4">
-                                        Water Purifier
-                                    </div>
-
-                                    <h5>Smart Purifiers on Rent. Free Maintenance for Life.</h5>
-                                    <p>IoT-enabled RO+UV water purifiers with Copper Filter, Alkaline Filter, & Mineraliser.</p>
-                                    <p className="mb-md-5">Pay only rentals and get lifetime free maintenance. ZERO machine cost.</p>
-
-                                    <div className="hero-buttons">
-                                        <a href="#about" className="btn btn-primary me-0 me-sm-2 mx-1">BOOK NOW</a>
-                                        <a href="https://www.youtube.com/watch?v=Y7f98aduVJ8" className="btn btn-link mt-2 mt-sm-0 glightbox">
-                                            <i className="bi bi-play-circle me-1"></i>
-                                            Play Video
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="col-lg-6">
-                                <div className="hero-image" data-aos="zoom-out" data-aos-delay="300">
-                                    <img src="assets/img/water-purifier.png" alt="Hero Image" className="img-fluid" style={{ width: '100%', animation: 'float-badge 3s ease-in-out infinite' }} />
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {/* <!-- Stats Section --> */}
-                        <section id="stats" className="stats section" style={{ padding: '10px', borderRadius: '10px' }}>
-
-                            <div className="container" data-aos="fade-up" data-aos-delay="100">
-
-                                <div className="row gy-4">
-
-                                    <div className="col-lg-3 col-md-6">
-                                        <div className="stats-item text-center w-100 h-100">
-                                            <p style={{ color: '#0d83fd' }}>₹0 Installation Cost</p>
-                                        </div>
-                                    </div>
-                                    {/* <!-- End Stats Item --> */}
-
-                                    <div className="col-lg-3 col-md-6">
-                                        <div className="stats-item text-center w-100 h-100">
-                                            <p style={{ color: '#0d83fd' }}>₹0 Machine Cost</p>
-                                        </div>
-                                    </div>
-                                    {/* <!-- End Stats Item --> */}
-
-                                    <div className="col-lg-3 col-md-6">
-                                        <div className="stats-item text-center w-100 h-100">
-                                            <p style={{ color: '#0d83fd' }}>₹0 Maintenance Cost</p>
-                                        </div>
-                                    </div>
-                                    {/* <!-- End Stats Item --> */}
-
-                                    <div className="col-lg-3 col-md-6">
-                                        <div className="stats-item text-center w-100 h-100">
-                                            <p style={{ color: '#0d83fd' }}>₹0 Relocation Cost</p>
-                                        </div>
-                                    </div>
-                                    {/* <!-- End Stats Item --> */}
-
-                                </div>
-
-                            </div>
-
-                        </section>
-                        {/* <!-- /Stats Section --> */}
-
-                        <div className="row stats-row gy-4 mt-5" data-aos="fade-up" data-aos-delay="500">
-                            <div className="col-lg-3 col-md-6">
-                                <div className="stat-item" style={{ padding: '0px' }}>
-                                    <div className="stat-icon">
-                                        <i className="bi bi-tools"></i>
-                                    </div>
-                                    <div className="stat-content">
-                                        <h4>Lifetime Free Maintenance</h4>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="col-lg-3 col-md-6">
-                                <div className="stat-item" style={{ padding: '0px' }}>
-                                    <div className="stat-icon">
-                                        <i className="bi bi-shield-check"></i>
-                                    </div>
-                                    <div className="stat-content">
-                                        <h4>7 days Risk-Free Trial</h4>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="col-lg-3 col-md-6">
-                                <div className="stat-item" style={{ padding: '0px' }}>
-                                    <div className="stat-icon">
-                                        <i className="bi bi-lightning-charge"></i>
-                                    </div>
-                                    <div className="stat-content">
-                                        <h4>48-hour Installation</h4>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="col-lg-3 col-md-6">
-                                <div className="stat-item" style={{ padding: '0px' }}>
-                                    <div className="stat-icon">
-                                        <i className="bi bi-currency-rupee"></i>
-                                    </div>
-                                    <div className="stat-content">
-                                        <h4>Plans starting 299/month</h4>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-
-                </section>
-                {/* <!-- /Hero Section --> */}
-
-                {/* <!-- About Section --> */}
-                <section id="about" className="about section">
-
-                    <div className="container" data-aos="fade-up" data-aos-delay="100">
-
-                        <div className="row gy-4 align-items-center justify-content-between">
-
-                            <div className="col-xl-5" data-aos="fade-up" data-aos-delay="200">
-                                <h2><span className="about-meta">Smart RO Water Purifiers On Subscription</span></h2>
-                                <h2 className="about-title">Tired of running out of water cans in the middle of the night? Or burning a hole in your pocket trying to maintain your water purifier?</h2>
-                                <p className="about-description">Switch to ionHive's IoT-enabled smart water purifiers on subscription, by choosing a rental plan for 28, 90 or 360 days.
-                                    Get lifetime free maintenance with zero machine cost - pure water, hassle-free!</p>
-
-                                <div className="info-wrapper">
-                                    <div className="row gy-4">
-                                        <div className="col-lg-5">
-                                            <a href="#about" className="btn btn-primary me-0 me-sm-2 mx-1">Subscribe Now</a>
-                                        </div>
-
-                                        <div className="col-lg-7">
-                                            <a href="#how-it-works" className="btn btn-primary me-0 me-sm-2 mx-1">Know How It Works</a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="col-xl-6" data-aos="fade-up" data-aos-delay="300">
-                                <div className="image-wrapper">
-                                    <div className="images position-relative" data-aos="zoom-out" data-aos-delay="400">
-                                        <img src="assets/img/water-purifier2.webp" alt="Business Meeting" className="img-fluid main-image rounded-4" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-
-                </section>
-                {/* <!-- /About Section --> */}
+            <main className="main" style={{ marginTop: '5%' }}>
 
                 {/* <!-- Features Section --> */}
-                <section id="features" className="features section">
+                <section id="hero" className="hero section">
 
                     {/* <!-- Section Title --> */}
                     <div className="container section-title" data-aos="fade-up">
@@ -563,7 +372,6 @@ const Home = ({ }) => {
                                                 <button className="btn btn-primary me-0 me-sm-2 mx-1" onClick={() => setShowModal(true)}>
                                                     Subscribe Now
                                                 </button>
-                                                <button className="btn btn-primary me-0 me-sm-2 mx-1"><a href="/product-list">Know More</a></button>
                                             </div>
                                         </div>
                                     </div>
@@ -840,6 +648,222 @@ const Home = ({ }) => {
                                 </div>
                             </div>
                             {/* <!-- End tab content item --> */}
+                            
+                            <div className="row stats-row gy-4 mt-5" data-aos="fade-up" data-aos-delay="500" style={{ backgroundColor: '#cff7ff', borderRadius: '20px', margin: '10px' }}>
+                                <div className="col-lg-3 col-md-6">
+                                    <div className="stat-item" style={{ padding: '0px' }}>
+                                        <div className="stat-content">
+                                            <h4>Lifetime Free Maintenance</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="col-lg-3 col-md-6">
+                                    <div className="stat-item" style={{ padding: '0px' }}>
+                                        <div className="stat-content">
+                                            <h4>7 days Risk-Free Trial</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="col-lg-3 col-md-6">
+                                    <div className="stat-item" style={{ padding: '0px' }}>
+                                        <div className="stat-content">
+                                            <h4>48-hour Installation</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="col-lg-3 col-md-6">
+                                    <div className="stat-item" style={{ padding: '0px' }}>
+                                        <div className="stat-content">
+                                            <h4>Plans starting 299/month</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <section className="lg:pl-4">
+                                <h2 className="font-semibold text-[24px] leading-[140%] lg:text-[32px] mb-6 lg:mb-8">
+                                    Copper Water Purifier Product Features
+                                </h2>
+                                <div className="row" style={{ paddingTop: '30px' }}>
+                                    <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
+                                        <img src="assets/img/Multistage-Purification-production.webp"
+                                            className="rounded-lg shadow w-full"
+                                            alt="24*7 Safe and Pure 5 Multistage Copper Water Purification System for home in Bengaluru"
+                                            style={{ borderRadius: '10px' }}
+                                        /><br />
+                                        <img src="assets/img/3-copper-alive-product-features-production.webp"
+                                            className="rounded-lg shadow w-full"
+                                            alt="High storage capacity for copper water purifier in Bengaluru"
+                                            style={{ borderRadius: '10px' }}
+                                        />
+                                    </div>
+                                    <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
+                                        <img src="assets/img/2-storm-product-features-production.webp"
+                                            className="rounded-lg shadow w-full"
+                                            alt="Copper filter for Copper Water Purifier On Rent in Bengaluru"
+                                            style={{ borderRadius: '10px' }}
+                                        /><br />
+                                        <img src="assets/img/4-copper-alive-product-features-production.webp"
+                                            className="rounded-lg shadow w-full"
+                                            alt="15 LPH Purification for copper water purifier in Bengaluru"
+                                            style={{ borderRadius: '10px' }}
+                                        />
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="bg-[#FAFAFA] py-10 px-4 lg:px-0 rounded-lg max-w-4xl mx-auto">
+                                <h2 className="text-2xl lg:text-3xl font-semibold mb-6">
+                                    IOT Enabled Smart Features
+                                </h2>
+
+                                <div className="relative overflow-hidden rounded-2xl d-flex flex-column justify-content-center">
+                                    <img src={slides[currentSlide].src} alt={slides[currentSlide].alt} className="w-full rounded-2xl transition-all duration-500" style={{ borderRadius: '20px' }} />
+                                </div>
+
+                                {/* Dots */}
+                                <div className="flex justify-center gap-2 mt-4" style={{ textAlign: 'center' }}>
+                                    {slides.map((_, index) => (
+                                        <button
+                                            key={index}
+                                            onClick={() => setCurrentSlide(index)}
+                                            className={`rounded-full transition-colors border w-2.5 h-2.5 ${currentSlide === index
+                                                ? 'bg-primary' // Active button with the primary color (you can replace 'bg-primary' with your desired color)
+                                                : 'bg-gray-200' // Inactive buttons with gray color
+                                                }`}
+                                            aria-label={`Go to slide ${index + 1}`}
+                                        />
+                                    ))}
+                                </div>
+                            </section>
+
+                            <section className="ml-auto md:px-2" style={{ padding: '0px' }}>
+                                <div data-orientation="vertical">
+                                    <div data-state={isOpen ? "open" : "closed"} data-orientation="vertical" style={{ textAlign: 'center' }} >
+                                        <h3 data-orientation="vertical" data-state="open" className="flex">
+                                            <button className="btn btn-primary me-0 me-sm-2 mx-1" id="tech-specs-btn" onClick={() => setIsOpen(!isOpen)}>Tech Specifications
+                                                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200">
+                                                    <path d="M3.13523 6.15803C3.3241 5.95657 3.64052 5.94637 3.84197 6.13523L7.5 9.56464L11.158 6.13523C11.3595 5.94637 11.6759 5.95657 11.8648 6.15803C12.0536 6.35949 12.0434 6.67591 11.842 6.86477L7.84197 10.6148C7.64964 10.7951 7.35036 10.7951 7.15803 10.6148L3.15803 6.86477C2.95657 6.67591 2.94637 6.35949 3.13523 6.15803Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </h3>
+
+                                        {isOpen && (
+                                            <div id="tech-specs" role="region" aria-labelledby="tech-specs-btn" className="overflow-hidden text-sm">
+                                                <div className="pt-0 pb-0 bg-[#F7F7FC]">
+                                                    <div className="w-full max-w-4xl mx-auto p-4 px-2 rounded-lg">
+                                                        <div className="border border-[#E7E8F1] rounded-lg shadow-lg">
+                                                            <div className="overflow-x-auto">
+                                                                <table className="min-w-full table-auto border-collapse border border-[#E7E8F1] [&_td]:bg-[#F7F7FC] [&_th]:text-center [&_th]:text-sm [&_td]:text-[13px] [&_th]:font-bold">
+                                                                    <thead>
+                                                                        <tr className="bg-[#FCFCFC]" style={{borderWidth:'0px'}}>
+                                                                            <th colSpan="2" className="text-left p-4 py-[14px] text-title-active font-semibold uppercase border-b border-[#E7E8F1]">
+                                                                                Purifier Model
+                                                                            </th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="py-2 px-2 md:px-4 font-medium">Model</td>
+                                                                            <td className="py-2 px-2 md:px-4">ionHive ALIVE RO+UV+Cu</td>
+                                                                        </tr>
+                                                                        <tr className="bg-[#FCFCFC] border-y border-[#E7E8F1]">
+                                                                            <th colSpan="2" className="text-left p-4 py-[14px] text-title-active font-semibold uppercase">
+                                                                                Product Specification
+                                                                            </th>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="px-4 py-2 font-medium">Dimension (D x W x H)</td>
+                                                                            <td className="py-2 px-2 md:px-4">330mm X 230mm X 490 mm (Approx.)</td>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="px-4 py-2 font-medium">Material Details</td>
+                                                                            <td className="py-2 px-2 md:px-4">Outer Body - ABS - BACK COVER , FRONT FASCIA</td>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="px-4 py-2 font-medium">Weight (Approx.)</td>
+                                                                            <td className="py-2 px-2 md:px-4">Net weight 8 Kgs (Approx.)</td>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="px-4 py-2 font-medium">Purification Technology</td>
+                                                                            <td className="py-2 px-2 md:px-4">RO + UV + Cu</td>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="px-4 py-2 font-medium">Purification Stages / Filtration System</td>
+                                                                            <td className="py-2 px-2 md:px-4 space-y-1">
+                                                                                <p>Stage 1: Sediment</p>
+                                                                                <p>Stage 2: Pre carbon</p>
+                                                                                <p>Dual Filter</p>
+                                                                                <p>Stage 3: RO Membrane</p>
+                                                                                <p>Stage 4: UV Lamp 4 watts</p>
+                                                                                <p>Stage 5: Post carbon+ copper cartridge</p>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="px-4 py-2 font-medium">Tank Overflow Control</td>
+                                                                            <td className="py-2 px-2 md:px-4">MECHANICAL FLOAT</td>
+                                                                        </tr>
+                                                                        <tr className="bg-[#FCFCFC] border-y border-[#E7E8F1]">
+                                                                            <th colSpan="2" className="text-left p-4 py-[14px] text-title-active font-semibold uppercase">
+                                                                                Electrical Specifications
+                                                                            </th>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="px-4 py-2 font-medium">Operating Voltage</td>
+                                                                            <td className="py-2 px-2 md:px-4">150 to 250 VAC, 50 Hz</td>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+\                                                                            <td className="px-4 py-2 font-medium">Power Supply</td>
+                                                                            <td className="py-2 px-2 md:px-4">Input 230V AC, 50Hz. Output 24V, (On Board SMPS ) External adaptor</td>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="px-4 py-2 font-medium">Power Rating</td>
+                                                                            <td className="py-2 px-2 md:px-4">40 Watt Maxx</td>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="px-4 py-2 font-medium">UV Lamp</td>
+                                                                            <td className="py-2 px-2 md:px-4">4 Watts</td>
+                                                                        </tr>
+                                                                        <tr className="bg-[#FCFCFC] border-y border-[#E7E8F1]">
+                                                                            <th colSpan="2" className="text-left py-1 sm:p-4 sm:py-[14px] text-title-active font-semibold uppercase">
+                                                                                Recommended Input <br className="sm:hidden" /> Water Parameters
+                                                                            </th>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="px-4 py-2 font-medium">Total Dissolved Solids (TDS)</td>
+                                                                            <td className="py-2 px-2 md:px-4">Up to 2000 mg/L</td>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="px-4 py-2 font-medium">Hardness</td>
+                                                                            <td className="py-2 px-2 md:px-4">Max. 600 mg/L (If the Hardness level is more than 300mg/L, recommended to use antiscalant cartridge)</td>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="px-4 py-2 font-medium">Turbidity</td>
+                                                                            <td className="py-2 px-2 md:px-4">Max. 5 NTU</td>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="px-4 py-2 font-medium">Iron Content</td>
+                                                                            <td className="py-2 px-2 md:px-4">Max. 0.3 mg/L</td>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="px-4 py-2 font-medium">Temperature Range</td>
+                                                                            <td className="py-2 px-2 md:px-4">5°C to 40°C</td>
+                                                                        </tr>
+                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
+                                                                            <td className="px-4 py-2 font-medium">Input Water Pressure</td>
+                                                                            <td className="py-2 px-2 md:px-4">Up to 3 Bar (Max)</td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </section>
 
                             {/* Subscribe model start */}
                             {/* Modal Component */}
@@ -930,7 +954,7 @@ const Home = ({ }) => {
                 {/* <!-- /Features Section --> */}
 
                 {/* <!-- Start Advantage Section --> */}
-                <section id="features" className="features section">
+                <section id="features" className="features section" style={{ padding: '0px' }}>
 
                     {/* <!-- Section Title --> */}
                     <div className="container section-title" data-aos="fade-up">
@@ -1122,303 +1146,6 @@ const Home = ({ }) => {
 
                 </section>
                 {/* <!-- End Advantage Section --> */}
-
-                {/* <!-- Call To Action Section --> */}
-                <section id="call-to-action" className="call-to-action section">
-
-                    <div className="container" data-aos="fade-up" data-aos-delay="100">
-
-                        <div className="row content justify-content-center align-items-center position-relative">
-                            <div className="col-lg-8 mx-auto text-center">
-                                <h2 className="display-4 mb-4">A Thriving Community Of Over 1 Million</h2>
-                                <p className="mb-4">1 in 3 new ionHive users find us through a friend or family referral. Our happy customers understand the impact of pure drinking water on the health and wellness of the entire community.</p>
-                                <div className="scroll-wrapper">
-                                    <div className="scroll-container" >
-                                        <div className="scroll-row">
-                                            {/* Pricing Card Start  */}
-                                            <div className="pricing-card-container" style={{ backgroundColor: 'white', borderRadius: '20px', padding: '20px' }}>
-                                                <div className="pricing-card">
-                                                    {/* Video Thumbnail Section */}
-                                                    <div className="youtube-thumbnail relative rounded-[16px] overflow-hidden mb-4" style={{ height: '200px' }}>
-                                                        <a
-                                                            href="https://www.youtube.com/watch?v=Y7f98aduVJ8"
-                                                            className="glightbox block w-full h-full"
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                        >
-                                                            <img
-                                                                src="https://i.ytimg.com/vi/Y7f98aduVJ8/hqdefault.jpg"
-                                                                alt="Video Thumbnail"
-                                                                loading="lazy"
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                                                                <svg width="60" height="60" fill="white" viewBox="0 0 24 24">
-                                                                    <path d="M8 5v14l11-7z" />
-                                                                </svg>
-                                                            </div>
-                                                        </a>
-                                                    </div>
-
-                                                    {/* Textual Content */}
-                                                    <div style={{ color: 'black' }}>
-                                                        <p className="mb-1" style={{ color: 'black' }}>
-                                                            It’s just something that you fit and forget.<br />
-                                                            You fit the device, you subscribe to a plan and that's it. <br />
-                                                            And you have an app so I think it's convenient, <br />
-                                                            it's cost effective and it's safe.
-                                                        </p>
-                                                        <h3 className="text-xl font-semibold mb-2">Kesavan D</h3>
-                                                        <div className="price text-lg mb-2">
-                                                            <span className="amount font-bold">Bangalore</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="pricing-card-container" style={{ backgroundColor: 'white', borderRadius: '20px', padding: '20px' }}>
-                                                <div className="pricing-card">
-                                                    {/* Video Thumbnail Section */}
-                                                    <div className="youtube-thumbnail relative rounded-[16px] overflow-hidden mb-4" style={{ height: '200px' }}>
-                                                        <a
-                                                            href="https://www.youtube.com/watch?v=Y7f98aduVJ8"
-                                                            className="glightbox block w-full h-full"
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                        >
-                                                            <img
-                                                                src="https://i.ytimg.com/vi/Y7f98aduVJ8/hqdefault.jpg"
-                                                                alt="Video Thumbnail"
-                                                                loading="lazy"
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                                                                <svg width="60" height="60" fill="white" viewBox="0 0 24 24">
-                                                                    <path d="M8 5v14l11-7z" />
-                                                                </svg>
-                                                            </div>
-                                                        </a>
-                                                    </div>
-
-                                                    {/* Textual Content */}
-                                                    <div style={{ color: 'black' }}>
-                                                        <p className="mb-1" style={{ color: 'black' }}>
-                                                            It’s just something that you fit and forget.<br />
-                                                            You fit the device, you subscribe to a plan and that's it. <br />
-                                                            And you have an app so I think it's convenient, <br />
-                                                            it's cost effective and it's safe.
-                                                        </p>
-                                                        <h3 className="text-xl font-semibold mb-2">Kesavan D</h3>
-                                                        <div className="price text-lg mb-2">
-                                                            <span className="amount font-bold">Bangalore</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="pricing-card-container" style={{ backgroundColor: 'white', borderRadius: '20px', padding: '20px' }}>
-                                                <div className="pricing-card">
-                                                    {/* Video Thumbnail Section */}
-                                                    <div className="youtube-thumbnail relative rounded-[16px] overflow-hidden mb-4" style={{ height: '200px' }}>
-                                                        <a
-                                                            href="https://www.youtube.com/watch?v=Y7f98aduVJ8"
-                                                            className="glightbox block w-full h-full"
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                        >
-                                                            <img
-                                                                src="https://i.ytimg.com/vi/Y7f98aduVJ8/hqdefault.jpg"
-                                                                alt="Video Thumbnail"
-                                                                loading="lazy"
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                                                                <svg width="60" height="60" fill="white" viewBox="0 0 24 24">
-                                                                    <path d="M8 5v14l11-7z" />
-                                                                </svg>
-                                                            </div>
-                                                        </a>
-                                                    </div>
-
-                                                    {/* Textual Content */}
-                                                    <div style={{ color: 'black' }}>
-                                                        <p className="mb-1" style={{ color: 'black' }}>
-                                                            It’s just something that you fit and forget.<br />
-                                                            You fit the device, you subscribe to a plan and that's it. <br />
-                                                            And you have an app so I think it's convenient, <br />
-                                                            it's cost effective and it's safe.
-                                                        </p>
-                                                        <h3 className="text-xl font-semibold mb-2">Kesavan D</h3>
-                                                        <div className="price text-lg mb-2">
-                                                            <span className="amount font-bold">Bangalore</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {/* Duplicate as needed for 4-5 cards */}
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                            {/* <!-- Abstract Background Elements --> */}
-                            <div className="shape shape-1">
-                                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M47.1,-57.1C59.9,-45.6,68.5,-28.9,71.4,-10.9C74.2,7.1,71.3,26.3,61.5,41.1C51.7,55.9,35,66.2,16.9,69.2C-1.3,72.2,-21,67.8,-36.9,57.9C-52.8,48,-64.9,32.6,-69.1,15.1C-73.3,-2.4,-69.5,-22,-59.4,-37.1C-49.3,-52.2,-32.8,-62.9,-15.7,-64.9C1.5,-67,34.3,-68.5,47.1,-57.1Z" transform="translate(100 100)"></path>
-                                </svg>
-                            </div>
-
-                            <div className="shape shape-2">
-                                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M41.3,-49.1C54.4,-39.3,66.6,-27.2,71.1,-12.1C75.6,3,72.4,20.9,63.3,34.4C54.2,47.9,39.2,56.9,23.2,62.3C7.1,67.7,-10,69.4,-24.8,64.1C-39.7,58.8,-52.3,46.5,-60.1,31.5C-67.9,16.4,-70.9,-1.4,-66.3,-16.6C-61.8,-31.8,-49.7,-44.3,-36.3,-54C-22.9,-63.7,-8.2,-70.6,3.6,-75.1C15.4,-79.6,28.2,-58.9,41.3,-49.1Z" transform="translate(100 100)"></path>
-                                </svg>
-                            </div>
-
-                            {/* <!-- Dot Pattern Groups --> */}
-                            <div className="dots dots-1">
-                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                                    <pattern id="dot-pattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                                        <circle cx="2" cy="2" r="2" fill="currentColor"></circle>
-                                    </pattern>
-                                    <rect width="100" height="100" fill="url(#dot-pattern)"></rect>
-                                </svg>
-                            </div>
-
-                            <div className="dots dots-2">
-                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                                    <pattern id="dot-pattern-2" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                                        <circle cx="2" cy="2" r="2" fill="currentColor"></circle>
-                                    </pattern>
-                                    <rect width="100" height="100" fill="url(#dot-pattern-2)"></rect>
-                                </svg>
-                            </div>
-
-                            <div className="shape shape-3">
-                                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M43.3,-57.1C57.4,-46.5,71.1,-32.6,75.3,-16.2C79.5,0.2,74.2,19.1,65.1,35.3C56,51.5,43.1,65,27.4,71.7C11.7,78.4,-6.8,78.3,-23.9,72.4C-41,66.5,-56.7,54.8,-65.4,39.2C-74.1,23.6,-75.8,4,-71.7,-13.2C-67.6,-30.4,-57.7,-45.2,-44.3,-56.1C-30.9,-67,-15.5,-74,0.7,-74.9C16.8,-75.8,33.7,-70.7,43.3,-57.1Z" transform="translate(100 100)"></path>
-                                </svg>
-                            </div>
-                        </div>
-
-                    </div>
-
-                </section>
-                {/* <!-- /Call To Action Section --> */}
-
-                {/* <!-- Features 2 Section --> */}
-                <section id="how-it-works" className="features-2 section">
-
-                    {/* <!-- Section Title --> */}
-                    <div className="container section-title" data-aos="fade-up">
-                        <h2>The ionHive App: Behold The Future of Water Purification</h2>
-                        <p>Track your water consumption, generate your personalised water quality report,
-                            and monitor your filter health using our innovative app. Recharging your device and
-                            raising service requests has never been easier.</p>
-                        <h3 style={{ paddingTop: '20px' }}>How it works</h3>
-                    </div>
-                    {/* <!-- End Section Title --> */}
-
-                    <div className="container" data-aos="fade-up" data-aos-delay="100">
-
-                        <div className="row align-items-center">
-
-                            <div className="col-lg-4">
-
-                                <div className="feature-item text-end mb-5" data-aos="fade-right" data-aos-delay="200">
-                                    <div className="d-flex align-items-center justify-content-end gap-4">
-                                        <div className="feature-content">
-                                            <h3>Step 1:</h3>
-                                            <p>Choose the product that suits you the best</p>
-                                        </div>
-                                        <div className="feature-icon flex-shrink-0">
-                                            <i className="bi bi-laptop"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* <!-- End .feature-item --> */}
-
-                                <div className="feature-item text-end mb-5" data-aos="fade-right" data-aos-delay="300">
-                                    <div className="d-flex align-items-center justify-content-end gap-4">
-                                        <div className="feature-content">
-                                            <h3>Step 2:</h3>
-                                            <p>Book the Perfect Plan for You</p>
-                                        </div>
-                                        <div className="feature-icon flex-shrink-0">
-                                            <i className="bi bi-calendar-check"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* <!-- End .feature-item --> */}
-
-                                <div className="feature-item text-end" data-aos="fade-right" data-aos-delay="400">
-                                    <div className="d-flex align-items-center justify-content-end gap-4">
-                                        <div className="feature-content">
-                                            <h3>Step 3:</h3>
-                                            <p>Submit your details</p>
-                                        </div>
-                                        <div className="feature-icon flex-shrink-0">
-                                            <i className="bi bi-file-earmark-text"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* <!-- End .feature-item --> */}
-
-                            </div>
-
-                            <div className="col-lg-4" data-aos="zoom-in" data-aos-delay="200">
-                                <div className="phone-mockup text-center">
-                                    <img src="assets/img/phone-app-screen.webp" alt="Phone Mockup" className="img-fluid" />
-                                </div>
-                            </div>
-                            {/* <!-- End Phone Mockup --> */}
-
-                            <div className="col-lg-4">
-
-                                <div className="feature-item mb-5" data-aos="fade-left" data-aos-delay="200">
-                                    <div className="d-flex align-items-center gap-4">
-                                        <div className="feature-icon flex-shrink-0">
-                                            <i className="bi bi-currency-rupee"></i>
-                                        </div>
-                                        <div className="feature-content">
-                                            <h3>Step 4:</h3>
-                                            <p>Make the Payment</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* <!-- End .feature-item --> */}
-
-                                <div className="feature-item mb-5" data-aos="fade-left" data-aos-delay="300">
-                                    <div className="d-flex align-items-center gap-4">
-                                        <div className="feature-icon flex-shrink-0">
-                                            <i className="bi bi-clock"></i>
-                                        </div>
-                                        <div className="feature-content">
-                                            <h3>Step 5:</h3>
-                                            <p>Get ionHive Installed in 48 hours!</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* <!-- End .feature-item --> */}
-
-                                <div className="feature-item" data-aos="fade-left" data-aos-delay="400">
-                                    <div className="d-flex align-items-center gap-4">
-                                        <div className="feature-icon flex-shrink-0">
-                                            <i className="bi  bi-phone"></i>
-                                        </div>
-                                        <div className="feature-content">
-                                            <h3>Step 6:</h3>
-                                            <p>Connect your device to ionHive app</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* <!-- End .feature-item --> */}
-
-                            </div>
-                        </div>
-
-                    </div>
-
-                </section>
-                {/* <!-- /Features 2 Section --> */}
 
                 {/* <!-- Call To Action Section --> */}
                 <section id="call-to-action" className="call-to-action section">
@@ -1636,97 +1363,6 @@ const Home = ({ }) => {
                 </section>
                 {/* <!-- /City Section --> */}
 
-                {/* <!-- Contact Section --> */}
-                <section id="contact" className="contact section light-background">
-
-                    {/* <!-- Section Title --> */}
-                    <div className="container section-title" data-aos="fade-up">
-                        <h2>Contact</h2>
-                        <p>Necessitatibus eius consequatur ex aliquid fuga eum quidem sint consectetur velit</p>
-                    </div>
-                    {/* <!-- End Section Title --> */}
-
-                    <div className="container" data-aos="fade-up" data-aos-delay="100">
-
-                        <div className="row g-4 g-lg-5">
-                            <div className="col-lg-5">
-                                <div className="info-box" data-aos="fade-up" data-aos-delay="200">
-                                    <h3>Contact Info</h3>
-
-                                    <div className="info-item" data-aos="fade-up" data-aos-delay="300">
-                                        <div className="icon-box">
-                                            <i className="bi bi-geo-alt"></i>
-                                        </div>
-                                        <div className="content">
-                                            <h4>Our Location</h4>
-                                            <p>Outdid Unified Private Limited,</p>
-                                            <p>2nd Floor, Indian Water Works Association, 10(P),</p>
-                                            <p>7th Main Road, BTM Layout, 2nd Stage,</p>
-                                            <p>MICO HBCS(1st Stage), Bangalore-560076.</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="info-item" data-aos="fade-up" data-aos-delay="400">
-                                        <div className="icon-box">
-                                            <i className="bi bi-telephone"></i>
-                                        </div>
-                                        <div className="content">
-                                            <h4>Phone Number</h4>
-                                            <p>+91 80959 45298</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="info-item" data-aos="fade-up" data-aos-delay="500">
-                                        <div className="icon-box">
-                                            <i className="bi bi-envelope"></i>
-                                        </div>
-                                        <div className="content">
-                                            <h4>Email Address</h4>
-                                            <p>info@outdidunified.com</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="col-lg-7">
-                                <div className="contact-form" data-aos="fade-up" data-aos-delay="300">
-                                    <h3>Get In Touch</h3>
-                                    <p>How Can We Assist You Today?</p>
-
-                                    <form className="php-email-form" onSubmit={handleSubmits}>
-                                        <div className="row gy-4">
-                                            <div className="col-md-6">
-                                                <input type="text" name="name" className="form-control" placeholder="Your Name" required value={formData.name} onChange={handleChange} />
-                                            </div>
-
-                                            <div className="col-md-6">
-                                                <input type="email" name="email" className="form-control" placeholder="Your Email" required value={formData.email} onChange={handleChange} />
-                                            </div>
-
-                                            <div className="col-12">
-                                                <input type="text" name="subject" className="form-control" placeholder="Subject" required value={formData.subject} onChange={handleChange} />
-                                            </div>
-
-                                            <div className="col-12">
-                                                <textarea name="message" rows="6" className="form-control" placeholder="Message" required value={formData.message} onChange={handleChange}></textarea>
-                                            </div>
-
-                                            <div className="col-12 text-center">
-                                                <button type="submit" className="btn">Send Message</button>
-                                            </div>
-                                        </div>
-                                    </form>
-
-                                </div>
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </section>
-                {/* <!-- /Contact Section --> */}
-
             </main>
 
             {/* Footer */}
@@ -1735,4 +1371,4 @@ const Home = ({ }) => {
     );
 };
 
-export default Home;
+export default ProductList;
