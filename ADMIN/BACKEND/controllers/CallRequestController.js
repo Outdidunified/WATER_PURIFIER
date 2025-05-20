@@ -1,5 +1,4 @@
-// controllers/requestCallController.js
-const RequestCall = require('../models/CallRequest');
+const { getDB } = require('../config/db');
 
 exports.requestCall = async (req, res) => {
   const { name, phone, city } = req.body;
@@ -9,17 +8,19 @@ exports.requestCall = async (req, res) => {
   }
 
   try {
-    const newRequest = new RequestCall({ name, phone, city });
-    await newRequest.save();
+    const db = getDB();
+    const callRequest = {
+      name,
+      phone,
+      city,
+      requestedAt: new Date()
+    };
 
-    // Optional: Integrate with call API like Twilio here
+    await db.collection('callRequests').insertOne(callRequest);
 
-    return res.status(200).json({ message: 'Call request submitted successfully,we will get Back Soon' });
+    return res.status(200).json({ message: 'Call request submitted successfully, we will get back soon' });
   } catch (error) {
     console.error('Call Request Error:', error);
     return res.status(500).json({ message: 'Failed to submit call request', error: error.message });
   }
 };
-
-
-

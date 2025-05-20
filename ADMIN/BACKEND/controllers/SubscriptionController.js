@@ -1,9 +1,17 @@
-const SubscriptionPlan = require('../models/SubscriptionPlan');
+const { getDB } = require('../config/db');
+const { ObjectId } = require('mongodb');
 
 // Add new subscription plan
 exports.addPlan = async (req, res) => {
   try {
-    const plan = await SubscriptionPlan.create(req.body);
+    const db = getDB();
+
+    // Direct insert (schema-less)
+    const result = await db.collection('subscriptionplans').insertOne(req.body);
+
+    // Fetch the inserted plan with _id populated
+    const plan = await db.collection('subscriptionplans').findOne({ _id: result.insertedId });
+
     res.status(200).json({
       message: 'Subscription plan added successfully',
       data: plan,
@@ -21,7 +29,18 @@ exports.addPlan = async (req, res) => {
 // Get all plans by product ID
 exports.getPlansByProduct = async (req, res) => {
   try {
-    const plans = await SubscriptionPlan.find({ productId: req.params.productId });
+    const db = getDB();
+    const productId = req.params.productId;
+
+    // Validate ObjectId
+    if (!ObjectId.isValid(productId)) {
+      return res.status(400).json({
+        message: 'Invalid product ID',
+        status: 'failed'
+      });
+    }
+
+    const plans = await db.collection('subscriptionplans').find({ productId: productId }).toArray();
 
     if (plans.length === 0) {
       return res.status(404).json({
