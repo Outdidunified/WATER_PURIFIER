@@ -1,52 +1,9 @@
-import { useState } from "react";
+import React from "react";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import Swal from 'sweetalert2';
+import useContact from "../hooks/useContact";
 const Contact = ({ }) => {
-
-    const [formData, setFormData] = useState({
-        name: "",
-        email: "",
-        subject: "",
-        message: "",
-    });
-
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    const validateEmail = (email) => {
-        // Basic email validation
-        return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email);
-    };
-
-    const handleSubmits = async (e) => {
-        e.preventDefault();
-
-        const { name, email, subject, message } = formData;
-
-        if (!validateEmail(email)) {
-            Swal.fire("Invalid Email", "Please enter a valid email address.", "error");
-            return;
-        }
-
-        try {
-            const response = await fetch("/contact", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, email, subject, message }),
-            });
-
-            if (response.ok) {
-                Swal.fire("Success", "Your message has been sent.", "success");
-                setFormData({ name: "", email: "", subject: "", message: "" });
-            } else {
-                throw new Error("Failed to send message");
-            }
-        } catch (error) {
-            Swal.fire("Error", "Something went wrong. Please try again later.", "error");
-        }
-    };
+    const { formData, handleChange, handleSubmits, loading } = useContact();
 
     return (
         <div>
@@ -62,7 +19,7 @@ const Contact = ({ }) => {
                     {/* <!-- Section Title --> */}
                     <div className="container section-title" data-aos="fade-up">
                         <h2>Contact</h2>
-                        <p>Necessitatibus eius consequatur ex aliquid fuga eum quidem sint consectetur velit</p>
+                        <p>Speak to a water-wellness expert today</p>
                     </div>
                     {/* <!-- End Section Title --> */}
 
@@ -132,7 +89,7 @@ const Contact = ({ }) => {
                                             </div>
 
                                             <div className="col-12 text-center">
-                                                <button type="submit" className="btn">Send Message</button>
+                                                <button type="submit" className="btn">{loading ? "Processing..." : "Send Message"}</button>
                                             </div>
                                         </div>
                                     </form>

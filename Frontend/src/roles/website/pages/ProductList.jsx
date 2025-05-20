@@ -2,112 +2,116 @@ import React, { useState, useEffect, useRef } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Swal from 'sweetalert2';
+
 const ProductList = ({ }) => {
 
-    // copper
-    const [usage, setUsage] = useState("SOLO");
+    const heroRef = useRef(null);
+
+    useEffect(() => {
+        // Scroll to the hero section when the page loads
+        heroRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, []);
+
+    const productConfigs = {
+        1: {
+            name: "ionHive Copper",
+            plans: {
+                SOLO: { liters: "130 ltrs/m", base: 449 },
+                COUPLE: { liters: "200 ltrs/m", base: 549 },
+                FAMILY: { liters: "500 ltrs/m", base: 749 },
+                UNLIMITED: { liters: "Unlimited/m", base: 999 },
+            },
+            discounts: {
+                28: { label: "28 days", discount: 0 },
+                90: { label: "90 days", discount: 10 },
+                360: { label: "360 days", discount: 20 },
+            },
+            thumbnails: [
+                "assets/img/copper_purifier.webp",
+                "assets/img/uv_purification.webp",
+                "assets/img/copper_filter.webp",
+                "assets/img/multistage_purification.webp",
+                "assets/img/wall_mount.webp",
+            ],
+            defaultImage: "assets/img/copper_purifier.webp",
+            defaultUsage: "SOLO"
+        },
+        2: {
+            name: "ionHive RO+",
+            plans: {
+                BASIC: { liters: "250 ltrs/m", base: 449 },
+                UNLIMITED: { liters: "Unlimited/m", base: 999 },
+            },
+            discounts: {
+                28: { label: "28 days", discount: 0 },
+                360: { label: "360 days", discount: 20 },
+            },
+            thumbnails: [
+                "assets/img/ro+_water_purifier.webp",
+                "assets/img/ro_membrane.webp",
+                "assets/img/multistage_purification.webp",
+                "assets/img/dual_cartridge.webp",
+                "assets/img/wall_mount.webp",
+            ],
+            defaultImage: "assets/img/ro+_water_purifier.webp",
+            defaultUsage: "BASIC"
+        },
+        3: {
+            name: "ionHive Alkaline",
+            plans: {
+                STANDARD: { liters: "250 ltrs/m", base: 449 },
+                UNLIMITED: { liters: "Unlimited/m", base: 999 },
+            },
+            discounts: {
+                28: { label: "28 days", discount: 0 },
+                360: { label: "360 days", discount: 20 },
+            },
+            thumbnails: [
+                "assets/img/alkaline_water_purifier.webp",
+                "assets/img/alkaline_boost.webp",
+                "assets/img/multistage_purification.webp",
+                "assets/img/alkaline_cartridge.webp",
+                "assets/img/capacity.webp",
+            ],
+            defaultImage: "assets/img/alkaline_water_purifier.webp",
+            defaultUsage: "STANDARD"
+        }
+    };
+
+    const [selectedTab, setSelectedTab] = useState(1); // 1 = Copper
+    const [usage, setUsage] = useState(productConfigs[1].defaultUsage);
     const [tenure, setTenure] = useState(28);
+    const [mainImage, setMainImage] = useState(productConfigs[1].defaultImage);
 
-    const plans = {
-        SOLO: { liters: "130 ltrs/m", base: 449 },
-        COUPLE: { liters: "200 ltrs/m", base: 549 },
-        FAMILY: { liters: "500 ltrs/m", base: 749 },
-        UNLIMITED: { liters: "Unlimited/m", base: 999 },
+    const handleTabChange = (tabId) => {
+        setSelectedTab(tabId);
+        setUsage(productConfigs[tabId].defaultUsage);
+        setTenure(28);
+        setMainImage(productConfigs[tabId].defaultImage);
     };
 
-    const discounts = {
-        28: { label: "28 days", discount: 0 },
-        90: { label: "90 days", discount: 10 },
-        360: { label: "360 days", discount: 20 },
-    };
-
-    const basePrice = plans[usage].base;
-    const discount = discounts[tenure].discount;
+    const currentConfig = productConfigs[selectedTab];
+    const basePrice = currentConfig.plans[usage]?.base || 0;
+    const discount = currentConfig.discounts[tenure]?.discount || 0;
     const finalPrice = basePrice - (basePrice * discount) / 100;
     const savings = (basePrice * discount) / 100;
-
-    const [mainImage, setMainImage] = useState("assets/img/copper_purifier.webp");
-
-    const thumbnails = [
-        "assets/img/copper_purifier.webp",
-        "assets/img/uv_purification.webp",
-        "assets/img/copper_filter.webp",
-        "assets/img/multistage_purification.webp",
-        "assets/img/wall_mount.webp",
-    ];
-
-    // RO+
-    const [usageRO, setUsageRO] = useState("BASIC");
-    const [tenureRO, setTenureRO] = useState(28);
-
-    const plansRO = {
-        BASIC: { liters: "250 ltrs/m", base: 449 },
-        UNLIMITED: { liters: "Unlimited/m", base: 999 },
-    };
-
-    const discountsRO = {
-        28: { label: "28 days", discount: 0 },
-        360: { label: "360 days", discount: 20 },
-    };
-
-    const basePriceRO = plansRO[usageRO].base;
-    const discountRO = discountsRO[tenureRO].discount;
-    const finalPriceRO = basePriceRO - (basePriceRO * discountRO) / 100;
-    const savingsRO = (basePriceRO * discountRO) / 100;
-
-    const [mainImageRO, setMainImageRO] = useState("assets/img/ro+_water_purifier.webp");
-
-    const thumbnailsRO = [
-        "assets/img/ro+_water_purifier.webp",
-        "assets/img/ro_membrane.webp",
-        "assets/img/multistage_purification.webp",
-        "assets/img/dual_cartridge.webp",
-        "assets/img/wall_mount.webp",
-    ];
-
-    // Alkaline
-    const [usageAlkaline, setUsageAlkaline] = useState("STANDARD");
-    const [tenureAlkaline, setTenureAlkaline] = useState(28);
-
-    const plansAlkaline = {
-        STANDARD: { liters: "250 ltrs/m", base: 449 },
-        UNLIMITED: { liters: "Unlimited/m", base: 999 },
-    };
-
-    const discountsAlkaline = {
-        28: { label: "28 days", discount: 0 },
-        360: { label: "360 days", discount: 20 },
-    };
-
-    const basePriceAlkaline = plansAlkaline[usageAlkaline].base;
-    const discountAlkaline = discountsAlkaline[tenureAlkaline].discount;
-    const finalPriceAlkaline = basePriceAlkaline - (basePriceAlkaline * discountAlkaline) / 100;
-    const savingsAlkaline = (basePriceAlkaline * discountAlkaline) / 100;
-
-    const [mainImageAlkaline, setMainImageAlkaline] = useState("assets/img/alkaline_water_purifier.webp");
-
-    const thumbnailsAlkaline = [
-        "assets/img/alkaline_water_purifier.webp",
-        "assets/img/alkaline_boost.webp",
-        "assets/img/multistage_purification.webp",
-        "assets/img/alkaline_cartridge.webp",
-        "assets/img/capacity.webp",
-    ];
 
     {/* Sub model */ }
     const [showModal, setShowModal] = useState(false);
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
     const [emailID, setEmailID] = useState("");
-    const [referral, setReferral] = useState("");
     const [city, setCity] = useState("Bangalore");
+
+    const [subLoading, setSubLoading] = useState(false);
+
+    const RAZORPAY_KEY = "rzp_test_oHoZ3Q1fF6pYEI";
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const phoneRegex = /^[1-9][0-9]{9}$/; // 10 digits, not starting with 0
+        const phoneRegex = /^[1-9][0-9]{9}$/;
         const emailRegex = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[a-zA-Z]{2,}$/;
-        const referralRegex = /^[a-zA-Z0-9]{6}$/; // for alphanumeric
 
         if (!phoneRegex.test(phone)) {
             Swal.fire({
@@ -122,60 +126,135 @@ const ProductList = ({ }) => {
             Swal.fire({
                 icon: 'error',
                 title: 'Invalid Email ID',
-                text: 'Email ID must only contain letters and numbers, one @, and a valid domain.'
-            });
-            return;
-        }
-        if (!referralRegex.test(referral)) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Invalid Referral Code',
-                text: 'Referral code must be exactly 6 letters or numbers.'
+                text: 'Please enter a valid email address.'
             });
             return;
         }
 
-        const payload = { name, phone, emailID, referral, city };
+        setSubLoading(true);
+
+        const gst = parseFloat((finalPrice * 0.18).toFixed(2));
+        const totalPrice = parseFloat((finalPrice * 1.18).toFixed(2));
+        const months = Math.ceil(tenure / 30); // approximate month count from days
+        const durationTotalPrice = parseFloat((months * totalPrice).toFixed(2));
+
+        const payload = {
+            name,
+            phone: parseInt(phone),
+            emailID,
+            city,
+            selectedProduct: currentConfig.name,
+            planType: usage,
+            tenure: `${tenure} days`, // in days
+            basePrice,
+            discountPercentage: discount,
+            discountedPrice: finalPrice,
+            savings,
+            gst,
+            totalPrice,
+            durationTotalPrice
+        };
 
         try {
-            const res = await fetch("http://localhost:5000/api/subscribe", {
+            const res = await fetch("http://192.168.1.14:5000/api/subscription-plans/addplan", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
             });
 
             const data = await res.json();
 
-            if (res.ok) {
+            if (!res.ok || !data.razorpayOrderId) {
                 Swal.fire({
-                    icon: 'success',
-                    title: 'Submitted Successfully!',
-                    showConfirmButton: false,
-                    timer: 2000
+                    icon: "error",
+                    title: "Submission Failed",
+                    text: data.message || "Server did not respond properly.",
                 });
-                setShowModal(false);
-                // Reset fields
-                setName("");
-                setPhone("");
-                setEmailID("");
-                setReferral("");
-                setCity("Bangalore");
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Submission Failed',
-                    text: data.message || "Please try again."
-                });
+                return;
             }
+
+            const options = {
+                key: RAZORPAY_KEY,
+                amount: durationTotalPrice * 100, // in paisa
+                currency: "INR",
+                name: "Subscription Payment",
+                description: `Plan for ${months} month(s)`,
+                image: "/assets/img/ionHive.png",
+                order_id: data.razorpayOrderId,
+                handler: async function (response) {
+                    // Verify payment
+                    const verifyRes = await fetch("http://192.168.1.14:5000/api/orders/orderverify", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                        }),
+                    });
+
+                    const verifyData = await verifyRes.json();
+
+                    if (verifyData.status === "Success") {
+                        Swal.fire({
+                            icon: "success",
+                            title: "Payment Successful",
+                            text: "Your subscription is now active!",
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            setShowModal(false);
+                            setName("");
+                            setPhone("");
+                            setEmailID("");
+                            setCity("Bangalore");
+                            window.location.href = "/"; // Go to homepage
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Payment Verification Failed",
+                            text: "Please contact support.",
+                        });
+                    }
+                },
+                prefill: {
+                    name,
+                    email: emailID,
+                    contact: phone,
+                },
+                theme: { color: "#3399cc" },
+                modal: {
+                    ondismiss: async () => {
+                        await fetch("http://192.168.1.14:5000/api/subscription-plans/addplan", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                reason: "User cancelled the payment",
+                                orderId: data.orderId || "", // optional: if your backend returns orderId
+                            }),
+                        });
+
+                        Swal.fire({
+                            icon: "warning",
+                            title: "Payment Cancelled",
+                            text: "You cancelled the payment. Try again if needed.",
+                        });
+                    },
+                },
+            };
+
+            const razorpayInstance = new window.Razorpay(options);
+            razorpayInstance.open();
         } catch (error) {
+            console.error("Subscription Error:", error);
             Swal.fire({
-                icon: 'error',
-                title: 'Oops...',
-                text: 'Something went wrong!'
+                icon: "error",
+                title: "Error",
+                text: "Something went wrong. Please try again later.",
             });
-            console.error(error);
+        } finally {
+            setSubLoading(false);
         }
     };
 
@@ -242,7 +321,61 @@ const ProductList = ({ }) => {
         return () => clearTimeout(timeoutRef.current);
     }, [currentSlide]);
 
-    const [isOpen, setIsOpen] = useState(false); // This will toggle the accordion
+
+    // Call Request
+    const [formDataCallRequest, setFormDataCallRequest] = useState({
+        name: "",
+        phone: "",
+        city: "Bangalore",
+    });
+
+    const handleChangeCallRequest = (e) => {
+        const { name, value } = e.target;
+
+        if (name === "phone") {
+            let phone = value.replace(/\D/g, ""); // Only digits
+            if (phone.startsWith("0")) {
+                phone = phone.substring(1); // Remove leading 0
+            }
+            if (phone.length > 10) {
+                phone = phone.substring(0, 10); // Limit to 10 digits
+            }
+            setFormDataCallRequest({ ...formDataCallRequest, [name]: phone });
+        } else {
+            setFormDataCallRequest({ ...formDataCallRequest, [name]: value });
+        }
+    };
+
+    const handleSubmitCallRequest = async (e) => {
+        e.preventDefault();
+
+        if (formDataCallRequest.phone.length !== 10) {
+            Swal.fire("Error", "Phone number must be exactly 10 digits.", "error");
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                "http://192.168.1.66:5000/api/callRequest/callRequest",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(formDataCallRequest),
+                }
+            );
+
+            if (response.ok) {
+                Swal.fire("Success", "Your message has been sent!", "success");
+                setFormDataCallRequest({ name: "", phone: "", city: "Bangalore" });
+            } else {
+                Swal.fire("Error", "Something went wrong. Please try again.", "error");
+            }
+        } catch (error) {
+            Swal.fire("Error", "Server error. Please try later.", "error");
+        }
+    };
 
     return (
         <div>
@@ -250,10 +383,10 @@ const ProductList = ({ }) => {
             {/* Header */}
             < Header />
 
-            <main className="main" style={{ marginTop: '5%' }}>
+            <main className="main" >
 
                 {/* <!-- Features Section --> */}
-                <section id="hero" className="hero section">
+                <section id="hero" className="hero section" ref={heroRef}>
 
                     {/* <!-- Section Title --> */}
                     <div className="container section-title" data-aos="fade-up">
@@ -266,36 +399,24 @@ const ProductList = ({ }) => {
 
                         <div className="d-flex justify-content-center">
 
-                            <ul className="nav nav-tabs" data-aos="fade-up" data-aos-delay="100">
-
-                                <li className="nav-item">
-                                    <a className="nav-link active show" data-bs-toggle="tab" data-bs-target="#features-tab-1">
-                                        <h4>ionHive Copper</h4>
-                                    </a>
-                                </li>
-                                {/* <!-- End tab nav item --> */}
-
-                                <li className="nav-item">
-                                    <a className="nav-link" data-bs-toggle="tab" data-bs-target="#features-tab-2">
-                                        <h4>ionHive RO+</h4>
-                                    </a>
-                                    {/* <!-- End tab nav item --> */}
-                                </li>
-
-                                <li className="nav-item">
-                                    <a className="nav-link" data-bs-toggle="tab" data-bs-target="#features-tab-3">
-                                        <h4>ionHive Alkaline</h4>
-                                    </a>
-                                </li>
-                                {/* <!-- End tab nav item --> */}
-
+                            <ul className="nav nav-tabs">
+                                {Object.entries(productConfigs).map(([key, config]) => (
+                                    <li className="nav-item" key={key}>
+                                        <button
+                                            className={`nav-link ${selectedTab === parseInt(key) ? "active show" : ""}`}
+                                            onClick={() => handleTabChange(parseInt(key))}
+                                        >
+                                            <h4>{config.name}</h4>
+                                        </button>
+                                    </li>
+                                ))}
                             </ul>
 
                         </div>
 
                         <div className="tab-content" data-aos="fade-up" data-aos-delay="200">
 
-                            <div className="tab-pane fade active show" id="features-tab-1">
+                            <div className="tab-pane fade active show">
                                 <div className="container" data-aos="fade-up" data-aos-delay="100">
 
                                     <div className="row gy-4">
@@ -336,10 +457,9 @@ const ProductList = ({ }) => {
                                         <h3>Flexible Rental Plans</h3>
                                         <p className="fst-italic">Security deposit of ₹1,500 will be 100% refundable</p>
 
-                                        {/* Step 1 - Monthly Usage */}
                                         <h5 className="mt-3">Step 1: Choose Monthly Usage</h5>
                                         <div className="d-flex flex-wrap gap-2 mb-3">
-                                            {Object.entries(plans).map(([key, value]) => (
+                                            {Object.entries(currentConfig.plans).map(([key, value]) => (
                                                 <button
                                                     key={key}
                                                     className={`btn ${usage === key ? "btn-primary" : "btn-outline-primary"}`}
@@ -350,10 +470,9 @@ const ProductList = ({ }) => {
                                             ))}
                                         </div>
 
-                                        {/* Step 2 - Tenure */}
                                         <h5 className="mt-3">Step 2: Choose Tenure</h5>
                                         <div className="d-flex flex-wrap gap-2 mb-3">
-                                            {Object.entries(discounts).map(([key, value]) => (
+                                            {Object.entries(currentConfig.discounts).map(([key, value]) => (
                                                 <button
                                                     key={key}
                                                     className={`btn ${tenure === parseInt(key) ? "btn-primary" : "btn-outline-primary"}`}
@@ -364,16 +483,17 @@ const ProductList = ({ }) => {
                                             ))}
                                         </div>
 
-                                        {/* Step 3 - Pricing Info */}
+                                        {/* Price Section */}
                                         <div className="mt-3 p-3 border rounded bg-light">
                                             <h5 style={{ color: "#0d83fd" }}>₹{finalPrice}/month</h5>
-                                            <p className="mb-1">{discount > 0 ? `Discount: ${discount}%` : "0% discount"}, Savings of ₹{savings}</p>
+                                            <p>{discount > 0 ? `Discount: ${discount}%` : "0% discount"}, Savings of ₹{savings}</p>
                                             <div className="d-flex flex-wrap gap-2 mb-3">
                                                 <button className="btn btn-primary me-0 me-sm-2 mx-1" onClick={() => setShowModal(true)}>
                                                     Subscribe Now
                                                 </button>
                                             </div>
                                         </div>
+
                                     </div>
                                     <div className="col-lg-6 order-1 order-lg-2 text-center">
                                         {/* Main Image */}
@@ -387,483 +507,28 @@ const ProductList = ({ }) => {
                                             }}
                                         />
 
-                                        {/* Thumbnails */}
-                                        <div className="d-flex justify-content-center gap-2 sm:gap-4">
-                                            {thumbnails.map((img, index) => (
+                                        <div className="d-flex justify-content-center gap-2">
+                                            {currentConfig.thumbnails.map((img, index) => (
                                                 <img
                                                     key={index}
                                                     src={img}
-                                                    alt={`Thumbnail ${index + 1}`}
-                                                    className={`cursor-pointer rounded-[10px] border ${mainImage === img ? 'border-blue-600' : 'border-gray-300'
-                                                        }`}
+                                                    alt={`Thumbnail ${index}`}
+                                                    className="rounded"
                                                     style={{
                                                         width: "80px",
-                                                        height: "auto",
-                                                        cursor: "pointer",
-                                                        border: mainImage === img ? "1px solid #0d83fd" : "1px solid #ccc",
-                                                        borderRadius: "10px"
+                                                        border: mainImage === img ? "2px solid #0d83fd" : "1px solid #ccc",
+                                                        cursor: "pointer"
                                                     }}
                                                     onClick={() => setMainImage(img)}
                                                 />
                                             ))}
                                         </div>
+
                                     </div>
 
                                 </div>
                             </div>
                             {/* <!-- End tab content item --> */}
-
-                            <div className="tab-pane fade" id="features-tab-2">
-                                <div className="container" data-aos="fade-up" data-aos-delay="100">
-
-                                    <div className="row gy-4">
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Multistage Universal Water purifier</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Mineral cartridge</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> RO Purification</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Intuitive 3 LED Display</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                    </div>
-
-                                </div>
-                                <div className="row" style={{ paddingTop: '30px' }}>
-                                    <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
-                                        <h3>Flexible Rental Plans</h3>
-                                        <p className="fst-italic">Security deposit of ₹1,500 will be 100% refundable</p>
-
-                                        {/* Step 1 - Monthly Usage */}
-                                        <h5 className="mt-3">Step 1: Choose Monthly Usage</h5>
-                                        <div className="d-flex flex-wrap gap-2 mb-3">
-                                            {Object.entries(plansRO).map(([key, value]) => (
-                                                <button
-                                                    key={key}
-                                                    className={`btn ${usageRO === key ? "btn-primary" : "btn-outline-primary"}`}
-                                                    onClick={() => setUsageRO(key)}
-                                                >
-                                                    {key}<br /><small>{value.liters}</small>
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        {/* Step 2 - Tenure */}
-                                        <h5 className="mt-3">Step 2: Choose Tenure</h5>
-                                        <div className="d-flex flex-wrap gap-2 mb-3">
-                                            {Object.entries(discountsRO).map(([key, value]) => (
-                                                <button
-                                                    key={key}
-                                                    className={`btn ${tenureRO === parseInt(key) ? "btn-primary" : "btn-outline-primary"}`}
-                                                    onClick={() => setTenureRO(parseInt(key))}
-                                                >
-                                                    {value.label}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        {/* Step 3 - Pricing Info */}
-                                        <div className="mt-3 p-3 border rounded bg-light">
-                                            <h5 style={{ color: "#0d83fd" }}>₹{finalPriceRO}/month</h5>
-                                            <p className="mb-1">{discountRO > 0 ? `Discount: ${discountRO}%` : "0% discount"}, Savings of ₹{savingsRO}</p>
-                                            <div className="d-flex flex-wrap gap-2 mb-3">
-                                                <button className="btn btn-primary me-0 me-sm-2 mx-1" onClick={() => setShowModal(true)}>
-                                                    Subscribe Now
-                                                </button>
-                                                <button className="btn btn-primary me-0 me-sm-2 mx-1">Know More</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="col-lg-6 order-1 order-lg-2 text-center">
-                                        {/* Main Image */}
-                                        <img
-                                            src={mainImageRO}
-                                            alt="Main Product"
-                                            className="img-fluid mb-3"
-                                            style={{
-                                                boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
-                                                borderRadius: '20px', maxWidth: '80%',
-                                            }}
-                                        />
-
-                                        {/* Thumbnails */}
-                                        <div className="d-flex justify-content-center gap-2">
-                                            {thumbnailsRO.map((img, index) => (
-                                                <img
-                                                    key={index}
-                                                    src={img}
-                                                    alt={`Thumbnail ${index + 1}`}
-                                                    className="img-thumbnail"
-                                                    style={{
-                                                        width: "80px",
-                                                        height: "auto",
-                                                        cursor: "pointer",
-                                                        border: mainImageRO === img ? "1px solid #0d83fd" : "1px solid #ccc",
-                                                        borderRadius: "10px"
-                                                    }}
-                                                    onClick={() => setMainImageRO(img)}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-                            {/* <!-- End tab content item --> */}
-
-                            <div className="tab-pane fade" id="features-tab-3">
-                                <div className="container" data-aos="fade-up" data-aos-delay="100">
-
-                                    <div className="row gy-4">
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Multistage Universal Water purifier</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Alkaline boost</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> RO Purification</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}> <i className="bi bi-check2-circle"></i> In-line UV purification</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                    </div>
-
-                                </div>
-                                <div className="row" style={{ paddingTop: '30px' }}>
-                                    <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
-                                        <h3>Flexible Rental Plans</h3>
-                                        <p className="fst-italic">Security deposit of ₹1,500 will be 100% refundable</p>
-
-                                        {/* Step 1 - Monthly Usage */}
-                                        <h5 className="mt-3">Step 1: Choose Monthly Usage</h5>
-                                        <div className="d-flex flex-wrap gap-2 mb-3">
-                                            {Object.entries(plansAlkaline).map(([key, value]) => (
-                                                <button
-                                                    key={key}
-                                                    className={`btn ${usageAlkaline === key ? "btn-primary" : "btn-outline-primary"}`}
-                                                    onClick={() => setUsageAlkaline(key)}
-                                                >
-                                                    {key}<br /><small>{value.liters}</small>
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        {/* Step 2 - Tenure */}
-                                        <h5 className="mt-3">Step 2: Choose Tenure</h5>
-                                        <div className="d-flex flex-wrap gap-2 mb-3">
-                                            {Object.entries(discountsAlkaline).map(([key, value]) => (
-                                                <button
-                                                    key={key}
-                                                    className={`btn ${tenureAlkaline === parseInt(key) ? "btn-primary" : "btn-outline-primary"}`}
-                                                    onClick={() => setTenureAlkaline(parseInt(key))}
-                                                >
-                                                    {value.label}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        {/* Step 3 - Pricing Info */}
-                                        <div className="mt-3 p-3 border rounded bg-light">
-                                            <h5 style={{ color: "#0d83fd" }}>₹{finalPriceAlkaline}/month</h5>
-                                            <p className="mb-1">{discountAlkaline > 0 ? `Discount: ${discountAlkaline}%` : "0% discount"}, Savings of ₹{savingsAlkaline}</p>
-                                            <div className="d-flex flex-wrap gap-2 mb-3">
-                                                <button className="btn btn-primary me-0 me-sm-2 mx-1" onClick={() => setShowModal(true)}>
-                                                    Subscribe Now
-                                                </button>
-                                                <button className="btn btn-primary me-0 me-sm-2 mx-1">Know More</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="col-lg-6 order-1 order-lg-2 text-center">
-                                        {/* Main Image */}
-                                        <img
-                                            src={mainImageAlkaline}
-                                            alt="Main Product"
-                                            className="img-fluid mb-3"
-                                            style={{
-                                                boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
-                                                borderRadius: '20px', maxWidth: '80%',
-                                            }}
-                                        />
-
-                                        {/* Thumbnails */}
-                                        <div className="d-flex justify-content-center gap-2">
-                                            {thumbnailsAlkaline.map((img, index) => (
-                                                <img
-                                                    key={index}
-                                                    src={img}
-                                                    alt={`Thumbnail ${index + 1}`}
-                                                    className="img-thumbnail"
-                                                    style={{
-                                                        width: "80px",
-                                                        height: "auto",
-                                                        cursor: "pointer",
-                                                        border: mainImageAlkaline === img ? "1px solid #0d83fd" : "1px solid #ccc",
-                                                        borderRadius: "10px"
-                                                    }}
-                                                    onClick={() => setMainImageAlkaline(img)}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-                            {/* <!-- End tab content item --> */}
-                            
-                            <div className="row stats-row gy-4 mt-5" data-aos="fade-up" data-aos-delay="500" style={{ backgroundColor: '#cff7ff', borderRadius: '20px', margin: '10px' }}>
-                                <div className="col-lg-3 col-md-6">
-                                    <div className="stat-item" style={{ padding: '0px' }}>
-                                        <div className="stat-content">
-                                            <h4>Lifetime Free Maintenance</h4>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="col-lg-3 col-md-6">
-                                    <div className="stat-item" style={{ padding: '0px' }}>
-                                        <div className="stat-content">
-                                            <h4>7 days Risk-Free Trial</h4>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="col-lg-3 col-md-6">
-                                    <div className="stat-item" style={{ padding: '0px' }}>
-                                        <div className="stat-content">
-                                            <h4>48-hour Installation</h4>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="col-lg-3 col-md-6">
-                                    <div className="stat-item" style={{ padding: '0px' }}>
-                                        <div className="stat-content">
-                                            <h4>Plans starting 299/month</h4>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <section className="lg:pl-4">
-                                <h2 className="font-semibold text-[24px] leading-[140%] lg:text-[32px] mb-6 lg:mb-8">
-                                    Copper Water Purifier Product Features
-                                </h2>
-                                <div className="row" style={{ paddingTop: '30px' }}>
-                                    <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
-                                        <img src="assets/img/Multistage-Purification-production.webp"
-                                            className="rounded-lg shadow w-full"
-                                            alt="24*7 Safe and Pure 5 Multistage Copper Water Purification System for home in Bengaluru"
-                                            style={{ borderRadius: '10px' }}
-                                        /><br />
-                                        <img src="assets/img/3-copper-alive-product-features-production.webp"
-                                            className="rounded-lg shadow w-full"
-                                            alt="High storage capacity for copper water purifier in Bengaluru"
-                                            style={{ borderRadius: '10px' }}
-                                        />
-                                    </div>
-                                    <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
-                                        <img src="assets/img/2-storm-product-features-production.webp"
-                                            className="rounded-lg shadow w-full"
-                                            alt="Copper filter for Copper Water Purifier On Rent in Bengaluru"
-                                            style={{ borderRadius: '10px' }}
-                                        /><br />
-                                        <img src="assets/img/4-copper-alive-product-features-production.webp"
-                                            className="rounded-lg shadow w-full"
-                                            alt="15 LPH Purification for copper water purifier in Bengaluru"
-                                            style={{ borderRadius: '10px' }}
-                                        />
-                                    </div>
-                                </div>
-                            </section>
-
-                            <section className="bg-[#FAFAFA] py-10 px-4 lg:px-0 rounded-lg max-w-4xl mx-auto">
-                                <h2 className="text-2xl lg:text-3xl font-semibold mb-6">
-                                    IOT Enabled Smart Features
-                                </h2>
-
-                                <div className="relative overflow-hidden rounded-2xl d-flex flex-column justify-content-center">
-                                    <img src={slides[currentSlide].src} alt={slides[currentSlide].alt} className="w-full rounded-2xl transition-all duration-500" style={{ borderRadius: '20px' }} />
-                                </div>
-
-                                {/* Dots */}
-                                <div className="flex justify-center gap-2 mt-4" style={{ textAlign: 'center' }}>
-                                    {slides.map((_, index) => (
-                                        <button
-                                            key={index}
-                                            onClick={() => setCurrentSlide(index)}
-                                            className={`rounded-full transition-colors border w-2.5 h-2.5 ${currentSlide === index
-                                                ? 'bg-primary' // Active button with the primary color (you can replace 'bg-primary' with your desired color)
-                                                : 'bg-gray-200' // Inactive buttons with gray color
-                                                }`}
-                                            aria-label={`Go to slide ${index + 1}`}
-                                        />
-                                    ))}
-                                </div>
-                            </section>
-
-                            <section className="ml-auto md:px-2" style={{ padding: '0px' }}>
-                                <div data-orientation="vertical">
-                                    <div data-state={isOpen ? "open" : "closed"} data-orientation="vertical" style={{ textAlign: 'center' }} >
-                                        <h3 data-orientation="vertical" data-state="open" className="flex">
-                                            <button className="btn btn-primary me-0 me-sm-2 mx-1" id="tech-specs-btn" onClick={() => setIsOpen(!isOpen)}>Tech Specifications
-                                                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200">
-                                                    <path d="M3.13523 6.15803C3.3241 5.95657 3.64052 5.94637 3.84197 6.13523L7.5 9.56464L11.158 6.13523C11.3595 5.94637 11.6759 5.95657 11.8648 6.15803C12.0536 6.35949 12.0434 6.67591 11.842 6.86477L7.84197 10.6148C7.64964 10.7951 7.35036 10.7951 7.15803 10.6148L3.15803 6.86477C2.95657 6.67591 2.94637 6.35949 3.13523 6.15803Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                                                </svg>
-                                            </button>
-                                        </h3>
-
-                                        {isOpen && (
-                                            <div id="tech-specs" role="region" aria-labelledby="tech-specs-btn" className="overflow-hidden text-sm">
-                                                <div className="pt-0 pb-0 bg-[#F7F7FC]">
-                                                    <div className="w-full max-w-4xl mx-auto p-4 px-2 rounded-lg">
-                                                        <div className="border border-[#E7E8F1] rounded-lg shadow-lg">
-                                                            <div className="overflow-x-auto">
-                                                                <table className="min-w-full table-auto border-collapse border border-[#E7E8F1] [&_td]:bg-[#F7F7FC] [&_th]:text-center [&_th]:text-sm [&_td]:text-[13px] [&_th]:font-bold">
-                                                                    <thead>
-                                                                        <tr className="bg-[#FCFCFC]" style={{borderWidth:'0px'}}>
-                                                                            <th colSpan="2" className="text-left p-4 py-[14px] text-title-active font-semibold uppercase border-b border-[#E7E8F1]">
-                                                                                Purifier Model
-                                                                            </th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="py-2 px-2 md:px-4 font-medium">Model</td>
-                                                                            <td className="py-2 px-2 md:px-4">ionHive ALIVE RO+UV+Cu</td>
-                                                                        </tr>
-                                                                        <tr className="bg-[#FCFCFC] border-y border-[#E7E8F1]">
-                                                                            <th colSpan="2" className="text-left p-4 py-[14px] text-title-active font-semibold uppercase">
-                                                                                Product Specification
-                                                                            </th>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="px-4 py-2 font-medium">Dimension (D x W x H)</td>
-                                                                            <td className="py-2 px-2 md:px-4">330mm X 230mm X 490 mm (Approx.)</td>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="px-4 py-2 font-medium">Material Details</td>
-                                                                            <td className="py-2 px-2 md:px-4">Outer Body - ABS - BACK COVER , FRONT FASCIA</td>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="px-4 py-2 font-medium">Weight (Approx.)</td>
-                                                                            <td className="py-2 px-2 md:px-4">Net weight 8 Kgs (Approx.)</td>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="px-4 py-2 font-medium">Purification Technology</td>
-                                                                            <td className="py-2 px-2 md:px-4">RO + UV + Cu</td>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="px-4 py-2 font-medium">Purification Stages / Filtration System</td>
-                                                                            <td className="py-2 px-2 md:px-4 space-y-1">
-                                                                                <p>Stage 1: Sediment</p>
-                                                                                <p>Stage 2: Pre carbon</p>
-                                                                                <p>Dual Filter</p>
-                                                                                <p>Stage 3: RO Membrane</p>
-                                                                                <p>Stage 4: UV Lamp 4 watts</p>
-                                                                                <p>Stage 5: Post carbon+ copper cartridge</p>
-                                                                            </td>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="px-4 py-2 font-medium">Tank Overflow Control</td>
-                                                                            <td className="py-2 px-2 md:px-4">MECHANICAL FLOAT</td>
-                                                                        </tr>
-                                                                        <tr className="bg-[#FCFCFC] border-y border-[#E7E8F1]">
-                                                                            <th colSpan="2" className="text-left p-4 py-[14px] text-title-active font-semibold uppercase">
-                                                                                Electrical Specifications
-                                                                            </th>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="px-4 py-2 font-medium">Operating Voltage</td>
-                                                                            <td className="py-2 px-2 md:px-4">150 to 250 VAC, 50 Hz</td>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-\                                                                            <td className="px-4 py-2 font-medium">Power Supply</td>
-                                                                            <td className="py-2 px-2 md:px-4">Input 230V AC, 50Hz. Output 24V, (On Board SMPS ) External adaptor</td>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="px-4 py-2 font-medium">Power Rating</td>
-                                                                            <td className="py-2 px-2 md:px-4">40 Watt Maxx</td>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="px-4 py-2 font-medium">UV Lamp</td>
-                                                                            <td className="py-2 px-2 md:px-4">4 Watts</td>
-                                                                        </tr>
-                                                                        <tr className="bg-[#FCFCFC] border-y border-[#E7E8F1]">
-                                                                            <th colSpan="2" className="text-left py-1 sm:p-4 sm:py-[14px] text-title-active font-semibold uppercase">
-                                                                                Recommended Input <br className="sm:hidden" /> Water Parameters
-                                                                            </th>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="px-4 py-2 font-medium">Total Dissolved Solids (TDS)</td>
-                                                                            <td className="py-2 px-2 md:px-4">Up to 2000 mg/L</td>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="px-4 py-2 font-medium">Hardness</td>
-                                                                            <td className="py-2 px-2 md:px-4">Max. 600 mg/L (If the Hardness level is more than 300mg/L, recommended to use antiscalant cartridge)</td>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="px-4 py-2 font-medium">Turbidity</td>
-                                                                            <td className="py-2 px-2 md:px-4">Max. 5 NTU</td>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="px-4 py-2 font-medium">Iron Content</td>
-                                                                            <td className="py-2 px-2 md:px-4">Max. 0.3 mg/L</td>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="px-4 py-2 font-medium">Temperature Range</td>
-                                                                            <td className="py-2 px-2 md:px-4">5°C to 40°C</td>
-                                                                        </tr>
-                                                                        <tr className="border-b border-[#E7E8F1]" style={{ borderWidth: '0px' }}>
-                                                                            <td className="px-4 py-2 font-medium">Input Water Pressure</td>
-                                                                            <td className="py-2 px-2 md:px-4">Up to 3 Bar (Max)</td>
-                                                                        </tr>
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </section>
 
                             {/* Subscribe model start */}
                             {/* Modal Component */}
@@ -911,11 +576,6 @@ const ProductList = ({ }) => {
                                                     />
                                                 </div>
                                                 <div className="mb-3">
-                                                    <label>Referral Code</label>
-                                                    <input type="text" className="form-control" maxLength={6}
-                                                        value={referral} onChange={(e) => setReferral(e.target.value)} />
-                                                </div>
-                                                <div className="mb-3">
                                                     <label>City</label>
                                                     <select className="form-control" value={city} onChange={(e) => setCity(e.target.value)}>
                                                         <option value="Bangalore">Bangalore</option>
@@ -933,7 +593,7 @@ const ProductList = ({ }) => {
                                                         <i className="bi bi-check2-circle" style={{ color: '#0d83fd' }}></i> 48 Hours Installation - Starting at ₹299/month
                                                     </p>
 
-                                                    <button type="submit" className="btn btn-primary mb-2">Get a call back</button>
+                                                    <button type="submit" className="btn btn-primary mb-2"> {subLoading ? "Processing..." : "Subscribe Now"}</button>
 
                                                     <p style={{ fontSize: '0.9rem', color: '#666' }}>
                                                         By creating an account on <strong>ionHive</strong>, you agree to our <a href="#">Terms of Use</a>
@@ -1160,50 +820,54 @@ const ProductList = ({ }) => {
                                     <div className="row g-4">
                                         <div className="col-lg-12">
                                             <div className="contact-form" data-aos="fade-up" data-aos-delay="300">
-
-                                                <form method="post" className="php-email-form" data-aos="fade-up" data-aos-delay="200">
+                                                <form onSubmit={handleSubmitCallRequest} method="post" className="php-email-form" data-aos="fade-up" data-aos-delay="200">
                                                     <div className="row gy-4">
-
                                                         <div className="col-md-6">
-                                                            <input type="text" name="name" className="form-control" placeholder="Enter Your Name" required="" />
-                                                        </div>
-
-                                                        <div className="col-md-6">
-                                                            <input type="text" name="name" className="form-control" placeholder="Enter Your Phone" required="" />
-                                                        </div>
-
-                                                        <div className="col-md-6 ">
-                                                            <input type="email" className="form-control" name="email" placeholder="Enter Your Email" required="" />
-                                                        </div>
-
-                                                        <div className="col-md-6 ">
-                                                            <input type="referral code" className="form-control" name="email" placeholder="Referral code" required="" />
+                                                            <input
+                                                                type="text"
+                                                                name="name"
+                                                                className="form-control"
+                                                                placeholder="Enter Your Name"
+                                                                value={formDataCallRequest.name}
+                                                                onChange={handleChangeCallRequest}
+                                                                required
+                                                            />
                                                         </div>
 
                                                         <div className="col-md-6">
-                                                            <select className="form-control">
-                                                                <option value="Bangalore" readOnly>City</option>
+                                                            <input
+                                                                type="text"
+                                                                name="phone"
+                                                                className="form-control"
+                                                                placeholder="Enter Your Phone"
+                                                                value={formDataCallRequest.phone}
+                                                                onChange={handleChangeCallRequest}
+                                                                required
+                                                            />
+                                                        </div>
+
+                                                        <div className="col-md-6">
+                                                            <select
+                                                                className="form-control"
+                                                                name="city"
+                                                                value={formDataCallRequest.city}
+                                                                onChange={handleChangeCallRequest}
+                                                                required
+                                                            >
                                                                 <option value="Bangalore">Bangalore</option>
                                                                 <option value="Hyderabad">Hyderabad</option>
                                                                 <option value="Mumbai">Mumbai</option>
-                                                                {/* Add other cities */}
                                                             </select>
                                                         </div>
 
-                                                        <div className="col-md-6 ">
-                                                            <button type="submit" className="btn" style={{ backgroundColor: '#14ff10', borderRadius: '20px' }}>Book Now</button>
+                                                        <div className="col-md-6">
+                                                            <button type="submit" className="btn" style={{ backgroundColor: "#14ff10", borderRadius: "20px" }}>
+                                                                Book Now
+                                                            </button>
                                                         </div>
-
-                                                        <div className="col-12 text-center">
-                                                            <div className="loading">Loading</div>
-                                                            <div className="error-message"></div>
-                                                            <div className="sent-message">Your message has been sent. Thank you!</div>
-
-                                                        </div>
-
                                                     </div>
                                                 </form>
-                                                <p style={{ fontSize: '0.9rem' }}>
+                                                <p style={{ fontSize: '0.9rem', padding: '10px' }}>
                                                     By creating an account on  <strong>ionHive</strong>, you agree to our <a href="#" style={{ color: '#14ff10' }}>Terms of Use</a>
                                                 </p>
                                             </div>

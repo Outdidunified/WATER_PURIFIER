@@ -2,112 +2,110 @@ import { useState } from "react";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Swal from 'sweetalert2';
+import { Link } from 'react-router-dom';
 
-const Home = ({ }) => {
-    // copper
-    const [usage, setUsage] = useState("SOLO");
+const Home = ({ userInfo }) => {
+    console.log(userInfo);
+
+    const productConfigs = {
+        1: {
+            name: "ionHive Copper",
+            plans: {
+                SOLO: { liters: "130 ltrs/m", base: 449 },
+                COUPLE: { liters: "200 ltrs/m", base: 549 },
+                FAMILY: { liters: "500 ltrs/m", base: 749 },
+                UNLIMITED: { liters: "Unlimited/m", base: 999 },
+            },
+            discounts: {
+                28: { label: "28 days", discount: 0 },
+                90: { label: "90 days", discount: 10 },
+                360: { label: "360 days", discount: 20 },
+            },
+            thumbnails: [
+                "assets/img/copper_purifier.webp",
+                "assets/img/uv_purification.webp",
+                "assets/img/copper_filter.webp",
+                "assets/img/multistage_purification.webp",
+                "assets/img/wall_mount.webp",
+            ],
+            defaultImage: "assets/img/copper_purifier.webp",
+            defaultUsage: "SOLO"
+        },
+        2: {
+            name: "ionHive RO+",
+            plans: {
+                BASIC: { liters: "250 ltrs/m", base: 449 },
+                UNLIMITED: { liters: "Unlimited/m", base: 999 },
+            },
+            discounts: {
+                28: { label: "28 days", discount: 0 },
+                360: { label: "360 days", discount: 20 },
+            },
+            thumbnails: [
+                "assets/img/ro+_water_purifier.webp",
+                "assets/img/ro_membrane.webp",
+                "assets/img/multistage_purification.webp",
+                "assets/img/dual_cartridge.webp",
+                "assets/img/wall_mount.webp",
+            ],
+            defaultImage: "assets/img/ro+_water_purifier.webp",
+            defaultUsage: "BASIC"
+        },
+        3: {
+            name: "ionHive Alkaline",
+            plans: {
+                STANDARD: { liters: "250 ltrs/m", base: 449 },
+                UNLIMITED: { liters: "Unlimited/m", base: 999 },
+            },
+            discounts: {
+                28: { label: "28 days", discount: 0 },
+                360: { label: "360 days", discount: 20 },
+            },
+            thumbnails: [
+                "assets/img/alkaline_water_purifier.webp",
+                "assets/img/alkaline_boost.webp",
+                "assets/img/multistage_purification.webp",
+                "assets/img/alkaline_cartridge.webp",
+                "assets/img/capacity.webp",
+            ],
+            defaultImage: "assets/img/alkaline_water_purifier.webp",
+            defaultUsage: "STANDARD"
+        }
+    };
+
+    const [selectedTab, setSelectedTab] = useState(1); // 1 = Copper
+    const [usage, setUsage] = useState(productConfigs[1].defaultUsage);
     const [tenure, setTenure] = useState(28);
+    const [mainImage, setMainImage] = useState(productConfigs[1].defaultImage);
 
-    const plans = {
-        SOLO: { liters: "130 ltrs/m", base: 449 },
-        COUPLE: { liters: "200 ltrs/m", base: 549 },
-        FAMILY: { liters: "500 ltrs/m", base: 749 },
-        UNLIMITED: { liters: "Unlimited/m", base: 999 },
+    const handleTabChange = (tabId) => {
+        setSelectedTab(tabId);
+        setUsage(productConfigs[tabId].defaultUsage);
+        setTenure(28);
+        setMainImage(productConfigs[tabId].defaultImage);
     };
 
-    const discounts = {
-        28: { label: "28 days", discount: 0 },
-        90: { label: "90 days", discount: 10 },
-        360: { label: "360 days", discount: 20 },
-    };
-
-    const basePrice = plans[usage].base;
-    const discount = discounts[tenure].discount;
+    const currentConfig = productConfigs[selectedTab];
+    const basePrice = currentConfig.plans[usage]?.base || 0;
+    const discount = currentConfig.discounts[tenure]?.discount || 0;
     const finalPrice = basePrice - (basePrice * discount) / 100;
     const savings = (basePrice * discount) / 100;
-
-    const [mainImage, setMainImage] = useState("assets/img/copper_purifier.webp");
-
-    const thumbnails = [
-        "assets/img/copper_purifier.webp",
-        "assets/img/uv_purification.webp",
-        "assets/img/copper_filter.webp",
-        "assets/img/multistage_purification.webp",
-        "assets/img/wall_mount.webp",
-    ];
-
-    // RO+
-    const [usageRO, setUsageRO] = useState("BASIC");
-    const [tenureRO, setTenureRO] = useState(28);
-
-    const plansRO = {
-        BASIC: { liters: "250 ltrs/m", base: 449 },
-        UNLIMITED: { liters: "Unlimited/m", base: 999 },
-    };
-
-    const discountsRO = {
-        28: { label: "28 days", discount: 0 },
-        360: { label: "360 days", discount: 20 },
-    };
-
-    const basePriceRO = plansRO[usageRO].base;
-    const discountRO = discountsRO[tenureRO].discount;
-    const finalPriceRO = basePriceRO - (basePriceRO * discountRO) / 100;
-    const savingsRO = (basePriceRO * discountRO) / 100;
-
-    const [mainImageRO, setMainImageRO] = useState("assets/img/ro+_water_purifier.webp");
-
-    const thumbnailsRO = [
-        "assets/img/ro+_water_purifier.webp",
-        "assets/img/ro_membrane.webp",
-        "assets/img/multistage_purification.webp",
-        "assets/img/dual_cartridge.webp",
-        "assets/img/wall_mount.webp",
-    ];
-
-    // Alkaline
-    const [usageAlkaline, setUsageAlkaline] = useState("STANDARD");
-    const [tenureAlkaline, setTenureAlkaline] = useState(28);
-
-    const plansAlkaline = {
-        STANDARD: { liters: "250 ltrs/m", base: 449 },
-        UNLIMITED: { liters: "Unlimited/m", base: 999 },
-    };
-
-    const discountsAlkaline = {
-        28: { label: "28 days", discount: 0 },
-        360: { label: "360 days", discount: 20 },
-    };
-
-    const basePriceAlkaline = plansAlkaline[usageAlkaline].base;
-    const discountAlkaline = discountsAlkaline[tenureAlkaline].discount;
-    const finalPriceAlkaline = basePriceAlkaline - (basePriceAlkaline * discountAlkaline) / 100;
-    const savingsAlkaline = (basePriceAlkaline * discountAlkaline) / 100;
-
-    const [mainImageAlkaline, setMainImageAlkaline] = useState("assets/img/alkaline_water_purifier.webp");
-
-    const thumbnailsAlkaline = [
-        "assets/img/alkaline_water_purifier.webp",
-        "assets/img/alkaline_boost.webp",
-        "assets/img/multistage_purification.webp",
-        "assets/img/alkaline_cartridge.webp",
-        "assets/img/capacity.webp",
-    ];
 
     {/* Sub model */ }
     const [showModal, setShowModal] = useState(false);
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
     const [emailID, setEmailID] = useState("");
-    const [referral, setReferral] = useState("");
     const [city, setCity] = useState("Bangalore");
+    const [subLoading, setSubLoading] = useState(false);
+
+    const RAZORPAY_KEY = "rzp_test_oHoZ3Q1fF6pYEI";
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const phoneRegex = /^[1-9][0-9]{9}$/; // 10 digits, not starting with 0
+        const phoneRegex = /^[1-9][0-9]{9}$/;
         const emailRegex = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[a-zA-Z]{2,}$/;
-        const referralRegex = /^[a-zA-Z0-9]{6}$/; // for alphanumeric
 
         if (!phoneRegex.test(phone)) {
             Swal.fire({
@@ -122,74 +120,137 @@ const Home = ({ }) => {
             Swal.fire({
                 icon: 'error',
                 title: 'Invalid Email ID',
-                text: 'Email ID must only contain letters and numbers, one @, and a valid domain.'
-            });
-            return;
-        }
-        if (!referralRegex.test(referral)) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Invalid Referral Code',
-                text: 'Referral code must be exactly 6 letters or numbers.'
+                text: 'Please enter a valid email address.'
             });
             return;
         }
 
-        const payload = { name, phone, emailID, referral, city };
+        setSubLoading(true);
+
+        const gst = parseFloat((finalPrice * 0.18).toFixed(2));
+        const totalPrice = parseFloat((finalPrice * 1.18).toFixed(2));
+        const months = Math.ceil(tenure / 30); // approximate month count from days
+        const durationTotalPrice = parseFloat((months * totalPrice).toFixed(2));
+
+        const payload = {
+            name,
+            phone: parseInt(phone),
+            emailID,
+            city,
+            selectedProduct: currentConfig.name,
+            planType: usage,
+            tenure: `${tenure} days`, // in days
+            basePrice,
+            discountPercentage: discount,
+            discountedPrice: finalPrice,
+            savings,
+            gst,
+            totalPrice,
+            durationTotalPrice
+        };
 
         try {
-            const res = await fetch("http://localhost:5000/api/subscribe", {
+            const res = await fetch("http://192.168.1.14:5000/api/subscription-plans/addplan", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
             });
 
             const data = await res.json();
 
-            if (res.ok) {
+            if (!res.ok || !data.razorpayOrderId) {
                 Swal.fire({
-                    icon: 'success',
-                    title: 'Submitted Successfully!',
-                    showConfirmButton: false,
-                    timer: 2000
+                    icon: "error",
+                    title: "Submission Failed",
+                    text: data.message || "Server did not respond properly.",
                 });
-                setShowModal(false);
-                // Reset fields
-                setName("");
-                setPhone("");
-                setEmailID("");
-                setReferral("");
-                setCity("Bangalore");
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Submission Failed',
-                    text: data.message || "Please try again."
-                });
+                return;
             }
+
+            const options = {
+                key: RAZORPAY_KEY,
+                amount: durationTotalPrice * 100, // in paisa
+                currency: "INR",
+                name: "Subscription Payment",
+                description: `Plan for ${months} month(s)`,
+                image: "/assets/img/ionHive.png",
+                order_id: data.razorpayOrderId,
+                handler: async function (response) {
+                    // Verify payment
+                    const verifyRes = await fetch("http://192.168.1.14:5000/api/subscription-plans/verifyPayment", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                        }),
+                    });
+
+                    const verifyData = await verifyRes.json();
+
+                    if (verifyData.status === "Success") {
+                        Swal.fire({
+                            icon: "success",
+                            title: "Payment Successful",
+                            text: "Your subscription is now active!",
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            setShowModal(false);
+                            setName("");
+                            setPhone("");
+                            setEmailID("");
+                            setCity("Bangalore");
+                            window.location.href = "/"; // Go to homepage
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Payment Verification Failed",
+                            text: "Please contact support.",
+                        });
+                    }
+                },
+                prefill: {
+                    name,
+                    email: emailID,
+                    contact: phone,
+                },
+                theme: { color: "#3399cc" },
+                modal: {
+                    ondismiss: async () => {
+                        await fetch("http://192.168.1.14:5000/api/subscription-plans/addplan", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                reason: "User cancelled the payment",
+                                orderId: data.orderId || "", // optional: if your backend returns orderId
+                            }),
+                        });
+
+                        Swal.fire({
+                            icon: "warning",
+                            title: "Payment Cancelled",
+                            text: "You cancelled the payment. Try again if needed.",
+                        });
+                    },
+                },
+            };
+
+            const razorpayInstance = new window.Razorpay(options);
+            razorpayInstance.open();
         } catch (error) {
+            console.error("Subscription Error:", error);
             Swal.fire({
-                icon: 'error',
-                title: 'Oops...',
-                text: 'Something went wrong!'
+                icon: "error",
+                title: "Error",
+                text: "Something went wrong. Please try again later.",
             });
-            console.error(error);
+        } finally {
+            setSubLoading(false);
         }
     };
-
-    const cities = [
-        { name: 'bengaluru', src: 'https://cdn.ionHive.in/production/images/cities/bangalore.webp' },
-        { name: 'delhi', src: 'https://cdn.ionHive.in/production/images/cities/delhi.webp' },
-        { name: 'faridabad', src: 'https://cdn.ionHive.in/production/images/cities/faridabad.webp' },
-        { name: 'ghaziabad', src: 'https://cdn.ionHive.in/production/images/cities/ghaziabad.webp' },
-        { name: 'gurgaon', src: 'https://cdn.ionHive.in/production/images/cities/gurgaon.webp' },
-        { name: 'hyderabad', src: 'https://cdn.ionHive.in/production/images/cities/hyderabad.webp' },
-        { name: 'mumbai', src: 'https://cdn.ionHive.in/production/images/cities/mumbai.webp' },
-        { name: 'noida', src: 'https://cdn.ionHive.in/production/images/cities/noida.webp' },
-        { name: 'pune', src: 'https://cdn.ionHive.in/production/images/cities/pune.webp' },
-    ];
 
     // Set the first item (index 0) as default open
     const [activeIndex, setActiveIndex] = useState(0);
@@ -255,7 +316,7 @@ const Home = ({ }) => {
         }
 
         try {
-            const response = await fetch("/contact", {
+            const response = await fetch("http://192.168.1.14:5000/api/contact/submitcontact", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, email, subject, message }),
@@ -269,6 +330,61 @@ const Home = ({ }) => {
             }
         } catch (error) {
             Swal.fire("Error", "Something went wrong. Please try again later.", "error");
+        }
+    };
+
+    // Call Request
+    const [formDataCallRequest, setFormDataCallRequest] = useState({
+        name: "",
+        phone: "",
+        city: "Bangalore",
+    });
+
+    const handleChangeCallRequest = (e) => {
+        const { name, value } = e.target;
+
+        if (name === "phone") {
+            let phone = value.replace(/\D/g, ""); // Only digits
+            if (phone.startsWith("0")) {
+                phone = phone.substring(1); // Remove leading 0
+            }
+            if (phone.length > 10) {
+                phone = phone.substring(0, 10); // Limit to 10 digits
+            }
+            setFormDataCallRequest({ ...formDataCallRequest, [name]: phone });
+        } else {
+            setFormDataCallRequest({ ...formDataCallRequest, [name]: value });
+        }
+    };
+
+    const handleSubmitCallRequest = async (e) => {
+        e.preventDefault();
+
+        if (formDataCallRequest.phone.length !== 10) {
+            Swal.fire("Error", "Phone number must be exactly 10 digits.", "error");
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                "http://192.168.1.66:5000/api/callRequest/callRequest",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(formDataCallRequest),
+                }
+            );
+
+            if (response.ok) {
+                Swal.fire("Success", "Your message has been sent!", "success");
+                setFormDataCallRequest({ name: "", phone: "", city: "Bangalore" });
+            } else {
+                Swal.fire("Error", "Something went wrong. Please try again.", "error");
+            }
+        } catch (error) {
+            Swal.fire("Error", "Server error. Please try later.", "error");
         }
     };
 
@@ -312,7 +428,7 @@ const Home = ({ }) => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         {/* <!-- Stats Section --> */}
                         <section id="stats" className="stats section" style={{ padding: '10px', borderRadius: '10px' }}>
 
@@ -418,10 +534,6 @@ const Home = ({ }) => {
 
                                 <div className="info-wrapper">
                                     <div className="row gy-4">
-                                        <div className="col-lg-5">
-                                            <a href="#about" className="btn btn-primary me-0 me-sm-2 mx-1">Subscribe Now</a>
-                                        </div>
-
                                         <div className="col-lg-7">
                                             <a href="#how-it-works" className="btn btn-primary me-0 me-sm-2 mx-1">Know How It Works</a>
                                         </div>
@@ -457,36 +569,24 @@ const Home = ({ }) => {
 
                         <div className="d-flex justify-content-center">
 
-                            <ul className="nav nav-tabs" data-aos="fade-up" data-aos-delay="100">
-
-                                <li className="nav-item">
-                                    <a className="nav-link active show" data-bs-toggle="tab" data-bs-target="#features-tab-1">
-                                        <h4>ionHive Copper</h4>
-                                    </a>
-                                </li>
-                                {/* <!-- End tab nav item --> */}
-
-                                <li className="nav-item">
-                                    <a className="nav-link" data-bs-toggle="tab" data-bs-target="#features-tab-2">
-                                        <h4>ionHive RO+</h4>
-                                    </a>
-                                    {/* <!-- End tab nav item --> */}
-                                </li>
-
-                                <li className="nav-item">
-                                    <a className="nav-link" data-bs-toggle="tab" data-bs-target="#features-tab-3">
-                                        <h4>ionHive Alkaline</h4>
-                                    </a>
-                                </li>
-                                {/* <!-- End tab nav item --> */}
-
+                            <ul className="nav nav-tabs">
+                                {Object.entries(productConfigs).map(([key, config]) => (
+                                    <li className="nav-item" key={key}>
+                                        <button
+                                            className={`nav-link ${selectedTab === parseInt(key) ? "active show" : ""}`}
+                                            onClick={() => handleTabChange(parseInt(key))}
+                                        >
+                                            <h4>{config.name}</h4>
+                                        </button>
+                                    </li>
+                                ))}
                             </ul>
 
                         </div>
 
                         <div className="tab-content" data-aos="fade-up" data-aos-delay="200">
 
-                            <div className="tab-pane fade active show" id="features-tab-1">
+                            <div className="tab-pane fade active show">
                                 <div className="container" data-aos="fade-up" data-aos-delay="100">
 
                                     <div className="row gy-4">
@@ -527,10 +627,9 @@ const Home = ({ }) => {
                                         <h3>Flexible Rental Plans</h3>
                                         <p className="fst-italic">Security deposit of ₹1,500 will be 100% refundable</p>
 
-                                        {/* Step 1 - Monthly Usage */}
                                         <h5 className="mt-3">Step 1: Choose Monthly Usage</h5>
                                         <div className="d-flex flex-wrap gap-2 mb-3">
-                                            {Object.entries(plans).map(([key, value]) => (
+                                            {Object.entries(currentConfig.plans).map(([key, value]) => (
                                                 <button
                                                     key={key}
                                                     className={`btn ${usage === key ? "btn-primary" : "btn-outline-primary"}`}
@@ -541,10 +640,9 @@ const Home = ({ }) => {
                                             ))}
                                         </div>
 
-                                        {/* Step 2 - Tenure */}
                                         <h5 className="mt-3">Step 2: Choose Tenure</h5>
                                         <div className="d-flex flex-wrap gap-2 mb-3">
-                                            {Object.entries(discounts).map(([key, value]) => (
+                                            {Object.entries(currentConfig.discounts).map(([key, value]) => (
                                                 <button
                                                     key={key}
                                                     className={`btn ${tenure === parseInt(key) ? "btn-primary" : "btn-outline-primary"}`}
@@ -555,17 +653,18 @@ const Home = ({ }) => {
                                             ))}
                                         </div>
 
-                                        {/* Step 3 - Pricing Info */}
+                                        {/* Price Section */}
                                         <div className="mt-3 p-3 border rounded bg-light">
                                             <h5 style={{ color: "#0d83fd" }}>₹{finalPrice}/month</h5>
-                                            <p className="mb-1">{discount > 0 ? `Discount: ${discount}%` : "0% discount"}, Savings of ₹{savings}</p>
+                                            <p>{discount > 0 ? `Discount: ${discount}%` : "0% discount"}, Savings of ₹{savings}</p>
                                             <div className="d-flex flex-wrap gap-2 mb-3">
                                                 <button className="btn btn-primary me-0 me-sm-2 mx-1" onClick={() => setShowModal(true)}>
                                                     Subscribe Now
                                                 </button>
-                                                <button className="btn btn-primary me-0 me-sm-2 mx-1"><a href="/product-list">Know More</a></button>
+                                                <Link to="/product-list" className="btn btn-primary me-0 me-sm-2 mx-1"  >Know More</Link>
                                             </div>
                                         </div>
+
                                     </div>
                                     <div className="col-lg-6 order-1 order-lg-2 text-center">
                                         {/* Main Image */}
@@ -579,262 +678,23 @@ const Home = ({ }) => {
                                             }}
                                         />
 
-                                        {/* Thumbnails */}
-                                        <div className="d-flex justify-content-center gap-2 sm:gap-4">
-                                            {thumbnails.map((img, index) => (
+                                        <div className="d-flex justify-content-center gap-2">
+                                            {currentConfig.thumbnails.map((img, index) => (
                                                 <img
                                                     key={index}
                                                     src={img}
-                                                    alt={`Thumbnail ${index + 1}`}
-                                                    className={`cursor-pointer rounded-[10px] border ${mainImage === img ? 'border-blue-600' : 'border-gray-300'
-                                                        }`}
+                                                    alt={`Thumbnail ${index}`}
+                                                    className="rounded"
                                                     style={{
                                                         width: "80px",
-                                                        height: "auto",
-                                                        cursor: "pointer",
-                                                        border: mainImage === img ? "1px solid #0d83fd" : "1px solid #ccc",
-                                                        borderRadius: "10px"
+                                                        border: mainImage === img ? "2px solid #0d83fd" : "1px solid #ccc",
+                                                        cursor: "pointer"
                                                     }}
                                                     onClick={() => setMainImage(img)}
                                                 />
                                             ))}
                                         </div>
-                                    </div>
 
-                                </div>
-                            </div>
-                            {/* <!-- End tab content item --> */}
-
-                            <div className="tab-pane fade" id="features-tab-2">
-                                <div className="container" data-aos="fade-up" data-aos-delay="100">
-
-                                    <div className="row gy-4">
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Multistage Universal Water purifier</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Mineral cartridge</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> RO Purification</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Intuitive 3 LED Display</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                    </div>
-
-                                </div>
-                                <div className="row" style={{ paddingTop: '30px' }}>
-                                    <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
-                                        <h3>Flexible Rental Plans</h3>
-                                        <p className="fst-italic">Security deposit of ₹1,500 will be 100% refundable</p>
-
-                                        {/* Step 1 - Monthly Usage */}
-                                        <h5 className="mt-3">Step 1: Choose Monthly Usage</h5>
-                                        <div className="d-flex flex-wrap gap-2 mb-3">
-                                            {Object.entries(plansRO).map(([key, value]) => (
-                                                <button
-                                                    key={key}
-                                                    className={`btn ${usageRO === key ? "btn-primary" : "btn-outline-primary"}`}
-                                                    onClick={() => setUsageRO(key)}
-                                                >
-                                                    {key}<br /><small>{value.liters}</small>
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        {/* Step 2 - Tenure */}
-                                        <h5 className="mt-3">Step 2: Choose Tenure</h5>
-                                        <div className="d-flex flex-wrap gap-2 mb-3">
-                                            {Object.entries(discountsRO).map(([key, value]) => (
-                                                <button
-                                                    key={key}
-                                                    className={`btn ${tenureRO === parseInt(key) ? "btn-primary" : "btn-outline-primary"}`}
-                                                    onClick={() => setTenureRO(parseInt(key))}
-                                                >
-                                                    {value.label}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        {/* Step 3 - Pricing Info */}
-                                        <div className="mt-3 p-3 border rounded bg-light">
-                                            <h5 style={{ color: "#0d83fd" }}>₹{finalPriceRO}/month</h5>
-                                            <p className="mb-1">{discountRO > 0 ? `Discount: ${discountRO}%` : "0% discount"}, Savings of ₹{savingsRO}</p>
-                                            <div className="d-flex flex-wrap gap-2 mb-3">
-                                                <button className="btn btn-primary me-0 me-sm-2 mx-1" onClick={() => setShowModal(true)}>
-                                                    Subscribe Now
-                                                </button>
-                                                <button className="btn btn-primary me-0 me-sm-2 mx-1">Know More</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="col-lg-6 order-1 order-lg-2 text-center">
-                                        {/* Main Image */}
-                                        <img
-                                            src={mainImageRO}
-                                            alt="Main Product"
-                                            className="img-fluid mb-3"
-                                            style={{
-                                                boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
-                                                borderRadius: '20px', maxWidth: '80%',
-                                            }}
-                                        />
-
-                                        {/* Thumbnails */}
-                                        <div className="d-flex justify-content-center gap-2">
-                                            {thumbnailsRO.map((img, index) => (
-                                                <img
-                                                    key={index}
-                                                    src={img}
-                                                    alt={`Thumbnail ${index + 1}`}
-                                                    className="img-thumbnail"
-                                                    style={{
-                                                        width: "80px",
-                                                        height: "auto",
-                                                        cursor: "pointer",
-                                                        border: mainImageRO === img ? "1px solid #0d83fd" : "1px solid #ccc",
-                                                        borderRadius: "10px"
-                                                    }}
-                                                    onClick={() => setMainImageRO(img)}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-                            {/* <!-- End tab content item --> */}
-
-                            <div className="tab-pane fade" id="features-tab-3">
-                                <div className="container" data-aos="fade-up" data-aos-delay="100">
-
-                                    <div className="row gy-4">
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Multistage Universal Water purifier</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Alkaline boost</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> RO Purification</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}> <i className="bi bi-check2-circle"></i> In-line UV purification</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                    </div>
-
-                                </div>
-                                <div className="row" style={{ paddingTop: '30px' }}>
-                                    <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
-                                        <h3>Flexible Rental Plans</h3>
-                                        <p className="fst-italic">Security deposit of ₹1,500 will be 100% refundable</p>
-
-                                        {/* Step 1 - Monthly Usage */}
-                                        <h5 className="mt-3">Step 1: Choose Monthly Usage</h5>
-                                        <div className="d-flex flex-wrap gap-2 mb-3">
-                                            {Object.entries(plansAlkaline).map(([key, value]) => (
-                                                <button
-                                                    key={key}
-                                                    className={`btn ${usageAlkaline === key ? "btn-primary" : "btn-outline-primary"}`}
-                                                    onClick={() => setUsageAlkaline(key)}
-                                                >
-                                                    {key}<br /><small>{value.liters}</small>
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        {/* Step 2 - Tenure */}
-                                        <h5 className="mt-3">Step 2: Choose Tenure</h5>
-                                        <div className="d-flex flex-wrap gap-2 mb-3">
-                                            {Object.entries(discountsAlkaline).map(([key, value]) => (
-                                                <button
-                                                    key={key}
-                                                    className={`btn ${tenureAlkaline === parseInt(key) ? "btn-primary" : "btn-outline-primary"}`}
-                                                    onClick={() => setTenureAlkaline(parseInt(key))}
-                                                >
-                                                    {value.label}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        {/* Step 3 - Pricing Info */}
-                                        <div className="mt-3 p-3 border rounded bg-light">
-                                            <h5 style={{ color: "#0d83fd" }}>₹{finalPriceAlkaline}/month</h5>
-                                            <p className="mb-1">{discountAlkaline > 0 ? `Discount: ${discountAlkaline}%` : "0% discount"}, Savings of ₹{savingsAlkaline}</p>
-                                            <div className="d-flex flex-wrap gap-2 mb-3">
-                                                <button className="btn btn-primary me-0 me-sm-2 mx-1" onClick={() => setShowModal(true)}>
-                                                    Subscribe Now
-                                                </button>
-                                                <button className="btn btn-primary me-0 me-sm-2 mx-1">Know More</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="col-lg-6 order-1 order-lg-2 text-center">
-                                        {/* Main Image */}
-                                        <img
-                                            src={mainImageAlkaline}
-                                            alt="Main Product"
-                                            className="img-fluid mb-3"
-                                            style={{
-                                                boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
-                                                borderRadius: '20px', maxWidth: '80%',
-                                            }}
-                                        />
-
-                                        {/* Thumbnails */}
-                                        <div className="d-flex justify-content-center gap-2">
-                                            {thumbnailsAlkaline.map((img, index) => (
-                                                <img
-                                                    key={index}
-                                                    src={img}
-                                                    alt={`Thumbnail ${index + 1}`}
-                                                    className="img-thumbnail"
-                                                    style={{
-                                                        width: "80px",
-                                                        height: "auto",
-                                                        cursor: "pointer",
-                                                        border: mainImageAlkaline === img ? "1px solid #0d83fd" : "1px solid #ccc",
-                                                        borderRadius: "10px"
-                                                    }}
-                                                    onClick={() => setMainImageAlkaline(img)}
-                                                />
-                                            ))}
-                                        </div>
                                     </div>
 
                                 </div>
@@ -887,11 +747,6 @@ const Home = ({ }) => {
                                                     />
                                                 </div>
                                                 <div className="mb-3">
-                                                    <label>Referral Code</label>
-                                                    <input type="text" className="form-control" maxLength={6}
-                                                        value={referral} onChange={(e) => setReferral(e.target.value)} />
-                                                </div>
-                                                <div className="mb-3">
                                                     <label>City</label>
                                                     <select className="form-control" value={city} onChange={(e) => setCity(e.target.value)}>
                                                         <option value="Bangalore">Bangalore</option>
@@ -909,7 +764,7 @@ const Home = ({ }) => {
                                                         <i className="bi bi-check2-circle" style={{ color: '#0d83fd' }}></i> 48 Hours Installation - Starting at ₹299/month
                                                     </p>
 
-                                                    <button type="submit" className="btn btn-primary mb-2">Get a call back</button>
+                                                    <button type="submit" className="btn btn-primary mb-2"> {subLoading ? "Processing..." : "Subscribe Now"}</button>
 
                                                     <p style={{ fontSize: '0.9rem', color: '#666' }}>
                                                         By creating an account on <strong>ionHive</strong>, you agree to our <a href="#">Terms of Use</a>
@@ -1433,50 +1288,54 @@ const Home = ({ }) => {
                                     <div className="row g-4">
                                         <div className="col-lg-12">
                                             <div className="contact-form" data-aos="fade-up" data-aos-delay="300">
-
-                                                <form method="post" className="php-email-form" data-aos="fade-up" data-aos-delay="200">
+                                                <form onSubmit={handleSubmitCallRequest} method="post" className="php-email-form" data-aos="fade-up" data-aos-delay="200">
                                                     <div className="row gy-4">
-
                                                         <div className="col-md-6">
-                                                            <input type="text" name="name" className="form-control" placeholder="Enter Your Name" required="" />
-                                                        </div>
-
-                                                        <div className="col-md-6">
-                                                            <input type="text" name="name" className="form-control" placeholder="Enter Your Phone" required="" />
-                                                        </div>
-
-                                                        <div className="col-md-6 ">
-                                                            <input type="email" className="form-control" name="email" placeholder="Enter Your Email" required="" />
-                                                        </div>
-
-                                                        <div className="col-md-6 ">
-                                                            <input type="referral code" className="form-control" name="email" placeholder="Referral code" required="" />
+                                                            <input
+                                                                type="text"
+                                                                name="name"
+                                                                className="form-control"
+                                                                placeholder="Enter Your Name"
+                                                                value={formDataCallRequest.name}
+                                                                onChange={handleChangeCallRequest}
+                                                                required
+                                                            />
                                                         </div>
 
                                                         <div className="col-md-6">
-                                                            <select className="form-control">
-                                                                <option value="Bangalore" readOnly>City</option>
+                                                            <input
+                                                                type="text"
+                                                                name="phone"
+                                                                className="form-control"
+                                                                placeholder="Enter Your Phone"
+                                                                value={formDataCallRequest.phone}
+                                                                onChange={handleChangeCallRequest}
+                                                                required
+                                                            />
+                                                        </div>
+
+                                                        <div className="col-md-6">
+                                                            <select
+                                                                className="form-control"
+                                                                name="city"
+                                                                value={formDataCallRequest.city}
+                                                                onChange={handleChangeCallRequest}
+                                                                required
+                                                            >
                                                                 <option value="Bangalore">Bangalore</option>
                                                                 <option value="Hyderabad">Hyderabad</option>
                                                                 <option value="Mumbai">Mumbai</option>
-                                                                {/* Add other cities */}
                                                             </select>
                                                         </div>
 
-                                                        <div className="col-md-6 ">
-                                                            <button type="submit" className="btn" style={{ backgroundColor: '#14ff10', borderRadius: '20px' }}>Book Now</button>
+                                                        <div className="col-md-6">
+                                                            <button type="submit" className="btn" style={{ backgroundColor: "#14ff10", borderRadius: "20px" }}>
+                                                                Book Now
+                                                            </button>
                                                         </div>
-
-                                                        <div className="col-12 text-center">
-                                                            <div className="loading">Loading</div>
-                                                            <div className="error-message"></div>
-                                                            <div className="sent-message">Your message has been sent. Thank you!</div>
-
-                                                        </div>
-
                                                     </div>
                                                 </form>
-                                                <p style={{ fontSize: '0.9rem' }}>
+                                                <p style={{ fontSize: '0.9rem', padding: '10px' }}>
                                                     By creating an account on  <strong>ionHive</strong>, you agree to our <a href="#" style={{ color: '#14ff10' }}>Terms of Use</a>
                                                 </p>
                                             </div>
@@ -1642,7 +1501,7 @@ const Home = ({ }) => {
                     {/* <!-- Section Title --> */}
                     <div className="container section-title" data-aos="fade-up">
                         <h2>Contact</h2>
-                        <p>Necessitatibus eius consequatur ex aliquid fuga eum quidem sint consectetur velit</p>
+                        <p>Speak to a water-wellness expert today</p>
                     </div>
                     {/* <!-- End Section Title --> */}
 
