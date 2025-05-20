@@ -1,12 +1,18 @@
-const Product = require('../models/Product');
-const SubscriptionPlan = require('../models/SubscriptionPlan');
+const { ObjectId } = require('mongodb');
+const { getDB } = require('../config/db');
 
 // Add a new product
 exports.addProduct = async (req, res) => {
   try {
-    const product = await Product.create(req.body);
-    res.status(201).json({status: 'success',message: 'Product added successfully',
-      data: product,
+    const db = getDB();
+    const productData = req.body;
+
+    const result = await db.collection('products').insertOne(productData);
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Product added successfully',
+      data: { _id: result.insertedId, ...productData },
     });
   } catch (error) {
     res.status(500).json({
@@ -17,36 +23,23 @@ exports.addProduct = async (req, res) => {
   }
 };
 
-// // Get all products (only basic info, no plans)
-// exports.getAllProducts = async (req, res) => {
-//   try {
-//     const products = await Product.find(); // Fetch all products
-
-//     res.status(200).json({
-//       status: 'success',
-//       message: 'All products fetched successfully',
-//       data: products,
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       status: 'error',
-//       message: 'Failed to fetch products',
-//       error: error.message,
-//     });
-//   }
-// };
-
-
-//Get all products with their subscription plans
+// Get all products with their subscription plans
 exports.getAllProductsWithPlans = async (req, res) => {
   try {
-    const products = await Product.find();
+    const db = getDB();
 
+    const products = await db.collection('products').find({}).toArray();
+
+    // For each product, fetch subscription plans
     const results = await Promise.all(
       products.map(async (product) => {
-        const plans = await SubscriptionPlan.find({ productId: product._id });
+        const plans = await db
+          .collection('subscriptionplans')
+          .find({ productId: product._id })
+          .toArray();
+
         return {
-          ...product.toObject(),
+          ...product,
           subscriptionPlans: plans,
         };
       })
@@ -69,6 +62,7 @@ exports.getAllProductsWithPlans = async (req, res) => {
 // Get product details by ID with subscription plans
 exports.getProductDetailsWithPlans = async (req, res) => {
   try {
+    const db = getDB();
     const { id, title } = req.body;
 
     if (!id || !title) {
@@ -78,7 +72,7 @@ exports.getProductDetailsWithPlans = async (req, res) => {
       });
     }
 
-    const product = await Product.findById(id);
+    const product = await db.collection('products').findOne({ _id: new ObjectId(id) });
 
     if (!product) {
       return res.status(404).json({
@@ -94,26 +88,23 @@ exports.getProductDetailsWithPlans = async (req, res) => {
       });
     }
 
-    const plans = await SubscriptionPlan.find({ productId: id });
+    const plans = await db.collection('subscriptionplans').find({ productId: product._id }).toArray();
 
+    // Format plans
     const formattedPlans = plans.map(plan => ({
-      _id: plan._id,
-      productId: plan.productId,
-      type: plan.type,
+      ...plan,
       plans: plan.plans.map(p => ({
         _id: p._id,
         duration: p.duration,
-        pricePerMonth: p.pricePerMonth
+        pricePerMonth: p.pricePerMonth,
       })),
-      createdAt: plan.createdAt,
-      updatedAt: plan.updatedAt
     }));
 
     res.status(200).json({
       status: 'success',
       message: 'Product details with subscription plans retrieved successfully',
       data: {
-        ...product.toObject(),
+        ...product,
         subscriptionPlans: formattedPlans,
       },
     });
@@ -126,8 +117,10 @@ exports.getProductDetailsWithPlans = async (req, res) => {
   }
 };
 
+// Get selected plan price
 exports.getSelectedPlanPrice = async (req, res) => {
   try {
+    const db = getDB();
     const { id, title, selectedType, selectedPlanId } = req.body;
 
     if (!id || !title || !selectedType || !selectedPlanId) {
@@ -137,7 +130,7 @@ exports.getSelectedPlanPrice = async (req, res) => {
       });
     }
 
-    const product = await Product.findById(id);
+    const product = await db.collection('products').findOne({ _id: new ObjectId(id) });
 
     if (!product) {
       return res.status(404).json({
@@ -153,10 +146,10 @@ exports.getSelectedPlanPrice = async (req, res) => {
       });
     }
 
-    // Find only the selected subscription type
-    const selectedTypeObj = await SubscriptionPlan.findOne({
-      productId: id,
-      type: selectedType
+    // Find the subscription plan document by productId and type
+    const selectedTypeObj = await db.collection('subscriptionplans').findOne({
+      productId: product._id,
+      type: selectedType,
     });
 
     if (!selectedTypeObj) {
@@ -166,6 +159,7 @@ exports.getSelectedPlanPrice = async (req, res) => {
       });
     }
 
+    // Find the selected plan inside the plans array
     const selectedPlan = selectedTypeObj.plans.find(p => p._id.toString() === selectedPlanId);
 
     if (!selectedPlan) {
@@ -175,7 +169,7 @@ exports.getSelectedPlanPrice = async (req, res) => {
       });
     }
 
-    // Helper: convert duration to months
+    // Helper: convert duration string to months
     const parseDurationToMonths = (durationStr) => {
       const [value, unit] = durationStr.split(' ');
       const number = parseInt(value);
@@ -189,13 +183,13 @@ exports.getSelectedPlanPrice = async (req, res) => {
     const baseTotal = selectedPlan.pricePerMonth * months;
 
     const selectedPlanInfo = {
-        subscriptionId: selectedTypeObj._id,
+      subscriptionId: selectedTypeObj._id,
       _id: selectedPlan._id,
       duration: selectedPlan.duration,
       pricePerMonth: selectedPlan.pricePerMonth,
       gst: selectedPlan.gst,
       securityDeposit: selectedPlan.securityDeposit,
-      totalPrice: baseTotal.toFixed(2)
+      totalPrice: baseTotal.toFixed(2),
     };
 
     res.status(200).json({
@@ -204,13 +198,12 @@ exports.getSelectedPlanPrice = async (req, res) => {
       data: {
         product: {
           _id: product._id,
-          title: product.title
+          title: product.title,
         },
         selectedType,
-        selectedPlan: selectedPlanInfo
-      }
+        selectedPlan: selectedPlanInfo,
+      },
     });
-
   } catch (error) {
     res.status(500).json({
       status: 'error',
@@ -219,11 +212,3 @@ exports.getSelectedPlanPrice = async (req, res) => {
     });
   }
 };
-
-
-
-
-
-
-
-
