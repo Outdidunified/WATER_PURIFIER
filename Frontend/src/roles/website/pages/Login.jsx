@@ -1,0 +1,181 @@
+import React from "react";
+import Header from '../components/Header';
+import Footer from '../components/Footer';
+import useLogin from "../hooks/useLogin";
+const Login = ({ handleLogin }) => {
+    const { step, setStep, phone, setPhone, otp, setOtp, name, setName, emailID, setEmailID, city, setCity, password, setPassword, loading,
+        loadingVotp, loadingReg, loginType, setLoginType, handleEmailLogin, handleSendOtp, handleVerifyOtp, handleRegister, commonInputStyle,
+    } = useLogin(handleLogin);
+
+    return (
+        <div>
+            <Header />
+            <main className="main">
+                <section id="hero" className="hero section">
+                    <div style={{ maxWidth: '400px', margin: '0 auto' }}>
+                        {/* LOGIN */}
+                        {step === "login" && (
+                            <div>
+                                <img alt="img" src="assets/img/login.png" style={{ width: '100%', height: '250px', objectFit: 'cover', borderRadius: '10px', marginBottom: '0.5rem', }} />
+                                <h2 style={{ textAlign: 'center' }}>Login</h2>
+
+                                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                                    <button onClick={() => setLoginType("phone")} style={{ marginRight: '10px', padding: '8px 16px', background: loginType === "phone" ? '#007bff' : '#ccc', color: '#fff', border: 'none', borderRadius: '5px' }}>
+                                        Phone Login
+                                    </button>
+                                    <button onClick={() => setLoginType("email")} style={{ padding: '8px 16px', background: loginType === "email" ? '#007bff' : '#ccc', color: '#fff', border: 'none', borderRadius: '5px' }}>
+                                        Email Login
+                                    </button>
+                                </div>
+
+                                {/* Phone Login */}
+                                {loginType === "phone" && (
+                                    <>
+                                        <input
+                                            type="tel"
+                                            placeholder="Enter Phone Number"
+                                            style={commonInputStyle}
+                                            value={phone}
+                                            onChange={(e) => {
+                                                let val = e.target.value.replace(/\D/g, "");
+                                                if (val.startsWith("0")) val = val.substring(1);
+                                                setPhone(val.slice(0, 10));
+                                            }}
+                                        />
+                                        <button
+                                            onClick={handleSendOtp}
+                                            disabled={loading}
+                                            style={{ ...commonInputStyle, background: '#007bff', color: '#fff', opacity: loading ? 0.7 : 1 }}
+                                        >
+                                            {loading ? "Sending..." : "Send OTP"}
+                                        </button>
+                                    </>
+                                )}
+
+                                {/* Email Login */}
+                                {loginType === "email" && (
+                                    <>
+                                        <input
+                                            type="email"
+                                            placeholder="Enter Email"
+                                            style={commonInputStyle}
+                                            value={emailID}
+                                            onChange={(e) => setEmailID(e.target.value)}
+                                        />
+                                        <input
+                                            type="password"
+                                            placeholder="6 Digit Password"
+                                            style={commonInputStyle}
+                                            value={password}
+                                            onChange={(e) => {
+                                                const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                                setPassword(val);
+                                            }}
+                                        />
+                                        <button
+                                            onClick={handleEmailLogin}
+                                            disabled={loading}
+                                            style={{ ...commonInputStyle, background: '#007bff', color: '#fff', opacity: loading ? 0.7 : 1 }}
+                                        >
+                                            {loading ? "Logging in..." : "Login"}
+                                        </button>
+                                    </>
+                                )}
+
+                                <p style={{ textAlign: 'center' }}>
+                                    New user? <button onClick={() => setStep("register")} style={{ color: '#007bff', background: 'none', border: 'none' }}>Register here</button>
+                                </p>
+                            </div>
+                        
+                        )}
+
+                        {/* OTP VERIFICATION */}
+                        {step === "otp" && (
+                            <div>
+                                <img alt="img" src="assets/img/Votp.png" style={{ width: '100%', height: '250px', objectFit: 'cover', borderRadius: '10px', marginBottom: '0.5rem', }} />
+                                <h2 style={{ textAlign: 'center' }}>OTP Verification</h2>
+                                <input
+                                    type="text"
+                                    placeholder="Enter OTP"
+                                    style={commonInputStyle}
+                                    value={otp}
+                                    onChange={(e) => setOtp(e.target.value)}
+                                />
+                                <button
+                                    onClick={handleVerifyOtp}
+                                    disabled={loadingVotp}
+                                    style={{ ...commonInputStyle, background: '#28a745', color: '#fff', opacity: loadingVotp ? 0.7 : 1 }}
+                                >
+                                    {loadingVotp ? "Verifying..." : "Verify & Login"}
+                                </button>
+                                <p style={{ textAlign: 'center' }}>
+                                    Back to <button onClick={() => setStep("login")} style={{ color: '#007bff', background: 'none', border: 'none' }}>Login</button>
+                                </p>
+                            </div>
+                        )}
+
+                        {/* REGISTER */}
+                        {step === "register" && (
+                            <div>
+                                <h2 style={{ textAlign: 'center' }}>Register</h2>
+                                <input
+                                    type="text"
+                                    placeholder="Full Name"
+                                    style={commonInputStyle}
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                />
+                                <input
+                                    type="tel"
+                                    placeholder="Phone Number"
+                                    style={commonInputStyle}
+                                    value={phone}
+                                    onChange={(e) => {
+                                        let val = e.target.value.replace(/\D/g, "");
+                                        if (val.startsWith("0")) val = val.substring(1);
+                                        setPhone(val.slice(0, 10));
+                                    }}
+                                />
+                                <input
+                                    type="email"
+                                    placeholder="Email Address"
+                                    style={commonInputStyle}
+                                    value={emailID}
+                                    onChange={(e) => setEmailID(e.target.value)}
+                                />
+                                <select style={commonInputStyle} value={city} onChange={(e) => setCity(e.target.value)}>
+                                    <option value="Bangalore">Bangalore</option>
+                                    <option value="Hyderabad">Hyderabad</option>
+                                    <option value="Mumbai">Mumbai</option>
+                                </select>
+                                <input
+                                    type="password"
+                                    placeholder="6 Digit Password"
+                                    style={commonInputStyle}
+                                    value={password}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                        setPassword(val);
+                                    }}
+                                />
+                                <button
+                                    onClick={handleRegister}
+                                    disabled={loadingReg}
+                                    style={{ ...commonInputStyle, background: '#0d83fd', color: 'white', opacity: loadingReg ? 0.7 : 1 }}
+                                >
+                                    {loadingReg ? "Registering..." : "Register"}
+                                </button>
+                                <p style={{ textAlign: 'center' }}>
+                                    Already have an account? <button onClick={() => setStep("login")} style={{ color: '#007bff', background: 'none', border: 'none' }}>Login</button>
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </section>
+            </main>
+            <Footer />
+        </div>
+    );
+};
+
+export default Login;
