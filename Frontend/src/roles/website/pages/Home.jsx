@@ -984,7 +984,7 @@ const Home = ({ userInfo }) => {
                     <div className="container" data-aos="fade-up" data-aos-delay="100">
 
                         <div className="row content justify-content-center align-items-center position-relative">
-                            <div className="col-lg-8 mx-auto text-center">
+                            <div className="mx-auto text-center">
                                 <h2 className="display-4 mb-4">A Thriving Community Of Over 1 Million</h2>
                                 <p className="mb-4">1 in 3 new ionHive users find us through a friend or family referral. Our happy customers understand the impact of pure drinking water on the health and wellness of the entire community.</p>
                                 <div className="scroll-wrapper">
