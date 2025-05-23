@@ -6,3 +6,7 @@
 BACKEND/node_modules/
 BACKEND/Log/*.log
 
+# MacOS system files
+.DS_Store
+FRONTEND/WEBSITE/node_modules/
+
