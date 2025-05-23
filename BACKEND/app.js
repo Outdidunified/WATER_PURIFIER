@@ -11,6 +11,8 @@ const logger = require('./middlewares/requestLogger');
 
 // Import Routes
 const adminRoutes = require('./routes/adminRoutes');
+const websiteRoutes = require('./routes/websiteRoutes');
+
 
 // Initialize Express App
 const app = express();
@@ -37,6 +39,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api/admin', adminRoutes);
+app.use('/api', websiteRoutes);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
