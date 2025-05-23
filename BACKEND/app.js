@@ -39,7 +39,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api/admin', adminRoutes);
-app.use('/api', websiteRoutes);
+app.use('/api/website', websiteRoutes);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
