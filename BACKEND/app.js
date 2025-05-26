@@ -8,10 +8,12 @@ const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
 const logger = require('./middlewares/requestLogger');
+const { connectToDatabase } = require('./config/db');
 
 // Import Routes
 const adminRoutes = require('./routes/adminRoutes');
 const websiteRoutes = require('./routes/websiteRoutes');
+const appRoutes = require('./routes/appRoutes');
 
 
 // Initialize Express App
@@ -40,6 +42,8 @@ app.use((req, res, next) => {
 // Routes
 app.use('/api/admin', adminRoutes);
 app.use('/api/website', websiteRoutes);
+app.use('/api/app',appRoutes);
+
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
@@ -55,9 +59,16 @@ const httpServer = http.createServer(app);
 // Set Port
 const HTTP_PORT = process.env.HTTP_PORT || 6767;
 
-// Start Server
-httpServer.listen(HTTP_PORT, () => {
-    const logMessage = `HTTP Server listening on port ${HTTP_PORT}`;
-    console.log(logMessage);
-    logger.info(logMessage);
-});
+// Start Server with Database Connection
+connectToDatabase()
+    .then(() => {
+        httpServer.listen(HTTP_PORT, () => {
+            const logMessage = `HTTP Server listening on port ${HTTP_PORT}`;
+            console.log(logMessage);
+            logger.info(logMessage);
+        });
+    })
+    .catch(err => {
+        console.error('Failed to connect to the database:', err);
+        process.exit(1);
+    });
