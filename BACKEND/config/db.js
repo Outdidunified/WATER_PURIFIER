@@ -30,4 +30,12 @@ async function connectToDatabase() {
     return db;
 }
 
-module.exports = { connectToDatabase };
+// Function to get the database instance
+function getDB() {
+    if (!db) {
+        throw new Error('Database not connected. Call connectToDatabase first.');
+    }
+    return db;
+}
+
+module.exports = { connectToDatabase, getDB };
