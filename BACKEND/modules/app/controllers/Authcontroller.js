@@ -24,18 +24,29 @@ const transporter = nodemailer.createTransport({
 
 // Step 1: Send OTP to Email
 exports.login = async (req, res) => {
-  const { email } = req.body;
-  if (!email) {
-    return res.status(400).json({ error: true, message: 'Email is required' });
+  const { email, role_id } = req.body;
+
+  if (!email || role_id !== 3) {
+    return res.status(400).json({ error: true, message: 'Email and valid role_id (3) are required' });
   }
 
-  const otp = generateOtp();
-  otpStore[email] = {
-    otp,
-    expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes from now
-  };
-
   try {
+    const db = await connectToDatabase();
+    const usersCollection = db.collection('users');
+
+    // Check if user exists with role_id = 3
+    const user = await usersCollection.findOne({ email, role_id });
+
+    if (!user) {
+      return res.status(404).json({ error: true, message: 'User with this email and role_id not found' });
+    }
+
+    const otp = generateOtp();
+    otpStore[email] = {
+      otp,
+      expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes from now
+    };
+
     await transporter.sendMail({
       from: `"Outdid" <${process.env.SMTP_EMAIL}>`,
       to: email,
@@ -123,6 +134,49 @@ exports.verifyOtp = async (req, res) => {
     });
   } catch (err) {
     console.error('Verification error:', err);
+    res.status(500).json({ error: true, message: 'Internal server error' });
+  }
+};
+
+exports.technicianLogin = async (req, res) => {
+  const { email, password, role_id } = req.body;
+
+  if (!email || !password || role_id !== 2) {
+    return res.status(400).json({ error: true, message: 'Invalid credentials or role_id' });
+  }
+
+  try {
+    const db = await connectToDatabase();
+    const usersCollection = db.collection('users');
+
+    // Find user with matching email and role_id (2 = technician)
+    const technician = await usersCollection.findOne({ email, role_id });
+
+    if (!technician) {
+      return res.status(404).json({ error: true, message: 'Technician not found with this email' });
+    }
+
+    // Check if password matches (assuming plain text for now)
+    // If hashed passwords are used, replace this with bcrypt.compare()
+    if (String(technician.password) !== String(password))  {
+      return res.status(401).json({ error: true, message: 'Incorrect password' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign({ id: technician.user_id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+    res.status(200).json({
+      error: false,
+      message: 'Technician login successful',
+      token,
+      user: {
+        user_id: technician.user_id,
+        email: technician.email,
+        role_id: technician.role_id,
+      },
+    });
+  } catch (error) {
+    console.error('Technician login error:', error);
     res.status(500).json({ error: true, message: 'Internal server error' });
   }
 };
