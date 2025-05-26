@@ -2,10 +2,10 @@ import { useState } from "react";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Swal from 'sweetalert2';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
-const Home = ({ userInfo }) => {
-    console.log(userInfo);
+const Home = ({ userInfo, handleLogout }) => {
+    const navigate = useNavigate();
 
     const productConfigs = {
         1: {
@@ -93,6 +93,26 @@ const Home = ({ userInfo }) => {
 
     {/* Sub model */ }
     const [showModal, setShowModal] = useState(false);
+
+    const handleSubscribeClick = () => {
+        if (userInfo?.email) {
+            setShowModal(true); // Open subscribe modal
+        } else {
+            Swal.fire({
+                title: 'Login Required',
+                text: 'You need to log in to subscribe.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Login',
+                cancelButtonText: 'Cancel',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    navigate('/auth'); // Go to login page
+                }
+            });
+        }
+    };
+
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
     const [emailID, setEmailID] = useState("");
@@ -151,7 +171,7 @@ const Home = ({ userInfo }) => {
         };
 
         try {
-            const res = await fetch("http://192.168.1.9:5000/api/subscription-plans/addplan", {
+            const res = await fetch("http://192.168.1.222:5001/api/website/subscription-plans/addplan", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
@@ -178,7 +198,7 @@ const Home = ({ userInfo }) => {
                 order_id: data.razorpayOrderId,
                 handler: async function (response) {
                     // Verify payment
-                    const verifyRes = await fetch("http://192.168.1.9:5000/api/subscription-plans/verifyPayment", {
+                    const verifyRes = await fetch("http://192.168.1.222:5001/api/website/subscription-plans/verifyPayment", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
@@ -221,7 +241,7 @@ const Home = ({ userInfo }) => {
                 theme: { color: "#3399cc" },
                 modal: {
                     ondismiss: async () => {
-                        await fetch("http://192.168.1.9:5000/api/subscription-plans/addplan", {
+                        await fetch("http://192.168.1.222:5001/api/website/subscription-plans/addplan", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
@@ -317,22 +337,30 @@ const Home = ({ userInfo }) => {
         }
 
         try {
-            const response = await fetch("http://192.168.1.14:5000/api/contact/submitcontact", {
+            const response = await fetch("http://192.168.1.222:5001/api/website/contact/submitcontact", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, email, subject, message }),
             });
 
+            const data = await response.json(); // 🔥 Parse server response
+
             if (response.ok) {
-                Swal.fire("Success", "Your message has been sent.", "success");
+                Swal.fire("Success", data.message || "Your message has been sent.", "success");
                 setFormData({ name: "", email: "", subject: "", message: "" });
             } else {
-                throw new Error("Failed to send message");
+                Swal.fire("Error", data.message || "Something went wrong. Please try again.", "error");
             }
         } catch (error) {
-            Swal.fire("Error", "Something went wrong. Please try again later.", "error");
+            Swal.fire("Error", "Server error. Please try again later.", "error");
         }
-    };
+    };    
+
+    const indianCities = [
+        "Bangalore", "Hyderabad", "Mumbai", "Delhi", "Chennai", "Kolkata", "Pune",
+        "Ahmedabad", "Jaipur", "Surat", "Lucknow", "Kanpur", "Nagpur", "Indore",
+        "Thane", "Bhopal", "Visakhapatnam", "Patna", "Vadodara", "Ghaziabad"
+    ];
 
     // Call Request
     const [formDataCallRequest, setFormDataCallRequest] = useState({
@@ -368,21 +396,23 @@ const Home = ({ userInfo }) => {
 
         try {
             const response = await fetch(
-                "http://192.168.1.66:5000/api/callRequest/callRequest",
+                "http://192.168.1.222:5001/api/website/callRequest",
                 {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                     },
-                    body: JSON.stringify(formDataCallRequest),
+                    body: JSON.stringify(formDataCallRequest), // phone as string
                 }
             );
 
-            if (response.ok) {
-                Swal.fire("Success", "Your message has been sent!", "success");
+            const result = await response.json();
+
+            if (result.success) {
+                Swal.fire("Success", result.message, "success");
                 setFormDataCallRequest({ name: "", phone: "", city: "Bangalore" });
             } else {
-                Swal.fire("Error", "Something went wrong. Please try again.", "error");
+                Swal.fire("Error", result.message || "Something went wrong.", "error");
             }
         } catch (error) {
             Swal.fire("Error", "Server error. Please try later.", "error");
@@ -393,7 +423,8 @@ const Home = ({ userInfo }) => {
         <div>
 
             {/* Header */}
-            < Header />
+             <Header userInfo={userInfo} handleLogout={handleLogout} />
+
 
             <main className="main">
 
@@ -662,10 +693,20 @@ const Home = ({ userInfo }) => {
 
                                             <p>{discount > 0 ? `Discount: ${discount}%` : "0% discount"}, Savings of ₹{savings}</p>
                                             <div className="d-flex flex-wrap gap-2 mb-3">
-                                                <button className="btn btn-primary me-0 me-sm-2 mx-1" onClick={() => setShowModal(true)}>
+                                                <button
+                                                    className="btn btn-primary me-0 me-sm-2 mx-1"
+                                                    onClick={handleSubscribeClick}
+                                                >
                                                     Subscribe Now
                                                 </button>
-                                                <Link to="/product-list" className="btn btn-primary me-0 me-sm-2 mx-1"  >Know More</Link>
+                                                <Link to="/product-list" className="btn btn-primary me-0 me-sm-2 mx-1">
+                                                    Know More
+                                                </Link>
+
+                                                {/* Your modal code here, conditionally rendered */}
+                                                {showModal && (
+                                                    <YourSubscribeModalComponent onClose={() => setShowModal(false)} />
+                                                )}
                                             </div>
                                         </div>
 
@@ -752,11 +793,17 @@ const Home = ({ userInfo }) => {
                                                 </div>
                                                 <div className="mb-3">
                                                     <label>City</label>
-                                                    <select className="form-control" value={city} onChange={(e) => setCity(e.target.value)}>
-                                                        <option value="Bangalore">Bangalore</option>
-                                                        <option value="Hyderabad">Hyderabad</option>
-                                                        <option value="Mumbai">Mumbai</option>
-                                                        {/* Add other cities */}
+                                                    <select
+                                                        className="form-control"
+                                                        value={city}
+                                                        onChange={(e) => setCity(e.target.value)}
+                                                    >
+                                                        <option value="">Select a city</option>
+                                                        {indianCities.map((cityName) => (
+                                                            <option key={cityName} value={cityName}>
+                                                                {cityName}
+                                                            </option>
+                                                        ))}
                                                     </select>
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
@@ -1326,9 +1373,12 @@ const Home = ({ userInfo }) => {
                                                                 onChange={handleChangeCallRequest}
                                                                 required
                                                             >
-                                                                <option value="Bangalore">Bangalore</option>
-                                                                <option value="Hyderabad">Hyderabad</option>
-                                                                <option value="Mumbai">Mumbai</option>
+                                                                <option value="">Select a city</option>
+                                                                {indianCities.map((city) => (
+                                                                    <option key={city} value={city}>
+                                                                        {city}
+                                                                    </option>
+                                                                ))}
                                                             </select>
                                                         </div>
 

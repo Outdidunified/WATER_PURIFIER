@@ -2,14 +2,14 @@ import React from "react";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import useFAQs from "../hooks/useFAQs";
-const FAQs = ({ }) => {
+const FAQs = ({ userInfo, handleLogout }) => {
     const { activeIndex, setActiveIndex, activeTab, setActiveTab, categories, filteredFaqs, handleToggle } = useFAQs();
 
     return (
         <div>
 
             {/* Header */}
-            < Header />
+            <Header userInfo={userInfo} handleLogout={handleLogout} />
 
             <main className="main">
 

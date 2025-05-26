@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Swal from 'sweetalert2';
-const useLogin = () => {
+const useLogin = ( handleLogin ) => {
 
     const [step, setStep] = useState("login"); // login, otp, register
     const [phone, setPhone] = useState("");
@@ -14,29 +14,39 @@ const useLogin = () => {
     const [loadingReg, setLoadingReg] = useState(false);
     const [loginType, setLoginType] = useState("phone"); // "phone" or "email"
 
+    const validateEmail = (email) =>
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
     const handleEmailLogin = async () => {
-        if (!emailID || !password || !/^[0-9]{6}$/.test(password)) {
-            Swal.fire('Error', 'Enter valid email and 6-digit password.', 'error');
+        if (!validateEmail(emailID) || !/^[0-9]{4}$/.test(password)) {
+            Swal.fire("Error", "Enter valid email and 4-digit password.", "error");
             return;
         }
 
         setLoading(true);
         try {
-            const res = await fetch("http://192.168.1.14:5000/api/auth/email", {
+            const res = await fetch("http://192.168.1.222:5001/api/website/auth/email", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: emailID, password }),
+                body: JSON.stringify({ email: emailID, password: parseInt(password) }),
             });
-            const data = await res.json(); // Fix this line
-            if (res.status === 200 && data.status === 'Success') {
+
+            const data = await res.json();
+
+            if (res.status === 200 && data.status.toLowerCase() === "success") {
+                Swal.fire("Success", data.message || "Login successful.", "success");
+               // setTimeout(() => window.location.href = "/", 2000);
                 handleLogin(data);
-                Swal.fire('Success', data.message || 'Login successful.', 'success');
-                setTimeout(() => window.location.href = "/", 2000);
+
+                // setTimeout(() => {
+                //     handleLogin(data); // this will redirect
+                // }, 1000);
+
             } else {
-                Swal.fire('Error', data.message || 'Login failed.', 'error');
+                Swal.fire("Error", data.message || "Login failed.", "error");
             }
         } catch (err) {
-            Swal.fire('Error', 'Server error. Please try again.', 'error');
+            Swal.fire("Error", "Server error. Please try again.", "error");
         } finally {
             setLoading(false);
         }
@@ -72,7 +82,7 @@ const useLogin = () => {
     const handleVerifyOtp = async () => {
         setLoadingVotp(true);
         try {
-            const res = await fetch("http://192.168.1.14:5000/api/auth/verify-otp", {
+            const res = await fetch("http://192.168.1.222:5001/api/website/auth/verify-otp", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ phone, otp })
@@ -93,8 +103,8 @@ const useLogin = () => {
     };
 
     const handleRegister = async () => {
-        if (!name || !emailID || !city || !password || !/^[0-9]{6}$/.test(password)) {
-            Swal.fire('Error', 'Please fill all fields and ensure password is 6 digits.', 'error');
+        if (!name || !emailID || !city || !password || !/^[0-9]{4}$/.test(password)) {
+            Swal.fire('Error', 'Please fill all fields and ensure password is 4 digits.', 'error');
             return;
         }
 
@@ -106,10 +116,10 @@ const useLogin = () => {
 
         setLoadingReg(true);
         try {
-            const res = await fetch("http://192.168.1.9:5000/api/auth/register", {
+            const res = await fetch("http://192.168.1.222:5001/api/website/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, phone, emailID, city, password }),
+                body: JSON.stringify({ name, phone: parseInt(phone), email: emailID, city, password: parseInt(password) }),
             });
             const data = await res.json();
             if (res.ok) {

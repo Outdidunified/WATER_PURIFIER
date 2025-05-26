@@ -2,12 +2,13 @@ import React from "react";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
-const PrivacyPolicy = ({ }) => {
+const PrivacyPolicy = ({ userInfo, handleLogout }) => {
     return (
         <div>
 
             {/* Header */}
-            < Header />
+            <Header userInfo={userInfo} handleLogout={handleLogout} />
+
 
             <main className="main">
 
