@@ -22,30 +22,25 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Step 1: Send OTP to Email
+// STEP 1: Send OTP to Email
 exports.login = async (req, res) => {
+  console.log("Received /login request:", req.body);
+
   const { email, role_id } = req.body;
 
-  if (!email || role_id !== 3) {
-    return res.status(400).json({ error: true, message: 'Email and valid role_id (3) are required' });
+  if (!email || Number(role_id) !== 3) {
+    const response = { error: true, message: 'Email and role_id 3 are required' };
+    console.log("Sending /login response:", response);
+    return res.status(400).json(response);
   }
 
   try {
-    const db = await connectToDatabase();
-    const usersCollection = db.collection('users');
-
-    // Check if user exists with role_id = 3
-    const user = await usersCollection.findOne({ email, role_id });
-
-    if (!user) {
-      return res.status(404).json({ error: true, message: 'User with this email and role_id not found' });
-    }
-
     const otp = generateOtp();
     otpStore[email] = {
       otp,
-      expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes from now
+      expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
     };
+    console.log(`Generated OTP for ${email}:`, otp);
 
     await transporter.sendMail({
       from: `"Outdid" <${process.env.SMTP_EMAIL}>`,
@@ -54,23 +49,35 @@ exports.login = async (req, res) => {
       text: `Your OTP is: ${otp}`,
     });
 
-    res.status(200).json({ error: false, message: 'OTP sent successfully to email' });
+    const response = { error: false, message: 'OTP sent successfully to email' };
+    console.log("Sending /login response:", response);
+    res.status(200).json(response);
   } catch (error) {
     console.error('Email error:', error);
     res.status(500).json({ error: true, message: 'Failed to send OTP' });
   }
 };
 
-// Step 2: Verify OTP and login/create user
+// STEP 2: Verify OTP and Login/Create User
 exports.verifyOtp = async (req, res) => {
   const { email, otp } = req.body;
+
+  console.log("Received /verifyOtp request:", req.body);
+
   if (!email || !otp) {
     return res.status(400).json({ error: true, message: 'Email and OTP are required' });
   }
 
   const otpEntry = otpStore[email];
 
-  if (!otpEntry || otpEntry.otp !== otp) {
+  if (!otpEntry) {
+    return res.status(401).json({ error: true, message: 'Invalid OTP' });
+  }
+
+  console.log('Stored OTP:', otpEntry.otp, 'Type:', typeof otpEntry.otp);
+  console.log('Received OTP:', otp, 'Type:', typeof otp);
+
+  if (otpEntry.otp !== String(otp)) {
     return res.status(401).json({ error: true, message: 'Invalid OTP' });
   }
 
@@ -79,7 +86,7 @@ exports.verifyOtp = async (req, res) => {
     return res.status(410).json({ error: true, message: 'OTP has expired' });
   }
 
-  const otpExpires = new Date(otpEntry.expiresAt); // Convert to Date for MongoDB
+  const otpExpires = new Date(otpEntry.expiresAt);
 
   try {
     const db = await connectToDatabase();
@@ -87,94 +94,98 @@ exports.verifyOtp = async (req, res) => {
 
     let user = await usersCollection.findOne({ email });
 
-    if (!user) {
-      // Get the latest user_id and increment
+    if (user) {
+      await usersCollection.updateOne({ email }, { $set: { otpExpires } });
+    } else {
       const latestUser = await usersCollection.find().sort({ user_id: -1 }).limit(1).toArray();
       const newUserId = latestUser.length > 0 ? latestUser[0].user_id + 1 : 1;
 
       const newUser = {
         user_id: newUserId,
-        role_id: 3, // Default role
+        role_id: 3,
         name: null,
         email,
         phone: null,
         password: null,
         city: null,
         otp: null,
-        otpExpires: otpExpires, // Explicit Date
+        otpExpires,
         createdby: null,
         createdDate: new Date(),
+        issubscribed: null,
         status: true,
       };
 
       await usersCollection.insertOne(newUser);
       user = newUser;
-    } else {
-      // Optional: update otpExpires for existing user if needed
-      await usersCollection.updateOne(
-        { email },
-        { $set: { otpExpires } }
-      );
     }
 
     const token = generateToken(user.user_id);
+    delete otpStore[email]; // Cleanup OTP
 
-    // Clean up OTP after use
-    delete otpStore[email];
-
-    res.status(200).json({
+    const response = {
       error: false,
       message: 'Login successful',
       token,
-      user: {
+      data: {
         user_id: user.user_id,
         email: user.email,
         role_id: user.role_id,
+        is_subscribed: user.issubscribed,
       },
-    });
+    };
+    console.log("Sending /verifyOtp response:", response);
+    res.status(200).json(response);
   } catch (err) {
     console.error('Verification error:', err);
     res.status(500).json({ error: true, message: 'Internal server error' });
   }
 };
 
+// Technician Login (role_id = 2)
 exports.technicianLogin = async (req, res) => {
+  console.log("Received /technicianLogin request:", req.body);
+
   const { email, password, role_id } = req.body;
 
   if (!email || !password || role_id !== 2) {
-    return res.status(400).json({ error: true, message: 'Invalid credentials or role_id' });
+    const response = { error: true, message: 'Invalid credentials or role_id' };
+    console.log("Sending /technicianLogin response:", response);
+    return res.status(400).json(response);
   }
 
   try {
     const db = await connectToDatabase();
     const usersCollection = db.collection('users');
 
-    // Find user with matching email and role_id (2 = technician)
     const technician = await usersCollection.findOne({ email, role_id });
 
     if (!technician) {
-      return res.status(404).json({ error: true, message: 'Technician not found with this email' });
+      const response = { error: true, message: 'Technician not found with this email' };
+      console.log("Sending /technicianLogin response:", response);
+      return res.status(404).json(response);
     }
 
-    // Check if password matches (assuming plain text for now)
-    // If hashed passwords are used, replace this with bcrypt.compare()
-    if (String(technician.password) !== String(password))  {
-      return res.status(401).json({ error: true, message: 'Incorrect password' });
+    if (String(technician.password) !== String(password)) {
+      const response = { error: true, message: 'Incorrect password' };
+      console.log("Sending /technicianLogin response:", response);
+      return res.status(401).json(response);
     }
 
-    // Generate JWT token
     const token = jwt.sign({ id: technician.user_id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    res.status(200).json({
+    const response = {
       error: false,
       message: 'Technician login successful',
       token,
-      user: {
+      data: {
         user_id: technician.user_id,
         email: technician.email,
         role_id: technician.role_id,
       },
-    });
+    };
+    console.log("Sending /technicianLogin response:", response);
+    res.status(200).json(response);
   } catch (error) {
     console.error('Technician login error:', error);
     res.status(500).json({ error: true, message: 'Internal server error' });
