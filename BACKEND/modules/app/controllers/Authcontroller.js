@@ -114,6 +114,11 @@ exports.verifyOtp = async (req, res) => {
         createdDate: new Date(),
         issubscribed: null,
         status: true,
+        active_duration_id:null,
+        active_order_id:null,
+        active_plan_id:null,
+        assigned_device_id:null,
+        subscribedAt:null,
       };
 
       await usersCollection.insertOne(newUser);
