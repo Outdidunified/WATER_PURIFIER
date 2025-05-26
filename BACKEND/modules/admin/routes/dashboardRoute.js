@@ -26,6 +26,15 @@ router.post('/FetchSubscriptionPlans', verifyToken, Controller.FetchSubscription
 // Route to UpdateSubscriptionPlans
 router.post('/UpdateSubscriptionPlans', verifyToken, Controller.UpdateSubscriptionPlans);
 
+// Route to AddProductPlans
+router.post('/AddProductPlans', verifyToken, Controller.AddProductPlans);
+
+// Route to FetchProductPlans
+router.post('/FetchProductPlans', verifyToken, Controller.FetchProductPlans);
+
+// Route to UpdateProductPlans
+router.post('/UpdateProductPlans', verifyToken, Controller.UpdateProductPlans);
+
 // 4.Call Request
 // Route to FetchCallRequest
 router.post('/FetchCallRequest', verifyToken, Controller.FetchCallRequest);
@@ -39,6 +48,10 @@ router.post('/FetchContact', verifyToken, Controller.FetchContact);
 router.post('/FetchOrders', verifyToken, Controller.FetchOrders);
 
 // Route to UpdateOrdersStatus 
+router.post('/UpdateOrdersStatus', verifyToken, Controller.UpdateOrdersStatus);
+
+// 7.Manage Models
+// Route to CreateManageProducts
 router.post('/UpdateOrdersStatus', verifyToken, Controller.UpdateOrdersStatus);
 
 module.exports = router;

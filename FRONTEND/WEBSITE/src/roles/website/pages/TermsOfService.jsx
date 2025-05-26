@@ -2,12 +2,13 @@ import React from "react";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
-const TermsOfService = ({ }) => {
+const TermsOfService = ({ userInfo, handleLogout }) => {
     return (
         <div>
 
             {/* Header */}
-            < Header />
+            <Header userInfo={userInfo} handleLogout={handleLogout} />
+
 
             <main className="main">
 

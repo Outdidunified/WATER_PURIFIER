@@ -2,14 +2,15 @@ import React from "react";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import useLogin from "../hooks/useLogin";
-const Login = ({ handleLogin }) => {
+const Login = ({ userInfo, handleLogout, handleLogin }) => {
     const { step, setStep, phone, setPhone, otp, setOtp, name, setName, emailID, setEmailID, city, setCity, password, setPassword, loading,
         loadingVotp, loadingReg, loginType, setLoginType, handleEmailLogin, handleSendOtp, handleVerifyOtp, handleRegister, commonInputStyle,
     } = useLogin(handleLogin);
 
     return (
         <div>
-            <Header />
+            <Header userInfo={userInfo} handleLogout={handleLogout} />
+
             <main className="main">
                 <section id="hero" className="hero section">
                     <div style={{ maxWidth: '400px', margin: '0 auto' }}>
@@ -64,11 +65,11 @@ const Login = ({ handleLogin }) => {
                                         />
                                         <input
                                             type="password"
-                                            placeholder="6 Digit Password"
+                                            placeholder="4 Digit Password"
                                             style={commonInputStyle}
                                             value={password}
                                             onChange={(e) => {
-                                                const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                                const val = e.target.value.replace(/\D/g, '').slice(0, 4);
                                                 setPassword(val);
                                             }}
                                         />
@@ -150,11 +151,11 @@ const Login = ({ handleLogin }) => {
                                 </select>
                                 <input
                                     type="password"
-                                    placeholder="6 Digit Password"
+                                    placeholder="4 Digit Password"
                                     style={commonInputStyle}
                                     value={password}
                                     onChange={(e) => {
-                                        const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, 4);
                                         setPassword(val);
                                     }}
                                 />

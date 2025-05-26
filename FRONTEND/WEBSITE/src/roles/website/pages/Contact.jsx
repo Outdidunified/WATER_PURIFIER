@@ -2,14 +2,14 @@ import React from "react";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import useContact from "../hooks/useContact";
-const Contact = ({ }) => {
+const Contact = ({ userInfo, handleLogout }) => {
     const { formData, handleChange, handleSubmits, loading } = useContact();
 
     return (
         <div>
 
             {/* Header */}
-            < Header />
+            <Header userInfo={userInfo} handleLogout={handleLogout} />
 
             <main className="main">
                 {/* <!-- Contact Section --> */}

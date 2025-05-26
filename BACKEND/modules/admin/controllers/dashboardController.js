@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'default_secret_key';
 const { ObjectId } = require("mongodb");
 const logger = require('../../../middlewares/requestLogger');
+const multerImg = require('../middlewares/multer');
 
 // 1. Login Controller
 const authenticate = async (req, res) => {
@@ -10,16 +11,23 @@ const authenticate = async (req, res) => {
         const { email, password } = req.body;
 
         if (!email || !password) {
-            return res.status(401).json({ message: 'Email and Password required' });
+            return res.status(401).json({ message: 'Email and Password are required' });
         }
 
-        const db = await database.connectToDatabase();
-        const usersCollection = db.collection('admin_users');
+        const role_id = 1; // Hardcoded role_id for admin
 
-        const user = await usersCollection.findOne({ email, status: "true" });
+        const db = await database.connectToDatabase();
+        const usersCollection = db.collection('users');
+
+        // Check user by email, role_id, and status
+        const user = await usersCollection.findOne({
+            email,
+            role_id: role_id,
+            status: true
+        });
 
         if (!user) {
-            return res.status(401).json({ message: 'Invalid email or user is deactivated' });
+            return res.status(401).json({ message: 'Invalid credentials or user is deactivated' });
         }
 
         if (user.password !== password) {
@@ -32,9 +40,16 @@ const authenticate = async (req, res) => {
             status: 'Success',
             user: {
                 _id: user._id,
+                user_id: user.user_id,
+                role_id: user.role_id,
                 name: user.name,
                 email: user.email,
+                password: user.password,
                 phone: user.phone,
+                createdby: user.createdby,
+                modifiedby: user.modifiedby,
+                createddate: user.createddate,
+                modifieddate: user.modifieddate,
                 status: user.status
             },
             token
@@ -53,15 +68,17 @@ const FetchAdminProfile = async (req, res) => {
 
     try {
         const db = await database.connectToDatabase();
-        const usersCollection = db.collection("admin_users");
+        const usersCollection = db.collection("users");
 
-        const user = await usersCollection.findOne({ _id: new ObjectId(user_id) });
+        // Correct syntax for querying by user_id
+        const user = await usersCollection.findOne({ user_id: parseInt(user_id) });
 
         if (!user) {
             return res.status(404).json({ status: 'Failed', message: 'User not found' });
         }
 
-        const { socket, ...sanitizedProfile } = user;
+        // Remove sensitive or unnecessary fields like 'socket' if needed
+        const { socket, password, ...sanitizedProfile } = user;
 
         return res.status(200).json({ status: 'Success', data: sanitizedProfile });
 
@@ -77,7 +94,15 @@ const UpdateAdminProfile = async (req, res) => {
     const { user_id, name, phone, password, modified_by, status } = req.body;
 
     try {
-        if (!user_id || !name || !phone || !password || !modified_by || !status) {
+        // Validate all fields
+        if (
+            user_id === undefined ||
+            !name ||
+            !phone ||
+            !password ||
+            !modified_by ||
+            status === undefined
+        ) {
             return res.status(400).json({
                 status: 'Failed',
                 message: 'All fields (user_id, name, phone, password, modified_by, status) are required'
@@ -85,35 +110,44 @@ const UpdateAdminProfile = async (req, res) => {
         }
 
         const db = await database.connectToDatabase();
-        const usersCollection = db.collection("admin_users");
+        const usersCollection = db.collection("users");
 
-        const existingUser = await usersCollection.findOne({ _id: new ObjectId(user_id) });
+        const userIdInt = parseInt(user_id);
+
+        // Check if user exists
+        const existingUser = await usersCollection.findOne({ user_id: userIdInt });
         if (!existingUser) {
             return res.status(404).json({ status: 'Failed', message: 'User not found' });
         }
 
+        // Perform update
         const updateResult = await usersCollection.updateOne(
-            { _id: new ObjectId(user_id) },
+            { user_id: userIdInt },
             {
                 $set: {
                     name,
                     phone,
-                    password,
-                    modified_by,
-                    modified_date: new Date(),
-                    status
+                    password: String(password), // Ensure password is string
+                    modifiedby: modified_by,
+                    modifieddate: new Date(),
+                    status: Boolean(status)
                 }
             }
         );
 
-        if (updateResult.matchedCount === 0) {
+        if (updateResult.matchedCount === 0 || updateResult.modifiedCount === 0) {
             return res.status(500).json({ status: 'Failed', message: 'Failed to update user profile' });
         }
 
         return res.status(200).json({
             status: 'Success',
             message: 'User profile updated successfully',
-            data: { user_id, name, phone, status }
+            data: {
+                user_id: userIdInt,
+                name,
+                phone,
+                status: Boolean(status)
+            }
         });
 
     } catch (error) {
@@ -128,7 +162,7 @@ const UpdateAdminProfile = async (req, res) => {
 const AddSubscriptionPlans = async (req, res) => {
     const { type, capacity, plans, createdby, status } = req.body;
 
-    if (!type || !capacity || !Array.isArray(plans) || !createdby || typeof status !== 'boolean') {
+    if (!type || !capacity || !Array.isArray(plans) || plans.length === 0 || !createdby || typeof status !== 'boolean') {
         return res.status(400).json({
             status: 'Failed',
             message: 'All fields (type, capacity, plans[], createdby, status) are required'
@@ -139,26 +173,46 @@ const AddSubscriptionPlans = async (req, res) => {
         const db = await database.connectToDatabase();
         const collection = db.collection("subscriptionplans");
 
-        // Get the highest productId
-        const lastPlan = await collection.find().sort({ productId: -1 }).limit(1).toArray();
-        const nextProductId = lastPlan.length > 0 ? parseInt(lastPlan[0].productId) + 1 : 1;
+        // Get next subscriptionplans_id
+        const lastPlanDoc = await collection.find().sort({ subscriptionplans_id: -1 }).limit(1).toArray();
+        const nextSubscriptionPlanId = lastPlanDoc.length > 0 ? lastPlanDoc[0].subscriptionplans_id + 1 : 1;
 
-        const newPlan = {
-            productId: nextProductId.toString(), // ensure it's a string if you're storing it that way
+        // Get next plans_id globally
+        const lastPlanId = await collection.aggregate([
+            { $unwind: "$plans" },
+            { $project: { plans_id: "$plans.plans_id" } },
+            { $sort: { plans_id: -1 } },
+            { $limit: 1 }
+        ]).toArray();
+
+        let nextPlansId = lastPlanId.length > 0 ? lastPlanId[0].plans_id + 1 : 1;
+
+        // Add plans_id to each plan
+        const updatedPlans = plans.map(plan => ({
+            ...plan,
+            plans_id: nextPlansId++
+        }));
+
+        const now = new Date();
+
+        const newPlanDoc = {
+            subscriptionplans_id: nextSubscriptionPlanId,
             type,
             capacity,
-            plans,
+            plans: updatedPlans,
             createdby,
-            createdDate: new Date(),
+            createdDate: now,
+            modifiedDate: now,
+            modified_by: createdby,
             status
         };
 
-        await collection.insertOne(newPlan);
+        await collection.insertOne(newPlanDoc);
 
         return res.status(200).json({
             status: 'Success',
             message: 'Subscription plan added successfully',
-            data: newPlan
+            data: newPlanDoc
         });
 
     } catch (error) {
@@ -187,13 +241,19 @@ const FetchSubscriptionPlans = async (req, res) => {
 
 // UpdateSubscriptionPlans
 const UpdateSubscriptionPlans = async (req, res) => {
-    const { _id, productId, type, capacity, plans, status, modified_by } = req.body;
+    const { subscriptionplans_id, type, capacity, plans, status, modified_by } = req.body;
 
     // Validate input
-    if (!_id || !productId || !type || !capacity || !Array.isArray(plans) || !status || !modified_by) {
+    if (
+        typeof subscriptionplans_id !== 'number' ||
+        !type || !capacity ||
+        !Array.isArray(plans) || plans.length === 0 ||
+        typeof status !== 'boolean' ||
+        !modified_by
+    ) {
         return res.status(400).json({
             status: 'Failed',
-            message: 'All fields (_id, productId, type, capacity, plans[], status, modified_by) are required'
+            message: 'Fields (subscriptionplans_id, type, capacity, plans[], status, modified_by) are required'
         });
     }
 
@@ -201,24 +261,44 @@ const UpdateSubscriptionPlans = async (req, res) => {
         const db = await database.connectToDatabase();
         const collection = db.collection("subscriptionplans");
 
+        // Check if subscriptionplans_id exists
+        const existingDoc = await collection.findOne({ subscriptionplans_id });
+        if (!existingDoc) {
+            return res.status(404).json({
+                status: 'Failed',
+                message: `Subscription plan with ID ${subscriptionplans_id} not found`
+            });
+        }
+
+        // Get highest existing plans_id globally
+        const lastPlanIdDoc = await collection.aggregate([
+            { $unwind: "$plans" },
+            { $project: { plans_id: "$plans.plans_id" } },
+            { $sort: { plans_id: -1 } },
+            { $limit: 1 }
+        ]).toArray();
+        let nextPlansId = lastPlanIdDoc.length > 0 ? lastPlanIdDoc[0].plans_id + 1 : 1;
+
+        // Re-assign new plans_id to each plan
+        const updatedPlans = plans.map(plan => ({
+            ...plan,
+            plans_id: nextPlansId++
+        }));
+
+        // Update the document
         const result = await collection.updateOne(
-            { _id: new ObjectId(_id) },
+            { subscriptionplans_id },
             {
                 $set: {
-                    productId,
                     type,
                     capacity,
-                    plans,
+                    plans: updatedPlans,
                     status,
-                    modified_by,               // Track who modified
-                    modifiedDate: new Date()   // Track when
+                    modified_by,
+                    modifiedDate: new Date()
                 }
             }
         );
-
-        if (result.matchedCount === 0) {
-            return res.status(404).json({ status: 'Failed', message: 'Subscription plan not found' });
-        }
 
         return res.status(200).json({
             status: 'Success',
@@ -232,6 +312,219 @@ const UpdateSubscriptionPlans = async (req, res) => {
     }
 };
 
+// AddProductPlans controller
+const AddProductPlans = async (req, res) => {
+    try {
+        const products = Array.isArray(req.body) ? req.body : JSON.parse(req.body.data || '[]');
+
+        if (!Array.isArray(products) || products.length === 0) {
+            return res.status(400).json({ status: 'Failed', message: 'Invalid or empty product data' });
+        }
+
+        const db = await database.connectToDatabase();
+        const collection = db.collection("productplans");
+
+        const now = new Date();
+
+        const docsToInsert = [];
+
+        // Get last productId globally once, to avoid multiple queries in loop
+        const lastProduct = await collection.find().sort({ productId: -1 }).limit(1).toArray();
+        let nextProductId = lastProduct.length > 0 ? lastProduct[0].productId + 1 : 1;
+
+        for (const product of products) {
+            const {
+                product_name,
+                main_img = "",
+                sub_img_1 = "",
+                sub_img_2 = "",
+                sub_img_3 = "",
+                sub_img_4 = "",
+                product_details,
+                product_specifications = "",
+                plans,
+                duration,
+                createdby,
+                status
+            } = product;
+
+            if (!product_name || !plans || !duration || !createdby || typeof status !== 'boolean') {
+                return res.status(400).json({ status: 'Failed', message: 'Missing required fields in product' });
+            }
+
+            // plans_id and duration_id start at 1 for each product
+            const updatedPlans = plans.map((p, i) => ({ ...p, plans_id: i + 1 }));
+            const updatedDuration = duration.map((d, i) => ({ ...d, duration_id: i + 1 }));
+
+            docsToInsert.push({
+                productId: nextProductId++,
+                product_name,
+                main_img,
+                sub_img_1,
+                sub_img_2,
+                sub_img_3,
+                sub_img_4,
+                product_details,
+                product_specifications,
+                plans: updatedPlans,
+                duration: updatedDuration,
+                createdby,
+                createddate: now,
+                status
+            });
+        }
+
+        await collection.insertMany(docsToInsert);
+
+        res.status(200).json({
+            status: 'Success',
+            message: 'Product plan(s) added successfully',
+            data: docsToInsert
+        });
+
+    } catch (err) {
+        console.error("Error in AddProductPlans:", err);
+        res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+  
+// FetchProductPlans
+const FetchProductPlans = async (req, res) => {
+    try {
+        const db = await database.connectToDatabase();
+        const collection = db.collection("productplans");
+
+        const plans = await collection.find().toArray();
+
+        return res.status(200).json({ status: 'Success', data: plans });
+
+    } catch (error) {
+        console.error("Error in productplans:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// UpdateProductPlans
+const UpdateProductPlans = async (req, res) => {
+    try {
+        const products = Array.isArray(req.body) ? req.body : JSON.parse(req.body.data || '[]');
+
+        if (!Array.isArray(products) || products.length === 0) {
+            return res.status(400).json({ status: 'Failed', message: 'Invalid or empty product data' });
+        }
+
+        const db = await database.connectToDatabase();
+        const collection = db.collection("productplans");
+
+        for (const product of products) {
+            const {
+                productId,
+                product_name,
+                main_img = "",
+                sub_img_1 = "",
+                sub_img_2 = "",
+                sub_img_3 = "",
+                sub_img_4 = "",
+                product_details,
+                product_specifications = "",
+                plans,
+                duration,
+                modifiedby,
+                status
+            } = product;
+
+            if (
+                !productId ||
+                !product_name ||
+                !plans || !Array.isArray(plans) || plans.length === 0 ||
+                !duration || !Array.isArray(duration) || duration.length === 0 ||
+                !modifiedby ||
+                typeof status !== 'boolean'
+            ) {
+                return res.status(400).json({ status: 'Failed', message: 'Missing or invalid required fields in product' });
+            }
+
+            // Check if productId exists
+            const existingProduct = await collection.findOne({ productId });
+            if (!existingProduct) {
+                return res.status(404).json({
+                    status: 'Failed',
+                    message: `Product with productId ${productId} not found`
+                });
+            }
+
+            // Get highest existing plans_id globally (among all documents)
+            const lastPlanIdDoc = await collection.aggregate([
+                { $unwind: "$plans" },
+                { $project: { plans_id: "$plans.plans_id" } },
+                { $sort: { plans_id: -1 } },
+                { $limit: 1 }
+            ]).toArray();
+            let nextPlansId = lastPlanIdDoc.length > 0 ? lastPlanIdDoc[0].plans_id + 1 : 1;
+
+            // For plans: keep existing plans_id if present, else assign new
+            const updatedPlans = plans.map(p => {
+                if (p.plans_id && Number.isInteger(p.plans_id)) {
+                    return p; // keep existing plans_id
+                } else {
+                    return { ...p, plans_id: nextPlansId++ }; // assign new plans_id
+                }
+            });
+
+            // Get highest existing duration_id globally
+            const lastDurationIdDoc = await collection.aggregate([
+                { $unwind: "$duration" },
+                { $project: { duration_id: "$duration.duration_id" } },
+                { $sort: { duration_id: -1 } },
+                { $limit: 1 }
+            ]).toArray();
+            let nextDurationId = lastDurationIdDoc.length > 0 ? lastDurationIdDoc[0].duration_id + 1 : 1;
+
+            // For durations: keep existing duration_id if present, else assign new
+            const updatedDuration = duration.map(d => {
+                if (d.duration_id && Number.isInteger(d.duration_id)) {
+                    return d; // keep existing duration_id
+                } else {
+                    return { ...d, duration_id: nextDurationId++ }; // assign new duration_id
+                }
+            });
+
+            // Update the product document
+            const now = new Date();
+            await collection.updateOne(
+                { productId },
+                {
+                    $set: {
+                        product_name,
+                        main_img,
+                        sub_img_1,
+                        sub_img_2,
+                        sub_img_3,
+                        sub_img_4,
+                        product_details,
+                        product_specifications,
+                        plans: updatedPlans,
+                        duration: updatedDuration,
+                        modifiedby,
+                        modifieddate: now,
+                        status
+                    }
+                }
+            );
+        }
+
+        res.status(200).json({
+            status: 'Success',
+            message: 'Product plan(s) updated successfully'
+        });
+
+    } catch (error) {
+        console.error("Error in UpdateProductPlans:", error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+  
 // 4.Call Request
 // FetchCallRequest
 const FetchCallRequest = async (req, res) => {
@@ -249,6 +542,7 @@ const FetchCallRequest = async (req, res) => {
         return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
     }
 };
+
 // 5.Contact
 // FetchContact
 const FetchContact = async (req, res) => {
@@ -287,13 +581,13 @@ const FetchOrders = async (req, res) => {
 
 //UpdateOrdersStatus
 const UpdateOrdersStatus = async (req, res) => {
-    const { _id, delivaryStatus, modified_by } = req.body;
+    const { order_id, delivaryStatus, modified_by } = req.body;
 
     // Validate input
-    if (!_id || !delivaryStatus || !modified_by) {
+    if (typeof order_id !== 'number' || !delivaryStatus || !modified_by) {
         return res.status(400).json({
             status: 'Failed',
-            message: 'All fields (_id, delivaryStatus, modified_by) are required'
+            message: 'All fields (order_id, delivaryStatus, modified_by) are required'
         });
     }
 
@@ -302,7 +596,7 @@ const UpdateOrdersStatus = async (req, res) => {
         const collection = db.collection("orders");
 
         const result = await collection.updateOne(
-            { _id: new ObjectId(_id) },
+            { order_id: order_id }, // Use order_id instead of _id
             {
                 $set: {
                     delivaryStatus,
@@ -313,7 +607,10 @@ const UpdateOrdersStatus = async (req, res) => {
         );
 
         if (result.matchedCount === 0) {
-            return res.status(404).json({ status: 'Failed', message: 'Order not found' });
+            return res.status(404).json({
+                status: 'Failed',
+                message: `Order with order_id ${order_id} not found`
+            });
         }
 
         return res.status(200).json({
@@ -331,7 +628,10 @@ const UpdateOrdersStatus = async (req, res) => {
     }
 };
 
+// 7.Manage Models
+
 module.exports = {
     authenticate, FetchAdminProfile, UpdateAdminProfile, AddSubscriptionPlans, FetchSubscriptionPlans, UpdateSubscriptionPlans, FetchCallRequest, FetchContact,
-    FetchOrders, UpdateOrdersStatus
+    FetchOrders, UpdateOrdersStatus,
+    AddProductPlans, FetchProductPlans, UpdateProductPlans,
 };

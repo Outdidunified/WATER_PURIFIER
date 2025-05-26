@@ -30,27 +30,26 @@ const useContact = () => {
             Swal.fire("Invalid Email", "Please enter a valid email address.", "error");
             return;
         }
-        setLoading(ture);
 
         try {
-            const response = await fetch("http://192.168.1.9:5000/api/contact/submitcontact", {
+            const response = await fetch("http://192.168.1.222:5001/api/website/contact/submitcontact", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, email, subject, message }),
             });
 
+            const data = await response.json(); // 🔥 Parse server response
+
             if (response.ok) {
-                Swal.fire("Success", "Your message has been sent.", "success");
+                Swal.fire("Success", data.message || "Your message has been sent.", "success");
                 setFormData({ name: "", email: "", subject: "", message: "" });
             } else {
-                throw new Error("Failed to send message");
+                Swal.fire("Error", data.message || "Something went wrong. Please try again.", "error");
             }
         } catch (error) {
-            Swal.fire("Error", "Something went wrong. Please try again later.", "error");
-        } finally {
-            setLoading(false);
+            Swal.fire("Error", "Server error. Please try again later.", "error");
         }
-    };
+    };    
 
     return { formData, handleChange, handleSubmits, loading };
 };

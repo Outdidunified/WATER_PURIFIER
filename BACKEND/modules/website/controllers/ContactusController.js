@@ -1,41 +1,50 @@
-const { getDB } = require('../../../config/db'); 
+const database = require('../../../config/db');
 
 // Controller for handling contact form submission
 exports.submitContact = async (req, res) => {
-  const { name, phone, city, message } = req.body;
+    const { name, email, subject, message } = req.body;
 
-  if (!name || !phone || !city || !message) {
-    return res.status(400).json({ message: 'All fields are required' });
-  }
+    // Validate all required fields
+    if (!name || !email || !subject || !message) {
+        return res.status(400).json({ message: 'All fields are required' });
+    }
 
-  try {
-    const db = getDB();
-    const contactData = {
-      name,
-      phone,
-      city,
-      message,
-      submittedAt: new Date(),
-    };
+    try {
+        const db = await database.connectToDatabase();
 
-    await db.collection('contactUs').insertOne(contactData);
+        const contactData = {
+            name,
+            email,
+            subject,
+            message,
+            submittedAt: new Date(),
+        };
 
-    return res.status(200).json({ message: 'Contact details submitted successfully' });
-  } catch (error) {
-    console.error('Submit Contact Error:', error);
-    return res.status(500).json({ message: 'Failed to submit contact details', error: error.message });
-  }
+        await db.collection('contactUs').insertOne(contactData);
+
+        return res.status(200).json({
+            message: 'Your details were sent successfully. The ionHive Water Purifier team will call you soon.',
+        });
+    } catch (error) {
+        console.error('Submit Contact Error:', error);
+        return res.status(500).json({
+            message: 'Failed to submit contact details',
+            error: error.message,
+        });
+    }
 };
+
 
 // Controller to fetch all contact submissions for admin
 exports.getAllSubmissions = async (req, res) => {
-  try {
-    const db = getDB();
-    const contactUsEntries = await db.collection('contactUs').find().toArray();
+    try {
+        const db = await database.connectToDatabase();
 
-    return res.status(200).json({ data: contactUsEntries });
-  } catch (error) {
-    console.error('Fetch Contact Submissions Error:', error);
-    return res.status(500).json({ message: 'Failed to fetch contact submissions', error: error.message });
-  }
+        const contactUsEntries = await db.collection('contactUs').find().toArray();
+
+        return res.status(200).json({ data: contactUsEntries });
+    } catch (error) {
+        console.error('Fetch Contact Submissions Error:', error);
+        return res.status(500).json({ message: 'Failed to fetch contact submissions', error: error.message });
+    }
 };
