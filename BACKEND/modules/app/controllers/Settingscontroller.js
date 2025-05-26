@@ -12,7 +12,9 @@ exports.fetchUserDetails = async (req, res) => {
     try {
       const db = await connectToDatabase();
       const usersCollection = db.collection('users');
+      const technicianCollection = db.collection('technician_details');
   
+      // Fetch user from users collection
       const user = await usersCollection.findOne({
         user_id: parseInt(user_id),
         email: email,
@@ -23,6 +25,13 @@ exports.fetchUserDetails = async (req, res) => {
         return res.status(404).json({ error: true, message: 'User not found with provided credentials' });
       }
   
+      let technicianData = null;
+      // If role_id is 2 (technician), fetch technician details
+      if (parseInt(role_id) === 2) {
+        technicianData = await technicianCollection.findOne({ user_id: parseInt(user_id), role_id: 2 });
+      }
+  
+      // Destructure user fields
       const {
         user_id: dbUserId,
         name,
@@ -33,28 +42,40 @@ exports.fetchUserDetails = async (req, res) => {
         issubscribed,
         createdDate
       } = user;
-      
+  
+      // Prepare response data
+      const responseData = {
+        user_id: dbUserId,
+        name,
+        email: dbEmail,
+        phone,
+        city,
+        status,
+        issubscribed,
+        createdDate,
+      };
+  
+      // Append technician data if available
+      if (technicianData) {
+        responseData.technician_info = {
+          technician_code: technicianData.technician_code,
+          total_completed_services: technicianData.total_completed_services || 0,
+          total_incomplete_services: technicianData.total_incomplete_services || 0,
+        };
+      }
   
       res.status(200).json({
         error: false,
         message: 'User details fetched successfully',
-        data: { 
-          user_id: dbUserId,
-          name, 
-          email: dbEmail, 
-          phone, 
-          city, 
-          status, 
-          issubscribed, 
-          createdDate 
-        }
+        data: responseData
       });
-      
+  
     } catch (error) {
       console.error('Fetch user error:', error);
       res.status(500).json({ error: true, message: 'Server error while fetching user details' });
     }
   };
+  
   
   exports.updateUserDetails = async (req, res) => {
     const { user_id, email, role_id, name, phone, city } = req.body;
