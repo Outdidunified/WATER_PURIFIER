@@ -187,6 +187,7 @@ exports.technicianLogin = async (req, res) => {
         user_id: technician.user_id,
         email: technician.email,
         role_id: technician.role_id,
+        technician_id:technician.technician_id,
       },
     };
     console.log("Sending /technicianLogin response:", response);

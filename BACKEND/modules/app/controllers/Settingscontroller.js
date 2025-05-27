@@ -129,3 +129,69 @@ exports.fetchUserDetails = async (req, res) => {
     }
   };
   
+  exports.createServiceRequest = async (req, res) => {
+    const {
+      task_created_by_user_id,
+      task_created_by_user_email,
+      task_type,
+      task_description
+    } = req.body;
+  
+    // Basic validation
+    if (!task_created_by_user_id || !task_created_by_user_email || !task_type || !task_description) {
+      return res.status(400).json({
+        error: true,
+        message: 'task_created_by_user_id, task_created_by_user_email, task_type, and task_description are required',
+      });
+    }
+  
+    try {
+      const db = await connectToDatabase();
+      const serviceRecordsCollection = db.collection('service_records');
+  
+      // Get the latest task_id and increment it
+      const lastTask = await serviceRecordsCollection
+        .find({})
+        .sort({ task_id: -1 })
+        .limit(1)
+        .toArray();
+  
+      const newTaskId = lastTask.length > 0 ? lastTask[0].task_id + 1 : 1;
+  
+      // Create the new task object
+      const newServiceRecord = {
+        task_id: newTaskId,
+        task_status: "Initiated",
+        assigned_technician_id: null,
+        pending_reason: null,
+        created_date: new Date(),
+        modified_by: null,
+        modified_date: null,
+        assigned_date: null,
+        task_type,
+        task_description,
+        image_before_service: [],
+        image_after_service: [],
+        task_created_by_user_id,
+        task_created_by_user_email,
+        otp: null
+      };
+  
+      // Insert into collection
+      await serviceRecordsCollection.insertOne(newServiceRecord);
+  
+      return res.status(201).json({
+        error: false,
+        message: 'Service request created successfully',
+        data: newServiceRecord,
+      });
+  
+    } catch (error) {
+      console.error('Error creating service request:', error);
+      return res.status(500).json({
+        error: true,
+        message: 'Internal server error while creating service request',
+      });
+    }
+  };
+  

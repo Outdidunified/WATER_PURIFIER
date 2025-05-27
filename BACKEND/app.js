@@ -33,6 +33,9 @@ app.use(cors({
 // Middleware: Parse incoming JSON
 app.use(express.json());
 
+// Serve static files from public directory
+app.use(express.static('public'));
+
 // Logger Middleware for Incoming Requests
 app.use((req, res, next) => {
     console.log(`${req.method} request for '${req.url}'`);
