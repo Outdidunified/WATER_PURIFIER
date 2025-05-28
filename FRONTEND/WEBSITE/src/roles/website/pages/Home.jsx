@@ -3,7 +3,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Swal from 'sweetalert2';
 import { Link, useNavigate } from 'react-router-dom';
-
+import img from '../../../../../../upload/img/1748425292453.jpg'
 const Home = ({ userInfo, handleLogout }) => {
     const navigate = useNavigate();
 
@@ -354,7 +354,7 @@ const Home = ({ userInfo, handleLogout }) => {
         } catch (error) {
             Swal.fire("Error", "Server error. Please try again later.", "error");
         }
-    };    
+    };
 
     const indianCities = [
         "Bangalore", "Hyderabad", "Mumbai", "Delhi", "Chennai", "Kolkata", "Pune",
@@ -423,10 +423,11 @@ const Home = ({ userInfo, handleLogout }) => {
         <div>
 
             {/* Header */}
-             <Header userInfo={userInfo} handleLogout={handleLogout} />
+            <Header userInfo={userInfo} handleLogout={handleLogout} />
 
 
             <main className="main">
+                <img src={img} alt="Hero Image" className="img-fluid" style={{ width: '100%', animation: 'float-badge 3s ease-in-out infinite' }} />
 
                 {/* <!-- Hero Section --> */}
                 <section id="hero" className="hero section">
