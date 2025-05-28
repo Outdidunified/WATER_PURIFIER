@@ -133,15 +133,15 @@ exports.fetchUserDetails = async (req, res) => {
     const {
       task_created_by_user_id,
       task_created_by_user_email,
-      task_type,
-      task_description
+      task_description,
+      role_id
     } = req.body;
   
     // Basic validation
-    if (!task_created_by_user_id || !task_created_by_user_email || !task_type || !task_description) {
+    if (!task_created_by_user_id || !task_created_by_user_email || !task_description || !role_id) {
       return res.status(400).json({
         error: true,
-        message: 'task_created_by_user_id, task_created_by_user_email, task_type, and task_description are required',
+        message: 'task_created_by_user_id, task_created_by_user_email, task_description, and role_id are required',
       });
     }
   
@@ -161,19 +161,20 @@ exports.fetchUserDetails = async (req, res) => {
       // Create the new task object
       const newServiceRecord = {
         task_id: newTaskId,
-        task_status: "Initiated",
+        task_status: "Initiated",               // Always "Initiated"
+        task_type: 2,                           // Always integer 2
         assigned_technician_id: null,
         pending_reason: null,
         created_date: new Date(),
         modified_by: null,
         modified_date: null,
         assigned_date: null,
-        task_type,
         task_description,
         image_before_service: [],
         image_after_service: [],
         task_created_by_user_id,
         task_created_by_user_email,
+        role_id,                                // Added role_id
         otp: null
       };
   
