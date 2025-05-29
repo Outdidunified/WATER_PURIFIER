@@ -69,7 +69,7 @@ const Header = ({ userInfo, handleLogout }) => {
 
     return (
         <header className="header d-flex align-items-center fixed-top">
-            <div className="container-fluid container-xl d-flex align-items-center justify-content-between">
+            <div className="container-fluid container-xl d-flex align-items-center justify-content-between" style={{backgroundColor:'white', borderRadius:'50px'}}>
 
                 {/* Logo and site name */}
                 <Link to="/" className="logo d-flex align-items-center me-auto me-xl-0" onClick={closeMobileNav}>

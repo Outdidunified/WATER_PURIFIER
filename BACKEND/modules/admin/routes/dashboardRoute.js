@@ -107,7 +107,13 @@ router.post('/ReAssignInstallation', verifyToken, Controller.ReAssignInstallatio
 // Route to FetchSelectInstallationTask
 router.post('/FetchSelectInstallationTask', verifyToken, Controller.FetchSelectInstallationTask);
 
-//  Route to FetchSelectServiceTask
+// Route to FetchSelectServiceTask
 router.post('/FetchSelectServiceTask', verifyToken, Controller.FetchSelectServiceTask);
+
+// Route to AssignService
+router.post('/AssignService', verifyToken, Controller.AssignService);
+
+// Route to ReAssignService
+router.post('/ReAssignService', verifyToken, Controller.ReAssignService);
 
 module.exports = router;
