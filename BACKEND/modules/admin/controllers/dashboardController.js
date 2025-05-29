@@ -338,24 +338,38 @@ const UpdateProductModels = async (req, res) => {
         const collection = db.collection('product_models');
 
         for (const product of productModels) {
-            const {
+            let {
                 model_id,
                 model_name,
                 wp_device_quantity,
                 product_details,
                 modifiedby,
-                status
+                status: rawStatus
             } = product;
+
+            // ✅ Convert model_id to number
+            model_id = Number(model_id);
+
+            if (isNaN(model_id)) {
+                return res.status(400).json({ status: 'Failed', message: 'Invalid model_id format' });
+            }
+
+            // Convert status from string to boolean if needed
+            let status;
+            if (typeof rawStatus === 'boolean') {
+                status = rawStatus;
+            } else if (typeof rawStatus === 'string') {
+                status = rawStatus.toLowerCase() === 'true';
+            } else {
+                status = false; // fallback
+            }
 
             const plans = parseArray(product.plans);
             const duration = parseArray(product.duration);
 
+            // Validation
             if (
-                !model_id ||
-                !model_name ||
-                !plans.length || !duration.length ||
-                !modifiedby ||
-                typeof status !== 'boolean'
+                !model_id || !model_name || !plans.length || !duration.length || !modifiedby || typeof status !== 'boolean'
             ) {
                 return res.status(400).json({ status: 'Failed', message: 'Missing or invalid required fields in product' });
             }
@@ -396,8 +410,9 @@ const UpdateProductModels = async (req, res) => {
 
             const now = new Date();
 
-            await collection.updateOne(
-                { model_id },
+            // ✅ Update with correct model_id type
+            const result = await collection.updateOne(
+                { model_id: model_id },
                 {
                     $set: {
                         model_name,
@@ -417,6 +432,10 @@ const UpdateProductModels = async (req, res) => {
                     }
                 }
             );
+
+            if (result.matchedCount === 0) {
+                console.warn(`No document matched for model_id: ${model_id}`);
+            }
         }
 
         res.status(200).json({ status: 'Success', message: 'Product Model(s) updated successfully' });
@@ -426,6 +445,8 @@ const UpdateProductModels = async (req, res) => {
         res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
     }
 };
+
+
 
 // const UpdateProductModels = async (req, res) => {
 //     try {
