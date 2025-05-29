@@ -15,6 +15,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const websiteRoutes = require('./routes/websiteRoutes');
 const appRoutes = require('./routes/appRoutes');
 
+const path = require('path');
 
 // Initialize Express App
 const app = express();
@@ -34,7 +35,7 @@ app.use(cors({
 app.use(express.json());
 
 // Serve static files from public directory
-app.use(express.static('public'));
+app.use('/upload', cors(), express.static(path.join(__dirname, '..', 'upload')));
 
 // Logger Middleware for Incoming Requests
 app.use((req, res, next) => {
