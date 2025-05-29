@@ -451,19 +451,21 @@ const AddDeviceDetails = async (req, res) => {
         if (!deviceData.length || !deviceData[0].wp_device_id) {
             return res.status(400).json({
                 status: 'Failed',
-                message: 'Invalid or empty device data'
+                message: 'Invalid or empty device data',
             });
         }
 
         const db = await database.connectToDatabase();
-        const deviceCollection = db.collection("device_details");
-        const modelCollection = db.collection("product_models");
+        const deviceCollection = db.collection('device_details');
+        const modelCollection = db.collection('product_models');
 
         const docsToInsert = [];
 
         for (const device of deviceData) {
             // Check if device ID already exists
-            const existingDevice = await deviceCollection.findOne({ wp_device_id: device.wp_device_id });
+            const existingDevice = await deviceCollection.findOne({
+                wp_device_id: device.wp_device_id,
+            });
             if (existingDevice) {
                 return res.status(400).json({
                     success: false,
@@ -471,55 +473,65 @@ const AddDeviceDetails = async (req, res) => {
                 });
             }
 
-            // Check if model_id exists and has wp_device_quantity > 0
+            // Fetch model and validate wp_device_quantity
             const model = await modelCollection.findOne({ model_id: device.model_id });
             if (!model) {
                 return res.status(400).json({
                     status: 'Failed',
-                    message: `Model ID '${device.model_id}' does not exist.`
+                    message: `Model ID '${device.model_id}' does not exist.`,
                 });
             }
 
-            if (model.wp_device_quantity < 1) {
+            // Convert wp_device_quantity string to number
+            let quantity = Number(model.wp_device_quantity);
+            if (isNaN(quantity)) {
+                return res.status(500).json({
+                    status: 'Failed',
+                    message: `Model ID '${device.model_id}' has invalid wp_device_quantity value.`,
+                });
+            }
+
+            if (quantity < 1) {
                 return res.status(400).json({
                     status: 'Failed',
-                    message: `Model ID '${device.model_id}' has no available quantity (wp_device_quantity < 1).`
+                    message: `Model ID '${device.model_id}' has no available quantity.`,
                 });
             }
 
+            // Prepare device document
             const now = new Date();
             docsToInsert.push({
                 ...device,
                 createddate: now,
                 model_assigned_date: now,
-                status: true
+                status: true,
             });
 
-            // Decrease wp_device_quantity by 1
+            // Manually decrement wp_device_quantity and update as string
+            quantity = quantity - 1;
             await modelCollection.updateOne(
                 { model_id: device.model_id },
-                { $inc: { wp_device_quantity: -1 } }
+                { $set: { wp_device_quantity: quantity.toString() } }
             );
         }
 
         // Insert all new devices
         await deviceCollection.insertMany(docsToInsert);
 
-        res.status(200).json({
+        return res.status(200).json({
             status: 'Success',
             message: 'Device Detail(s) added successfully',
-            data: docsToInsert
+            data: docsToInsert,
         });
-
     } catch (err) {
-        console.error("Error in AddDeviceDetails:", err);
-        res.status(500).json({
+        console.error('Error in AddDeviceDetails:', err);
+        return res.status(500).json({
             status: 'Failed',
-            message: 'Internal Server Error'
+            message: 'Internal Server Error',
         });
     }
 };
-
+  
 // FetchDeviceDetails
 const FetchDeviceDetails = async (req, res) => {
     try {
