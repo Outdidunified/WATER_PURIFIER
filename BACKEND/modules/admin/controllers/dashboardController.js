@@ -347,7 +347,6 @@ const UpdateProductModels = async (req, res) => {
                 status: rawStatus
             } = product;
 
-            // ✅ Convert model_id to number
             model_id = Number(model_id);
 
             if (isNaN(model_id)) {
@@ -382,7 +381,6 @@ const UpdateProductModels = async (req, res) => {
             const sub_img_4 = req.files?.['sub_img_4']?.[0]?.filename || product.sub_img_4 || '';
             const product_specifications = req.files?.['spec_pdf']?.[0]?.filename || product.product_specifications || '';
 
-            // Plan ID assignment
             const lastPlanIdDoc = await collection.aggregate([
                 { $unwind: '$plans' },
                 { $sort: { 'plans.plans_id': -1 } },
@@ -395,7 +393,6 @@ const UpdateProductModels = async (req, res) => {
                 p.plans_id && Number.isInteger(p.plans_id) ? p : { ...p, plans_id: nextPlansId++ }
             );
 
-            // Duration ID assignment
             const lastDurationIdDoc = await collection.aggregate([
                 { $unwind: '$duration' },
                 { $sort: { 'duration.duration_id': -1 } },
@@ -410,7 +407,6 @@ const UpdateProductModels = async (req, res) => {
 
             const now = new Date();
 
-            // ✅ Update with correct model_id type
             const result = await collection.updateOne(
                 { model_id: model_id },
                 {
