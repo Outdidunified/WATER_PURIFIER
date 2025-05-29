@@ -40,8 +40,6 @@ const WebsiteRoutes = () => {
 
 
     const handleLogout = () => {
-        alert('Logout clicked')
-
         sessionStorage.removeItem("WebUser");
         sessionStorage.removeItem("WebToken");
         setUserInfo(null);
