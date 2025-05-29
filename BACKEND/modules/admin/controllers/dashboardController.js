@@ -442,115 +442,6 @@ const UpdateProductModels = async (req, res) => {
     }
 };
 
-
-
-// const UpdateProductModels = async (req, res) => {
-//     try {
-//         // Support both single object and array input
-//         let productModels;
-
-//         if (typeof req.body === 'object' && !Array.isArray(req.body)) {
-//             productModels = [req.body]; // wrap single object
-//         } else if (typeof req.body.data === 'string') {
-//             const parsed = JSON.parse(req.body.data);
-//             productModels = Array.isArray(parsed) ? parsed : [parsed];
-//         } else {
-//             return res.status(400).json({ status: 'Failed', message: 'Invalid or empty product data' });
-//         }
-
-//         const db = await database.connectToDatabase();
-//         const collection = db.collection('product_models');
-
-//         for (const product of productModels) {
-//             const {
-//                 model_id,
-//                 model_name,
-//                 wp_device_quantity,
-//                 product_details,
-//                 plans,
-//                 duration,
-//                 modifiedby,
-//                 status
-//             } = product;
-
-//             if (
-//                 !model_id ||
-//                 !model_name ||
-//                 !plans || !Array.isArray(plans) || plans.length === 0 ||
-//                 !duration || !Array.isArray(duration) || duration.length === 0 ||
-//                 !modifiedby ||
-//                 typeof status !== 'boolean'
-//             ) {
-//                 return res.status(400).json({ status: 'Failed', message: 'Missing or invalid required fields in product' });
-//             }
-
-//             // Extract uploaded file names or fallback to existing
-//             const main_img = req.files?.['main_img']?.[0]?.filename || product.main_img || '';
-//             const sub_img_1 = req.files?.['sub_img_1']?.[0]?.filename || product.sub_img_1 || '';
-//             const sub_img_2 = req.files?.['sub_img_2']?.[0]?.filename || product.sub_img_2 || '';
-//             const sub_img_3 = req.files?.['sub_img_3']?.[0]?.filename || product.sub_img_3 || '';
-//             const sub_img_4 = req.files?.['sub_img_4']?.[0]?.filename || product.sub_img_4 || '';
-//             const product_specifications = req.files?.['product_specifications']?.[0]?.filename || product.product_specifications || '';
-
-//             // Plan ID assignment
-//             const lastPlanIdDoc = await collection.aggregate([
-//                 { $unwind: '$plans' },
-//                 { $sort: { 'plans.plans_id': -1 } },
-//                 { $limit: 1 },
-//                 { $project: { _id: 0, plans_id: '$plans.plans_id' } }
-//             ]).toArray();
-//             let nextPlansId = lastPlanIdDoc.length > 0 ? lastPlanIdDoc[0].plans_id + 1 : 1;
-
-//             const updatedPlans = plans.map(p =>
-//                 p.plans_id && Number.isInteger(p.plans_id) ? p : { ...p, plans_id: nextPlansId++ }
-//             );
-
-//             // Duration ID assignment
-//             const lastDurationIdDoc = await collection.aggregate([
-//                 { $unwind: '$duration' },
-//                 { $sort: { 'duration.duration_id': -1 } },
-//                 { $limit: 1 },
-//                 { $project: { _id: 0, duration_id: '$duration.duration_id' } }
-//             ]).toArray();
-//             let nextDurationId = lastDurationIdDoc.length > 0 ? lastDurationIdDoc[0].duration_id + 1 : 1;
-
-//             const updatedDuration = duration.map(d =>
-//                 d.duration_id && Number.isInteger(d.duration_id) ? d : { ...d, duration_id: nextDurationId++ }
-//             );
-
-//             const now = new Date();
-
-//             await collection.updateOne(
-//                 { model_id },
-//                 {
-//                     $set: {
-//                         model_name,
-//                         main_img,
-//                         sub_img_1,
-//                         sub_img_2,
-//                         sub_img_3,
-//                         sub_img_4,
-//                         wp_device_quantity,
-//                         product_details,
-//                         product_specifications,
-//                         plans: updatedPlans,
-//                         duration: updatedDuration,
-//                         modifiedby,
-//                         modifieddate: now,
-//                         status
-//                     }
-//                 }
-//             );
-//         }
-
-//         res.status(200).json({ status: 'Success', message: 'Product Model(s) updated successfully' });
-
-//     } catch (error) {
-//         console.error('Error in UpdateProductModels:', error);
-//         res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
-//     }
-// };
-  
 // 4. Device Details
 // AddDeviceDetails controller
 const AddDeviceDetails = async (req, res) => {
@@ -1202,8 +1093,7 @@ const FetchSelectUserOrders = async (req, res) => {
 };
 
 // Send OTP email
-async function sendOrderConfirmationEmail(email, otd) {
-    console.log(email, otd)
+async function sendAssignInstallationEmail(email, otd) {
     try {
         const subject = 'Installation OTP - IonHive Water Purifier';
         const text = `Hi IonHive water purifier user,
@@ -1344,7 +1234,7 @@ const AssignInstallation = async (req, res) => {
         );
 
         // Send OTP email
-        await sendOrderConfirmationEmail(orderUser.email, otp);
+        await sendAssignInstallationEmail(orderUser.email, otp);
 
         // Final response
         return res.status(200).json({
@@ -1474,9 +1364,220 @@ const FetchSelectServiceTask = async (req, res) => {
     }
 };
 
+// Send OTP email
+async function sendEmailService(to, subject, text, html) {
+    try {
+        const info = await transporter.sendMail({
+            from: `IonHive Water Purifier <kesavan@outdidtech.com>`,
+            to,
+            subject,
+            text,
+            html,
+        });
+        console.log('Message sent: %s', info.messageId);
+        return true;
+    } catch (error) {
+        console.error('Error sending email:', error);
+        return false;
+    }
+}
+
+// Send OTP email
+async function sendAssignServiceEmail(task_created_by_user_email, otd) {
+    console.log(task_created_by_user_email, otd)
+    try {
+        const subject = 'Service OTP - IonHive Water Purifier';
+        const text = `Hi IonHive water purifier user,
+
+        Your service OTP is: ${otd}
+
+        Once your IonHive device is installed by our technician, please share this OTP with them to complete the installation process.
+
+        Thank you for choosing IonHive!`;
+
+        const html = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
+                <h2 style="color: #333;">Hi IonHive Water Purifier User,</h2>
+                <p style="font-size: 16px; color: #555;">
+                    Your service OTP is: <strong style="color: #000;">${otd}</strong>
+                </p>
+                <p style="font-size: 16px; color: #555;">
+                    Once our service technician completes your setup, they will request this OTP from you to verify successful service.
+                </p>
+                <p style="color: #555;">Thank you for choosing <strong>IonHive</strong>!</p>
+                <p style="font-size: 14px; color: #888; text-align: center; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px;">
+                    This is an automated message from IonHive Water Purifier.
+                </p>
+            </div>
+        `;
+
+        await sendEmailService(task_created_by_user_email, subject, text, html); // fixed argument
+    } catch (error) {
+        console.error('Error in sendAssignServiceEmail:', error); // fixed error label
+        return false;
+    }
+}
+
+// AssignService
+const AssignService = async (req, res) => {
+    try {
+        const db = await database.connectToDatabase();
+        const serviceRecords = db.collection("service_records");
+        const usersCollection = db.collection("users");
+        const technicianDetailsCollection = db.collection("technician_details");
+
+        const {
+            task_id,
+            assigned_technician_id,
+            task_created_by_user_email,
+            assigned_by
+        } = req.body;
+
+        if (!task_id || !task_created_by_user_email || !assigned_technician_id || !assigned_by) {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Invalid or missing required fields',
+            });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000);
+        const now = new Date();
+
+        // Find technician user in `users` collection
+        const technicianUser = await usersCollection.findOne({ technician_id: assigned_technician_id });
+
+        if (!technicianUser) {
+            return res.status(404).json({
+                status: 'Failed',
+                message: 'Technician not found in users',
+            });
+        }
+
+        const { user_id, role_id, email } = technicianUser;
+
+        // Update the existing task by task_id
+        const updateResult = await serviceRecords.updateOne(
+            { task_id: task_id },
+            {
+                $set: {
+                    task_status: "Pending",
+                    assigned_technician_id,
+                    assigned_date: now,
+                    otd: otp,
+                    assigned_by,
+                    modified_by: assigned_by,
+                    modified_date: now
+                }
+            }
+        );
+
+        if (updateResult.matchedCount === 0) {
+            return res.status(404).json({
+                status: 'Failed',
+                message: 'Task not found with given task_id',
+            });
+        }
+
+        // Update or insert technician details
+        await technicianDetailsCollection.updateOne(
+            { technician_id: assigned_technician_id },
+            {
+                $set: {
+                    user_id,
+                    role_id,
+                    email,
+                    technician_id: assigned_technician_id,
+                    status: true
+                },
+                $inc: { total_assigned_services: 1 }
+            },
+            { upsert: true }
+        );
+
+        // Send OTP to the user who created the task
+        await sendAssignServiceEmail(task_created_by_user_email, otp);
+
+        // Respond
+        return res.status(200).json({
+            status: 'Success',
+            message: 'Service task updated and OTP sent to user',
+            task_id,
+            assigned_technician_id,
+            otd: otp
+        });
+
+    } catch (err) {
+        console.error("Error in AssignService:", err);
+        return res.status(500).json({
+            status: 'Failed',
+            message: 'Internal Server Error',
+        });
+    }
+};
+
+// ReAssignService
+const ReAssignService = async (req, res) => {
+    try {
+        const db = await database.connectToDatabase();
+        const serviceRecords = db.collection("service_records");
+
+        const { task_id, technician_id, modified_by } = req.body;
+
+        // Basic validation
+        if (!task_id || !technician_id || !modified_by) {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Invalid or missing required fields',
+            });
+        }
+
+        // Check if the task exists
+        const existingTask = await serviceRecords.findOne({ task_id });
+
+        if (!existingTask) {
+            return res.status(404).json({
+                status: 'Failed',
+                message: `Task with task_id ${task_id} not found.`,
+            });
+        }
+
+        // Update the record
+        const now = new Date();
+        const updateResult = await serviceRecords.updateOne(
+            { task_id },
+            {
+                $set: {
+                    assigned_technician_id: technician_id,
+                    modified_by,
+                    modified_date: now
+                }
+            }
+        );
+
+        if (updateResult.modifiedCount === 1) {
+            return res.status(200).json({
+                status: 'Success',
+                message: `Service task ${task_id} reassigned successfully.`,
+            });
+        } else {
+            return res.status(500).json({
+                status: 'Failed',
+                message: 'Task update failed. Please try again.',
+            });
+        }
+
+    } catch (err) {
+        console.error("Error in ReAssignInstallation:", err);
+        return res.status(500).json({
+            status: 'Failed',
+            message: 'Internal Server Error',
+        });
+    }
+};
+
 module.exports = {
     authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
     UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders, UpdateOrdersStatus, AddUserRoles, FetchUserRoles, UpdateUserRoles,
     AddUsers, FetchUsers, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
-    FetchSelectServiceTask
+    FetchSelectServiceTask, AssignService, ReAssignService
 };
