@@ -6,6 +6,6 @@ router.post('/register', auth.register);
 router.post('/email', auth.loginWithEmail);
 router.post('/send-otp', auth.sendOtp);
 router.post('/verify-otp', auth.verifyOtp);
-router.post('/verifyOtpforLogin',auth.verifyOtpforLogin)
+// router.post('/verifyOtpforLogin',auth.verifyOtpforLogin)
 
 module.exports = router;
