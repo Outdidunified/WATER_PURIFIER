@@ -1,95 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Swal from 'sweetalert2';
 import { Link, useNavigate } from 'react-router-dom';
-import img from '../../../../../../upload/img/1748425292453.jpg'
+import axios from 'axios';
+
 const Home = ({ userInfo, handleLogout }) => {
     const navigate = useNavigate();
 
-    const productConfigs = {
-        1: {
-            name: "ionHive Copper",
-            plans: {
-                SOLO: { liters: "130 ltrs/m", base: 449 },
-                COUPLE: { liters: "200 ltrs/m", base: 549 },
-                FAMILY: { liters: "500 ltrs/m", base: 749 },
-                UNLIMITED: { liters: "Unlimited/m", base: 999 },
-            },
-            discounts: {
-                28: { label: "28 days", discount: 0 },
-                90: { label: "90 days", discount: 10 },
-                360: { label: "360 days", discount: 20 },
-            },
-            thumbnails: [
-                "assets/img/copper_purifier.webp",
-                "assets/img/uv_purification.webp",
-                "assets/img/copper_filter.webp",
-                "assets/img/multistage_purification.webp",
-                "assets/img/wall_mount.webp",
-            ],
-            defaultImage: "assets/img/copper_purifier.webp",
-            defaultUsage: "SOLO"
-        },
-        2: {
-            name: "ionHive RO+",
-            plans: {
-                BASIC: { liters: "250 ltrs/m", base: 449 },
-                UNLIMITED: { liters: "Unlimited/m", base: 999 },
-            },
-            discounts: {
-                28: { label: "28 days", discount: 0 },
-                360: { label: "360 days", discount: 20 },
-            },
-            thumbnails: [
-                "assets/img/ro+_water_purifier.webp",
-                "assets/img/ro_membrane.webp",
-                "assets/img/multistage_purification.webp",
-                "assets/img/dual_cartridge.webp",
-                "assets/img/wall_mount.webp",
-            ],
-            defaultImage: "assets/img/ro+_water_purifier.webp",
-            defaultUsage: "BASIC"
-        },
-        3: {
-            name: "ionHive Alkaline",
-            plans: {
-                STANDARD: { liters: "250 ltrs/m", base: 449 },
-                UNLIMITED: { liters: "Unlimited/m", base: 999 },
-            },
-            discounts: {
-                28: { label: "28 days", discount: 0 },
-                360: { label: "360 days", discount: 20 },
-            },
-            thumbnails: [
-                "assets/img/alkaline_water_purifier.webp",
-                "assets/img/alkaline_boost.webp",
-                "assets/img/multistage_purification.webp",
-                "assets/img/alkaline_cartridge.webp",
-                "assets/img/capacity.webp",
-            ],
-            defaultImage: "assets/img/alkaline_water_purifier.webp",
-            defaultUsage: "STANDARD"
-        }
-    };
+    const [products, setProducts] = useState([]);
+    const [selectedModelIndex, setSelectedModelIndex] = useState(0);
+    const [selectedPlanIndex, setSelectedPlanIndex] = useState(0);
+    const [selectedDurationIndex, setSelectedDurationIndex] = useState(0);
 
-    const [selectedTab, setSelectedTab] = useState(1); // 1 = Copper
-    const [usage, setUsage] = useState(productConfigs[1].defaultUsage);
-    const [tenure, setTenure] = useState(28);
-    const [mainImage, setMainImage] = useState(productConfigs[1].defaultImage);
+    const [loading, setLoading] = useState(true); // optional for loading UI
+    const [error, setError] = useState(null);     // optional for error handling
 
-    const handleTabChange = (tabId) => {
-        setSelectedTab(tabId);
-        setUsage(productConfigs[tabId].defaultUsage);
-        setTenure(28);
-        setMainImage(productConfigs[tabId].defaultImage);
-    };
+    console.log(products, 'products...')
+    console.log(loading, 'loading...')
+    console.log(error, 'error...')
 
-    const currentConfig = productConfigs[selectedTab];
-    const basePrice = currentConfig.plans[usage]?.base || 0;
-    const discount = currentConfig.discounts[tenure]?.discount || 0;
-    const finalPrice = basePrice - (basePrice * discount) / 100;
-    const savings = (basePrice * discount) / 100;
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const response = await axios.get('/api/api/website/products/productswithplan');
+                const productArray = response.data?.data || [];
+                setProducts(productArray);
+            } catch (err) {
+                setError(err.message || 'Something went wrong');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchProducts();
+    }, []);
 
     {/* Sub model */ }
     const [showModal, setShowModal] = useState(false);
@@ -116,22 +60,20 @@ const Home = ({ userInfo, handleLogout }) => {
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
     const [emailID, setEmailID] = useState("");
+    const [addressLine1, setAddressLine1] = useState("");
+    const [addressLine2, setAddressLine2] = useState("");
     const [city, setCity] = useState("Bangalore");
+    const [pincode, setPincode] = useState("");
+
     const [subLoading, setSubLoading] = useState(false);
 
     const RAZORPAY_KEY = "rzp_test_oHoZ3Q1fF6pYEI";
-
-
-    const gst = parseFloat((finalPrice * 0.18).toFixed(2));
-    const totalPrice = parseFloat((finalPrice * 1.18).toFixed(2));
-    const months = Math.ceil(tenure / 30); // approximate month count from days
-    const durationTotalPrice = parseFloat((months * totalPrice).toFixed(2));
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         const phoneRegex = /^[1-9][0-9]{9}$/;
-        const emailRegex = /^[a-zA-Z0-9]+@[a-zA-Z0-9]+\.[a-zA-Z]{2,}$/;
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
         if (!phoneRegex.test(phone)) {
             Swal.fire({
@@ -151,27 +93,64 @@ const Home = ({ userInfo, handleLogout }) => {
             return;
         }
 
+        const selectedProduct = products[selectedModelIndex];
+        const selectedPlan = selectedProduct?.plans[selectedPlanIndex];
+        const selectedDuration = selectedProduct?.duration[selectedDurationIndex];
+
+        if (!selectedProduct || !selectedPlan || !selectedDuration) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Selection Missing',
+                text: 'Please make sure a model, plan, and duration are selected.'
+            });
+            return;
+        }
+
         setSubLoading(true);
 
-        const payload = {
-            name,
-            phone: parseInt(phone),
-            emailID,
-            city,
-            selectedProduct: currentConfig.name,
-            planType: usage,
-            tenure: `${tenure} days`, // in days
-            basePrice,
-            discountPercentage: discount,
-            discountedPrice: finalPrice,
-            savings,
-            gst,
-            totalPrice,
-            durationTotalPrice
-        };
-
         try {
-            const res = await fetch("http://192.168.1.222:5001/api/website/subscription-plans/addplan", {
+            // Calculations
+            const baseMonthlyPrice = selectedPlan?.price || 0;
+            const gstRate = selectedDuration?.gst || 0;
+            const discount = selectedDuration?.discount || 0;
+
+            const gstAmount = (baseMonthlyPrice * gstRate) / 100;
+            const priceWithGST = baseMonthlyPrice + gstAmount;
+            const discountAmount = (priceWithGST * discount) / 100;
+            const finalMonthlyPrice = priceWithGST - discountAmount;
+
+            const durationTimeString = selectedDuration?.duration_time_limit || "0";
+            const durationDays = parseInt(durationTimeString.replace(/[^\d]/g, ""), 10) || 0;
+            const perDayPrice = finalMonthlyPrice / 28;
+            const selectedPlanId = selectedPlan?.id || selectedPlan?.plans_id || selectedPlan?._id || 0;
+
+            // const grandTotal = parseFloat((perDayPrice * durationDays).toFixed(2));
+            const grandTotal = parseFloat((perDayPrice * durationDays).toFixed(2));
+            const securityDeposit = !userInfo?.security_deposit ? selectedDuration?.security_deposit || 0 : 0;
+            const grandTotalWithDeposit = parseFloat((grandTotal + securityDeposit).toFixed(2));
+
+            const payload = {
+                productModelId: selectedProduct._id,
+                selectedPlanId: selectedPlanId,
+                selectedDurationId: selectedDuration.duration_id,
+                priceWithGST: parseFloat(priceWithGST.toFixed(2)),
+                gstAmount: parseFloat(gstAmount.toFixed(2)),
+                discountAmount: parseFloat(discountAmount.toFixed(2)),
+                finalMonthlyPrice: parseFloat(finalMonthlyPrice.toFixed(2)),
+                grandTotal: grandTotalWithDeposit,
+                securityDeposit,
+                deliveryAddress: {
+                    name,
+                    phone: parseInt(phone),
+                    addressLine1, 
+                    addressLine2,
+                    pincode: parseInt(pincode),
+                    city,
+                    // pincode   
+                }
+            };
+
+            const res = await fetch("/api/api/website/orders/orderplace", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
@@ -182,23 +161,22 @@ const Home = ({ userInfo, handleLogout }) => {
             if (!res.ok || !data.razorpayOrderId) {
                 Swal.fire({
                     icon: "error",
-                    title: "Submission Failed",
-                    text: data.message || "Server did not respond properly.",
+                    title: "Order Placement Failed",
+                    text: data.message || "Could not place order.",
                 });
                 return;
             }
 
             const options = {
                 key: RAZORPAY_KEY,
-                amount: durationTotalPrice * 100, // in paisa
+                amount: grandTotalWithDeposit * 100,
                 currency: "INR",
                 name: "Subscription Payment",
-                description: `Plan for ${months} month(s)`,
+                description: `Subscription for ${durationDays} days`,
                 image: "/assets/img/ionHive.png",
                 order_id: data.razorpayOrderId,
                 handler: async function (response) {
-                    // Verify payment
-                    const verifyRes = await fetch("http://192.168.1.222:5001/api/website/subscription-plans/verifyPayment", {
+                    const verifyRes = await fetch("/api/api/orders/orderverify", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
@@ -214,22 +192,25 @@ const Home = ({ userInfo, handleLogout }) => {
                         Swal.fire({
                             icon: "success",
                             title: "Payment Successful",
-                            text: "Your subscription is now active!",
+                            text: "Subscription activated!",
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
                             setShowModal(false);
                             setName("");
                             setPhone("");
+                            setAddressLine1("");
+                            setAddressLine2("");
+                            setPincode("");
                             setEmailID("");
-                            setCity("Bangalore");
-                            window.location.href = "/"; // Go to homepage
+                            setCity("");
+                            window.location.href = "/";
                         });
                     } else {
                         Swal.fire({
                             icon: "error",
-                            title: "Payment Verification Failed",
-                            text: "Please contact support.",
+                            title: "Verification Failed",
+                            text: "Contact support.",
                         });
                     }
                 },
@@ -241,37 +222,54 @@ const Home = ({ userInfo, handleLogout }) => {
                 theme: { color: "#3399cc" },
                 modal: {
                     ondismiss: async () => {
-                        await fetch("http://192.168.1.222:5001/api/website/subscription-plans/addplan", {
+                        await fetch("/api/api/website/orders/orderplace", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                                 reason: "User cancelled the payment",
-                                orderId: data.orderId || "", // optional: if your backend returns orderId
+                                orderId: data.orderId || "",
                             }),
                         });
 
                         Swal.fire({
                             icon: "warning",
                             title: "Payment Cancelled",
-                            text: "You cancelled the payment. Try again if needed.",
+                            text: "You cancelled the payment.",
                         });
                     },
                 },
             };
 
-            const razorpayInstance = new window.Razorpay(options);
-            razorpayInstance.open();
+            const rzpInstance = new window.Razorpay(options);
+            rzpInstance.open();
+
         } catch (error) {
             console.error("Subscription Error:", error);
             Swal.fire({
                 icon: "error",
                 title: "Error",
-                text: "Something went wrong. Please try again later.",
+                text: "Something went wrong.",
             });
         } finally {
             setSubLoading(false);
         }
     };
+
+    // if (!window.Razorpay) {
+    //     Swal.fire({
+    //         icon: "error",
+    //         title: "Payment Error",
+    //         text: "Razorpay SDK not loaded. Please refresh and try again.",
+    //     });
+    //     return;
+    // }
+    
+    const [mainImage, setMainImage] = useState("");
+    useEffect(() => {
+        if (products[selectedModelIndex]) {
+            setMainImage(products[selectedModelIndex].main_img);
+        }
+    }, [selectedModelIndex, products]);
 
     // Set the first item (index 0) as default open
     const [activeIndex, setActiveIndex] = useState(0);
@@ -337,7 +335,7 @@ const Home = ({ userInfo, handleLogout }) => {
         }
 
         try {
-            const response = await fetch("http://192.168.1.222:5001/api/website/contact/submitcontact", {
+            const response = await fetch("/api/api/website/contact/submitcontact", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, email, subject, message }),
@@ -396,7 +394,7 @@ const Home = ({ userInfo, handleLogout }) => {
 
         try {
             const response = await fetch(
-                "http://192.168.1.222:5001/api/website/callRequest",
+                "/api/api/website/callRequest",
                 {
                     method: "POST",
                     headers: {
@@ -427,7 +425,6 @@ const Home = ({ userInfo, handleLogout }) => {
 
 
             <main className="main">
-                <img src={img} alt="Hero Image" className="img-fluid" style={{ width: '100%', animation: 'float-badge 3s ease-in-out infinite' }} />
 
                 {/* <!-- Hero Section --> */}
                 <section id="hero" className="hero section">
@@ -589,7 +586,7 @@ const Home = ({ userInfo, handleLogout }) => {
                 {/* <!-- /About Section --> */}
 
                 {/* <!-- Features Section --> */}
-                <section id="features" className="features section">
+                <section id="hero" className="features section">
 
                     {/* <!-- Section Title --> */}
                     <div className="container section-title" data-aos="fade-up">
@@ -598,154 +595,240 @@ const Home = ({ userInfo, handleLogout }) => {
                     </div>
                     {/* <!-- End Section Title --> */}
 
+                    {products.length > 0 ? (
+                        <div className="container">
+
+                            {/* === Model Tabs === */}
+                            <div className="d-flex justify-content-center">
+                                <ul className="nav nav-tabs">
+                                    {products.map((product, index) => (
+                                        <li key={product._id} className="nav-item">
+                                            <button
+                                                className={`nav-link ${selectedModelIndex === index ? 'active' : ''}`}
+                                                onClick={() => {
+                                                    setSelectedModelIndex(index);
+                                                    setSelectedPlanIndex(0);
+                                                    setSelectedDurationIndex(0);
+                                                }}
+                                            >
+                                                <h4>{product.model_name}</h4>
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            {/* === Main Product Display === */}
+                            <div className="tab-content">
+                                <div className="tab-pane fade active show" style={{ padding: '20px' }}>
+                                    <div className="container" data-aos="fade-up" >
+
+                                        <div className="row gy-4">
+
+                                            <div className="col-lg-3 col-md-6">
+                                                <div className="stats-item text-center w-100 h-100">
+                                                    <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Multistage Universal Water purifier</p>
+                                                </div>
+                                            </div>
+                                            {/* <!-- End Stats Item --> */}
+
+                                            <div className="col-lg-3 col-md-6">
+                                                <div className="stats-item text-center w-100 h-100">
+                                                    <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Goodness of copper</p>
+                                                </div>
+                                            </div>
+                                            {/* <!-- End Stats Item --> */}
+
+                                            <div className="col-lg-3 col-md-6">
+                                                <div className="stats-item text-center w-100 h-100">
+                                                    <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> RO Purification</p>
+                                                </div>
+                                            </div>
+                                            {/* <!-- End Stats Item --> */}
+
+                                            <div className="col-lg-3 col-md-6">
+                                                <div className="stats-item text-center w-100 h-100">
+                                                    <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> In-line UV purification</p>
+                                                </div>
+                                            </div>
+                                            {/* <!-- End Stats Item --> */}
+
+                                        </div>
+
+                                    </div>
+
+                                    <div className="row mt-4">
+
+                                        {/* === Left Column === */}
+                                        <div className="col-lg-6">
+                                            <h3>Flexible Rental Plans</h3>
+                                            <p className="fst-italic">
+                                                Security deposit of ₹{products[selectedModelIndex].duration[selectedDurationIndex]?.security_deposit || 0} will be 100% refundable
+                                            </p>
+
+                                            {/* Step 1: Plans */}
+                                            <h5>Step 1: Choose Monthly Plan</h5>
+                                            <div className="d-flex flex-wrap gap-2 mb-3">
+                                                {products[selectedModelIndex].plans.map((plan, planIndex) => (
+                                                    <button
+                                                        key={plan.plans_id}
+                                                        className={`btn ${selectedPlanIndex === planIndex ? 'btn-primary' : 'btn-outline-primary'}`}
+                                                        onClick={() => setSelectedPlanIndex(planIndex)}
+                                                    >
+                                                        {plan.label}<br />
+                                                        <small>{plan.capacity}</small>
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            {/* Step 2: Durations */}
+                                            <h5>Step 2: Choose Duration</h5>
+                                            <div className="d-flex flex-wrap gap-2 mb-3">
+                                                {products[selectedModelIndex].duration.map((duration, durationIndex) => (
+                                                    <button
+                                                        key={duration.duration_id}
+                                                        className={`btn ${selectedDurationIndex === durationIndex ? 'btn-primary' : 'btn-outline-primary'}`}
+                                                        onClick={() => setSelectedDurationIndex(durationIndex)}
+                                                    >
+                                                        {duration.duration_time_limit}
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            {/* === Pricing Summary === */}
+                                            <div className="mt-3 p-3 border rounded bg-light">
+                                                {(() => {
+                                                    const selectedPlan = products[selectedModelIndex].plans[selectedPlanIndex];
+                                                    const selectedDuration = products[selectedModelIndex].duration[selectedDurationIndex];
+
+                                                    const baseMonthlyPrice = selectedPlan?.price || 0;
+                                                    const gstRate = selectedDuration?.gst || 0;
+                                                    const discount = selectedDuration?.discount || 0;
+
+                                                    // Safely parse duration_days from string like "360 days"
+                                                    const durationTimeString = selectedDuration?.duration_time_limit || "0";
+                                                    const durationDays = parseInt(durationTimeString.replace(/[^\d]/g, ""), 10) || 0;
+
+                                                    const gstAmount = (baseMonthlyPrice * gstRate) / 100;
+                                                    const priceWithGST = baseMonthlyPrice + gstAmount;
+                                                    const discountAmount = (priceWithGST * discount) / 100;
+                                                    const finalMonthlyPrice = priceWithGST - discountAmount;
+
+                                                    const perDayPrice = finalMonthlyPrice / 28;
+                                                    // const grandTotal = parseFloat((perDayPrice * durationDays).toFixed(2));
+                                                    const grandTotal = parseFloat((perDayPrice * durationDays).toFixed(2));
+                                                    const securityDeposit = !userInfo?.security_deposit ? selectedDuration?.security_deposit || 0 : 0;
+                                                    const grandTotalWithDeposit = parseFloat((grandTotal + securityDeposit).toFixed(2));
+                                                    
+                                                    return (
+                                                        <>
+                                                            {!userInfo?.security_deposit && (
+                                                                <p className="fst-italic text-warning">
+                                                                    First time order: ₹{products[selectedModelIndex].duration[selectedDurationIndex]?.security_deposit || 0} security deposit will be 100% refundable upon product return.
+                                                                </p>
+                                                            )}
+                                                            {userInfo?.security_deposit && (
+                                                                <div className="alert alert-info">
+                                                                    You've already paid a security deposit. It won't be charged again.
+                                                                </div>
+                                                            )}
+
+
+                                                            <p>Selected plan price (based on 28-day month): ₹{baseMonthlyPrice.toFixed(2)}</p>
+                                                            <p>GST ({gstRate}%): ₹{gstAmount.toFixed(2)}</p>
+                                                            <p>Price After GST: ₹{priceWithGST.toFixed(2)}</p>
+                                                            <p>{discount}% discount, Savings of ₹{discountAmount.toFixed(2)}</p>
+
+                                                            <p style={{ fontWeight: "bold" }}>
+                                                                Final Price Per (based on 28-day month): ₹{finalMonthlyPrice.toFixed(2)}
+                                                            </p>
+
+                                                            {/* <p style={{ fontWeight: "bold" }}>
+                                                                Per Day Price (based on 28-day month): ₹{perDayPrice.toFixed(2)}
+                                                            </p> */}
+
+                                                            <p style={{ fontWeight: "bold" }}>
+                                                                Selected duration: {durationDays} days
+                                                            </p>
+
+                                                            <h5 style={{ color: "#0d83fd" }}>
+                                                                {/* Grand Total: ₹{grandTotal}, */}
+                                                                Grand Total: ₹{grandTotalWithDeposit}
+                                                            </h5>
+
+                                                            <div className="d-flex flex-wrap gap-2 mb-3">
+                                                                <button
+                                                                    className="btn btn-primary me-0 me-sm-2 mx-1"
+                                                                    onClick={handleSubscribeClick}
+                                                                >
+                                                                    Subscribe Now
+                                                                </button>
+                                                                <button
+                                                                    className="btn btn-primary me-0 me-sm-2 mx-1"
+                                                                    onClick={() => navigate(`/product-list`)}
+                                                                >
+                                                                    Know More
+                                                                </button>
+
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+
+                                        </div>
+
+                                        {/* === Right Column: Main Image + Thumbnails === */}
+                                        <div className="col-lg-6 order-1 order-lg-2 text-center">
+                                            {/* Main Image */}
+                                            <img
+                                                src={`/upload/img/${mainImage || products[selectedModelIndex]?.main_img}`}
+                                                alt="Main Product"
+                                                className="img-fluid mb-3"
+                                                style={{
+                                                    boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
+                                                    borderRadius: '20px',
+                                                    maxWidth: '80%',
+                                                }}
+                                            />
+
+                                            {/* Thumbnails */}
+                                            <div className="d-flex justify-content-center gap-2">
+                                                {[1, 2, 3, 4].map((num) => {
+                                                    const subImg = products[selectedModelIndex]?.[`sub_img_${num}`];
+                                                    return subImg ? (
+                                                        <img
+                                                            key={num}
+                                                            src={`/upload/img/${subImg}`}
+                                                            alt={`Sub ${num}`}
+                                                            className="rounded"
+                                                            style={{
+                                                                width: "80px",
+                                                                border: (mainImage === subImg) ? "2px solid #0d83fd" : "1px solid #ccc",
+                                                                cursor: "pointer"
+                                                            }}
+                                                            onClick={() => setMainImage(subImg)}
+                                                        />
+                                                    ) : null;
+                                                })}
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="container text-center my-5">
+                            <h3>No products available at the moment.</h3>
+                        </div>
+                    )}
+
+
                     <div className="container">
 
                         <div className="d-flex justify-content-center">
-
-                            <ul className="nav nav-tabs">
-                                {Object.entries(productConfigs).map(([key, config]) => (
-                                    <li className="nav-item" key={key}>
-                                        <button
-                                            className={`nav-link ${selectedTab === parseInt(key) ? "active show" : ""}`}
-                                            onClick={() => handleTabChange(parseInt(key))}
-                                        >
-                                            <h4>{config.name}</h4>
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-
-                        </div>
-
-                        <div className="tab-content" data-aos="fade-up" data-aos-delay="200">
-
-                            <div className="tab-pane fade active show">
-                                <div className="container" data-aos="fade-up" data-aos-delay="100">
-
-                                    <div className="row gy-4">
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Multistage Universal Water purifier</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Goodness of copper</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> RO Purification</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                        <div className="col-lg-3 col-md-6">
-                                            <div className="stats-item text-center w-100 h-100">
-                                                <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> In-line UV purification</p>
-                                            </div>
-                                        </div>
-                                        {/* <!-- End Stats Item --> */}
-
-                                    </div>
-
-                                </div>
-                                <div className="row" style={{ paddingTop: '30px' }}>
-                                    <div className="col-lg-6 order-2 order-lg-1 mt-3 mt-lg-0 d-flex flex-column justify-content-center">
-                                        <h3>Flexible Rental Plans</h3>
-                                        <p className="fst-italic">Security deposit of ₹1,500 will be 100% refundable</p>
-
-                                        <h5 className="mt-3">Step 1: Choose Monthly Usage</h5>
-                                        <div className="d-flex flex-wrap gap-2 mb-3">
-                                            {Object.entries(currentConfig.plans).map(([key, value]) => (
-                                                <button
-                                                    key={key}
-                                                    className={`btn ${usage === key ? "btn-primary" : "btn-outline-primary"}`}
-                                                    onClick={() => setUsage(key)}
-                                                >
-                                                    {key}<br /><small>{value.liters}</small>
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        <h5 className="mt-3">Step 2: Choose Tenure</h5>
-                                        <div className="d-flex flex-wrap gap-2 mb-3">
-                                            {Object.entries(currentConfig.discounts).map(([key, value]) => (
-                                                <button
-                                                    key={key}
-                                                    className={`btn ${tenure === parseInt(key) ? "btn-primary" : "btn-outline-primary"}`}
-                                                    onClick={() => setTenure(parseInt(key))}
-                                                >
-                                                    {value.label}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        {/* Price Section */}
-                                        <div className="mt-3 p-3 border rounded bg-light">
-                                            <h5 style={{ color: "#0d83fd" }}>Plan Price: ₹{finalPrice}</h5>
-                                            <h5 style={{ color: "#0d83fd" }}>GST ₹{gst}</h5>
-                                            <h5 style={{ color: "#0d83fd" }}>Total (Duration + GST): ₹{durationTotalPrice}</h5>
-
-                                            <p>{discount > 0 ? `Discount: ${discount}%` : "0% discount"}, Savings of ₹{savings}</p>
-                                            <div className="d-flex flex-wrap gap-2 mb-3">
-                                                <button
-                                                    className="btn btn-primary me-0 me-sm-2 mx-1"
-                                                    onClick={handleSubscribeClick}
-                                                >
-                                                    Subscribe Now
-                                                </button>
-                                                <Link to="/product-list" className="btn btn-primary me-0 me-sm-2 mx-1">
-                                                    Know More
-                                                </Link>
-
-                                                {/* Your modal code here, conditionally rendered */}
-                                                {showModal && (
-                                                    <YourSubscribeModalComponent onClose={() => setShowModal(false)} />
-                                                )}
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                    <div className="col-lg-6 order-1 order-lg-2 text-center">
-                                        {/* Main Image */}
-                                        <img
-                                            src={mainImage}
-                                            alt="Main Product"
-                                            className="img-fluid mb-3"
-                                            style={{
-                                                boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
-                                                borderRadius: '20px', maxWidth: '80%',
-                                            }}
-                                        />
-
-                                        <div className="d-flex justify-content-center gap-2">
-                                            {currentConfig.thumbnails.map((img, index) => (
-                                                <img
-                                                    key={index}
-                                                    src={img}
-                                                    alt={`Thumbnail ${index}`}
-                                                    className="rounded"
-                                                    style={{
-                                                        width: "80px",
-                                                        border: mainImage === img ? "2px solid #0d83fd" : "1px solid #ccc",
-                                                        cursor: "pointer"
-                                                    }}
-                                                    onClick={() => setMainImage(img)}
-                                                />
-                                            ))}
-                                        </div>
-
-                                    </div>
-
-                                </div>
-                            </div>
-                            {/* <!-- End tab content item --> */}
 
                             {/* Subscribe model start */}
                             {/* Modal Component */}
@@ -771,13 +854,13 @@ const Home = ({ userInfo, handleLogout }) => {
                                                         value={phone}
                                                         maxLength={10}
                                                         onChange={(e) => {
-                                                            let input = e.target.value;
-                                                            // Remove all non-digit characters
-                                                            input = input.replace(/\D/g, '');
-                                                            // Remove the first character if it's a zero
-                                                            if (input.startsWith('0')) {
-                                                                input = input.substring(1);
+                                                            let input = e.target.value.replace(/\D/g, ''); // Remove non-digits
+
+                                                            // Prevent first digit from being 0–5
+                                                            if (input.length === 1 && /^[0-5]$/.test(input)) {
+                                                                input = ''; // Clear if first digit is 0–5
                                                             }
+
                                                             setPhone(input);
                                                         }}
                                                     />
@@ -785,42 +868,81 @@ const Home = ({ userInfo, handleLogout }) => {
                                                 <div className="mb-3">
                                                     <label>Email ID</label>
                                                     <input
-                                                        type="text"
+                                                        type="email"
                                                         className="form-control"
                                                         required
                                                         value={emailID}
-                                                        onChange={(e) => setEmailID(e.target.value)}
+                                                        onChange={(e) => setEmailID(e.target.value.toLowerCase())}
+                                                    />
+                                                </div>
+                                                <div className="mb-3">
+                                                    <label>Delivery Address Line 1</label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        required
+                                                        value={addressLine1}
+                                                        onChange={(e) => setAddressLine1(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                <div className="mb-3">
+                                                    <label>Delivery Address Line 2</label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        value={addressLine2}
+                                                        onChange={(e) => setAddressLine2(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                <div className="mb-3">
+                                                    <label>Pin Code</label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        required
+                                                        maxLength={6}
+                                                        value={pincode}
+                                                        onChange={(e) => {
+                                                            let input = e.target.value.replace(/\D/g, '');
+                                                            // Ensure first digit is not 0
+                                                            if (input.length > 0 && input[0] === '0') {
+                                                                input = input.substring(1);
+                                                            }
+                                                            if (input.length <= 6) setPincode(input);
+                                                        }}
                                                     />
                                                 </div>
                                                 <div className="mb-3">
                                                     <label>City</label>
                                                     <select
                                                         className="form-control"
-                                                        value={city}
-                                                        onChange={(e) => setCity(e.target.value)}
+                                                        value={formDataCallRequest.city}
+                                                        onChange={(e) =>
+                                                            setFormDataCallRequest({ ...formDataCallRequest, city: e.target.value })
+                                                        }
                                                     >
-                                                        <option value="">Select a city</option>
-                                                        {indianCities.map((cityName) => (
-                                                            <option key={cityName} value={cityName}>
-                                                                {cityName}
+                                                        {indianCities.map((city) => (
+                                                            <option key={city} value={city}>
+                                                                {city}
                                                             </option>
                                                         ))}
                                                     </select>
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                                                    <h6 className="modal-title mb-3">Trusted by 1M+ customers across 9 cities</h6>
 
                                                     <p>
                                                         <i className="bi bi-check2-circle" style={{ color: '#0d83fd' }}></i> Lifetime Free Maintenance<br />
                                                         <i className="bi bi-check2-circle" style={{ color: '#0d83fd' }}></i> 7 Day Free Trial<br />
-                                                        <i className="bi bi-check2-circle" style={{ color: '#0d83fd' }}></i> 48 Hours Installation - Starting at ₹299/month
+                                                        <i className="bi bi-check2-circle" style={{ color: '#0d83fd' }}></i> 48 Hours Installation
                                                     </p>
 
                                                     <button type="submit" className="btn btn-primary mb-2"> {subLoading ? "Processing..." : "Subscribe Now"}</button>
 
-                                                    <p style={{ fontSize: '0.9rem', color: '#666' }}>
+                                                    {/* <p style={{ fontSize: '0.9rem', color: '#666' }}>
                                                         By creating an account on <strong>ionHive</strong>, you agree to our <a href="#">Terms of Use</a>
-                                                    </p>
+                                                    </p> */}
                                                 </div>
                                             </form>
                                         </div>
@@ -835,6 +957,39 @@ const Home = ({ userInfo, handleLogout }) => {
 
                 </section>
                 {/* <!-- /Features Section --> */}
+
+                {/* <!-- Start Product detail Section --> */}
+
+                {products.length > 0 ? (
+                    <section id="features" className="features section" style={{ padding: '0px' }}>
+
+                        {/* <!-- Section Title --> */}
+                        <div className="container section-title" data-aos="fade-up">
+
+                            <h3 style={{ textAlign: 'left', }}>Product details</h3>
+                            <p style={{ textAlign: 'left' }}> {products[selectedModelIndex].product_details}</p>
+                            {products[selectedModelIndex]?.product_specifications && (
+                                <p style={{ padding: '20px' }}>
+                                    <a
+                                        href={`/upload/pdf/${products[selectedModelIndex].product_specifications}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-primary mb-2"
+                                    >
+                                        Product More Details
+                                    </a>
+                                </p>
+                            )}
+                        </div>
+                        {/* <!-- End Section Title --> */}
+                    </section>
+                ) : (
+                    <div className="container text-center my-5">
+                        <h3>No products available at the moment.</h3>
+                    </div>
+                )}
+
+                {/* <!-- Start Product detail Section --> */}
 
                 {/* <!-- Start Advantage Section --> */}
                 <section id="features" className="features section">
@@ -1361,11 +1516,24 @@ const Home = ({ userInfo, handleLogout }) => {
                                                                 className="form-control"
                                                                 placeholder="Enter Your Phone"
                                                                 value={formDataCallRequest.phone}
-                                                                onChange={handleChangeCallRequest}
+                                                                onChange={(e) => {
+                                                                    let val = e.target.value.replace(/\D/g, ""); // only digits
+                                                                    if (val.length === 1 && !/[6-9]/.test(val)) {
+                                                                        val = ""; // remove invalid 1st digit
+                                                                    }
+                                                                    if (val.length > 10) {
+                                                                        val = val.slice(0, 10); // max 10 digits
+                                                                    }
+
+                                                                    setFormDataCallRequest((prev) => ({
+                                                                        ...prev,
+                                                                        phone: val,
+                                                                    }));
+                                                                }}
                                                                 required
                                                             />
                                                         </div>
-
+                                                        
                                                         <div className="col-md-6">
                                                             <select
                                                                 className="form-control"
@@ -1614,7 +1782,16 @@ const Home = ({ userInfo, handleLogout }) => {
                                             </div>
 
                                             <div className="col-md-6">
-                                                <input type="email" name="email" className="form-control" placeholder="Your Email" required value={formData.email} onChange={handleChange} />
+                                                <input type="email" name="email" className="form-control" placeholder="Your Email" required value={formData.email}
+                                                    onChange={(e) =>
+                                                        handleChange({
+                                                            target: {
+                                                                name: 'email',
+                                                                value: e.target.value.toLowerCase()
+                                                            }
+                                                        })
+                                                    }
+                                                />
                                             </div>
 
                                             <div className="col-12">

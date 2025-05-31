@@ -664,15 +664,15 @@ const FetchOrders = async (req, res) => {
     }
 }
 
-//UpdateOrdersStatus
+// UpdateOrdersStatus
 const UpdateOrdersStatus = async (req, res) => {
-    const { order_id, delivaryStatus, modified_by } = req.body;
+    const { order_id, orderStatus, modified_by } = req.body;
 
     // Validate input
-    if (typeof order_id !== 'number' || !delivaryStatus || !modified_by) {
+    if (!order_id || !orderStatus || !modified_by) {
         return res.status(400).json({
             status: 'Failed',
-            message: 'All fields (order_id, delivaryStatus, modified_by) are required'
+            message: 'All fields (order_id, orderStatus, modified_by) are required'
         });
     }
 
@@ -680,23 +680,27 @@ const UpdateOrdersStatus = async (req, res) => {
         const db = await database.connectToDatabase();
         const collection = db.collection("orders");
 
+        const objectId = new ObjectId(order_id); // Convert string to ObjectId
+
+        const existingOrder = await collection.findOne({ _id: objectId });
+
+        if (!existingOrder) {
+            return res.status(404).json({
+                status: 'Failed',
+                message: `Order with _id ${order_id} not found`
+            });
+        }
+
         const result = await collection.updateOne(
-            { order_id: order_id }, // Use order_id instead of _id
+            { _id: objectId },
             {
                 $set: {
-                    delivaryStatus,
+                    orderStatus,
                     modified_by,
                     modifiedDate: new Date()
                 }
             }
         );
-
-        if (result.matchedCount === 0) {
-            return res.status(404).json({
-                status: 'Failed',
-                message: `Order with order_id ${order_id} not found`
-            });
-        }
 
         return res.status(200).json({
             status: 'Success',
@@ -705,7 +709,6 @@ const UpdateOrdersStatus = async (req, res) => {
 
     } catch (error) {
         console.error("Error in UpdateOrdersStatus:", error);
-        logger?.error?.(error);
         return res.status(500).json({
             status: 'Failed',
             message: 'Internal Server Error'

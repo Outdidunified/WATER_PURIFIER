@@ -77,7 +77,16 @@ const Contact = ({ userInfo, handleLogout }) => {
                                             </div>
 
                                             <div className="col-md-6">
-                                                <input type="email" name="email" className="form-control" placeholder="Your Email" required value={formData.email} onChange={handleChange} />
+                                                <input type="email" name="email" className="form-control" placeholder="Your Email" required value={formData.email}
+                                                    onChange={(e) =>
+                                                        handleChange({
+                                                            target: {
+                                                                name: 'email',
+                                                                value: e.target.value.toLowerCase()
+                                                            }
+                                                        })
+                                                    }
+                                                />
                                             </div>
 
                                             <div className="col-12">

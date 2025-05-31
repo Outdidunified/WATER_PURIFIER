@@ -32,7 +32,7 @@ const useContact = () => {
         }
 
         try {
-            const response = await fetch("http://192.168.1.222:5001/api/website/contact/submitcontact", {
+            const response = await fetch("/api/api/website/contact/submitcontact", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, email, subject, message }),
