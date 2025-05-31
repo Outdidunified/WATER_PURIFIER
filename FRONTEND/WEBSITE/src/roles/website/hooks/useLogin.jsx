@@ -12,7 +12,7 @@ const useLogin = ( handleLogin ) => {
     const [loading, setLoading] = useState(false);
     const [loadingVotp, setLoadingVotp] = useState(false);
     const [loadingReg, setLoadingReg] = useState(false);
-    const [loginType, setLoginType] = useState("phone"); // "phone" or "email"
+    const [loginType, setLoginType] = useState("email"); // "phone" or "email"
 
     const validateEmail = (email) =>
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -25,7 +25,7 @@ const useLogin = ( handleLogin ) => {
 
         setLoading(true);
         try {
-            const res = await fetch("http://192.168.1.222:5001/api/website/auth/email", {
+            const res = await fetch("/api/api/website/auth/email", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: emailID, password: parseInt(password) }),
@@ -82,7 +82,7 @@ const useLogin = ( handleLogin ) => {
     const handleVerifyOtp = async () => {
         setLoadingVotp(true);
         try {
-            const res = await fetch("http://192.168.1.222:5001/api/website/auth/verify-otp", {
+            const res = await fetch("/api/api/website/auth/verify-otp", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ phone, otp })
@@ -116,7 +116,7 @@ const useLogin = ( handleLogin ) => {
 
         setLoadingReg(true);
         try {
-            const res = await fetch("http://192.168.1.222:5001/api/website/auth/register", {
+            const res = await fetch("/api/api/website/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, phone: parseInt(phone), email: emailID, city, password: parseInt(password) }),

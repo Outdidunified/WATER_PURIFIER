@@ -26,7 +26,7 @@ router.post('/AddProductModels', verifyToken,
     { name: 'sub_img_2', maxCount: 1 },
     { name: 'sub_img_3', maxCount: 1 },
     { name: 'sub_img_4', maxCount: 1 },
-    { name: 'spec_pdf', maxCount: 1 }
+    { name: 'product_specifications', maxCount: 1 }  // PDF field
 ]), Controller.AddProductModels);
 
 // Route to FetchProductModels

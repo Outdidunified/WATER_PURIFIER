@@ -7,6 +7,12 @@ const Login = ({ userInfo, handleLogout, handleLogin }) => {
         loadingVotp, loadingReg, loginType, setLoginType, handleEmailLogin, handleSendOtp, handleVerifyOtp, handleRegister, commonInputStyle,
     } = useLogin(handleLogin);
 
+    const indianCities = [
+        "Bangalore", "Hyderabad", "Mumbai", "Delhi", "Chennai", "Kolkata", "Pune",
+        "Ahmedabad", "Jaipur", "Surat", "Lucknow", "Kanpur", "Nagpur", "Indore",
+        "Thane", "Bhopal", "Visakhapatnam", "Patna", "Vadodara", "Ghaziabad"
+    ];
+
     return (
         <div>
             <Header userInfo={userInfo} handleLogout={handleLogout} />
@@ -21,11 +27,11 @@ const Login = ({ userInfo, handleLogout, handleLogin }) => {
                                 <h2 style={{ textAlign: 'center' }}>Login</h2>
 
                                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-                                    <button onClick={() => setLoginType("phone")} style={{ marginRight: '10px', padding: '8px 16px', background: loginType === "phone" ? '#007bff' : '#ccc', color: '#fff', border: 'none', borderRadius: '5px' }}>
-                                        Phone Login
-                                    </button>
-                                    <button onClick={() => setLoginType("email")} style={{ padding: '8px 16px', background: loginType === "email" ? '#007bff' : '#ccc', color: '#fff', border: 'none', borderRadius: '5px' }}>
+                                    <button onClick={() => setLoginType("email")} style={{ marginRight: '10px', padding: '8px 16px', background: loginType === "email" ? '#007bff' : '#ccc', color: '#fff', border: 'none', borderRadius: '5px' }}>
                                         Email Login
+                                    </button>
+                                    <button onClick={() => setLoginType("phone")} style={{ padding: '8px 16px', background: loginType === "phone" ? '#007bff' : '#ccc', color: '#fff', border: 'none', borderRadius: '5px' }}>
+                                        Phone Login
                                     </button>
                                 </div>
 
@@ -34,12 +40,12 @@ const Login = ({ userInfo, handleLogout, handleLogin }) => {
                                     <>
                                         <input
                                             type="tel"
-                                            placeholder="Enter Phone Number"
+                                            placeholder="Phone Number"
                                             style={commonInputStyle}
                                             value={phone}
                                             onChange={(e) => {
                                                 let val = e.target.value.replace(/\D/g, "");
-                                                if (val.startsWith("0")) val = val.substring(1);
+                                                if (val.length === 1 && !/[6-9]/.test(val)) val = "";
                                                 setPhone(val.slice(0, 10));
                                             }}
                                         />
@@ -61,7 +67,7 @@ const Login = ({ userInfo, handleLogout, handleLogin }) => {
                                             placeholder="Enter Email"
                                             style={commonInputStyle}
                                             value={emailID}
-                                            onChange={(e) => setEmailID(e.target.value)}
+                                            onChange={(e) => setEmailID(e.target.value.toLowerCase())}
                                         />
                                         <input
                                             type="password"
@@ -69,7 +75,8 @@ const Login = ({ userInfo, handleLogout, handleLogin }) => {
                                             style={commonInputStyle}
                                             value={password}
                                             onChange={(e) => {
-                                                const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                                let val = e.target.value.replace(/\D/g, "").slice(0, 4);
+                                                if (val.length === 1 && val === "0") val = "";
                                                 setPassword(val);
                                             }}
                                         />
@@ -132,9 +139,9 @@ const Login = ({ userInfo, handleLogout, handleLogin }) => {
                                     style={commonInputStyle}
                                     value={phone}
                                     onChange={(e) => {
-                                        let val = e.target.value.replace(/\D/g, "");
-                                        if (val.startsWith("0")) val = val.substring(1);
-                                        setPhone(val.slice(0, 10));
+                                        let val = e.target.value.replace(/\D/g, ""); 
+                                        if (val.length === 1 && !/[6-9]/.test(val)) val = ""; 
+                                        setPhone(val.slice(0, 10)); 
                                     }}
                                 />
                                 <input
@@ -142,12 +149,18 @@ const Login = ({ userInfo, handleLogout, handleLogin }) => {
                                     placeholder="Email Address"
                                     style={commonInputStyle}
                                     value={emailID}
-                                    onChange={(e) => setEmailID(e.target.value)}
+                                    onChange={(e) => setEmailID(e.target.value.toLowerCase())}
                                 />
-                                <select style={commonInputStyle} value={city} onChange={(e) => setCity(e.target.value)}>
-                                    <option value="Bangalore">Bangalore</option>
-                                    <option value="Hyderabad">Hyderabad</option>
-                                    <option value="Mumbai">Mumbai</option>
+                                <select
+                                    style={commonInputStyle}
+                                    value={city}
+                                    onChange={(e) => setCity(e.target.value)}
+                                >
+                                    {indianCities.map((cityName) => (
+                                        <option key={cityName} value={cityName}>
+                                            {cityName}
+                                        </option>
+                                    ))}
                                 </select>
                                 <input
                                     type="password"
@@ -155,7 +168,8 @@ const Login = ({ userInfo, handleLogout, handleLogin }) => {
                                     style={commonInputStyle}
                                     value={password}
                                     onChange={(e) => {
-                                        const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                        let val = e.target.value.replace(/\D/g, "").slice(0, 4);
+                                        if (val.length === 1 && val === "0") val = "";
                                         setPassword(val);
                                     }}
                                 />

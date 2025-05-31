@@ -77,6 +77,19 @@ const Header = ({ userInfo, handleLogout }) => {
                     <h1 className="sitename" style={{ marginLeft: '10px', fontSize: '1.2rem' }}>
                         ionHive Water Purifier {userInfo?.email ? ` - ${userInfo.email}` : ''}
                     </h1>
+                    {/* <h1
+                        className="sitename"
+                        style={{
+                            marginLeft: '10px',
+                            fontSize: 'clamp(1rem, 2.5vw, 1.5rem)',
+                            wordBreak: 'break-word',
+                            whiteSpace: 'normal',
+                            lineHeight: 1.3,
+                        }}
+                    >
+                        ionHive Water Purifier {userInfo?.email ? `- ${userInfo.email}` : ''}
+                    </h1> */}
+
                 </Link>
 
                 {/* Navigation links */}
