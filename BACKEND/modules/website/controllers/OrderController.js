@@ -192,9 +192,9 @@ exports.verifyRazorpayPayment = async (req, res) => {
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
 
-    // if (expectedSignature !== razorpay_signature) {
-    //   return res.status(400).json({ message: 'Invalid payment signature' });
-    // }
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ message: 'Invalid payment signature' });
+    }
 
     const db = await connectToDatabase();
     const order = await db.collection('orders').findOne({ razorpayOrderId: razorpay_order_id });
