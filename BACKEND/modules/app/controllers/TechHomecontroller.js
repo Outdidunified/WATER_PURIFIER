@@ -58,204 +58,195 @@ const transporter = nodemailer.createTransport({
 });
 
 exports.updateTaskDetails = async (req, res) => {
-    const {
-      task_id,
-      user_id,
-      role_id,
-      email,
-      technician_id,
-      otp,
-      updates: updatesJSON
-    } = req.body;
-  
-    const updates = typeof updatesJSON === 'string' ? JSON.parse(updatesJSON) : updatesJSON;
-  
-    if (
-      !task_id || !user_id || !role_id || !email || !technician_id || 
-      !updates || typeof updates !== 'object'
-    ) {
+  const {
+    task_id,
+    user_id,
+    role_id,
+    email,
+    technician_id,
+    otp,
+    updates: updatesJSON
+  } = req.body;
+
+  const updates = typeof updatesJSON === 'string' ? JSON.parse(updatesJSON) : updatesJSON;
+
+  if (
+    !task_id || !user_id || !role_id || !email || !technician_id || 
+    !updates || typeof updates !== 'object'
+  ) {
+    return res.status(400).json({
+      error: true,
+      message: 'task_id, user_id, role_id, email, technician_id and valid updates object are required',
+    });
+  }
+
+  if (parseInt(role_id) !== 2) {
+    return res.status(403).json({
+      error: true,
+      message: 'Access denied: Only technicians can update tasks',
+    });
+  }
+
+  try {
+    const db = await connectToDatabase();
+    const serviceRecordsCollection = db.collection('service_records');
+    const technicianCollection = db.collection('technician_details');
+
+    const task = await serviceRecordsCollection.findOne({
+      task_id: parseInt(task_id),
+      assigned_technician_id: technician_id
+    });
+
+    if (!task) {
+      return res.status(404).json({
+        error: true,
+        message: 'No task found assigned to this technician',
+      });
+    }
+
+    const allowedFields = [
+      'task_status',
+      'pending_reason',
+      'modified_by',
+      'modified_date'
+    ];
+
+    const updateData = {};
+
+    for (let key in updates) {
+      if (allowedFields.includes(key)) {
+        updateData[key] = updates[key];
+      }
+    }
+
+    const status = updates.task_status || task.task_status;
+
+    if (status === 'Pending') {
+      if (!updates.pending_reason || updates.pending_reason.trim() === '') {
+        return res.status(400).json({
+          error: true,
+          message: 'pending_reason is required when task_status is "Pending"',
+        });
+      }
+    } else {
+      updateData.pending_reason = null;
+    }
+
+    if (status === 'Completed') {
+      const parsedOtp = parseInt(otp);
+      if (!parsedOtp || parsedOtp !== task.otp) {
+        return res.status(400).json({
+          error: true,
+          message: 'Invalid OTP. Cannot complete task.',
+        });
+      }
+    }
+
+    // 🔄 Handle uploaded images
+    const files = req.files;
+
+    if (files) {
+      if (files.image_before_service && files.image_before_service.length > 0) {
+        const beforeImagePath = `/uploads/technician/before/${path.basename(files.image_before_service[0].path)}`;
+        const existingBeforeImages = task.image_before_service || [];
+
+        if (existingBeforeImages.length >= 5) {
+          return res.status(400).json({
+            error: true,
+            message: 'Maximum of 5 images already uploaded for image_before_service',
+          });
+        }
+
+        updateData.image_before_service = [...existingBeforeImages, beforeImagePath];
+      }
+
+      if (files.image_after_service && files.image_after_service.length > 0) {
+        const afterImagePath = `/uploads/technician/after/${path.basename(files.image_after_service[0].path)}`;
+        const existingAfterImages = task.image_after_service || [];
+
+        if (existingAfterImages.length >= 5) {
+          return res.status(400).json({
+            error: true,
+            message: 'Maximum of 5 images already uploaded for image_after_service',
+          });
+        }
+
+        updateData.image_after_service = [...existingAfterImages, afterImagePath];
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
       return res.status(400).json({
         error: true,
-        message: 'task_id, user_id, role_id, email, technician_id and valid updates object are required',
+        message: 'No valid fields provided for update',
       });
     }
-  
-    if (parseInt(role_id) !== 2) {
-      return res.status(403).json({
+
+    // ✅ Update task in DB
+    const result = await serviceRecordsCollection.updateOne(
+      { task_id: parseInt(task_id), assigned_technician_id: technician_id },
+      { $set: updateData }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(400).json({
         error: true,
-        message: 'Access denied: Only technicians can update tasks',
+        message: 'No changes were made to the task',
       });
     }
-  
-    try {
-      const db = await connectToDatabase();
-      const serviceRecordsCollection = db.collection('service_records');
-      const technicianCollection = db.collection('technician_details');
-  
-      const task = await serviceRecordsCollection.findOne({
-        task_id: parseInt(task_id),
-        assigned_technician_id: technician_id
-      });
-  
-      if (!task) {
-        return res.status(404).json({
-          error: true,
-          message: 'No task found assigned to this technician',
-        });
-      }
-  
-      const allowedFields = [
-        'task_status',
-        'pending_reason',
-        'modified_by',
-        'modified_date'
-      ];
-  
-      const updateData = {};
-  
-      for (let key in updates) {
-        if (allowedFields.includes(key)) {
-          updateData[key] = updates[key];
-        }
-      }
-  
-      const status = updates.task_status || task.task_status;
-  
-      // ✅ Require pending_reason if task is "Pending"
-      if (status === 'Pending') {
-        if (!updates.pending_reason || updates.pending_reason.trim() === '') {
-          return res.status(400).json({
-            error: true,
-            message: 'pending_reason is required when task_status is "Pending"',
-          });
-        }
-      } else {
-        updateData.pending_reason = null;
-      }
-  
-      // ✅ OTP Check for "Completed" status
-      if (status === 'Completed') {
-        const parsedOtp = parseInt(otp);
-        if (!parsedOtp || parsedOtp !== task.otp) {
-          return res.status(400).json({
-            error: true,
-            message: 'Invalid OTP. Cannot complete task.',
-          });
-        }
-      }
-  
-      // 🔄 Handle uploaded images
-      const files = req.files;
 
-      if (files) {
-        // Handle before service images
-        if (files.image_before_service && files.image_before_service.length > 0) {
-          // Get the file path of the uploaded image
-          const beforeImagePath = `/uploads/technician/before/${path.basename(files.image_before_service[0].path)}`;
-          
-          // Get existing images from the task or initialize an empty array
-          const existingBeforeImages = task.image_before_service || [];
-          
-          // Check if we already have 5 images
-          if (existingBeforeImages.length >= 5) {
-            return res.status(400).json({
-              error: true,
-              message: 'Maximum of 5 images already uploaded for image_before_service',
-            });
-          }
-          
-          // Add the new image to the existing images array
-          updateData.image_before_service = [...existingBeforeImages, beforeImagePath];
-        }
+    // ✅ Update technician stats if task completed
+    if (status === 'Completed') {
+      const technician = await technicianCollection.findOne({ technician_id });
 
-        // Handle after service images
-        if (files.image_after_service && files.image_after_service.length > 0) {
-          // Get the file path of the uploaded image
-          const afterImagePath = `/uploads/technician/after/${path.basename(files.image_after_service[0].path)}`;
-          
-          // Get existing images from the task or initialize an empty array
-          const existingAfterImages = task.image_after_service || [];
-          
-          // Check if we already have 5 images
-          if (existingAfterImages.length >= 5) {
-            return res.status(400).json({
-              error: true,
-              message: 'Maximum of 5 images already uploaded for image_after_service',
-            });
-          }
-          
-          // Add the new image to the existing images array
-          updateData.image_after_service = [...existingAfterImages, afterImagePath];
-        }
-      }
-  
-      if (Object.keys(updateData).length === 0) {
-        return res.status(400).json({
-          error: true,
-          message: 'No valid fields provided for update',
-        });
-      }
-  
-      // ✅ Update task in DB
-      const result = await serviceRecordsCollection.updateOne(
-        { task_id: parseInt(task_id), assigned_technician_id: technician_id },
-        { $set: updateData }
-      );
-  
-      if (result.modifiedCount === 0) {
-        return res.status(400).json({
-          error: true,
-          message: 'No changes were made to the task',
-        });
-      }
-  
-      // ✅ Update technician stats if task completed
-      if (status === 'Completed') {
+      if (technician) {
         await technicianCollection.updateOne(
-          { techician_id: technician_id },
+          { technician_id },
           {
-            $inc: {
-              total_completed_services: 1,
-              total_incomplete_services: -1
+            $set: {
+              total_completed_services: (technician.total_completed_services || 0) + 1
             }
           }
         );
-  
-        // ✅ Send success email
-        const mailOptions = {
-          from: 'your_email@gmail.com',
-          to: task.task_created_by_user_email,
-          subject: 'Task Completed Successfully',
-          html: `
-            <h3>Hello,</h3>
-            <p>Your service task <strong>#${task.task_id}</strong> for <strong>${task.task_type}</strong> has been <span style="color: green;">successfully completed</span>.</p>
-            <p>Task Description: ${task.task_description}</p>
-            <p><strong>Technician ID:</strong> ${task.assigned_technician_id}</p>
-            <p>Thank you for using our service!</p>
-          `
-        };
-  
-        transporter.sendMail(mailOptions, (error, info) => {
-          if (error) {
-            console.error('Error sending mail:', error);
-          } else {
-            console.log('Email sent:', info.response);
-          }
-        });
       }
-  
-      return res.status(200).json({
-        error: false,
-        message: 'Task updated successfully',
-      });
-    } catch (error) {
-      console.error('Error updating task:', error);
-      return res.status(500).json({
-        error: true,
-        message: 'Server error while updating task',
+
+      // ✅ Send success email
+      const mailOptions = {
+        from: 'your_email@gmail.com',
+        to: task.task_created_by_user_email,
+        subject: 'Task Completed Successfully',
+        html: `
+          <h3>Hello,</h3>
+          <p>Your service task <strong>#${task.task_id}</strong> for <strong>${task.task_type}</strong> has been <span style="color: green;">successfully completed</span>.</p>
+          <p>Task Description: ${task.task_description}</p>
+          <p><strong>Technician ID:</strong> ${task.assigned_technician_id}</p>
+          <p>Thank you for using our service!</p>
+        `
+      };
+
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error('Error sending mail:', error);
+        } else {
+          console.log('Email sent:', info.response);
+        }
       });
     }
-  };
+
+    return res.status(200).json({
+      error: false,
+      message: 'Task updated successfully',
+    });
+  } catch (error) {
+    console.error('Error updating task:', error);
+    return res.status(500).json({
+      error: true,
+      message: 'Server error while updating task',
+    });
+  }
+};
+
+
   
   exports.getAllAssignedTaskDetails = async (req, res) => {
     const { user_id, email, role_id, assigned_technician_id } = req.body;
