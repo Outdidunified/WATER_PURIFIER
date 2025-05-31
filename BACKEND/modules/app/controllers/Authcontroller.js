@@ -60,7 +60,7 @@ exports.login = async (req, res) => {
 
 // STEP 2: Verify OTP and Login/Create User
 exports.verifyOtp = async (req, res) => {
-  const { email, otp } = req.body;
+  const { email, otp, role_id = 3 } = req.body;
 
   console.log("Received /verifyOtp request:", req.body);
 
@@ -73,9 +73,6 @@ exports.verifyOtp = async (req, res) => {
   if (!otpEntry) {
     return res.status(401).json({ error: true, message: 'Invalid OTP' });
   }
-
-  console.log('Stored OTP:', otpEntry.otp, 'Type:', typeof otpEntry.otp);
-  console.log('Received OTP:', otp, 'Type:', typeof otp);
 
   if (otpEntry.otp !== String(otp)) {
     return res.status(401).json({ error: true, message: 'Invalid OTP' });
@@ -92,17 +89,54 @@ exports.verifyOtp = async (req, res) => {
     const db = await connectToDatabase();
     const usersCollection = db.collection('users');
 
-    let user = await usersCollection.findOne({ email });
+    // Fetch all users with the email
+    const users = await usersCollection.find({ email }).toArray();
 
-    if (user) {
-      await usersCollection.updateOne({ email }, { $set: { otpExpires } });
-    } else {
+    // Check if any user exists
+    let user = users.find(u => u.role_id === role_id);
+
+    // If role_id = 3 and a technician exists but no end-user, create end-user
+    if (!user && role_id === 3) {
+      const technician = users.find(u => u.role_id === 2);
+      if (technician) {
+        // Create new user with role_id = 3 using same email
+        const latestUser = await usersCollection.find().sort({ user_id: -1 }).limit(1).toArray();
+        const newUserId = latestUser.length > 0 ? latestUser[0].user_id + 1 : 1;
+
+        const newUser = {
+          user_id: newUserId,
+          role_id: 3,
+          name: null,
+          email,
+          phone: null,
+          password: null,
+          city: null,
+          otp: null,
+          otpExpires,
+          createdby: null,
+          createdDate: new Date(),
+          issubscribed: false,
+          status: true,
+          active_duration_id: null,
+          active_order_id: null,
+          active_plan_id: null,
+          assigned_device_id: null,
+          subscribedAt: null,
+        };
+
+        await usersCollection.insertOne(newUser);
+        user = newUser;
+      }
+    }
+
+    // If user still not found (new user)
+    if (!user) {
       const latestUser = await usersCollection.find().sort({ user_id: -1 }).limit(1).toArray();
       const newUserId = latestUser.length > 0 ? latestUser[0].user_id + 1 : 1;
 
       const newUser = {
         user_id: newUserId,
-        role_id: 3,
+        role_id: role_id,
         name: null,
         email,
         phone: null,
@@ -112,19 +146,31 @@ exports.verifyOtp = async (req, res) => {
         otpExpires,
         createdby: null,
         createdDate: new Date(),
-        issubscribed: null,
+        issubscribed: false,
         status: true,
-        active_duration_id:null,
-        active_order_id:null,
-        active_plan_id:null,
-        assigned_device_id:null,
-        subscribedAt:null,
+        active_duration_id: null,
+        active_order_id: null,
+        active_plan_id: null,
+        assigned_device_id: null,
+        subscribedAt: null,
       };
 
       await usersCollection.insertOne(newUser);
       user = newUser;
     }
 
+    // Check if user is deactivated
+    if (user.status === false) {
+      return res.status(403).json({
+        error: true,
+        message: 'Your account has been deactivated.'
+      });
+    }
+
+    // Update OTP expiry for the user
+    await usersCollection.updateOne({ user_id: user.user_id }, { $set: { otpExpires } });
+
+    // Generate token
     const token = generateToken(user.user_id);
     delete otpStore[email]; // Cleanup OTP
 
@@ -136,7 +182,7 @@ exports.verifyOtp = async (req, res) => {
         user_id: user.user_id,
         email: user.email,
         role_id: user.role_id,
-        is_subscribed: user.issubscribed,
+        is_subscribed: user.issubscribed ?? false,
       },
     };
     console.log("Sending /verifyOtp response:", response);
@@ -146,6 +192,8 @@ exports.verifyOtp = async (req, res) => {
     res.status(500).json({ error: true, message: 'Internal server error' });
   }
 };
+
+
 
 // Technician Login (role_id = 2)
 exports.technicianLogin = async (req, res) => {
@@ -162,6 +210,7 @@ exports.technicianLogin = async (req, res) => {
   try {
     const db = await connectToDatabase();
     const usersCollection = db.collection('users');
+    const technicianDetailsCollection = db.collection('technician_details');
 
     const technician = await usersCollection.findOne({ email, role_id });
 
@@ -169,6 +218,12 @@ exports.technicianLogin = async (req, res) => {
       const response = { error: true, message: 'Technician not found with this email' };
       console.log("Sending /technicianLogin response:", response);
       return res.status(404).json(response);
+    }
+
+    if (technician.status === false) {
+      const response = { error: true, message: 'Your account has been deactivated.' };
+      console.log("Sending /technicianLogin response:", response);
+      return res.status(403).json(response);
     }
 
     if (String(technician.password) !== String(password)) {
@@ -179,17 +234,33 @@ exports.technicianLogin = async (req, res) => {
 
     const token = jwt.sign({ id: technician.user_id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
+    // Fetch technician stats but without total_incomplete_services
+    const technicianStats = await technicianDetailsCollection.findOne({ technician_id: technician.technician_id });
+
+    const responseData = {
+      user_id: technician.user_id,
+      email: technician.email,
+      role_id: technician.role_id,
+      technician_id: technician.technician_id,
+      name: technician.name,
+      phone: technician.phone,
+      city: technician.city,
+      issubscribed: technician.issubscribed,
+      stats: technicianStats
+        ? {
+            total_completed_services: technicianStats.total_completed_services || 0,
+            total_assigned_services: technicianStats.total_assigned_services || 0,
+          }
+        : null,
+    };
+
     const response = {
       error: false,
       message: 'Technician login successful',
       token,
-      data: {
-        user_id: technician.user_id,
-        email: technician.email,
-        role_id: technician.role_id,
-        technician_id:technician.technician_id,
-      },
+      data: responseData,
     };
+
     console.log("Sending /technicianLogin response:", response);
     res.status(200).json(response);
   } catch (error) {
@@ -197,3 +268,6 @@ exports.technicianLogin = async (req, res) => {
     res.status(500).json({ error: true, message: 'Internal server error' });
   }
 };
+
+
+
