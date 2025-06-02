@@ -2,7 +2,7 @@ import { useState } from "react";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
-const About = ({ userInfo, handleLogout }) => {
+const About = ({ userInfo, token, handleLogout }) => {
 
     return (
         <div>

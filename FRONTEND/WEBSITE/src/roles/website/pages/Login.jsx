@@ -2,7 +2,7 @@ import React from "react";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import useLogin from "../hooks/useLogin";
-const Login = ({ userInfo, handleLogout, handleLogin }) => {
+const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
     const { step, setStep, phone, setPhone, otp, setOtp, name, setName, emailID, setEmailID, city, setCity, password, setPassword, loading,
         loadingVotp, loadingReg, loginType, setLoginType, handleEmailLogin, handleSendOtp, handleVerifyOtp, handleRegister, commonInputStyle,
     } = useLogin(handleLogin);
