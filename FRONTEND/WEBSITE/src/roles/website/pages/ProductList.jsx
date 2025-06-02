@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const ProductList = ({ userInfo, handleLogout }) => {
+const ProductList = ({ userInfo, token, handleLogout }) => {
 
     const [products, setProducts] = useState([]);
     const [selectedModelIndex, setSelectedModelIndex] = useState(0);
@@ -80,25 +80,24 @@ const ProductList = ({ userInfo, handleLogout }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        // Validation regex
         const phoneRegex = /^[1-9][0-9]{9}$/;
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
         if (!phoneRegex.test(phone)) {
-            Swal.fire({
+            return Swal.fire({
                 icon: 'error',
                 title: 'Invalid Phone Number',
                 text: 'Phone number must be 10 digits and not start with 0.'
             });
-            return;
         }
 
         if (!emailRegex.test(emailID)) {
-            Swal.fire({
+            return Swal.fire({
                 icon: 'error',
                 title: 'Invalid Email ID',
                 text: 'Please enter a valid email address.'
             });
-            return;
         }
 
         const selectedProduct = products[selectedModelIndex];
@@ -106,96 +105,90 @@ const ProductList = ({ userInfo, handleLogout }) => {
         const selectedDuration = selectedProduct?.duration[selectedDurationIndex];
 
         if (!selectedProduct || !selectedPlan || !selectedDuration) {
-            Swal.fire({
+            return Swal.fire({
                 icon: 'error',
                 title: 'Selection Missing',
                 text: 'Please make sure a model, plan, and duration are selected.'
             });
-            return;
         }
 
         setSubLoading(true);
 
         try {
-            // Calculations
-            const baseMonthlyPrice = selectedPlan?.price || 0;
+            // Price calculation
+            const basePrice = selectedPlan?.price || 0;
             const gstRate = selectedDuration?.gst || 0;
-            const discount = selectedDuration?.discount || 0;
+            const discountRate = selectedDuration?.discount || 0;
 
-            const gstAmount = (baseMonthlyPrice * gstRate) / 100;
-            const priceWithGST = baseMonthlyPrice + gstAmount;
-            const discountAmount = (priceWithGST * discount) / 100;
+            const gstAmount = (basePrice * gstRate) / 100;
+            const priceWithGST = basePrice + gstAmount;
+            const discountAmount = (priceWithGST * discountRate) / 100;
             const finalMonthlyPrice = priceWithGST - discountAmount;
 
-            const durationTimeString = selectedDuration?.duration_time_limit || "0";
-            const durationDays = parseInt(durationTimeString.replace(/[^\d]/g, ""), 10) || 0;
+            const durationDays = parseInt(selectedDuration?.duration_time_limit?.replace(/[^\d]/g, ""), 10) || 0;
             const perDayPrice = finalMonthlyPrice / 28;
-            const selectedPlanId = selectedPlan?.id || selectedPlan?.plans_id || selectedPlan?._id || 0;
-
-            // const grandTotal = parseFloat((perDayPrice * durationDays).toFixed(2));
             const grandTotal = parseFloat((perDayPrice * durationDays).toFixed(2));
             const securityDeposit = !userInfo?.security_deposit ? selectedDuration?.security_deposit || 0 : 0;
             const grandTotalWithDeposit = parseFloat((grandTotal + securityDeposit).toFixed(2));
 
+            // Prepare payload with proper data types
             const payload = {
                 productModelId: selectedProduct._id,
-                selectedPlanId: selectedPlanId,
+                selectedPlanId: selectedPlan?.plans_id || 0, // prefer plans_id number
                 selectedDurationId: selectedDuration.duration_id,
                 priceWithGST: parseFloat(priceWithGST.toFixed(2)),
                 gstAmount: parseFloat(gstAmount.toFixed(2)),
                 discountAmount: parseFloat(discountAmount.toFixed(2)),
                 finalMonthlyPrice: parseFloat(finalMonthlyPrice.toFixed(2)),
                 grandTotal: grandTotalWithDeposit,
+                securityDeposit,
                 deliveryAddress: {
                     name,
-                    phone: parseInt(phone),
+                    phone: phone.trim(), // as string
                     addressLine1,
                     addressLine2,
-                    pincode: parseInt(pincode),
+                    pincode: pincode.trim(), // if string else parseInt
                     city,
-                    // pincode   
                 }
             };
 
+            const token = sessionStorage.getItem("WebToken");
+
+            // Call order place API
             const res = await fetch("/api/api/website/orders/orderplace", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
                 body: JSON.stringify(payload),
             });
 
             const data = await res.json();
+            console.log("Orderplace response:", data);
 
-            if (!res.ok || !data.razorpayOrderId) {
-                Swal.fire({
-                    icon: "error",
-                    title: "Order Placement Failed",
-                    text: data.message || "Could not place order.",
-                });
-                return;
+            if (data.status !== "success" || !data.data?.razorpayOrder?.id) {
+                return Swal.fire("Error", data.message || "Order failed", "error");
             }
 
+            // Razorpay payment options
             const options = {
                 key: RAZORPAY_KEY,
-                amount: grandTotalWithDeposit * 100,
+                amount: data.data.razorpayOrder.amount,
                 currency: "INR",
+                order_id: data.data.razorpayOrder.id,
                 name: "Subscription Payment",
                 description: `Subscription for ${durationDays} days`,
-                image: "/assets/img/ionHive.png",
-                order_id: data.razorpayOrderId,
-                handler: async function (response) {
-                    const verifyRes = await fetch("/api/api/orders/orderverify", {
+                handler: async (response) => {
+                    const verifyRes = await fetch("/api/api/website/orders/orderverify", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_signature: response.razorpay_signature,
-                        }),
+                        body: JSON.stringify(response),
                     });
-
                     const verifyData = await verifyRes.json();
 
-                    if (verifyData.status === "Success") {
+                    if (verifyData.status && verifyData.status.toLowerCase() === "success") {
+                        //  Swal.fire("Payment Successful", "Subscription activated!", "success").then(() => {
                         Swal.fire({
                             icon: "success",
                             title: "Payment Successful",
@@ -214,63 +207,42 @@ const ProductList = ({ userInfo, handleLogout }) => {
                             window.location.href = "/";
                         });
                     } else {
-                        Swal.fire({
-                            icon: "error",
-                            title: "Verification Failed",
-                            text: "Contact support.",
-                        });
+                        Swal.fire("Error", "Verification failed", "error");
                     }
                 },
-                prefill: {
-                    name,
-                    email: emailID,
-                    contact: phone,
-                },
-                theme: { color: "#3399cc" },
                 modal: {
                     ondismiss: async () => {
-                        await fetch("/api/api/website/orders/orderplace", {
+                        await fetch("/api/api/website/orders/ordercancel", {
                             method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                reason: "User cancelled the payment",
-                                orderId: data.orderId || "",
-                            }),
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${token}`
+                            },
+                            body: JSON.stringify({ reason: "User cancelled", orderId: data.data.orderId }),
                         });
-
-                        Swal.fire({
-                            icon: "warning",
-                            title: "Payment Cancelled",
-                            text: "You cancelled the payment.",
-                        });
-                    },
+                        Swal.fire("Payment Cancelled", "You cancelled the payment", "warning");
+                    }
                 },
+                prefill: { name, email: emailID, contact: phone.trim() },
+                theme: { color: "#3399cc" },
             };
 
-            const rzpInstance = new window.Razorpay(options);
-            rzpInstance.open();
+            const rzp = new window.Razorpay(options);
+
+            rzp.open();
+
+            rzp.on('payment.failed', function (response) {
+                Swal.fire("Payment Failed", response.error.description, "error");
+            });
 
         } catch (error) {
-            console.error("Subscription Error:", error);
-            Swal.fire({
-                icon: "error",
-                title: "Error",
-                text: "Something went wrong.",
-            });
+            console.error("Error in handleSubmit:", error);
+            Swal.fire("Error", error.message || "Something went wrong. Please try again later.", "error");
         } finally {
             setSubLoading(false);
         }
     };
 
-    // if (!window.Razorpay) {
-    //     Swal.fire({
-    //         icon: "error",
-    //         title: "Payment Error",
-    //         text: "Razorpay SDK not loaded. Please refresh and try again.",
-    //     });
-    //     return;
-    // }
-    
     const [mainImage, setMainImage] = useState("");
     useEffect(() => {
         if (products[selectedModelIndex]) {
@@ -742,10 +714,8 @@ const ProductList = ({ userInfo, handleLogout }) => {
                                                     <label>City</label>
                                                     <select
                                                         className="form-control"
-                                                        value={formDataCallRequest.city}
-                                                        onChange={(e) =>
-                                                            setFormDataCallRequest({ ...formDataCallRequest, city: e.target.value })
-                                                        }
+                                                        value={city}
+                                                        onChange={(e) => setCity(e.target.value)}
                                                     >
                                                         {indianCities.map((city) => (
                                                             <option key={city} value={city}>
@@ -786,9 +756,9 @@ const ProductList = ({ userInfo, handleLogout }) => {
 
                         {/* <!-- Section Title --> */}
                         <div className="container section-title" data-aos="fade-up">
-                           
+
                             <h3 style={{ textAlign: 'left', }}>Product details</h3>
-                            <p style={{textAlign:'left'}}> {products[selectedModelIndex].product_details}</p>
+                            <p style={{ textAlign: 'left' }}> {products[selectedModelIndex].product_details}</p>
                             {products[selectedModelIndex]?.product_specifications && (
                                 <p style={{ padding: '20px' }}>
                                     <a

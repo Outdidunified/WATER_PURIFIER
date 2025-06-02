@@ -16,6 +16,8 @@ import Swal from 'sweetalert2';
 
 const WebsiteRoutes = () => {
     const [userInfo, setUserInfo] = useState(null);
+    const [token, setUserLginToken] = useState(null);
+
     const navigate = useNavigate();
 
     // On component mount or reload, fetch from sessionStorage
@@ -31,7 +33,7 @@ const WebsiteRoutes = () => {
         sessionStorage.setItem("WebUser", JSON.stringify(user));
         sessionStorage.setItem("WebToken", token);
         setUserInfo(user);
-
+        setUserLginToken(token);
         // Optional: slight delay to let state propagate
         setTimeout(() => {
             navigate("/");
@@ -58,17 +60,17 @@ const WebsiteRoutes = () => {
 
     return (
         <>
-            <Header userInfo={userInfo} handleLogout={handleLogout} />
+            <Header userInfo={userInfo} token={token} handleLogout={handleLogout} />
             <Routes>
-                <Route path="/" element={<Home userInfo={userInfo} handleLogout={handleLogout} />} />
-                <Route path="/product-list" element={<ProductList userInfo={userInfo} handleLogout={handleLogout} />} />
-                <Route path="/about" element={<About userInfo={userInfo} handleLogout={handleLogout} />} />
-                <Route path="/blog" element={<Blog userInfo={userInfo} handleLogout={handleLogout} />} />
-                <Route path="/faqs" element={<FAQs userInfo={userInfo} handleLogout={handleLogout} />} />
-                <Route path="/contact" element={<Contact userInfo={userInfo} handleLogout={handleLogout} />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicy userInfo={userInfo} handleLogout={handleLogout} />} />
-                <Route path="/terms-of-service" element={<TermsOfService userInfo={userInfo} handleLogout={handleLogout} />} />
-                <Route path="/auth" element={<Login handleLogin={handleLogin} handleLogout={handleLogout} />} />
+                <Route path="/" element={<Home userInfo={userInfo} token={token}  handleLogout={handleLogout} />} />
+                <Route path="/product-list" element={<ProductList userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
+                <Route path="/about" element={<About userInfo={userInfo} token={token}  handleLogout={handleLogout} />} />
+                <Route path="/blog" element={<Blog userInfo={userInfo} token={token}  handleLogout={handleLogout} />} />
+                <Route path="/faqs" element={<FAQs userInfo={userInfo} token={token}  handleLogout={handleLogout} />} />
+                <Route path="/contact" element={<Contact userInfo={userInfo} token={token}  handleLogout={handleLogout} />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy userInfo={userInfo} token={token}  handleLogout={handleLogout} />} />
+                <Route path="/terms-of-service" element={<TermsOfService userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
+                <Route path="/auth" element={<Login handleLogin={handleLogin} token={token} handleLogout={handleLogout} />} />
             </Routes>
         </>
     );

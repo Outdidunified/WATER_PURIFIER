@@ -2,7 +2,7 @@ import React from "react";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
-const TermsOfService = ({ userInfo, handleLogout }) => {
+const TermsOfService = ({ userInfo, token, handleLogout }) => {
     return (
         <div>
 

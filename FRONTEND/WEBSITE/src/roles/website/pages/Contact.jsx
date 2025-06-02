@@ -2,7 +2,7 @@ import React from "react";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import useContact from "../hooks/useContact";
-const Contact = ({ userInfo, handleLogout }) => {
+const Contact = ({ userInfo, token, handleLogout }) => {
     const { formData, handleChange, handleSubmits, loading } = useContact();
 
     return (
