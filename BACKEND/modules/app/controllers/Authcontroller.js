@@ -182,7 +182,7 @@ exports.verifyOtp = async (req, res) => {
         user_id: user.user_id,
         email: user.email,
         role_id: user.role_id,
-        is_subscribed: user.issubscribed ?? false,
+        is_subscribed: user.isSubscribed ?? false,
       },
     };
     console.log("Sending /verifyOtp response:", response);
