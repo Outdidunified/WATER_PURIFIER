@@ -107,7 +107,7 @@ const FetchAdminProfile = async (req, res) => {
         }
 
         // Remove sensitive or unnecessary fields like 'socket' if needed
-        const { socket, password, ...sanitizedProfile } = user;
+        const { ...sanitizedProfile } = user;
 
         return res.status(200).json({ status: 'Success', data: sanitizedProfile });
 
@@ -173,6 +173,7 @@ const UpdateAdminProfile = async (req, res) => {
             message: 'User profile updated successfully',
             data: {
                 user_id: userIdInt,
+                password,
                 name,
                 phone,
                 status: Boolean(status)
