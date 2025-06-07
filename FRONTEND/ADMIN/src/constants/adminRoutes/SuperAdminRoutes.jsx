@@ -25,6 +25,7 @@ import ManageContact from '../../roles/superadmin/page/ManageContact/ManageConta
 import ManageCallRequests from '../../roles/superadmin/page/ManageCallRequests/ManageCallRequests';
 import ViewInstallations from '../../roles/superadmin/page/ManageInstallations/ViewInstallations';
 import ViewServices from '../../roles/superadmin/page/ManageServices/ViewServices'
+//superadmin
 const SuperAdminApp = () => {
   const storedUser = JSON.parse(sessionStorage.getItem('superAdminUser'));
   const [loggedIn, setLoggedIn] = useState(!!storedUser);
@@ -41,7 +42,6 @@ const SuperAdminApp = () => {
   sessionStorage.setItem('superAdminToken', token);
   navigate('/superadmin/Dashboard');
 };
-
 
   // Handle logout
   const handleLogout = () => {

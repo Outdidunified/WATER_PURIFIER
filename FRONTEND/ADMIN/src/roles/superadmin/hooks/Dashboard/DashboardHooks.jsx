@@ -1,3 +1,4 @@
+//Dashboard Hook
 import React, { useState, useEffect, useRef } from 'react';
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import { Bar } from 'react-chartjs-2';

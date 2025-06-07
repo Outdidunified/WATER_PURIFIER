@@ -1,3 +1,4 @@
+//ManageProduct
 import { useState, useEffect, useRef } from 'react';
 import { showErrorAlert, showSuccessAlert } from '../../../../utils/alert';
 import axiosInstance from '../../../../utils/utils';
