@@ -1,3 +1,4 @@
+//alert
 import Swal from 'sweetalert2';
 
 export const showSuccessAlert = (title = 'Success', text = '') => {

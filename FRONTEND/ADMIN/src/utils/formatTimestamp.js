@@ -1,4 +1,4 @@
-// src/utils/dateFormatter.js
+//Formatter
 
 export const formatTimestamp = (originalTimestamp) => {
     const date = new Date(originalTimestamp);
