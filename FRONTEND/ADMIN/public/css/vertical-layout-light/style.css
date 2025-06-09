@@ -11715,7 +11715,7 @@ fieldset:disabled .wizard > .actions a,
 }
 
 .btn-outline-success.disabled, .editable-container.editable-inline .editableform .control-group .editable-buttons .disabled.editable-submit, .btn-outline-success:disabled, .editable-container.editable-inline .editableform .control-group .editable-buttons .editable-submit:disabled {
-  color: #57B657;
+  color: #007BFF;
   background-color: transparent;
 }
 
@@ -11723,8 +11723,8 @@ fieldset:disabled .wizard > .actions a,
 .show > .btn-outline-success.dropdown-toggle,
 .editable-container.editable-inline .editableform .control-group .editable-buttons .show > .dropdown-toggle.editable-submit {
   color: #fff;
-  background-color: #57B657;
-  border-color: #57B657;
+  background-color: #007BFF;
+  border-color: #007BFF;
 }
 
 .btn-outline-success:not(:disabled):not(.disabled):active:focus, .editable-container.editable-inline .editableform .control-group .editable-buttons .editable-submit:not(:disabled):not(.disabled):active:focus, .btn-outline-success:not(:disabled):not(.disabled).active:focus, .editable-container.editable-inline .editableform .control-group .editable-buttons .editable-submit:not(:disabled):not(.disabled).active:focus,
@@ -15961,7 +15961,7 @@ button.bg-secondary:focus {
 }
 
 .bg-success, .swal2-modal .swal2-buttonswrapper .swal2-styled.swal2-confirm, .settings-panel .color-tiles .tiles.success {
-  background-color: #57B657 !important;
+  background-color: #007BFF !important;
 }
 
 a.bg-success:hover, .swal2-modal .swal2-buttonswrapper a.swal2-styled.swal2-confirm:hover, .settings-panel .color-tiles a.tiles.success:hover, a.bg-success:focus, .swal2-modal .swal2-buttonswrapper a.swal2-styled.swal2-confirm:focus, .settings-panel .color-tiles a.tiles.success:focus,
@@ -16093,7 +16093,7 @@ button.bg-dark:focus,
 }
 
 .border-success, .swal2-modal .swal2-buttonswrapper .swal2-styled.swal2-confirm {
-  border-color: #57B657 !important;
+  border-color: #007BFF !important;
 }
 
 .border-info {
@@ -20843,7 +20843,7 @@ code {
 }
 
 .badge-outline-success {
-  color: #57B657;
+  color: #007BFF;
   border: 1px solid #57B657;
 }
 
@@ -21609,8 +21609,8 @@ code {
 
 .btn-inverse-success:hover {
   color: #ffffff;
-  background-color: #57B657;
-  border-color: #57B657;
+  background-color: #007BFF;
+  border-color: #007BFF;
 }
 
 .btn-inverse-success.focus, .btn-inverse-success:focus {
@@ -21618,15 +21618,15 @@ code {
 }
 
 .btn-inverse-success.disabled, .btn-inverse-success:disabled {
-  color: #57B657;
+  color: #007BFF;
   background-color: transparent;
 }
 
 .btn-inverse-success.active, .btn-inverse-success:active,
 .show > .btn-inverse-success.dropdown-toggle {
   color: #ffffff;
-  background-color: #57B657;
-  border-color: #57B657;
+  background-color: #007BFF;
+  border-color: #007BFF;
 }
 
 .btn-inverse-info {
@@ -21972,11 +21972,11 @@ code {
 
 .bg-inverse-success {
   background: #b0ddb0;
-  border-color: #57B657;
+  border-color: #007bFF;
 }
 
 .bg-inverse-success .breadcrumb-item {
-  color: #57B657;
+  color: #007bFF;
 }
 
 .bg-inverse-success .breadcrumb-item:before {
@@ -21996,7 +21996,7 @@ code {
 }
 
 .bg-inverse-success.breadcrumb-custom .breadcrumb-item a {
-  color: #57B657;
+  color: #007BFF;
   border: none;
 }
 
@@ -22005,7 +22005,7 @@ code {
 }
 
 .bg-inverse-success.breadcrumb-custom .breadcrumb-item span {
-  color: #57B657;
+  color: #007BFF;
 }
 
 .bg-inverse-success.breadcrumb-custom .breadcrumb-item:last-child {
@@ -22273,7 +22273,7 @@ code {
 }
 
 .card.card-outline-success {
-  border: 1px solid #57B657;
+  border: 1px solid #007BFF;
 }
 
 .card.card-outline-primary {
