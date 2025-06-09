@@ -13,7 +13,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
 
   const {
     handleSearchInputChange,
-    loading,
+    loading,role,formError,formLoading,
     modalAddStyle,
     error,
     roleId,
@@ -72,113 +72,126 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                             </span>
 
                             <form className="card" onSubmit={handleAddUserSubmit}>
-                              <div className="card-body">
-                                <div style={{ textAlign: 'center' }}>
-                                  <h4 className="card-title">Add User</h4>
-                                </div>
+  <div className="card-body">
+    <div style={{ textAlign: 'center' }}>
+      <h4 className="card-title">Add User</h4>
+    </div>
 
-                                <div className="table-responsive pt-3">
-                                  {/* Name */}
-                                  <div className="input-group mb-3">
-                                    <div className="input-group-prepend">
-                                      <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Name</span>
-                                    </div>
-                                    <InputField
-                                      placeholder="Name"
-                                      value={name}
-                                      maxLength={50}
-                                      pattern="^[a-zA-Z ]*$"
-                                      title="Only letters and spaces are allowed"
-                                      onChange={(e) => setName(e.target.value.replace(/[^a-zA-Z ]/g, ''))}
-                                      required
-                                    />
+    <div className="table-responsive pt-3">
+      {/* Role Dropdown */}
+      <div className="input-group mb-3">
+        <div className="input-group-prepend">
+          <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Role</span>
+        </div>
+        <select
+          className="form-control"
+          value={role}
+          onChange={(e) => setRole(Number(e.target.value))}
+          required
+        >
+          <option value={1}>Admin</option>
+          <option value={2}>Technician</option>
+          <option value={3}>End User</option>
+        </select>
+      </div>
 
-                                  </div>
+      {/* Name */}
+      <div className="input-group mb-3">
+        <div className="input-group-prepend">
+          <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Name</span>
+        </div>
+        <InputField
+          placeholder="Name"
+          value={name}
+          maxLength={50}
+          pattern="^[a-zA-Z ]*$"
+          title="Only letters and spaces are allowed"
+          onChange={(e) => setName(e.target.value.replace(/[^a-zA-Z ]/g, ''))}
+          required
+        />
+      </div>
 
-                                  {/* Email */}
-                                  <div className="input-group mb-3">
-                                    <div className="input-group-prepend">
-                                      <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Email</span>
-                                    </div>
-                                    <InputField
-                                      type="email"
-                                      placeholder="Email"
-                                      value={email}
-                                      maxLength={50}
-                                      onChange={(e) => setEmail(e.target.value.toLowerCase())}
-                                      required
-                                    />
+      {/* Email */}
+      <div className="input-group mb-3">
+        <div className="input-group-prepend">
+          <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Email</span>
+        </div>
+        <InputField
+          type="email"
+          placeholder="Email"
+          value={email}
+          maxLength={50}
+          onChange={(e) => setEmail(e.target.value.toLowerCase())}
+          required
+        />
+      </div>
 
-                                  </div>
+      {/* Password */}
+      <div className="input-group mb-3">
+        <div className="input-group-prepend">
+          <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Password</span>
+        </div>
+        <InputField
+          type="text"
+          placeholder="4-digit Password"
+          value={password}
+          maxLength={4}
+          pattern="^[1-9][0-9]{3}$"
+          title="Password must be exactly 4 digits and not start with 0"
+          onChange={(e) => {
+            const value = e.target.value.replace(/[^0-9]/g, '');
+            setPassword(value);
+          }}
+          required
+        />
+      </div>
 
-                                  {/* Password (4-digit only) */}
-                                  <div className="input-group mb-3">
-                                    <div className="input-group-prepend">
-                                      <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Password</span>
-                                    </div>
-                                    <InputField
-                                      type="text"
-                                      placeholder="4-digit Password"
-                                      value={password}
-                                      maxLength={4}
-                                      pattern="^[1-9][0-9]{3}$"
-                                      title="Password must be exactly 4 digits and not start with 0"
-                                      onChange={(e) => {
-                                        const value = e.target.value.replace(/[^0-9]/g, '');
-                                        setPassword(value);
-                                      }}
-                                      required
-                                    />
-                                  </div>
+      {/* Phone */}
+      <div className="input-group mb-3">
+        <div className="input-group-prepend">
+          <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Phone</span>
+        </div>
+        <InputField
+          type="tel"
+          placeholder="Phone"
+          maxLength={10}
+          pattern="^[1-9][0-9]{9}$"
+          title="Phone must be 10 digits and should not start with 0"
+          value={phone}
+          onChange={(e) => {
+            const val = e.target.value.replace(/[^0-9]/g, '');
+            if (val.length === 1 && val === '0') return;
+            setPhone(val);
+          }}
+          required
+        />
+      </div>
 
-                                  {/* Phone */}
-                                  <div className="input-group mb-3">
-                                    <div className="input-group-prepend">
-                                      <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Phone</span>
-                                    </div>
-                                    <InputField
-                                      type="tel"
-                                      placeholder="Phone"
-                                      maxLength={10}
-                                      pattern="^[1-9][0-9]{9}$"
-                                      title="Phone must be 10 digits and should not start with 0"
-                                      value={phone}
-                                      onChange={(e) => {
-                                        const val = e.target.value.replace(/[^0-9]/g, '');
-                                        // Prevent starting with 0
-                                        if (val.length === 1 && val === '0') return;
-                                        setPhone(val);
-                                      }}
-                                      required
-                                    />
+      {/* City */}
+      <div className="input-group mb-3">
+        <div className="input-group-prepend">
+          <span className="input-group-text" style={{ color: 'black', width: '125px' }}>City</span>
+        </div>
+        <InputField
+          placeholder="City"
+          value={city}
+          maxLength={50}
+          pattern="^[a-zA-Z ]{2,}$"
+          title="City must be at least 2 letters and only alphabets"
+          onChange={(e) => setCity(e.target.value.replace(/[^a-zA-Z ]/g, ''))}
+          required
+        />
+      </div>
+    </div>
 
-                                  </div>
+    {formError && <div className="text-danger">{formError}</div>}
+    <br />
+    <ReusableButton type="submit" loading={formLoading} disabled={formLoading}>
+      Add
+    </ReusableButton>
+  </div>
+</form>
 
-                                  {/* City */}
-                                  <div className="input-group mb-3">
-                                    <div className="input-group-prepend">
-                                      <span className="input-group-text" style={{ color: 'black', width: '125px' }}>City</span>
-                                    </div>
-                                    <InputField
-                                      placeholder="City"
-                                      value={city}
-                                      maxLength={50}
-                                      pattern="^[a-zA-Z ]{2,}$"
-                                      title="City must be at least 2 letters and only alphabets"
-                                      onChange={(e) => setCity(e.target.value.replace(/[^a-zA-Z ]/g, ''))}
-                                      required
-                                    />
-                                  </div>
-                                </div>
-
-                                {error && <div className="text-danger">{error}</div>}
-                                <br />
-
-                                <ReusableButton type="submit" loading={loading} disabled={loading}>
-                                  Add
-                                </ReusableButton>
-                              </div>
-                            </form>
 
                           </div>
                         </div>

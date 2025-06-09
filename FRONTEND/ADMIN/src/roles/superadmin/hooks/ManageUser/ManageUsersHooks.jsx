@@ -17,6 +17,9 @@ const useManageUsers = (userInfo) => {
   const [posts, setPosts] = useState([]);
   const [tableLoading, setTableLoading] = useState(false);
   const [tableError, setTableError] = useState(null);
+  // Add at the top with other form states
+  const [role, setRole] = useState(3); // Default to End User (role_id: 3)
+   
 
   // Add User modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -88,14 +91,15 @@ const useManageUsers = (userInfo) => {
       setFormError(null);
 
       const payload = {
-        role_id: 3,
-        name,
-        email,
-        password,
-        phone,
-        city,
-        createdby: userInfo.email,
-      };
+  role_id: role, // use selected role
+  name,
+  email,
+  password,
+  phone,
+  city,
+  createdby: userInfo.email,
+};
+
 
       const response = await axiosInstance.post('api/admin/AddUsers', payload);
 
@@ -125,6 +129,8 @@ const useManageUsers = (userInfo) => {
     setPassword('');
     setPhone('');
     setCity('');
+    setRole(3);
+
   };
 
   return {
@@ -148,7 +154,8 @@ const useManageUsers = (userInfo) => {
     setPhone,
     city,
     setCity,
-    handleAddUserSubmit,
+    handleAddUserSubmit,role,
+  setRole,
   };
 };
 

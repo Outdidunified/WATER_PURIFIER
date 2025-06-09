@@ -20391,7 +20391,7 @@ code {
   font-family: "themify";
   content: '\e64a';
   font-size: .875rem;
-  color: #6c7383;
+  color: #bdc3d2;
   line-height: 1.875rem;
   margin-right: 0.48rem;
 }
@@ -20409,7 +20409,7 @@ code {
   font-family: "themify";
   content: '\e649';
   font-size: .875rem;
-  color: #6c7383;
+  color: #bdc3d2;
   line-height: 1.875rem;
   margin-right: 0.48rem;
 }
@@ -21790,7 +21790,7 @@ code {
 }
 
 .btn-outline-light {
-  color: #6c7383;
+  color: #bdc3d2;
   border-color: #e3e3e3;
 }
 
@@ -28797,14 +28797,21 @@ div.tagsinput span.tag a {
   display: flex;
   -webkit-flex-direction: column;
   flex-direction: column;
+  
 }
 
 @media (max-width: 991px) {
   .main-panel {
     margin-left: 0;
     width: 100%;
+    padding-top: 90px; /* Fix for fixed header */
+  }
+
+  .content-wrapper {
+    padding: 1.5rem 1.5rem;
   }
 }
+
 
 .content-wrapper {
   background: #F5F7FF;
@@ -28842,6 +28849,7 @@ background: linear-gradient(to bottom, #1e2a38, #3c4a57);
   border-radius: 8px;
   transition: background 0.2s ease;
 }
+
 
 .sidebar .nav-item .nav-link {
   display: flex;
@@ -28899,7 +28907,7 @@ background: linear-gradient(to bottom, #1e2a38, #3c4a57);
   align-items: center;
   white-space: nowrap;
   padding: 0.8125rem 1.937rem 0.8125rem 1rem;
-  color: #6C7383;
+  color: #bdc3d2;
   border-radius: 8px;
   -webkit-transition-duration: 0.45s;
   -moz-transition-duration: 0.45s;
@@ -28917,7 +28925,7 @@ background: linear-gradient(to bottom, #1e2a38, #3c4a57);
   font-size: 1rem;
   line-height: 1;
   margin-right: 1rem;
-  color: #6C7383;
+  color: #bdc3d2;
 }
 
 .rtl .sidebar .nav .nav-item .nav-link i.menu-icon {
@@ -29151,37 +29159,30 @@ background: linear-gradient(to bottom, #1e2a38, #3c4a57);
 /* style for off-canvas menu*/
 
 
-
-  @media screen and (max-width: 991px) {
+@media screen and (max-width: 991px) {
   .sidebar-offcanvas {
     position: fixed;
     top: 70px;
-    right: -250px; /* Hidden by default */
+    left: -280px; /* off-screen to the left, not right */
     bottom: 0;
-    width: 250px;
-    background: linear-gradient(to bottom, #1a1a1a, #444);
-    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+    width: 280px;
+    background: linear-gradient(to bottom, #1e2a38, #3c4a57);
     z-index: 1040;
     overflow-y: auto;
-    transition: right 0.3s ease-in-out;
-    color: white;
+    transition: left 0.3s ease-in-out;
   }
 
-  /* When active, slide in */
   .sidebar-offcanvas.active {
-    right: 0;
+    left: 0; /* Slide into view */
   }
-}
 
-  /* Optional overlay for closing sidebar when clicking outside */
   .sidebar-overlay {
-    content: '';
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
     z-index: 1039;
     display: none;
   }
@@ -29189,7 +29190,7 @@ background: linear-gradient(to bottom, #1e2a38, #3c4a57);
   .sidebar-overlay.active {
     display: block;
   }
-
+}
 
 
 /* Navbar */
@@ -29262,7 +29263,7 @@ background: linear-gradient(to bottom, #1e2a38, #3c4a57);
   -webkit-transition: width 0.25s ease;
   -moz-transition: width 0.25s ease;
   -ms-transition: width 0.25s ease;
-  color: #6C7383;
+  color: #bdc3d2;
   padding-right: 2.375rem;
   padding-left: 2.375rem;
   width: calc(100% - 235px);
@@ -29355,7 +29356,7 @@ background: linear-gradient(to bottom, #1e2a38, #3c4a57);
 
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .input-group-text i, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .input-group-text i {
   font-size: 1.25rem;
-  color: #6C7383;
+  color: #bdc3d2;
 }
 
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .form-control, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .form-control, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .asColorPicker-input, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .asColorPicker-input, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .dataTables_wrapper select, .dataTables_wrapper .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group select, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .dataTables_wrapper select, .dataTables_wrapper .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap select, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .jsgrid .jsgrid-table .jsgrid-filter-row input[type=text], .jsgrid .jsgrid-table .jsgrid-filter-row .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group input[type=text], .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .jsgrid .jsgrid-table .jsgrid-filter-row input[type=text], .jsgrid .jsgrid-table .jsgrid-filter-row .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap input[type=text],
@@ -29375,7 +29376,7 @@ background: linear-gradient(to bottom, #1e2a38, #3c4a57);
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .tt-query::-webkit-input-placeholder,
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .tt-hint::-webkit-input-placeholder,
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .tt-hint::-webkit-input-placeholder {
-  color: #6c7383;
+  color: #bdc3d2;
 }
 
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .form-control:-moz-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .form-control:-moz-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .asColorPicker-input:-moz-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .asColorPicker-input:-moz-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .dataTables_wrapper select:-moz-placeholder, .dataTables_wrapper .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group select:-moz-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .dataTables_wrapper select:-moz-placeholder, .dataTables_wrapper .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap select:-moz-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .jsgrid .jsgrid-table .jsgrid-filter-row input:-moz-placeholder[type=text], .jsgrid .jsgrid-table .jsgrid-filter-row .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group input:-moz-placeholder[type=text], .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .jsgrid .jsgrid-table .jsgrid-filter-row input:-moz-placeholder[type=text], .jsgrid .jsgrid-table .jsgrid-filter-row .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap input:-moz-placeholder[type=text],
@@ -29385,7 +29386,7 @@ background: linear-gradient(to bottom, #1e2a38, #3c4a57);
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .tt-query:-moz-placeholder,
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .tt-hint:-moz-placeholder,
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .tt-hint:-moz-placeholder {
-  color: #6c7383;
+  color: #bdc3d2;
 }
 
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .form-control::-moz-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .form-control::-moz-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .asColorPicker-input::-moz-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .asColorPicker-input::-moz-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .dataTables_wrapper select::-moz-placeholder, .dataTables_wrapper .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group select::-moz-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .dataTables_wrapper select::-moz-placeholder, .dataTables_wrapper .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap select::-moz-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .jsgrid .jsgrid-table .jsgrid-filter-row input[type=text]::-moz-placeholder, .jsgrid .jsgrid-table .jsgrid-filter-row .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group input[type=text]::-moz-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .jsgrid .jsgrid-table .jsgrid-filter-row input[type=text]::-moz-placeholder, .jsgrid .jsgrid-table .jsgrid-filter-row .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap input[type=text]::-moz-placeholder,
@@ -29395,7 +29396,7 @@ background: linear-gradient(to bottom, #1e2a38, #3c4a57);
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .tt-query::-moz-placeholder,
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .tt-hint::-moz-placeholder,
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .tt-hint::-moz-placeholder {
-  color: #6c7383;
+  color: #bdc3d2;
 }
 
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .form-control:-ms-input-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .form-control:-ms-input-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .asColorPicker-input:-ms-input-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .asColorPicker-input:-ms-input-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .dataTables_wrapper select:-ms-input-placeholder, .dataTables_wrapper .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group select:-ms-input-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .dataTables_wrapper select:-ms-input-placeholder, .dataTables_wrapper .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap select:-ms-input-placeholder, .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .jsgrid .jsgrid-table .jsgrid-filter-row input:-ms-input-placeholder[type=text], .jsgrid .jsgrid-table .jsgrid-filter-row .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group input:-ms-input-placeholder[type=text], .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .jsgrid .jsgrid-table .jsgrid-filter-row input:-ms-input-placeholder[type=text], .jsgrid .jsgrid-table .jsgrid-filter-row .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap input:-ms-input-placeholder[type=text],
@@ -29405,7 +29406,7 @@ background: linear-gradient(to bottom, #1e2a38, #3c4a57);
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .tt-query:-ms-input-placeholder,
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .input-group .tt-hint:-ms-input-placeholder,
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-search .asColorPicker-wrap .tt-hint:-ms-input-placeholder {
-  color: #6c7383;
+  color: #bdc3d2;
 }
 
 .navbar .navbar-menu-wrapper .navbar-nav .nav-item.nav-settings {
@@ -30410,7 +30411,7 @@ background: linear-gradient(to bottom, #1e2a38, #3c4a57);
     text-align: center;
     position: static;
   }
-  .sidebar-icon-only .sidebar .nav .nav-item .nav-link .menu-title,
+  .sidebar-icon-only .sidebar .nav .nav-item .nav-link .sidebar .nav .nav-item .nav-link .menu-title,
   .sidebar-icon-only .sidebar .nav .nav-item .nav-link .badge, .sidebar-icon-only .sidebar .nav .nav-item .nav-link .menu-sub-title {
     display: none;
   }
@@ -31859,3 +31860,5 @@ th, td {
   background-color: #dc3545;  /* Red */
   color: white;
 }
+
+

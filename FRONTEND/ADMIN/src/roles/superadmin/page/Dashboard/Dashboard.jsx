@@ -81,7 +81,7 @@ const Dashboard = ({ userInfo, handleLogout, fetchData }) => {
       <Header userInfo={userInfo} handleLogout={handleLogout} />
       <div className="container-fluid page-body-wrapper" style={{ backgroundColor: '#f9fafc' }}>
         <Sidebar />
-        <div className="main-panel" style={{ padding: '30px 40px' }}>
+        <div className="main-panel">
           <div className="content-wrapper">
             <div className="row mb-4">
               <div className="col-md-12 d-flex justify-content-between align-items-center admin-header">
