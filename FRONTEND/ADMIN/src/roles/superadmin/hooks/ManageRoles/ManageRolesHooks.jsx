@@ -1,38 +1,34 @@
-//ManageRoles
+// useManageRoles.js
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axiosInstance from '../../../../utils/utils';
-import {
-  showSuccessAlert,
-  showErrorAlert
-} from '../../../../utils/alert';
-import { useNavigate } from 'react-router-dom';
-
+import { showSuccessAlert, showErrorAlert } from '../../../../utils/alert';
 
 const useManageRoles = (userInfo) => {
   const fetchCalled = useRef(false);
 
-  // Roles data & UI states
   const [roles, setRoles] = useState([]);
   const [filteredRoles, setFilteredRoles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [tableError, setTableError] = useState(null);
 
-  // Add Role Modal & form states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const openAddModal = () => setIsAddModalOpen(true);
-  const closeAddModal = () => {
-    setIsAddModalOpen(false);
-    resetForm();
-    setFormError(null);
-  };
-
   const [roleId, setRoleId] = useState('');
   const [roleName, setRoleName] = useState('');
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState(null);
 
+  const openAddModal = () => setIsAddModalOpen(true);
+  const closeAddModal = () => {
+    setIsAddModalOpen(false);
+    resetForm();
+  };
 
-  // Fetch roles from backend
+  const resetForm = () => {
+    setRoleId('');
+    setRoleName('');
+    setFormError(null);
+  };
+
   const fetchRoles = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -66,7 +62,6 @@ const useManageRoles = (userInfo) => {
     }
   }, [fetchRoles]);
 
-  // Search/filter roles by role_name or role_id
   const handleSearchInputChange = (e) => {
     const searchTerm = e.target.value.toLowerCase();
     const filtered = roles.filter(role =>
@@ -76,13 +71,16 @@ const useManageRoles = (userInfo) => {
     setFilteredRoles(filtered);
   };
 
-  // Add Role form submit
   const handleAddRoleSubmit = async (e) => {
     e.preventDefault();
 
-    // Basic validation
     if (!roleId || !roleName) {
       setFormError('Role ID and Role Name are required');
+      return;
+    }
+
+    if (roles.some(role => role.role_id === Number(roleId))) {
+      setFormError('This role already exists');
       return;
     }
 
@@ -116,15 +114,12 @@ const useManageRoles = (userInfo) => {
     }
   };
 
-  const resetForm = () => {
-    setRoleId('');
-    setRoleName('');
-    setFormError(null);
-  };
+const isDuplicateRole = roles.some(role => String(role.role_id) === String(roleId));
+const isAddDisabled = !roleId || !roleName || isDuplicateRole || formLoading;
 
   return {
     roles: filteredRoles,
-    isLoading,
+    isLoading,isAddDisabled,
     tableError,
     isAddModalOpen,
     openAddModal,
@@ -137,6 +132,7 @@ const useManageRoles = (userInfo) => {
     formError,
     handleAddRoleSubmit,
     handleSearchInputChange,
+    isDuplicateRole
   };
 };
 

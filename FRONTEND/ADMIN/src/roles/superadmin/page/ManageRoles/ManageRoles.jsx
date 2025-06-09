@@ -17,15 +17,15 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
     modalAddStyle,
     error,
     roleId, roles, tableError,
-    createdBy,
+    createdBy, formError, formLoading,
     posts,
-    isLoading,
+    isLoading, isAddDisabled,
     errorMessage,
     setRoleId,
     setCreatedBy,
     openAddModal,
     closeAddModal,
-    addManageUser, handleAddRoleSubmit,
+    addManageUser, handleAddRoleSubmit, isDuplicateRole,
     isAddModalOpen, roleName, setRoleName,
   } = useManageRoles(userInfo);
 
@@ -73,62 +73,48 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
                                 </div>
 
                                 <div className="table-responsive pt-3">
-
-                                  {/* ✅ Role ID */}
                                   <div className="input-group mb-3">
                                     <div className="input-group-prepend">
-                                      <span className="input-group-text" style={{ color: 'black', width: '125px' }}>
-                                        Role ID
+                                      <span className="input-group-text custom-input-group-text" style={{ width: '125px' }}>
+                                        Role
                                       </span>
                                     </div>
-                                    <InputField
-                                      type="text"
-                                      placeholder="Role ID"
+                                    <select
+                                      className="form-control custom-select-rounded"
                                       value={roleId}
-                                      maxLength={5}
-                                      pattern="^[1-9][0-9]*$"
-                                      title="Role ID must be a positive number and should not start with 0"
                                       onChange={(e) => {
-                                        const val = e.target.value.replace(/[^0-9]/g, '');
-                                        setRoleId(val);
+                                        const selectedRoleId = e.target.value;
+                                        const selectedRoleName = e.target.options[e.target.selectedIndex].text;
+                                        setRoleId(selectedRoleId);
+                                        setRoleName(selectedRoleName);
                                       }}
                                       required
-                                    />
+                                    >
+                                      <option value="">Select Role</option>
+                                      <option value="1">Admin</option>
+                                      <option value="2">Technician</option>
+                                      <option value="3">End User</option>
+                                    </select>
                                   </div>
-
-                                  {/* ✅ Role Name */}
-                                  <div className="input-group mb-3">
-                                    <div className="input-group-prepend">
-                                      <span className="input-group-text" style={{ color: 'black', width: '125px' }}>
-                                        Role Name
-                                      </span>
-                                    </div>
-                                    <InputField
-                                      placeholder="Role Name"
-                                      value={roleName}
-                                      maxLength={50}
-                                      pattern="^[a-zA-Z ]+$"
-                                      title="Role Name should only contain alphabets and spaces"
-                                      onChange={(e) => {
-                                        const val = e.target.value.replace(/[^a-zA-Z ]/g, '');
-                                        setRoleName(val);
-                                      }}
-                                      required
-                                    />
-                                  </div>
-
                                 </div>
 
-                                {/* Error message */}
-                                {error && <div className="text-danger">{error}</div>}
+                                {/* Show error messages */}
+                                {formError && <div className="text-danger">{formError}</div>}
+                                {isDuplicateRole && <div className="text-danger">This role already exists.</div>}
                                 <br />
 
-                                {/* Submit Button */}
-                                <ReusableButton type="submit" loading={loading} disabled={loading}>
+                                <ReusableButton
+                                  type="submit"
+                                  loading={formLoading}
+                                  disabled={isAddDisabled}
+                                >
                                   Add
                                 </ReusableButton>
                               </div>
                             </form>
+
+
+
 
                           </div>
                         </div>
