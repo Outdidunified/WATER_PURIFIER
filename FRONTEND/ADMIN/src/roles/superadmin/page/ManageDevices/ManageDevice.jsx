@@ -87,7 +87,6 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                                                 </h4>
                                                             </div>
 
-                                                            {/* ✅ WP Device ID */}
                                                             <div className="input-group mb-3">
                                                                 <div className="input-group-prepend">
                                                                     <span className="input-group-text" style={{ width: '120px' }}>WP Device ID</span>
@@ -106,7 +105,6 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                                                 />
                                                             </div>
 
-                                                            {/* ✅ Model Dropdown */}
                                                             <div className="input-group mb-3">
                                                                 <div className="input-group-prepend">
                                                                     <span className="input-group-text" style={{ width: '120px' }}>Model</span>
@@ -216,7 +214,7 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                                         ))
                                                     ) : (
                                                         <tr>
-                                                            <td colSpan="8">No stations found.</td>
+                                                            <td colSpan="8">No Devices found.</td>
                                                         </tr>
                                                     )}
                                                 </tbody>
