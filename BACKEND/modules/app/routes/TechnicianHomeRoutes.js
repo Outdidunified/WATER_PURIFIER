@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const techhome = require('../controllers/TechHomecontroller');
-const authMiddleware = require('../middlewares/AuthMiddleware'); // ✅ FIXED: No destructuring
+const authMiddleware=require('../../../middlewares/authMiddleware')
 const upload = require('../middlewares/multer');
 
 // Define routes for settings
