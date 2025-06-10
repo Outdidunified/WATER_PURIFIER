@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middlewares/auth');  // your auth middleware
+const authMiddleware=require('../../../middlewares/authMiddleware')
 
 const {
   createSubscriptionOrder,
@@ -9,11 +9,11 @@ const {
 } = require('../controllers/OrderController');
 
 // Place order (requires login)
-router.post('/orderplace', auth, createSubscriptionOrder);
+router.post('/orderplace', authMiddleware, createSubscriptionOrder);
 
-router.post('/orderverify', verifyRazorpayPayment);
+router.post('/orderverify', authMiddleware,verifyRazorpayPayment);
 
 // Recharge history - only for authenticated user
-router.get('/rechargehistory', auth, getRechargeHistory);
+router.get('/rechargehistory', authMiddleware, getRechargeHistory);
 
 module.exports = router;

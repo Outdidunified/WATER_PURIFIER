@@ -29,14 +29,24 @@ exports.register = async (req, res) => {
       });
     }
 
-    const existingUser = await db.collection('users').findOne({
-      $or: [{ email }, { phone }]
-    });
+    const usersWithSameEmailOrPhone = await db.collection('users').find({
+      $or: [{ email }]
+    }).toArray();
 
-    if (existingUser) {
-      return res.status(400).json({ status: 'failed', message: 'User already exists' });
+    // If user with same role already exists
+    const sameRoleExists = usersWithSameEmailOrPhone.find(u => u.role_id === 3);
+    if (sameRoleExists) {
+      return res.status(400).json({ status: 'failed', message: 'End User with same email/phone already exists' });
     }
 
+    // Check if a technician exists
+    const technicianExists = usersWithSameEmailOrPhone.find(u => u.role_id === 2);
+
+    if (!technicianExists && usersWithSameEmailOrPhone.length > 0) {
+      return res.status(400).json({ status: 'failed', message: 'User already exists with different role' });
+    }
+
+    // Proceed to register as end-user
     const otp = generateOtp();
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
     const otpGeneratedAt = new Date();
@@ -60,7 +70,7 @@ exports.register = async (req, res) => {
       role_id: role.role_id,
       role_name: role.role_name,
       user_id: newUserId,
-      isSubscribed: false // 👈 Set user as not subscribed by default
+      isSubscribed: false
     });
 
     await db.collection('user_roles').insertOne({
@@ -75,12 +85,12 @@ exports.register = async (req, res) => {
     });
 
     if (email) {
-      await EmailConfig(email, otp);  // Send OTP email
+      await EmailConfig(email, otp);
       console.log(`OTP sent to email: ${email}`);
     }
 
     if (phone) {
-      console.log(`OTP sent to phone: ${phone}: ${otp}`); // Send SMS if needed
+      console.log(`OTP sent to phone: ${phone}: ${otp}`);
     }
 
     res.status(201).json({
@@ -98,20 +108,129 @@ exports.register = async (req, res) => {
         status: true,
         role_id: role.role_id,
         role_name: role.role_name,
-        isSubscribed: false 
+        isSubscribed: false
       }
     });
+
   } catch (err) {
     res.status(500).json({ status: 'error', message: 'Server error', error: err.message });
   }
 };
 
 
+exports.login = async (req, res) => {
+  console.log("Received /login request:", req.body);
+
+  const { email, role_id } = req.body;
+
+  if (!email || Number(role_id) !== 3) {
+    const response = { error: true, message: 'Email and role_id 3 are required' };
+    console.log("Sending /login response:", response);
+    return res.status(400).json(response);
+  }
+
+  try {
+    const otp = generateOtp();
+    otpStore[email] = {
+      otp,
+      expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
+    };
+    console.log(`Generated OTP for ${email}:`, otp);
+
+    await transporter.sendMail({
+      from: `"Outdid" <${process.env.SMTP_EMAIL}>`,
+      to: email,
+      subject: 'Your OTP for Login',
+      text: `Your OTP is: ${otp}`,
+    });
+
+    const response = { error: false, message: 'OTP sent successfully to email' };
+    console.log("Sending /login response:", response);
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Email error:', error);
+    res.status(500).json({ error: true, message: 'Failed to send OTP' });
+  }
+};
+
+exports.technicianLogin = async (req, res) => {
+  console.log("Received /technicianLogin request:", req.body);
+
+  const { email, password, role_id } = req.body;
+
+  if (!email || !password || role_id !== 2) {
+    const response = { error: true, message: 'Invalid credentials or role_id' };
+    console.log("Sending /technicianLogin response:", response);
+    return res.status(400).json(response);
+  }
+
+  try {
+    const db = await connectToDatabase();
+    const usersCollection = db.collection('users');
+    const technicianDetailsCollection = db.collection('technician_details');
+
+    const technician = await usersCollection.findOne({ email, role_id });
+
+    if (!technician) {
+      const response = { error: true, message: 'Technician not found with this email' };
+      console.log("Sending /technicianLogin response:", response);
+      return res.status(404).json(response);
+    }
+
+    if (technician.status === false) {
+      const response = { error: true, message: 'Your account has been deactivated.' };
+      console.log("Sending /technicianLogin response:", response);
+      return res.status(403).json(response);
+    }
+
+    if (String(technician.password) !== String(password)) {
+      const response = { error: true, message: 'Incorrect password' };
+      console.log("Sending /technicianLogin response:", response);
+      return res.status(401).json(response);
+    }
+
+    const token = jwt.sign({ id: technician.user_id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+    // Fetch technician stats but without total_incomplete_services
+    const technicianStats = await technicianDetailsCollection.findOne({ technician_id: technician.technician_id });
+
+    const responseData = {
+      user_id: technician.user_id,
+      email: technician.email,
+      role_id: technician.role_id,
+      technician_id: technician.technician_id,
+      name: technician.name,
+      phone: technician.phone,
+      city: technician.city,
+      issubscribed: technician.issubscribed,
+      stats: technicianStats
+        ? {
+            total_completed_services: technicianStats.total_completed_services || 0,
+            total_assigned_services: technicianStats.total_assigned_services || 0,
+          }
+        : null,
+    };
+
+    const response = {
+      error: false,
+      message: 'Technician login successful',
+      token,
+      data: responseData,
+    };
+
+    console.log("Sending /technicianLogin response:", response);
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Technician login error:', error);
+    res.status(500).json({ error: true, message: 'Internal server error' });
+  }
+};
+
 exports.verifyOtp = async (req, res) => {
   const { email, otp } = req.body;
 
   if (!email || !otp) {
-    return res.status(400).json({ status: 'failed', message: 'Email and OTP are required' });
+    return res.status(400).json({ error: true, message: 'Email and OTP are required' });
   }
 
   try {
@@ -120,36 +239,40 @@ exports.verifyOtp = async (req, res) => {
     const user = await db.collection('users').findOne({ email });
 
     if (!user || user.otp !== otp || new Date() > user.otpExpires) {
-      return res.status(400).json({ status: 'failed', message: 'Invalid or expired OTP' });
+      return res.status(400).json({ error: true, message: 'Invalid or expired OTP' });
     }
 
+    // Clear OTP after successful verification
     await db.collection('users').updateOne(
       { email },
       { $unset: { otp: "", otpExpires: "", otpGeneratedAt: "" } }
     );
 
-    const token = generateToken(user._id);
+    // Generate token
+    const token = generateToken(user._id); // or user.user_id, based on how generateToken is defined
 
+    // Return response in the new format
     res.status(200).json({
-      status: 'success',
+      error: false,
       message: 'Login successful',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
+      data: {
+        user_id: user.user_id,
         email: user.email,
-        phone: user.phone,
-        city: user.city
+        role_id: user.role_id,
+        is_subscribed: user.isSubscribed || false
       }
     });
+
   } catch (err) {
     res.status(500).json({
-      status: 'error',
+      error: true,
       message: 'OTP verification failed',
-      error: err.message
+      details: err.message
     });
   }
 };
+
 
 exports.loginWithEmail = async (req, res) => {
   const { email, password } = req.body;
