@@ -85,16 +85,16 @@ const useLogin = ( handleLogin ) => {
             const res = await fetch("/api/api/website/auth/verify-otp", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone, otp })
+                body: JSON.stringify({ email: emailID, otp })
             });
             const data = await res.json(); // Fix this line
-            if (res.status === 200 && data.status === 'Success') {
+            if (res.status === 200 && data.status?.toLowerCase() === 'success') {
                 handleLogin(data);
-                Swal.fire('Success', 'OTP verified. Redirecting...', 'success');
+                Swal.fire('Success', data.message || 'OTP verified. Redirecting...', 'success');
                 setTimeout(() => window.location.href = "/", 2000);
             } else {
                 Swal.fire('Error', data.message || 'Invalid OTP.', 'error');
-            }
+            }            
         } catch (err) {
             Swal.fire('Error', 'Verification failed.', 'error');
         } finally {
