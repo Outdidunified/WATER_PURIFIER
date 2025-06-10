@@ -721,7 +721,6 @@ const UpdateOrdersStatus = async (req, res) => {
 // AddUserRoles controller
 const AddUserRoles = async (req, res) => {
     try {
-        console.log(req.body);
         const userRoles = Array.isArray(req.body) ? req.body : [req.body];
 
         if (!userRoles.length || !userRoles[0].role_id || !userRoles[0].role_name) {
@@ -734,36 +733,41 @@ const AddUserRoles = async (req, res) => {
         const db = await database.connectToDatabase();
         const collection = db.collection("user_roles");
 
-        const docsToInsert = [];
-
         for (const role of userRoles) {
             const { role_id, role_name } = role;
 
-            // Check for duplicate role_id and role_name
             const existingRole = await collection.findOne({ role_id, role_name });
 
             if (existingRole) {
                 return res.status(400).json({
-                    success: false,
-                    message: `Role ID '${role_id}' and Role Name '${role_name}' already exist. Please use unique values.`,
+                    status: 'Failed',
+                    message: `Role ID '${role_id}' with name '${role_name}' already exists.`,
+                    added: [],
+                    skipped: [
+                        {
+                            role_id,
+                            role_name,
+                            reason: 'Duplicate'
+                        }
+                    ]
                 });
             }
-
-            const now = new Date();
-
-            docsToInsert.push({
-                ...role,
-                created_date: now,
-                status: true
-            });
         }
+
+        const now = new Date();
+        const docsToInsert = userRoles.map(role => ({
+            ...role,
+            created_date: now,
+            status: true
+        }));
 
         await collection.insertMany(docsToInsert);
 
         res.status(200).json({
             status: 'Success',
-            message: 'User Role(s) added successfully',
-            data: docsToInsert
+            message: `${docsToInsert.length} role(s) added successfully`,
+            added: docsToInsert,
+            skipped: []
         });
 
     } catch (err) {

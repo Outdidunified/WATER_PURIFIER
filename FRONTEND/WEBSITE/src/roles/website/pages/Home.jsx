@@ -394,7 +394,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
             {/* Header */}
             <Header userInfo={userInfo} handleLogout={handleLogout} />
 
-
             <main className="main">
 
                 {/* <!-- Hero Section --> */}
