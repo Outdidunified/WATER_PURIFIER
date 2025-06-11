@@ -181,7 +181,7 @@ exports.fetchUserDetails = async (req, res) => {
       // Insert into collection
       await serviceRecordsCollection.insertOne(newServiceRecord);
   
-      return res.status(201).json({
+      return res.status(200).json({
         error: false,
         message: 'Service request created successfully',
         data: newServiceRecord,
