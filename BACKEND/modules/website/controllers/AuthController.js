@@ -32,7 +32,7 @@ exports.register = async (req, res) => {
     }
 
     const usersWithSameEmailOrPhone = await db.collection('users').find({
-      $or: [{ email }, { phone }]
+      $or: [{ email }]
     }).toArray();
 
     const sameRoleExists = usersWithSameEmailOrPhone.find(u => u.role_id === 3);
@@ -251,7 +251,16 @@ exports.verifyOtp = async (req, res) => {
 
     const user = await db.collection('users').findOne({ email });
 
-    if (!user || user.otp !== otp || new Date() > user.otpExpires) {
+    if (!user || !user.otp || !user.otpGeneratedAt) {
+      return res.status(400).json({ error: true, message: 'Invalid OTP request' });
+    }
+
+    // Recalculate 5-minute expiry window from the stored generation time
+    const generatedAt = new Date(user.otpGeneratedAt);
+    const expiryTime = new Date(generatedAt.getTime() + 5 * 60 * 1000);
+    const currentTime = new Date();
+
+    if (user.otp !== otp || currentTime > expiryTime) {
       return res.status(400).json({ error: true, message: 'Invalid or expired OTP' });
     }
 
@@ -261,10 +270,9 @@ exports.verifyOtp = async (req, res) => {
       { $unset: { otp: "", otpExpires: "", otpGeneratedAt: "" } }
     );
 
-    // Generate token
-    const token = generateToken(user._id); // or user.user_id, based on how generateToken is defined
+    // Generate token (use your token logic here)
+    const token = generateToken(user._id); // or user.user_id if preferred
 
-    // Return response in the new format
     res.status(200).json({
       error: false,
       message: 'Login successful',
