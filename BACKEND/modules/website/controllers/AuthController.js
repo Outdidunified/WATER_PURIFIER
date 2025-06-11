@@ -14,6 +14,7 @@ exports.register = async (req, res) => {
   if (!name || !password || !city || (!email && !phone)) {
     return res.status(400).json({
       status: 'failed',
+      error: true,
       message: 'Name, password, city, and email or phone are required'
     });
   }
@@ -25,30 +26,35 @@ exports.register = async (req, res) => {
     if (!role || !role.status) {
       return res.status(403).json({
         status: 'failed',
+        error: true,
         message: 'Registration is only allowed for EndUser role'
       });
     }
 
     const usersWithSameEmailOrPhone = await db.collection('users').find({
-      $or: [{ email }]
+      $or: [{ email }, { phone }]
     }).toArray();
 
-    // If user with same role already exists
     const sameRoleExists = usersWithSameEmailOrPhone.find(u => u.role_id === 3);
     if (sameRoleExists) {
-      return res.status(400).json({ status: 'failed', message: 'End User with same email/phone already exists' });
+      return res.status(400).json({
+        status: 'failed',
+        error: true,
+        message: 'End User with same email/phone already exists'
+      });
     }
 
-    // Check if a technician exists
     const technicianExists = usersWithSameEmailOrPhone.find(u => u.role_id === 2);
-
     if (!technicianExists && usersWithSameEmailOrPhone.length > 0) {
-      return res.status(400).json({ status: 'failed', message: 'User already exists with different role' });
+      return res.status(400).json({
+        status: 'failed',
+        error: true,
+        message: 'User already exists with different role'
+      });
     }
 
-    // Proceed to register as end-user
     const otp = generateOtp();
-    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
     const otpGeneratedAt = new Date();
     const createdDate = new Date();
 
@@ -95,6 +101,7 @@ exports.register = async (req, res) => {
 
     res.status(201).json({
       status: 'success',
+      error: false,
       message: 'User registered. OTP sent to email/phone.',
       user: {
         id: result.insertedId,
@@ -113,9 +120,15 @@ exports.register = async (req, res) => {
     });
 
   } catch (err) {
-    res.status(500).json({ status: 'error', message: 'Server error', error: err.message });
+    res.status(500).json({
+      status: 'error',
+      error: true,
+      message: 'Server error',
+      details: err.message
+    });
   }
 };
+
 
 
 exports.login = async (req, res) => {
@@ -278,20 +291,20 @@ exports.loginWithEmail = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password)
-    return res.status(400).json({ status: 'failed', message: 'Email and password are required' });
+    return res.status(400).json({ error:true,status: 'failed', message: 'Email and password are required' });
 
   try {
     const db = await connectToDatabase();
     const user = await db.collection('users').findOne({ email });
 
     if (!user || user.password !== password) {
-      return res.status(400).json({ status: 'failed', message: 'Invalid email or password' });
+      return res.status(400).json({error:true, status: 'failed', message: 'Invalid email or password' });
     }
 
     const token = generateToken(user._id);
-    res.status(200).json({ status: 'success', message: 'Login successful', token, user });
+    res.status(200).json({ error:false,status: 'success', message: 'Login successful', token, user });
   } catch (err) {
-    res.status(500).json({ status: 'error', message: 'Login error', error: err.message });
+    res.status(500).json({ error:true,status: 'error', message: 'Login error', error: err.message });
   }
 };
 
@@ -299,14 +312,14 @@ exports.sendOtp = async (req, res) => {
   const { email } = req.body;
 
   if (!email)
-    return res.status(400).json({ status: 'failed', message: 'Email is required' });
+    return res.status(400).json({ error:true,status: 'failed', message: 'Email is required' });
 
   try {
     const db = await connectToDatabase();
     const user = await db.collection('users').findOne({ email });
 
     if (!user)
-      return res.status(404).json({ status: 'failed', message: 'User not found' });
+      return res.status(404).json({ error:true,status: 'failed', message: 'User not found' });
 
     const otp = generateOtp();
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
@@ -318,8 +331,8 @@ exports.sendOtp = async (req, res) => {
     await EmailConfig(email, otp);
     console.log(`OTP sent to email: ${email} - ${otp}`);
 
-    res.status(200).json({ status: 'success', message: 'OTP sent to your email' });
+    res.status(200).json({ error:false,status: 'success', message: 'OTP sent to your email' });
   } catch (err) {
-    res.status(500).json({ status: 'error', message: 'Error sending OTP', error: err.message });
+    res.status(500).json({ error:true,status: 'error', message: 'Error sending OTP', error: err.message });
   }
 };
