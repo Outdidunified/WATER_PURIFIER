@@ -388,6 +388,30 @@ const Home = ({ userInfo, token, handleLogout }) => {
         }
     };
 
+    // Email validation
+    const sanitizeEmail = (value) => {
+        // Remove spaces and keep only valid characters for an email
+        const noSpaces = value.replace(/\s/g, "");
+        const validChars = noSpaces.replace(/[^a-zA-Z0-9@.]/g, ""); // Allow letters, digits, @, ., _, and -
+
+        // Convert to lowercase
+        const lowerCaseEmail = validChars.toLowerCase();
+
+        // Handle multiple @ symbols by keeping only the first part of the email
+        const atIndex = lowerCaseEmail.indexOf("@");
+        if (atIndex !== -1) {
+            const firstPart = lowerCaseEmail.slice(0, atIndex + 1); // Include first '@'
+            const domainPart = lowerCaseEmail.slice(atIndex + 1).replace(/@/g, ""); // Remove additional '@'
+            const sanitizedEmail = `${firstPart}${domainPart}`;
+
+            // Limit the email address to 30 characters
+            return sanitizedEmail.slice(0, 30);
+        }
+
+        // No @ symbol: Limit to 30 characters and return
+        return lowerCaseEmail.slice(0, 30);
+    };
+
     return (
         <div>
 
@@ -824,6 +848,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                         className="form-control"
                                                         required
                                                         value={phone}
+                                                        minLength={10}
                                                         maxLength={10}
                                                         onChange={(e) => {
                                                             let input = e.target.value.replace(/\D/g, ''); // Remove non-digits
@@ -844,7 +869,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                         className="form-control"
                                                         required
                                                         value={emailID}
-                                                        onChange={(e) => setEmailID(e.target.value.toLowerCase())}
+                                                        onChange={(e) => setEmailID(sanitizeEmail(e.target.value))}
                                                     />
                                                 </div>
                                                 <div className="mb-3">
@@ -874,6 +899,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                         type="text"
                                                         className="form-control"
                                                         required
+                                                        minLength={6}
                                                         maxLength={6}
                                                         value={pincode}
                                                         onChange={(e) => {
@@ -1752,13 +1778,14 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             </div>
 
                                             <div className="col-md-6">
-                                                <input type="email" name="email" className="form-control" placeholder="Your Email" required value={formData.email}
+                                                <input type="email" name="email" className="form-control" placeholder="Your Email" required
+                                                    value={formData.email}
                                                     onChange={(e) =>
                                                         handleChange({
                                                             target: {
                                                                 name: 'email',
-                                                                value: e.target.value.toLowerCase()
-                                                            }
+                                                                value: sanitizeEmail(e.target.value),
+                                                            },
                                                         })
                                                     }
                                                 />

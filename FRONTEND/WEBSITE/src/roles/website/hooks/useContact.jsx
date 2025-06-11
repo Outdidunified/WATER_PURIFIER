@@ -51,6 +51,30 @@ const useContact = () => {
         }
     };    
 
-    return { formData, handleChange, handleSubmits, loading };
+    // Email validation
+    const sanitizeEmail = (value) => {
+        // Remove spaces and keep only valid characters for an email
+        const noSpaces = value.replace(/\s/g, "");
+        const validChars = noSpaces.replace(/[^a-zA-Z0-9@.]/g, ""); // Allow letters, digits, @, ., _, and -
+
+        // Convert to lowercase
+        const lowerCaseEmail = validChars.toLowerCase();
+
+        // Handle multiple @ symbols by keeping only the first part of the email
+        const atIndex = lowerCaseEmail.indexOf("@");
+        if (atIndex !== -1) {
+            const firstPart = lowerCaseEmail.slice(0, atIndex + 1); // Include first '@'
+            const domainPart = lowerCaseEmail.slice(atIndex + 1).replace(/@/g, ""); // Remove additional '@'
+            const sanitizedEmail = `${firstPart}${domainPart}`;
+
+            // Limit the email address to 30 characters
+            return sanitizedEmail.slice(0, 30);
+        }
+
+        // No @ symbol: Limit to 30 characters and return
+        return lowerCaseEmail.slice(0, 30);
+    };
+
+    return { formData, handleChange, handleSubmits, loading, sanitizeEmail };
 };
 export default useContact;

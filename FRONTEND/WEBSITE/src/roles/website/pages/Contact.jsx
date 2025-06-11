@@ -3,8 +3,8 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import useContact from "../hooks/useContact";
 const Contact = ({ userInfo, token, handleLogout }) => {
-    const { formData, handleChange, handleSubmits, loading } = useContact();
-
+    const { formData, handleChange, handleSubmits, loading, sanitizeEmail } = useContact();
+    
     return (
         <div>
 
@@ -77,13 +77,14 @@ const Contact = ({ userInfo, token, handleLogout }) => {
                                             </div>
 
                                             <div className="col-md-6">
-                                                <input type="email" name="email" className="form-control" placeholder="Your Email" required value={formData.email}
+                                                <input type="email" name="email" className="form-control" placeholder="Your Email" required
+                                                    value={formData.email}
                                                     onChange={(e) =>
                                                         handleChange({
                                                             target: {
                                                                 name: 'email',
-                                                                value: e.target.value.toLowerCase()
-                                                            }
+                                                                value: sanitizeEmail(e.target.value),
+                                                            },
                                                         })
                                                     }
                                                 />

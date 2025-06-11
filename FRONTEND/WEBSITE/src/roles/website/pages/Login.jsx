@@ -13,6 +13,30 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
         "Thane", "Bhopal", "Visakhapatnam", "Patna", "Vadodara", "Ghaziabad"
     ];
 
+    // Email validation
+    const sanitizeEmail = (value) => {
+        // Remove spaces and keep only valid characters for an email
+        const noSpaces = value.replace(/\s/g, "");
+        const validChars = noSpaces.replace(/[^a-zA-Z0-9@.]/g, ""); // Allow letters, digits, @, ., _, and -
+
+        // Convert to lowercase
+        const lowerCaseEmail = validChars.toLowerCase();
+
+        // Handle multiple @ symbols by keeping only the first part of the email
+        const atIndex = lowerCaseEmail.indexOf("@");
+        if (atIndex !== -1) {
+            const firstPart = lowerCaseEmail.slice(0, atIndex + 1); // Include first '@'
+            const domainPart = lowerCaseEmail.slice(atIndex + 1).replace(/@/g, ""); // Remove additional '@'
+            const sanitizedEmail = `${firstPart}${domainPart}`;
+
+            // Limit the email address to 30 characters
+            return sanitizedEmail.slice(0, 30);
+        }
+
+        // No @ symbol: Limit to 30 characters and return
+        return lowerCaseEmail.slice(0, 30);
+    };
+
     return (
         <div>
             <Header userInfo={userInfo} handleLogout={handleLogout} />
@@ -30,9 +54,9 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                     <button onClick={() => setLoginType("email")} style={{ marginRight: '10px', padding: '8px 16px', background: loginType === "email" ? '#007bff' : '#ccc', color: '#fff', border: 'none', borderRadius: '5px' }}>
                                         Email Login
                                     </button>
-                                    <button onClick={() => setLoginType("phone")} style={{ padding: '8px 16px', background: loginType === "phone" ? '#007bff' : '#ccc', color: '#fff', border: 'none', borderRadius: '5px' }}>
+                                    {/* <button onClick={() => setLoginType("phone")} style={{ padding: '8px 16px', background: loginType === "phone" ? '#007bff' : '#ccc', color: '#fff', border: 'none', borderRadius: '5px' }}>
                                         Phone Login
-                                    </button>
+                                    </button> */}
                                 </div>
 
                                 {/* Phone Login */}
@@ -43,6 +67,8 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                             placeholder="Phone Number"
                                             style={commonInputStyle}
                                             value={phone}
+                                            minLength={10}
+                                            maxLength={10}
                                             onChange={(e) => {
                                                 let val = e.target.value.replace(/\D/g, "");
                                                 if (val.length === 1 && !/[6-9]/.test(val)) val = "";
@@ -67,13 +93,15 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                             placeholder="Enter Email"
                                             style={commonInputStyle}
                                             value={emailID}
-                                            onChange={(e) => setEmailID(e.target.value.toLowerCase())}
+                                            onChange={(e) => setEmailID(sanitizeEmail(e.target.value))}
                                         />
                                         <input
                                             type="password"
                                             placeholder="4 Digit Password"
                                             style={commonInputStyle}
                                             value={password}
+                                            minLength={4}
+                                            maxLength={4}
                                             onChange={(e) => {
                                                 let val = e.target.value.replace(/\D/g, "").slice(0, 4);
                                                 if (val.length === 1 && val === "0") val = "";
@@ -106,6 +134,8 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                     type="text"
                                     placeholder="Enter OTP"
                                     style={commonInputStyle}
+                                    minLength={6}
+                                    maxLength={6}
                                     value={otp}
                                     onChange={(e) => setOtp(e.target.value)}
                                 />
@@ -138,6 +168,8 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                     placeholder="Phone Number"
                                     style={commonInputStyle}
                                     value={phone}
+                                    minLength={10}
+                                    maxLength={10}
                                     onChange={(e) => {
                                         let val = e.target.value.replace(/\D/g, ""); 
                                         if (val.length === 1 && !/[6-9]/.test(val)) val = ""; 
@@ -146,10 +178,10 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                 />
                                 <input
                                     type="email"
-                                    placeholder="Email Address"
+                                    placeholder="Enter Email"
                                     style={commonInputStyle}
                                     value={emailID}
-                                    onChange={(e) => setEmailID(e.target.value.toLowerCase())}
+                                    onChange={(e) => setEmailID(sanitizeEmail(e.target.value))}
                                 />
                                 <select
                                     style={commonInputStyle}
@@ -167,6 +199,8 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                     placeholder="4 Digit Password"
                                     style={commonInputStyle}
                                     value={password}
+                                    minLength={4}
+                                    maxLength={4}
                                     onChange={(e) => {
                                         let val = e.target.value.replace(/\D/g, "").slice(0, 4);
                                         if (val.length === 1 && val === "0") val = "";
