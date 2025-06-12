@@ -63,14 +63,14 @@ const ViewManageUser = ({ userInfo, handleLogout }) => {
                                             </div>
 
                                             <div className="row col-12 viewDataCss">
-                                                <div className="col-md-4"><strong>Is Subscribed:</strong> {user.isSubscribed ? 'Yes' : 'No'}</div>
+                                                <div className="col-md-4"><strong>Is Subscribed:</strong> {user.is_subscribed ? 'Yes' : 'No'}</div>
                                                 <div className="col-md-4"><strong>Active Plan:</strong> {user.active_label || '-'}</div>
                                                 <div className="col-md-4"><strong>Active Duration:</strong> {user.active_duration_id || '-'}</div>
                                             </div>
 
                                             <div className="row col-12 viewDataCss">
-                                                <div className="col-md-4"><strong>Subscribed At:</strong> {user.subscribedAt ? formatTimestamp(user.subscribedAt) : '-'}</div>
-                                                <div className="col-md-4"><strong>Subscription Expiry Date:</strong> {user.subscriptionExpiryDate ? formatTimestamp(user.subscriptionExpiryDate) : '-'}</div>
+                                                <div className="col-md-4"><strong>Subscribed At:</strong> {user.subscribed_at ? formatTimestamp(user.subscribed_at) : '-'}</div>
+                                                <div className="col-md-4"><strong>Subscription Expiry Date:</strong> {user.subscription_expiry_date ? formatTimestamp(user.subscription_expiry_date) : '-'}</div>
                                                 <div className="col-md-4"><strong>Active Order ID:</strong> {user.active_order_id || '-'}</div>
                                             </div>
 

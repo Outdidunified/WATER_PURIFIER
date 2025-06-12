@@ -75,40 +75,38 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                         value={modelName}
                         onChange={(e) => setModelName(e.target.value)}
                         required
-                        minLength={2}
-                        maxLength={50}
+                        maxLength={100}
                         pattern="^[a-zA-Z0-9\s\-]+$"  // allows letters, numbers, spaces, hyphens
                         title="Model Name must be 2-50 characters and contain only letters, numbers, spaces or hyphens."
                       />
                     </div>
                     <div className="col-md-6">
                       <label className="input-label" htmlFor="wpDeviceQuantity">WP Device Quantity</label>
-                      <InputField
-                        id="wpDeviceQuantity"
-                        type="number"
+                     
+                       <InputField
+                        type="text"
                         placeholder="Device Quantity"
                         value={wpDeviceQuantity}
-                        onChange={(e) => setWpDeviceQuantity(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9]/g, '');
+                          setWpDeviceQuantity(value);
+                        }}
+                        maxLength={20}
                         required
-                        min={1}
-                        max={1000}
-                        title="Device quantity must be between 1 and 1000."
                       />
                     </div>
                   </div>
 
                   {/* Product Details & Specs */}
                   <div className="row mb-4">
-                    <div className="col-md-6">
+                    <div className="col-2md-6">
                       <label className="input-label" htmlFor="productDetails">Product Details</label>
                       <textarea
                         id="productDetails"
                         className="form-control"
-                        rows="5"
                         value={productDetails}
                         onChange={(e) => setProductDetails(e.target.value)}
                         required
-                        minLength={10}
                         maxLength={500}
                         placeholder="Enter detailed product description (10 to 500 characters)"
                         title="Product Details must be 10-500 characters."
@@ -119,7 +117,6 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                       <textarea
                         id="productSpecifications"
                         className="form-control"
-                        rows="5"
                         value={productSpecifications}
                         onChange={(e) => setProductSpecifications(e.target.value)}
                         required
@@ -215,6 +212,7 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                             onChange={(e) => handleSubImageChange(index, e.target.files[0])}
                             style={{ display: 'none' }}
                             // not required, optional images
+                            required
                             title="Upload a sub image"
                           />
                           <button
@@ -269,127 +267,162 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                   </div>
 
                   {/* Plans Section (with Price) */}
-                  <div className="mb-4">
-                    <h5 className="card-title">Plans</h5>
-                    {plans.map((plan, index) => (
-                      <div className="row mb-3" key={index}>
-                        <div className="col-md-4">
-                          <InputField
-                            placeholder="Plan Label"
-                            value={plan.label}
-                            onChange={(e) => handlePlanChange(index, 'label', e.target.value)}
-                            required
-                            minLength={1}
-                            maxLength={30}
-                            title="Plan label is required and should be max 30 characters."
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <InputField
-                            placeholder="Capacity"
-                            value={plan.capacity}
-                            onChange={(e) => handlePlanChange(index, 'capacity', e.target.value)}
-                            required
-                            minLength={1}
-                            maxLength={20}
-                            title="Capacity is required and should be max 20 characters."
-                          />
-                        </div>
-                        <div className="col-md-3">
-                          <InputField
-                            type="text"
-                            placeholder="Price"
-                            value={plan.price || ''}
-                            onChange={(e) => handlePlanChange(index, 'price', e.target.value)}
-                            required
-                            min={0}
-                            max={1000000}
-                            title="Price."
-                          />
-                        </div>
-                        <div className="col-md-1 d-flex align-items-center">
-                          <button
-                            type="button"
-                            className="btn btn-outline-danger btn-sm"
-                            onClick={() => removePlan(index)}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    <button type="button" className="btn btn-outline-primary btn-sm" onClick={addPlan}>
-                      Add Plan
-                    </button>
-                  </div>
+                 <div className="mb-4">
+  <h5 className="card-title">Plans</h5>
+  {plans.map((plan, index) => (
+    <div className="row mb-3" key={index}>
+      <div className="col-md-4">
+        <InputField
+          placeholder="Plan Label"
+          value={plan.label}
+          onChange={(e) => handlePlanChange(index, 'label', e.target.value)}
+          required
+          minLength={1}
+          maxLength={15}
+          title="Plan label is required and should be max 30 characters."
+        />
+      </div>
+      <div className="col-md-4">
+        <InputField
+          placeholder="Capacity"
+          value={plan.capacity}
+          onChange={(e) => handlePlanChange(index, 'capacity', e.target.value)}
+          required
+          minLength={1}
+          maxLength={15}
+          title="Capacity is required and should be max 20 characters."
+        />
+      </div>
+      <div className="col-md-3">
+        <InputField
+          type="text"
+          placeholder="Price"
+          value={plan.price || ''}
+          onChange={(e) => handlePlanChange(index, 'price', e.target.value)}
+          required
+          maxLength={10}
+          title="Price."
+        />
+      </div>
+      {index !== 0 && (
+        <div className="col-md-1 d-flex align-items-center">
+          <button
+            type="button"
+            className="btn btn-outline-danger btn-sm"
+            onClick={() => removePlan(index)}
+          >
+            Remove
+          </button>
+        </div>
+      )}
+    </div>
+  ))}
+  <button type="button" className="btn btn-outline-primary btn-sm" onClick={addPlan}>
+    Add Plan
+  </button>
+</div>
+
 
                   {/* Durations Section (without Price) */}
-                  <div className="mb-4">
-                    <h5 className="card-title">Durations</h5>
-                    {durations.map((duration, index) => (
-                      <div className="row mb-3" key={index}>
-                        <div className="col-md-3">
-                          <InputField
-                            placeholder="Duration"
-                            value={duration.duration_time_limit}
-                            onChange={(e) => handleDurationChange(index, 'duration_time_limit', e.target.value)}
-                            required
-                            minLength={1}
-                            maxLength={20}
-                            title="Duration is required and max 20 characters."
-                          />
-                        </div>
-                        <div className="col-md-3">
-                          <InputField
-                            type="number"
-                            placeholder="GST"
-                            value={duration.gst}
-                            onChange={(e) => handleDurationChange(index, 'gst', e.target.value)}
-                            min={0}
-                            max={100}
-                            step="0.01"
-                            title="GST must be between 0 and 100."
-                          />
-                        </div>
-                        <div className="col-md-3">
-                          <InputField
-                            type="number"
-                            placeholder="Discount"
-                            value={duration.discount}
-                            onChange={(e) => handleDurationChange(index, 'discount', e.target.value)}
-                            min={0}
-                            max={100}
-                            step="0.01"
-                            title="Discount must be between 0 and 100."
-                          />
-                        </div>
-                        <div className="col-md-3">
-                          <InputField
-                            type="number"
-                            placeholder="Security Deposit"
-                            value={duration.security_deposit}
-                            onChange={(e) => handleDurationChange(index, 'security_deposit', e.target.value)}
-                            min={0}
-                            max={1000000}
-                            step="0.01"
-                            title="Security Deposit must be a positive number."
-                          />
-                        </div>
-                        <div className="col-md-12 d-flex justify-content-end mt-2">
-                          <button
-                            type="button"
-                            className="btn btn-outline-danger btn-sm"
-                            onClick={() => removeDuration(index)}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    <button type="button" className="btn btn-outline-primary btn-sm" onClick={addDuration}>
-                      Add Duration
-                    </button>
-                  </div>
+                 <div className="mb-4">
+  <h5 className="card-title">Durations</h5>
+  {durations.map((duration, index) => (
+    <div className="row mb-3" key={index}>
+      <div className="col-md-3">
+        <InputField
+          placeholder="Duration"
+          value={duration.duration_time_limit}
+          onChange={(e) => handleDurationChange(index, 'duration_time_limit', e.target.value)}
+          required
+          minLength={1}
+          maxLength={15}
+          title="Duration is required and max 20 characters."
+        />
+      </div>
+      <div className="col-md-3">
+        <InputField
+  type="text"
+  placeholder="GST (%)"
+  value={duration.gst}
+  maxLength={5}
+  title="Enter GST percentage (0 - 100)"
+  onChange={(e) => {
+    let val = e.target.value.replace(/[^0-9.]/g, '');
+
+    // Allow only one decimal
+    if ((val.match(/\./g) || []).length > 1) return;
+
+    // Convert to float to validate range
+    if (val !== '' && parseFloat(val) > 100) return;
+
+    handleDurationChange(index, 'gst', val);
+  }}
+  required
+/>
+
+      </div>
+      <div className="col-md-3">
+       <InputField
+  type="text"
+  placeholder="Discount (%)"
+  value={duration.discount}
+  maxLength={5}
+  title="Enter discount percentage (0 - 100)"
+  onChange={(e) => {
+    let val = e.target.value.replace(/[^0-9.]/g, '');
+
+    // Allow only one decimal point
+    if ((val.match(/\./g) || []).length > 1) return;
+
+    // Validate the range 0–100
+    if (val !== '' && parseFloat(val) > 100) return;
+
+    handleDurationChange(index, 'discount', val);
+  }}
+  required
+/>
+
+      </div>
+      <div className="col-md-3">
+        <InputField
+  type="text"
+  placeholder="Security Deposit"
+  value={duration.security_deposit}
+  maxLength={10}
+  title="Security Deposit must be a positive number."
+  onChange={(e) => {
+    const val = e.target.value.replace(/[^0-9.]/g, '');
+
+    // Allow only one decimal point
+    if ((val.match(/\./g) || []).length > 1) return;
+
+    // Optional: Prevent starting with multiple zeros like 000123
+    const cleanedVal = val.replace(/^0+(\d)/, '$1');
+
+    handleDurationChange(index, 'security_deposit', cleanedVal);
+  }}
+  required
+/>
+
+      </div>
+      {index !== 0 && (
+        <div className="col-md-12 d-flex justify-content-end mt-2">
+          <button
+            type="button"
+            className="btn btn-outline-danger btn-sm"
+            onClick={() => removeDuration(index)}
+          >
+            Remove
+          </button>
+        </div>
+      )}
+    </div>
+  ))}
+  <button type="button" className="btn btn-outline-primary btn-sm" onClick={addDuration}>
+    Add Duration
+  </button>
+</div>
+
 
                   {/* Status dropdown with limited width */}
                   <div className="row mb-4">
@@ -403,7 +436,6 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                         onChange={(e) => setStatus(e.target.value)}
                         required
                       >
-                        <option value="">Select Status</option>
                         <option value="true">Active</option>
                         <option value="false">Deactive</option>
                       </select>

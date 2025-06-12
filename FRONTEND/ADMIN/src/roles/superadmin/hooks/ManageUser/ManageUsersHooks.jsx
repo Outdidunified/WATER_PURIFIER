@@ -24,7 +24,10 @@ const useManageUsers = (userInfo) => {
   // Add User modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const openAddModal = () => setIsAddModalOpen(true);
-  const closeAddModal = () => setIsAddModalOpen(false);
+const closeAddModal = () => {
+  resetForm(); // clear all fields
+  setIsAddModalOpen(false); // close modal
+};
 
   // Add User form state
   const [name, setName] = useState('');

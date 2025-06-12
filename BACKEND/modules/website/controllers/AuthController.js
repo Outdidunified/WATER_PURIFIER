@@ -78,7 +78,7 @@ exports.register = async (req, res) => {
       role_id: role.role_id,
       role_name: role.role_name,
       user_id: newUserId,
-      isSubscribed: false
+  is_subscribed: false
     });
 
     await db.collection('user_roles').insertOne({

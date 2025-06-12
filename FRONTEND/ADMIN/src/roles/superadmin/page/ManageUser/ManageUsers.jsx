@@ -16,7 +16,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
     loading,role,formError,formLoading,
     modalAddStyle,
     error,
-    roleId,
+    roleId,setRole,
     name,
     email,
     password,
