@@ -182,7 +182,10 @@ const ProductList = ({ userInfo, token, handleLogout }) => {
                 handler: async (response) => {
                     const verifyRes = await fetch("/api/api/website/orders/orderverify", {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${token}`
+                        },
                         body: JSON.stringify(response),
                     });
                     const verifyData = await verifyRes.json();
