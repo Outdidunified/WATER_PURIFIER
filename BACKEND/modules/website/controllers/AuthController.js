@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const { EmailConfig } = require('../controllers/Email');
 const { connectToDatabase } = require('../../../config/db');
+const otpStore = {};
+
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -150,12 +152,7 @@ exports.login = async (req, res) => {
     };
     console.log(`Generated OTP for ${email}:`, otp);
 
-    await transporter.sendMail({
-      from: `"Outdid" <${process.env.SMTP_EMAIL}>`,
-      to: email,
-      subject: 'Your OTP for Login',
-      text: `Your OTP is: ${otp}`,
-    });
+    await EmailConfig(email, otp); // ✅ Use imported function only
 
     const response = { error: false, message: 'OTP sent successfully to email' };
     console.log("Sending /login response:", response);
