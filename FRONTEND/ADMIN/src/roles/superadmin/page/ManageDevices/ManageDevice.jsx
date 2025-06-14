@@ -117,11 +117,14 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                                                     required
                                                                 >
                                                                     <option value="">Select Model</option>
-                                                                    {models.map(model => (
-                                                                        <option key={model.id} value={model.model_name}>
-                                                                            {model.model_name}
-                                                                        </option>
-                                                                    ))}
+                                                                   {models
+  .filter(model => model.status) // only include models with status === true
+  .map(model => (
+    <option key={model.id} value={model.model_name}>
+      {model.model_name}
+    </option>
+))}
+
                                                                 </select>
                                                             </div>
 
