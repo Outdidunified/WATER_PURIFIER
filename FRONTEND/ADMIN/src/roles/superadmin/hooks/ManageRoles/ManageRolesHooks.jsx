@@ -28,6 +28,13 @@ const useManageRoles = (userInfo) => {
     setRoleName('');
     setFormError(null);
   };
+// Define required role IDs
+const requiredRoleIds = [1, 2, 3];
+
+// Determine if all roles are already created
+const isAllRolesCreated = requiredRoleIds.every(requiredId =>
+  roles.some(existingRole => existingRole.role_id === requiredId)
+);
 
   const fetchRoles = useCallback(async () => {
     try {
@@ -114,7 +121,11 @@ const useManageRoles = (userInfo) => {
     }
   };
 
-const isDuplicateRole = roles.some(role => String(role.role_id) === String(roleId));
+const isDuplicateRole = roles.some(
+  role =>
+    String(role.role_id) === String(roleId) ||
+    role.role_name?.toLowerCase() === roleName.toLowerCase()
+);
 const isAddDisabled = !roleId || !roleName || isDuplicateRole || formLoading;
 
   return {
@@ -132,7 +143,7 @@ const isAddDisabled = !roleId || !roleName || isDuplicateRole || formLoading;
     formError,
     handleAddRoleSubmit,
     handleSearchInputChange,
-    isDuplicateRole
+    isDuplicateRole,isAllRolesCreated
   };
 };
 
