@@ -265,7 +265,9 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                               posts.map((dataItem, index) => (
                                 <tr key={index}>
                                   <td>{index + 1}</td>
-                                  <td>{dataItem.role_name || '-'}</td>
+<td>
+  {dataItem.role_id === 1 ? 'Admin' : dataItem.role_id === 2 ? 'Technician' : dataItem.role_id === 3 ? 'End User' : 'Unknown'}
+</td>
                                   <td>{dataItem.name || '-'}</td>
                                   <td>{dataItem.email || '-'}</td>
                                   <td>{dataItem.status ? <span className="text-success">Active</span> : <span className="text-danger">DeActive</span>}</td>

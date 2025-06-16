@@ -53,7 +53,14 @@ const ViewManageUser = ({ userInfo, handleLogout }) => {
                                             <div className="row col-12 viewDataCss">
                                                 <div className="col-md-4"><strong>Password:</strong> {user.password || '-'}</div>
                                                 <div className="col-md-4"><strong>City:</strong> {user.city || '-'}</div>
-                                                <div className="col-md-4"><strong>Role Name:</strong> {user.role_name || '-'}</div>
+<div className="col-md-4">
+  <strong>Role:</strong> {
+    user.role_id === 1 ? 'Admin' :
+    user.role_id === 2 ? 'Technician' :
+    user.role_id === 3 ? 'End User' :
+    'Unknown'
+  }
+</div>
                                             </div>
 
                                             <div className="row col-12 viewDataCss">
