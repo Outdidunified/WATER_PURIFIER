@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { EmailConfig } = require('../controllers/Email');
+const { sendOtpEmail } = require('../controllers/Email');
 const { connectToDatabase } = require('../../../config/db');
 const otpStore = {};
 
@@ -93,7 +93,7 @@ exports.register = async (req, res) => {
     });
 
     if (email) {
-      await EmailConfig(email, otp);
+await sendOtpEmail(email, otp);
       console.log(`OTP sent to email: ${email}`);
     }
 

@@ -2,6 +2,8 @@ const razorpay = require('../../../services/Razorpay');
 const crypto = require('crypto');
 const { connectToDatabase } = require('../../../config/db');
 const { ObjectId } = require('mongodb');
+const { sendSubscriptionConfirmationEmail } = require('../controllers/Email');
+
 
 function generateOrderId() {
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // e.g. 20250526
@@ -27,12 +29,11 @@ exports.createSubscriptionOrder = async (req, res) => {
             totalLitre
         } = req.body;
 
-        // Connect to DB and get user
         const db = await connectToDatabase();
         const user = await db.collection('users').findOne({ _id: new ObjectId(req.userId) });
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        // Validate required fields except securityDeposit (validated separately)
+        // ✅ Validate all required fields
         if (
             !productModelId || !selectedPlanId || !selectedDurationId || !deliveryAddress ||
             finalMonthlyPrice === undefined || discountAmount === undefined || priceWithGST === undefined ||
@@ -41,20 +42,28 @@ exports.createSubscriptionOrder = async (req, res) => {
             return res.status(400).json({ message: 'All fields except securityDeposit are required' });
         }
 
-        // securityDeposit required only if user has NOT already added it
+        // ✅ Check if security deposit is required (only for new users)
         if (!user.security_deposit_added && (securityDeposit === undefined || securityDeposit === null)) {
             return res.status(400).json({ message: 'securityDeposit is required for new users' });
         }
 
-        // Check active subscription status
+        // ✅ BLOCK multiple active subscriptions for same product
         const now = new Date();
-        if (user.subscriptionExpiryDate && new Date(user.subscriptionExpiryDate) > now) {
-            console.log(`User has active subscription expiring on ${user.subscriptionExpiryDate}. Proceeding to recharge.`);
-        } else {
-            console.log(`User has no active subscription or it expired.`);
+        const activeOrder = await db.collection('orders').findOne({
+            user_id: user.user_id,
+            productModelId: productModelId,
+            paymentStatus: 'Completed',
+            subscriptionExpiryDate: { $gte: now }
+        });
+
+        if (activeOrder) {
+            return res.status(400).json({
+                status: 'failed',
+                message: 'You already have an active subscription for this product. Please wait until it expires before subscribing again.'
+            });
         }
 
-        // Fetch product model
+        // ✅ Fetch product model
         const productModel = await db.collection('product_models').findOne({ _id: new ObjectId(productModelId) });
         if (!productModel) return res.status(404).json({ message: 'Product model not found' });
 
@@ -62,36 +71,32 @@ exports.createSubscriptionOrder = async (req, res) => {
             return res.status(404).json({ message: 'No available devices for this product model' });
         }
 
-        // Find selected plan and duration
+        // ✅ Get selected plan & duration
         const selectedPlan = productModel.plans.find(plan => plan.plans_id === selectedPlanId);
         const selectedDuration = productModel.duration.find(dur => dur.duration_id === selectedDurationId);
-
         if (!selectedPlan || !selectedDuration) {
             return res.status(404).json({ message: 'Selected plan or duration not found' });
         }
 
-        // Find available device for the model
+        // ✅ Get device available for the model
         const device = await db.collection('device_details').findOne({ model_id: Number(productModel.model_id), status: true });
         if (!device) return res.status(404).json({ message: 'Device not found for this model' });
 
-        // Calculate effective security deposit
         const effectiveSecurityDeposit = user.security_deposit_added ? 0 : securityDeposit;
 
-        // Calculate amount to pay via Razorpay
-        // Ensure no double counting of security deposit
-        const totalAmountForRazorpay = grandTotal - (user.security_deposit_added ? 0 : securityDeposit);
+        // ✅ Calculate payment amount
+        const totalAmountForRazorpay = grandTotal - effectiveSecurityDeposit;
 
-        // Create Razorpay order
+        // ✅ Create Razorpay order
         const razorpayOrder = await razorpay.orders.create({
-            amount: Math.round(totalAmountForRazorpay * 100), // convert ₹ to paise
+            amount: Math.round(totalAmountForRazorpay * 100), // in paise
             currency: 'INR',
             receipt: `order_rcptid_${Math.floor(Math.random() * 1000000)}`
         });
 
-        // Generate custom order ID
         const customOrderId = generateOrderId();
 
-        // Prepare new order document
+        // ✅ Prepare and insert order
         const newOrder = {
             customOrderId,
             user_id: user.user_id,
@@ -110,11 +115,10 @@ exports.createSubscriptionOrder = async (req, res) => {
             updatedAt: new Date()
         };
 
-        // Insert order in DB
         const result = await db.collection('orders').insertOne(newOrder);
         const orderId = result.insertedId;
 
-        // Prepare payment document
+        // ✅ Insert payment doc
         const paymentDoc = {
             user_id: user.user_id,
             orderId,
@@ -131,16 +135,15 @@ exports.createSubscriptionOrder = async (req, res) => {
             updatedAt: new Date()
         };
 
-        // Insert payment in DB
         await db.collection('payments').insertOne(paymentDoc);
 
-        // Generate Razorpay signature for verification
+        // ✅ Generate signature for client-side validation
         const signatureBase = razorpayOrder.id + '|' + orderId.toString();
         const generatedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
             .update(signatureBase)
             .digest('hex');
 
-        // Return response
+        // ✅ Send success response
         return res.status(200).json({
             status: 'success',
             message: 'Order created and Razorpay payment initiated',
@@ -178,6 +181,7 @@ exports.createSubscriptionOrder = async (req, res) => {
 
 
 
+
 exports.verifyRazorpayPayment = async (req, res) => {
     try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
@@ -186,7 +190,6 @@ exports.verifyRazorpayPayment = async (req, res) => {
             return res.status(400).json({ message: 'All fields are required for verification' });
         }
 
-        // Verify Razorpay payment signature for security
         const expectedSignature = crypto
             .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
             .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -205,25 +208,19 @@ exports.verifyRazorpayPayment = async (req, res) => {
 
         const subscribedAt = new Date();
 
-        // Parse duration days from order, default 30 if missing or invalid
+        // ✅ Always start new subscription from today (not from previous expiry)
         const durationStr = order.selectedDuration?.duration_time_limit || '30 days';
         const durationInDays = parseInt(durationStr.split(' ')[0], 10) || 30;
+
+        const userNewExpiry = new Date(subscribedAt);
+        userNewExpiry.setDate(userNewExpiry.getDate() + durationInDays);
 
         const user = await db.collection('users').findOne({ user_id: order.user_id });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Calculate new expiry date for subscription
-        let userNewExpiry = subscribedAt;
-        if (user.subscription_expiry_date && new Date(user.subscription_expiry_date) > subscribedAt) {
-            userNewExpiry = new Date(user.subscription_expiry_date);
-            userNewExpiry.setDate(userNewExpiry.getDate() + durationInDays);
-        } else {
-            userNewExpiry.setDate(userNewExpiry.getDate() + durationInDays);
-        }
-
-        // Update order document
+        // ✅ Update Order
         await db.collection('orders').updateOne(
             { _id: order._id },
             {
@@ -237,7 +234,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
             }
         );
 
-        // Update payment document
+        // ✅ Update Payment
         await db.collection('payments').updateOne(
             { razorpayOrderId: razorpay_order_id },
             {
@@ -251,7 +248,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
             }
         );
 
-        // Prepare user update payload with snake_case keys
+        // ✅ Update User
         const userUpdatePayload = {
             is_subscribed: true,
             subscribed_at: subscribedAt,
@@ -263,7 +260,6 @@ exports.verifyRazorpayPayment = async (req, res) => {
             active_order_id: order._id.toString()
         };
 
-        // Correctly fetch security_deposit from selectedDuration
         const securityDeposit = order.selectedDuration?.security_deposit || 0;
 
         if (!user.security_deposit_added && securityDeposit > 0) {
@@ -271,13 +267,12 @@ exports.verifyRazorpayPayment = async (req, res) => {
             userUpdatePayload.security_deposit_added = true;
         }
 
-        // Update user document
         await db.collection('users').updateOne(
             { user_id: order.user_id },
             { $set: userUpdatePayload }
         );
 
-        // Decrease device quantity if productModelId exists
+        // ✅ Update Device Quantity (decrease by 1)
         if (order.productModelId) {
             const productModel = await db.collection('product_models').findOne({ _id: new ObjectId(order.productModelId) });
 
@@ -287,20 +282,18 @@ exports.verifyRazorpayPayment = async (req, res) => {
 
             let currentQty = productModel.wp_device_quantity;
 
-            // Fix string quantity to number if needed
             if (typeof currentQty === 'string') {
                 currentQty = parseInt(currentQty, 10);
                 if (isNaN(currentQty)) {
                     return res.status(500).json({ message: 'Device quantity is invalid and cannot be updated' });
                 }
-                // Fix DB to store quantity as number
+
                 await db.collection('product_models').updateOne(
                     { _id: new ObjectId(order.productModelId) },
                     { $set: { wp_device_quantity: currentQty } }
                 );
             }
 
-            // Decrement quantity if possible
             if (typeof currentQty === 'number' && currentQty > 0) {
                 await db.collection('product_models').updateOne(
                     { _id: new ObjectId(order.productModelId) },
@@ -311,9 +304,31 @@ exports.verifyRazorpayPayment = async (req, res) => {
             }
         }
 
+        // ✅ Send Confirmation Email
+        try {
+            const emailSubject = 'Water Purifier - Subscription Confirmed';
+            const emailBody = `
+                <div style="font-family: Arial, sans-serif; padding: 20px;">
+                    <h2>Hi ${user.name || 'Customer'},</h2>
+                    <p>Your subscription has been successfully activated!</p>
+                    <ul>
+                        <li><strong>Product:</strong> ${order.modelName}</li>
+                        <li><strong>Plan:</strong> ${order.selectedPlan?.label}</li>
+                        <li><strong>Duration:</strong> ${order.selectedDuration?.duration_time_limit}</li>
+                        <li><strong>Subscription Expiry:</strong> ${userNewExpiry.toDateString()}</li>
+                    </ul>
+                    <p>Thank you for choosing us!</p>
+                    <p>— Water Purifier Team</p>
+                </div>
+            `;
+            await sendSubscriptionConfirmationEmail(user, order, userNewExpiry);
+        } catch (emailError) {
+            console.error('Error sending subscription confirmation email:', emailError);
+        }
+
         return res.status(200).json({
             status: 'success',
-            message: 'Payment verified, subscription activated or renewed, device quantity updated',
+            message: 'Payment verified, subscription activated, device quantity updated',
             subscriptionExpiryDate: userNewExpiry
         });
 
@@ -322,6 +337,9 @@ exports.verifyRazorpayPayment = async (req, res) => {
         return res.status(500).json({ message: 'Error verifying payment', error: error.message });
     }
 };
+
+
+
 // GET /api/recharge-history
 exports.getRechargeHistory = async (req, res) => {
     try {

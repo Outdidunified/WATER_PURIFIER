@@ -1,69 +1,70 @@
 const nodemailer = require('nodemailer');
 
-// Create a transporter object with SMTP details
+// Create transporter
 const transporter = nodemailer.createTransport({
-  host: 'smtppro.zoho.in', // SMTP server address
-  port: 465, // Use 465 for SSL, 587 for TLS
-  secure: true, // Use SSL (true) or TLS (false)
+  host: 'smtppro.zoho.in',
+  port: 465,
+  secure: true,
   auth: {
-    user: 'anish@outdidtech.com', // Your email address
-    pass: '5XuiNJvgeijM', // Your email password
+    user: 'anish@outdidtech.com',
+    pass: '5XuiNJvgeijM',
   },
 });
 
-// Function to send an email
+// Generic send email
 async function sendEmail(to, subject, text, html) {
   try {
     const info = await transporter.sendMail({
-      from: '"Water Purifier Service" <anish@outdidtech.com>', // Sender's address
-      to: to, // Recipient's address
-      subject: subject, // Subject line
-      text: text, // Plain text body
-      html: html, // HTML body
+      from: '"Water Purifier Service" <anish@outdidtech.com>',
+      to,
+      subject,
+      text,
+      html,
     });
-
-    console.log('Message sent: %s', info.messageId);
+    console.log('Email sent: %s', info.messageId);
     return true;
-  } catch (error) {
-    console.error('Error sending email:', error);
+  } catch (err) {
+    console.error('Email sending error:', err);
     return false;
   }
 }
 
-// Function to configure and send the OTP email for login
-async function EmailConfig(email, otp) {
-  try {
-    const subject = 'Water Purifier Website - OTP for Login';
-    const text = `Hello ${email},\n\nYou requested to login to your Water Purifier account. Please use the following One-Time Password (OTP):\n\n${otp}\n\nIf you did not request this, please ignore the email.`;
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 10px; padding: 20px; background-color: #f9f9f9;">
-        <h2 style="text-align: center; color: #333;">Water Purifier Website</h2>
-        <p style="color: #555; line-height: 1.5; font-size: 16px;">
-          Hello <strong>${email}</strong>,<br><br>
-          You requested to log in to your account. Please use the following One-Time Password (OTP) to proceed:
-        </p>
-        <div style="text-align: center; margin: 20px 0;">
-          <span style="font-size: 20px; font-weight: bold; color: #007BFF; padding: 10px 20px; border: 1px dashed #007BFF; border-radius: 5px; display: inline-block;">
-            ${otp}
-          </span>
-        </div>
-        <p style="color: #555; line-height: 1.5; font-size: 16px;">
-          This OTP is valid for a limited time. Do not share it with anyone. If you did not initiate this login request, please ignore this email or contact our support team.
-        </p>
-        <p style="color: #555; font-size: 14px; text-align: center; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;">
-          Thank you,<br>
-          <strong>Water Purifier Team</strong><br>
-          <a href="https://waterpurifierwebsite.com" style="color: #007BFF; text-decoration: none;">Visit Our Website</a>
-        </p>
-      </div>
-    `;
-
-    const result = await sendEmail(email, subject, text, html);
-    return result;
-  } catch (error) {
-    console.error('Error in EmailConfig:', error);
-    return false;
-  }
+// OTP Email
+async function sendOtpEmail(email, otp) {
+  const subject = 'Water Purifier Website - OTP for Login';
+  const text = `Hello ${email},\n\nYou requested to login... Your OTP is: ${otp}`;
+  const html = `
+    <div style="font-family: Arial, sans-serif;">
+      <h2>Water Purifier Website</h2>
+      <p>Hello <strong>${email}</strong>,</p>
+      <p>Your OTP is:</p>
+      <div style="font-size: 20px; font-weight: bold;">${otp}</div>
+    </div>
+  `;
+  return sendEmail(email, subject, text, html);
 }
 
-module.exports = { EmailConfig };
+// Subscription Confirmation Email
+async function sendSubscriptionConfirmationEmail(user, order, userNewExpiry) {
+  const subject = 'Water Purifier - Subscription Confirmed';
+  const html = `
+    <div style="font-family: Arial, sans-serif; padding: 20px;">
+      <h2>Hi ${user.name || 'Customer'},</h2>
+      <p>Your subscription has been successfully activated!</p>
+      <ul>
+        <li><strong>Product:</strong> ${order.modelName}</li>
+        <li><strong>Plan:</strong> ${order.selectedPlan?.label}</li>
+        <li><strong>Duration:</strong> ${order.selectedDuration?.duration_time_limit}</li>
+        <li><strong>Subscription Expiry:</strong> ${userNewExpiry.toDateString()}</li>
+      </ul>
+      <p>Thank you for choosing us!</p>
+      <p>— Water Purifier Team</p>
+    </div>
+  `;
+  return sendEmail(user.email, subject, '', html);
+}
+
+module.exports = {
+  sendOtpEmail,
+  sendSubscriptionConfirmationEmail,
+};

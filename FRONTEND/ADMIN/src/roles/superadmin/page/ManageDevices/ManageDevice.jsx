@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import ReusableButton from '../../../../utils/ReusableButton';
 import InputField from '../../../../utils/InputField';
 import useManageDevice from '../../hooks/ManageDevices/ManageDeviceHooks';
-
+//manage device 
 const ManageDevice = ({ userInfo, handleLogout }) => {
     const navigate = useNavigate();
 
