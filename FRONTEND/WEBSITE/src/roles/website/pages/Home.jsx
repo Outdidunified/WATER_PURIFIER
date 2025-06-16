@@ -25,7 +25,15 @@ const Home = ({ userInfo, token, handleLogout }) => {
             try {
                 const response = await axios.get('/api/api/website/products/productswithplan');
                 const productArray = response.data?.data || [];
-                setProducts(productArray);
+                const filteredProducts = productArray.filter(
+                    (product) =>
+                        parseInt(product.wp_device_quantity || "0", 10) > 0 &&
+                        product.status === true
+                );
+
+                setProducts(filteredProducts);
+
+                // setProducts(productArray);
             } catch (err) {
                 setError(err.message || 'Something went wrong');
             } finally {
