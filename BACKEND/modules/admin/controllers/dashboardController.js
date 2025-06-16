@@ -156,7 +156,7 @@ const UpdateAdminProfile = async (req, res) => {
                 $set: {
                     name,
                     phone,
-                    password: String(password), // Ensure password is string
+                    password: parseInt(password),
                     modifiedby: modified_by,
                     modifieddate: new Date(),
                     status: Boolean(status)
@@ -191,7 +191,6 @@ const UpdateAdminProfile = async (req, res) => {
 // AddProductModels controller
 const AddProductModels = async (req, res) => {
     try {
-        // Helper function to safely parse array input
         const parseArray = (input) => {
             if (Array.isArray(input)) return input;
             if (typeof input === 'string') {
@@ -207,9 +206,9 @@ const AddProductModels = async (req, res) => {
 
         let productModels;
 
-        // Accept either JSON object or JSON stringified in `data`
+        // Handle different body formats
         if (typeof req.body === 'object' && !Array.isArray(req.body)) {
-            productModels = [req.body]; // Wrap single object as array
+            productModels = [req.body];
         } else if (typeof req.body.data === 'string') {
             const parsed = JSON.parse(req.body.data);
             productModels = Array.isArray(parsed) ? parsed : [parsed];
@@ -221,8 +220,6 @@ const AddProductModels = async (req, res) => {
         const collection = db.collection("product_models");
 
         const now = new Date();
-
-        // Get the last model_id
         const lastProductModel = await collection.find().sort({ model_id: -1 }).limit(1).toArray();
         let nextmodel_id = lastProductModel.length > 0 ? lastProductModel[0].model_id + 1 : 1;
 
@@ -246,9 +243,17 @@ const AddProductModels = async (req, res) => {
                 return res.status(400).json({ status: 'Failed', message: 'Missing required fields in product' });
             }
 
+            // Duplicate check
+            const existing = await collection.findOne({ model_name: model_name.trim() });
+            if (existing) {
+                return res.status(409).json({
+                    status: 'Failed',
+                    message: `Model name "${model_name}" already exists. Duplicate not allowed.`,
+                });
+            }
+
             const model_id = nextmodel_id++;
 
-            // Uploaded files by field name
             const main_img = uploadedFiles['main_img']?.[0]?.filename || product.main_img || "";
             const sub_img_1 = uploadedFiles['sub_img_1']?.[0]?.filename || product.sub_img_1 || "";
             const sub_img_2 = uploadedFiles['sub_img_2']?.[0]?.filename || product.sub_img_2 || "";
@@ -258,7 +263,7 @@ const AddProductModels = async (req, res) => {
 
             docsToInsert.push({
                 model_id,
-                model_name,
+                model_name: model_name.trim(),
                 main_img,
                 sub_img_1,
                 sub_img_2,
@@ -277,7 +282,7 @@ const AddProductModels = async (req, res) => {
 
         await collection.insertMany(docsToInsert);
 
-        res.status(200).json({
+        return res.status(200).json({
             status: 'Success',
             message: 'Product Model(s) added successfully',
             data: docsToInsert
@@ -307,9 +312,144 @@ const FetchProductModels = async (req, res) => {
 };
 
 // UpdateProductModels
+// const UpdateProductModels = async (req, res) => {
+//     try {
+//         // Helper to parse input that may be a stringified JSON array
+//         const parseArray = (input) => {
+//             if (Array.isArray(input)) return input;
+//             if (typeof input === 'string') {
+//                 try {
+//                     return JSON.parse(input);
+//                 } catch (err) {
+//                     console.error("Failed to parse stringified array:", err);
+//                     return [];
+//                 }
+//             }
+//             return [];
+//         };
+
+//         // Support both single object and array input
+//         let productModels;
+
+//         if (typeof req.body === 'object' && !Array.isArray(req.body)) {
+//             productModels = [req.body]; // wrap single object
+//         } else if (typeof req.body.data === 'string') {
+//             const parsed = JSON.parse(req.body.data);
+//             productModels = Array.isArray(parsed) ? parsed : [parsed];
+//         } else {
+//             return res.status(400).json({ status: 'Failed', message: 'Invalid or empty product data' });
+//         }
+
+//         const db = await database.connectToDatabase();
+//         const collection = db.collection('product_models');
+
+//         for (const product of productModels) {
+//             let {
+//                 model_id,
+//                 model_name,
+//                 wp_device_quantity,
+//                 product_details,
+//                 modifiedby,
+//                 status: rawStatus
+//             } = product;
+
+//             model_id = Number(model_id);
+
+//             if (isNaN(model_id)) {
+//                 return res.status(400).json({ status: 'Failed', message: 'Invalid model_id format' });
+//             }
+
+//             // Convert status from string to boolean if needed
+//             let status;
+//             if (typeof rawStatus === 'boolean') {
+//                 status = rawStatus;
+//             } else if (typeof rawStatus === 'string') {
+//                 status = rawStatus.toLowerCase() === 'true';
+//             } else {
+//                 status = false; // fallback
+//             }
+
+//             const plans = parseArray(product.plans);
+//             const duration = parseArray(product.duration);
+
+//             // Validation
+//             if (
+//                 !model_id || !model_name || !plans.length || !duration.length || !modifiedby || typeof status !== 'boolean'
+//             ) {
+//                 return res.status(400).json({ status: 'Failed', message: 'Missing or invalid required fields in product' });
+//             }
+
+//             // Extract uploaded file names or fallback to existing
+//             const main_img = req.files?.['main_img']?.[0]?.filename || product.main_img || '';
+//             const sub_img_1 = req.files?.['sub_img_1']?.[0]?.filename || product.sub_img_1 || '';
+//             const sub_img_2 = req.files?.['sub_img_2']?.[0]?.filename || product.sub_img_2 || '';
+//             const sub_img_3 = req.files?.['sub_img_3']?.[0]?.filename || product.sub_img_3 || '';
+//             const sub_img_4 = req.files?.['sub_img_4']?.[0]?.filename || product.sub_img_4 || '';
+//             const product_specifications = req.files?.['spec_pdf']?.[0]?.filename || product.product_specifications || '';
+
+//             const lastPlanIdDoc = await collection.aggregate([
+//                 { $unwind: '$plans' },
+//                 { $sort: { 'plans.plans_id': -1 } },
+//                 { $limit: 1 },
+//                 { $project: { _id: 0, plans_id: '$plans.plans_id' } }
+//             ]).toArray();
+//             let nextPlansId = lastPlanIdDoc.length > 0 ? lastPlanIdDoc[0].plans_id + 1 : 1;
+
+//             const updatedPlans = plans.map(p =>
+//                 p.plans_id && Number.isInteger(p.plans_id) ? p : { ...p, plans_id: nextPlansId++ }
+//             );
+
+//             const lastDurationIdDoc = await collection.aggregate([
+//                 { $unwind: '$duration' },
+//                 { $sort: { 'duration.duration_id': -1 } },
+//                 { $limit: 1 },
+//                 { $project: { _id: 0, duration_id: '$duration.duration_id' } }
+//             ]).toArray();
+//             let nextDurationId = lastDurationIdDoc.length > 0 ? lastDurationIdDoc[0].duration_id + 1 : 1;
+
+//             const updatedDuration = duration.map(d =>
+//                 d.duration_id && Number.isInteger(d.duration_id) ? d : { ...d, duration_id: nextDurationId++ }
+//             );
+
+//             const now = new Date();
+
+//             const result = await collection.updateOne(
+//                 { model_id: model_id },
+//                 {
+//                     $set: {
+//                         model_name,
+//                         main_img,
+//                         sub_img_1,
+//                         sub_img_2,
+//                         sub_img_3,
+//                         sub_img_4,
+//                         wp_device_quantity,
+//                         product_details,
+//                         product_specifications,
+//                         plans: updatedPlans,
+//                         duration: updatedDuration,
+//                         modifiedby,
+//                         modifieddate: now,
+//                         status
+//                     }
+//                 }
+//             );
+
+//             if (result.matchedCount === 0) {
+//                 console.warn(`No document matched for model_id: ${model_id}`);
+//             }
+//         }
+
+//         res.status(200).json({ status: 'Success', message: 'Product Model(s) updated successfully' });
+
+//     } catch (error) {
+//         console.error('Error in UpdateProductModels:', error);
+//         res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+//     }
+// };
+
 const UpdateProductModels = async (req, res) => {
     try {
-        // Helper to parse input that may be a stringified JSON array
         const parseArray = (input) => {
             if (Array.isArray(input)) return input;
             if (typeof input === 'string') {
@@ -323,11 +463,9 @@ const UpdateProductModels = async (req, res) => {
             return [];
         };
 
-        // Support both single object and array input
         let productModels;
-
         if (typeof req.body === 'object' && !Array.isArray(req.body)) {
-            productModels = [req.body]; // wrap single object
+            productModels = [req.body];
         } else if (typeof req.body.data === 'string') {
             const parsed = JSON.parse(req.body.data);
             productModels = Array.isArray(parsed) ? parsed : [parsed];
@@ -349,32 +487,43 @@ const UpdateProductModels = async (req, res) => {
             } = product;
 
             model_id = Number(model_id);
-
             if (isNaN(model_id)) {
                 return res.status(400).json({ status: 'Failed', message: 'Invalid model_id format' });
             }
 
-            // Convert status from string to boolean if needed
             let status;
             if (typeof rawStatus === 'boolean') {
                 status = rawStatus;
             } else if (typeof rawStatus === 'string') {
                 status = rawStatus.toLowerCase() === 'true';
             } else {
-                status = false; // fallback
+                status = false;
             }
 
             const plans = parseArray(product.plans);
             const duration = parseArray(product.duration);
 
-            // Validation
-            if (
-                !model_id || !model_name || !plans.length || !duration.length || !modifiedby || typeof status !== 'boolean'
-            ) {
+            if (!model_id || !model_name || !plans.length || !duration.length || !modifiedby || typeof status !== 'boolean') {
                 return res.status(400).json({ status: 'Failed', message: 'Missing or invalid required fields in product' });
             }
 
-            // Extract uploaded file names or fallback to existing
+            // Duplicate model_name check
+            // const duplicate = await collection.findOne({
+            //     model_name: model_name.trim(),
+            // });
+
+            const duplicate = await collection.findOne({
+                model_name: model_name.trim(),
+                model_id: { $ne: model_id }  // Exclude the current document
+            });            
+
+            if (duplicate) {
+                return res.status(409).json({
+                    status: 'Failed',
+                    message: `Model name "${model_name}" already exists. Duplicate not allowed.`
+                });
+            }
+
             const main_img = req.files?.['main_img']?.[0]?.filename || product.main_img || '';
             const sub_img_1 = req.files?.['sub_img_1']?.[0]?.filename || product.sub_img_1 || '';
             const sub_img_2 = req.files?.['sub_img_2']?.[0]?.filename || product.sub_img_2 || '';
@@ -412,7 +561,7 @@ const UpdateProductModels = async (req, res) => {
                 { model_id: model_id },
                 {
                     $set: {
-                        model_name,
+                        model_name: model_name.trim(),
                         main_img,
                         sub_img_1,
                         sub_img_2,
