@@ -74,6 +74,7 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                                 if (val.length === 1 && !/[6-9]/.test(val)) val = "";
                                                 setPhone(val.slice(0, 10));
                                             }}
+                                            required
                                         />
                                         <button
                                             onClick={handleSendOtp}
@@ -94,6 +95,7 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                             style={commonInputStyle}
                                             value={emailID}
                                             onChange={(e) => setEmailID(sanitizeEmail(e.target.value))}
+                                            required
                                         />
                                         <input
                                             type="password"
@@ -107,6 +109,7 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                                 if (val.length === 1 && val === "0") val = "";
                                                 setPassword(val);
                                             }}
+                                            required
                                         />
                                         <button
                                             onClick={handleEmailLogin}
@@ -119,10 +122,18 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                 )}
 
                                 <p style={{ textAlign: 'center' }}>
-                                    New user? <button onClick={() => setStep("register")} style={{ color: '#007bff', background: 'none', border: 'none' }}>Register here</button>
+                                    New user? <button onClick={() => {
+                                        setName('');
+                                        setEmailID('');
+                                        setPhone('');
+                                        setPassword('');
+                                        setCity('Bangalore');
+                                        setStep("register");
+                                    }} style={{ color: '#007bff', background: 'none', border: 'none' }}>Register here</button>
+
                                 </p>
                             </div>
-                        
+
                         )}
 
                         {/* OTP VERIFICATION */}
@@ -138,6 +149,7 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                     maxLength={6}
                                     value={otp}
                                     onChange={(e) => setOtp(e.target.value)}
+                                    required
                                 />
                                 <button
                                     onClick={handleVerifyOtp}
@@ -162,6 +174,7 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                     style={commonInputStyle}
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
+                                    required
                                 />
                                 <input
                                     type="tel"
@@ -171,10 +184,11 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                     minLength={10}
                                     maxLength={10}
                                     onChange={(e) => {
-                                        let val = e.target.value.replace(/\D/g, ""); 
-                                        if (val.length === 1 && !/[6-9]/.test(val)) val = ""; 
-                                        setPhone(val.slice(0, 10)); 
+                                        let val = e.target.value.replace(/\D/g, "");
+                                        if (val.length === 1 && !/[6-9]/.test(val)) val = "";
+                                        setPhone(val.slice(0, 10));
                                     }}
+                                    required
                                 />
                                 <input
                                     type="email"
@@ -187,6 +201,7 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                     style={commonInputStyle}
                                     value={city}
                                     onChange={(e) => setCity(e.target.value)}
+                                    required
                                 >
                                     {indianCities.map((cityName) => (
                                         <option key={cityName} value={cityName}>
@@ -206,6 +221,7 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                         if (val.length === 1 && val === "0") val = "";
                                         setPassword(val);
                                     }}
+                                    required
                                 />
                                 <button
                                     onClick={handleRegister}
@@ -215,7 +231,15 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                     {loadingReg ? "Registering..." : "Register"}
                                 </button>
                                 <p style={{ textAlign: 'center' }}>
-                                    Already have an account? <button onClick={() => setStep("login")} style={{ color: '#007bff', background: 'none', border: 'none' }}>Login</button>
+                                    Already have an account? <button onClick={() => {
+                                        setName('');
+                                        setEmailID('');
+                                        setPhone('');
+                                        setPassword('');
+                                        setCity('Bangalore');
+                                        setStep("login");
+                                    }} style={{ color: '#007bff', background: 'none', border: 'none' }}>Login</button>
+
                                 </p>
                             </div>
                         )}

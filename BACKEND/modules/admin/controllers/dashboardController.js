@@ -628,7 +628,7 @@ const AddDeviceDetails = async (req, res) => {
             if (!model) {
                 return res.status(400).json({
                     status: 'Failed',
-                    message: `Model ID '${device.model_id}' does not exist.`,
+                    message: `Model ID '${device.model_nam}' does not exist.`,
                 });
             }
 
@@ -637,14 +637,14 @@ const AddDeviceDetails = async (req, res) => {
             if (isNaN(quantity)) {
                 return res.status(500).json({
                     status: 'Failed',
-                    message: `Model ID '${device.model_id}' has invalid wp_device_quantity value.`,
+                    message: `Model ID '${device.model_nam}' has invalid wp_device_quantity value.`,
                 });
             }
 
             if (quantity < 1) {
                 return res.status(400).json({
                     status: 'Failed',
-                    message: `Model ID '${device.model_id}' has no available quantity.`,
+                    message: `Model ID '${device.model_nam}' has no available quantity.`,
                 });
             }
 
