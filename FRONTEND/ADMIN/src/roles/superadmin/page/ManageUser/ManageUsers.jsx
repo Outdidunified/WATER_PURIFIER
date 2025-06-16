@@ -15,7 +15,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
     handleSearchInputChange,
     loading,role,formError,formLoading,
     modalAddStyle,
-    error,
+    error,roles,
     roleId,setRole,
     name,
     email,
@@ -79,21 +79,25 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
 
     <div className="table-responsive pt-3">
       {/* Role Dropdown */}
-      <div className="input-group mb-3">
-        <div className="input-group-prepend">
-          <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Role</span>
-        </div>
-        <select
-          className="form-control"
-          value={role}
-          onChange={(e) => setRole(Number(e.target.value))}
-          required
-        >
-          <option value={1}>Admin</option>
-          <option value={2}>Technician</option>
-          <option value={3}>End User</option>
-        </select>
-      </div>
+     <div className="input-group mb-3">
+  <div className="input-group-prepend">
+    <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Role</span>
+  </div>
+  <select
+    className="form-control"
+    value={role}
+    onChange={(e) => setRole(Number(e.target.value))}
+    required
+  >
+    <option value="">Select Role</option>
+    {roles.map((r) => (
+      <option key={r.role_id} value={r.role_id}>
+        {r.role_name}
+      </option>
+    ))}
+  </select>
+</div>
+
 
       {/* Name */}
       <div className="input-group mb-3">

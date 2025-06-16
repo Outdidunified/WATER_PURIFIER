@@ -41,14 +41,15 @@ const useManageInstallation = (userInfo) => {
       setInstallationTasks(tasks);
 
       const allServiceRecords = techs.flatMap(tech =>
-        tech.service_records.map(record => ({
-          ...record,
-          technician_name: tech.name,
-          technician_id: tech.technician_id,
-          technician_user_id: tech.user_id,
-          technician_role_id: tech.role_id,
-        }))
-      );
+  (tech.service_records || []).map(record => ({
+    ...record,
+    technician_name: tech.name,
+    technician_id: tech.technician_id,
+    technician_user_id: tech.user_id,
+    technician_role_id: tech.role_id,
+  }))
+);
+
 
       const enrichedTasks = tasks.map(task => {
         const assignedTechnician = allServiceRecords.find(

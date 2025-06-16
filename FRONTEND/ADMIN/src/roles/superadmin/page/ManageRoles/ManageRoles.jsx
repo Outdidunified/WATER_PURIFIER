@@ -18,7 +18,7 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
     error,
     roleId, roles, tableError,
     createdBy, formError, formLoading,
-    posts,
+    posts,isAllRolesCreated,
     isLoading, isAddDisabled,
     errorMessage,
     setRoleId,
@@ -52,9 +52,14 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
                   </div>
                   <div className="col-12 col-xl-4">
                     <div className="justify-content-end d-flex">
-                      <button type="button" className="btn btn-success" onClick={openAddModal}>
-                        Add Role
-                      </button>
+                    <button
+  type="button"
+  className="btn btn-success"
+  onClick={openAddModal}
+  disabled={isAllRolesCreated} // ✅ disable if all roles are created
+>
+  {isAllRolesCreated ? 'Roles Created' : 'Add Role'}
+</button>
 
                       {isAddModalOpen && (
                         <div className="modalStyle" style={modalAddStyle}>
