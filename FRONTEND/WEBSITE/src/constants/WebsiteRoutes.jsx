@@ -1,6 +1,6 @@
 // WebsiteRoutes.jsx
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate} from "react-router-dom";
 import { Routes, Route } from "react-router-dom";
 import Home from "../roles/website/pages/Home";
 import ProductList from "../roles/website/pages/ProductList";
@@ -17,7 +17,7 @@ import Swal from 'sweetalert2';
 const WebsiteRoutes = () => {
     const [userInfo, setUserInfo] = useState(null);
     const [token, setUserLginToken] = useState(null);
-
+    
     const navigate = useNavigate();
 
     // On component mount or reload, fetch from sessionStorage
