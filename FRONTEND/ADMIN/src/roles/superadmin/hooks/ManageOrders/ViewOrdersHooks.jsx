@@ -25,7 +25,7 @@ const useViewOrders = () => {
       discount: '',
       security_deposit: '',
     },
-    price: '',
+    grandTotal: '',
     deliveryAddress: {
       name: '',
       phone: '',
@@ -72,7 +72,7 @@ const useViewOrders = () => {
           discount: orderData.selectedDuration?.discount || '',
           security_deposit: orderData.selectedDuration?.security_deposit || '',
         },
-        price: orderData.price || '',
+        grandTotal: orderData.grandTotal || '',
         deliveryAddress: {
           name: orderData.deliveryAddress?.name || '',
           phone: orderData.deliveryAddress?.phone || '',

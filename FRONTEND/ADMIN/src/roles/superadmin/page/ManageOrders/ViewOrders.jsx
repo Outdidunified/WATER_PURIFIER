@@ -55,7 +55,7 @@ const ViewOrders = ({ userInfo, handleLogout }) => {
                     </div>
 
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4"><strong>Price:</strong> ₹{order.price || '-'}</div>
+                      <div className="col-md-4"><strong>Price:</strong> ₹{order.grandTotal || '-'}</div>
                       <div className="col-md-4"><strong>Security Deposit:</strong> ₹{order.selectedDuration?.security_deposit || '-'}</div>
                       <div className="col-md-4"><strong>Discount:</strong> {order.selectedDuration?.discount || '-'}%</div>
                     </div>

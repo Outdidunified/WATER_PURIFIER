@@ -91,12 +91,7 @@ const Header = ({ handleLogout }) => {
       
 
         <ul className="navbar-nav navbar-nav-right" style={{ display: 'flex', gap: '15px', margin: 0 }}>
-          <li className="nav-item">
-            <Link className="nav-link count-indicator" to="#" style={{ color: '#333', fontSize: '20px' }}>
-              <i className="icon-bell"></i>
-            </Link>
-          </li>
-
+          
           <li className="nav-item dropdown">
             <Link
               className="nav-link dropdown-toggle"
