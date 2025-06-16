@@ -69,7 +69,7 @@ const Contact = ({ userInfo, token, handleLogout }) => {
                                 <div className="contact-form" data-aos="fade-up" data-aos-delay="300">
                                     <h3>Get In Touch</h3>
                                     <p>How Can We Assist You Today?</p>
-
+            
                                     <form className="php-email-form" onSubmit={handleSubmits}>
                                         <div className="row gy-4">
                                             <div className="col-md-6">
