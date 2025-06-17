@@ -96,7 +96,8 @@ const ManageContact = ({ userInfo, handleLogout }) => {
                                 <td>{index + 1}</td>
                                 <td>{item.name || '-'}</td>
                                 <td>{item.email || '-'}</td>
-                                                                <td>{item.subject || '-'}</td>
+                               
+                               <td>{item.subject || '-'}</td>
                                 <td>{item.message || '-'}</td>
                                 <td>{formatDateTime(item.submittedAt)}</td>
                               </tr>
