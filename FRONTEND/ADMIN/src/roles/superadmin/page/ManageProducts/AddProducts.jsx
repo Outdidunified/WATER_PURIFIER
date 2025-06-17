@@ -101,6 +101,8 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
                       <label className="input-label">Product Details</label>
                       <textarea
                         className="form-control"
+                              style={{ minHeight: '130px' }}
+
                         value={productDetails}
                         onChange={(e) => setProductDetails(e.target.value.trimStart())}
                         required
@@ -111,6 +113,8 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
                       <label className="input-label">Product Specifications</label>
                       <textarea
                         className="form-control"
+                              style={{ minHeight: '130px' }}
+
                         value={productSpecifications}
                         onChange={(e) => setProductSpecifications(e.target.value.trimStart())}
                         required

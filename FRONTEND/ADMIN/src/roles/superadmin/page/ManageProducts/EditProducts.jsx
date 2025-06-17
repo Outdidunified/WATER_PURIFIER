@@ -98,35 +98,39 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                   </div>
 
                   {/* Product Details & Specs */}
-                  <div className="row mb-4">
-                    <div className="col-2md-6">
-                      <label className="input-label" htmlFor="productDetails">Product Details</label>
-                      <textarea
-                        id="productDetails"
-                        className="form-control"
-                        value={productDetails}
-                        onChange={(e) => setProductDetails(e.target.value)}
-                        required
-                        maxLength={500}
-                        placeholder="Enter detailed product description (10 to 500 characters)"
-                        title="Product Details must be 10-500 characters."
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="input-label" htmlFor="productSpecifications">Product Specifications</label>
-                      <textarea
-                        id="productSpecifications"
-                        className="form-control"
-                        value={productSpecifications}
-                        onChange={(e) => setProductSpecifications(e.target.value)}
-                        required
-                        minLength={10}
-                        maxLength={500}
-                        placeholder="Enter product specifications (10 to 500 characters)"
-                        title="Product Specifications must be 10-500 characters."
-                      />
-                    </div>
-                  </div>
+            <div className="row mb-4">
+  <div className="col-md-6">
+    <label className="input-label" htmlFor="productDetails">Product Details</label>
+    <textarea
+      id="productDetails"
+      className="form-control"
+      style={{ minHeight: '130px' }}
+      value={productDetails}
+      onChange={(e) => setProductDetails(e.target.value)}
+      required
+      maxLength={500}
+      placeholder="Enter detailed product description (10 to 500 characters)"
+      title="Product Details must be 10-500 characters."
+    />
+  </div>
+  <div className="col-md-6">
+    <label className="input-label" htmlFor="productSpecifications">Product Specifications</label>
+    <textarea
+      id="productSpecifications"
+      className="form-control"
+      style={{ minHeight: '130px' }}
+      value={productSpecifications}
+      onChange={(e) => setProductSpecifications(e.target.value)}
+      required
+      minLength={10}
+      maxLength={500}
+      placeholder="Enter product specifications (10 to 500 characters)"
+      title="Product Specifications must be 10-500 characters."
+    />
+  </div>
+</div>
+
+
 
                   {/* Image Fields */}
                   <div className="row mb-4">
@@ -201,7 +205,7 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                     </div>
 
                     {/* Sub Images */}
-                    {subImages.map((img, index) => (
+{subImages.slice(0, 3).map((img, index) => (
                       <div className="col-md-6 mb-3" key={index}>
                         <label className="input-label" htmlFor={`subImageInput${index}`}>{`Sub Image ${index + 1}`}</label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

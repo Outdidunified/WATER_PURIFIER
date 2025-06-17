@@ -296,22 +296,33 @@ exports.loginWithEmail = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password)
-    return res.status(400).json({ error:true,status: 'failed', message: 'Email and password are required' });
+    return res.status(400).json({ error: true, status: 'failed', message: 'Email and password are required' });
 
   try {
     const db = await connectToDatabase();
     const user = await db.collection('users').findOne({ email });
 
-    if (!user || user.password !== password) {
-      return res.status(400).json({error:true, status: 'failed', message: 'Invalid email or password' });
+    if (!user) {
+      return res.status(400).json({ error: true, status: 'failed', message: 'Invalid email or password' });
+    }
+
+    // Check if user is deactivated
+    if (user.status === false) {
+      return res.status(403).json({ error: true, status: 'failed', message: 'Your account is deactivated. Please contact support.' });
+    }
+
+    // Check password
+    if (user.password !== password) {
+      return res.status(400).json({ error: true, status: 'failed', message: 'Invalid email or password' });
     }
 
     const token = generateToken(user._id);
-    res.status(200).json({ error:false,status: 'success', message: 'Login successful', token, user });
+    res.status(200).json({ error: false, status: 'success', message: 'Login successful', token, user });
   } catch (err) {
-    res.status(500).json({ error:true,status: 'error', message: 'Login error', error: err.message });
+    res.status(500).json({ error: true, status: 'error', message: 'Login error', error: err.message });
   }
 };
+
 
 exports.sendOtp = async (req, res) => {
   const { email } = req.body;
