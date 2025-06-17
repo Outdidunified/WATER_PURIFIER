@@ -270,19 +270,22 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                   Technician ID
                 </label>
                 <select
-                  className="form-control"
-                  id="technicianId"
-                  value={assignedTechnicianId}
-                  onChange={(e) => setAssignedTechnicianId(e.target.value)}
-                  required
-                >
-                  <option value="">Select Technician</option>
-                  {technicians.map((tech) => (
-                    <option key={tech.technician_id} value={tech.technician_id}>
-                      {tech.technician_id} - {tech.name}
-                    </option>
-                  ))}
-                </select>
+  className="form-control"
+  id="technicianId"
+  value={assignedTechnicianId}
+  onChange={(e) => setAssignedTechnicianId(e.target.value)}
+  required
+>
+  <option value="">Select Technician</option>
+  {technicians
+    .filter((tech) => tech.status) 
+    .map((tech) => (
+      <option key={tech.technician_id} value={tech.technician_id}>
+        {tech.technician_id} - {tech.name}
+      </option>
+    ))}
+</select>
+
               </div>
 
               <div className="d-flex justify-content-end" style={{ gap: '10px', marginTop: '20px' }}>
