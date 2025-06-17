@@ -75,9 +75,7 @@ const ManageContact = ({ userInfo, handleLogout }) => {
                           <tr>
                             <th>Sl.No</th>
                             <th>Name</th>
-                            <th>Phone</th>
                             <th>Email</th>
-                            <th>City</th>
                             <th>Subject</th>
                             <th>Message</th>
                             <th>Submitted At</th>
@@ -97,10 +95,8 @@ const ManageContact = ({ userInfo, handleLogout }) => {
                               <tr key={item._id}>
                                 <td>{index + 1}</td>
                                 <td>{item.name || '-'}</td>
-                                <td>{item.phone || '-'}</td>
                                 <td>{item.email || '-'}</td>
-                                <td>{item.city || '-'}</td>
-                                <td>{item.subject || '-'}</td>
+                                                                <td>{item.subject || '-'}</td>
                                 <td>{item.message || '-'}</td>
                                 <td>{formatDateTime(item.submittedAt)}</td>
                               </tr>
