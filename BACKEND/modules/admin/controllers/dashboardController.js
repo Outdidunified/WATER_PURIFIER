@@ -1055,11 +1055,28 @@ const AddUsers = async (req, res) => {
 
             const now = new Date();
 
+            let role_name = '';
+            switch (role_id) {
+                case 1:
+                    role_name = 'Admin';
+                    break;
+                case 2:
+                    role_name = 'Technician';
+                    break;
+                case 3:
+                    role_name = 'EndUser';
+                    break;
+                default:
+                    role_name = 'Unknown';
+            }
+
             const newUser = {
                 ...user,
                 user_id: nextUserId++,
                 createdDate: now,
                 status: true,
+                role_name,
+                password: parseInt(user.password),
             };
 
             // Assign technician_id if role_id == 2
@@ -1130,7 +1147,7 @@ const UpdateUsers = async (req, res) => {
 
         const updatedData = {
             name,
-            password,
+            password:parseInt(password),
             phone,
             city,
             modifiedBy,
