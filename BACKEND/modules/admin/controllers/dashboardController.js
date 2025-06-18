@@ -626,7 +626,7 @@ const AddDeviceDetails = async (req, res) => {
             if (existingDevice) {
                 return res.status(400).json({
                     success: false,
-                    message: `Device ID '${device.wp_device_id}' already exists. Please use a unique wp_device_id.`,
+                    message: `Device ID '${device.wp_device_id}' already exists. Please use a unique Device ID.`,
                 });
             }
 
@@ -644,7 +644,7 @@ const AddDeviceDetails = async (req, res) => {
             if (isNaN(quantity)) {
                 return res.status(500).json({
                     status: 'Failed',
-                    message: `Model ID '${device.model_nam}' has invalid wp_device_quantity value.`,
+                    message: `Model ID '${device.model_nam}' has invalid device quantity value.`,
                 });
             }
 
@@ -1406,7 +1406,7 @@ const AssignInstallation = async (req, res) => {
         if (existingInstallation) {
             return res.status(409).json({
                 status: 'Failed',
-                message: `An Installation task for this wp_device_id (${wp_device_id}) has already been assigned.`,
+                message: `An Installation task for this device id (${wp_device_id}) has already been assigned.`,
             });
         }
 
@@ -1415,7 +1415,7 @@ const AssignInstallation = async (req, res) => {
         if (!orderUser) {
             return res.status(404).json({
                 status: 'Failed',
-                message: 'User not found for given order_user_id',
+                message: 'User not found for given order user id',
             });
         }
 
@@ -1423,7 +1423,7 @@ const AssignInstallation = async (req, res) => {
         if (!technicianUser) {
             return res.status(404).json({
                 status: 'Failed',
-                message: 'Technician not found for given technician_id',
+                message: 'Technician not found for given technician id',
             });
         }
 
@@ -1510,7 +1510,7 @@ const ReAssignInstallation = async (req, res) => {
         if (!existingTask) {
             return res.status(404).json({
                 status: 'Failed',
-                message: `Task with task_id ${task_id} not found.`,
+                message: `Task with task id ${task_id} not found.`,
             });
         }
 

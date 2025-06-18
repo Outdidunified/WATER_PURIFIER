@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const { connectToDatabase } = require('../../../config/db');
+const { ObjectId } = require('mongodb');
+
 
 exports.fetchUserDetails = async (req, res) => {
     const { user_id, email, role_id } = req.body;
@@ -129,70 +131,166 @@ exports.fetchUserDetails = async (req, res) => {
     }
   };
   
-  exports.createServiceRequest = async (req, res) => {
-    const {
-      task_created_by_user_id,
-      task_created_by_user_email,
-      task_description,
-      role_id
-    } = req.body;
-  
-    // Basic validation
-    if (!task_created_by_user_id || !task_created_by_user_email || !task_description || !role_id) {
-      return res.status(400).json({
+ exports.createServiceRequest = async (req, res) => {
+  const {
+    task_created_by_user_id,
+    task_created_by_user_email,
+    task_description,
+    role_id,
+    device_id  // NEW: Get device_id from request body
+  } = req.body;
+
+  // Basic validation
+  if (
+    !task_created_by_user_id ||
+    !task_created_by_user_email ||
+    !task_description ||
+    !role_id ||
+    !device_id
+  ) {
+    return res.status(400).json({
+      error: true,
+      message: 'task_created_by_user_id, task_created_by_user_email, task_description, role_id, and device_id are required',
+    });
+  }
+
+  try {
+    const db = await connectToDatabase();
+    const usersCollection = db.collection('users');
+    const serviceRecordsCollection = db.collection('service_records');
+
+    // ✅ Step 1: Check if device_id is assigned to the user
+    const user = await usersCollection.findOne({ user_id: task_created_by_user_id });
+
+    if (!user) {
+      return res.status(404).json({
         error: true,
-        message: 'task_created_by_user_id, task_created_by_user_email, task_description, and role_id are required',
+        message: 'User not found',
       });
     }
+
+    const isDeviceAssigned = user.assigned_device_ids?.includes(device_id);
+
+    if (!isDeviceAssigned) {
+      return res.status(403).json({
+        error: true,
+        message: 'Device not assigned to the user',
+      });
+    }
+
+    // ✅ Step 2: Get the latest task_id and increment it
+    const lastTask = await serviceRecordsCollection
+      .find({})
+      .sort({ task_id: -1 })
+      .limit(1)
+      .toArray();
+
+    const newTaskId = lastTask.length > 0 ? lastTask[0].task_id + 1 : 1;
+
+    // ✅ Step 3: Create the new task object
+    const newServiceRecord = {
+      task_id: newTaskId,
+      task_status: "Initiated",
+      task_type: 2,
+      assigned_technician_id: null,
+      pending_reason: null,
+      created_date: new Date(),
+      modified_by: null,
+      modified_date: null,
+      assigned_date: null,
+      task_description,
+      image_before_service: [],
+      image_after_service: [],
+      task_created_by_user_id,
+      task_created_by_user_email,
+      role_id,
+      device_id, // Include device_id in record
+      otp: null
+    };
+
+    // ✅ Step 4: Insert into collection
+    await serviceRecordsCollection.insertOne(newServiceRecord);
+
+    return res.status(200).json({
+      error: false,
+      message: 'Service request created successfully',
+      data: newServiceRecord,
+    });
+
+  } catch (error) {
+    console.error('Error creating service request:', error);
+    return res.status(500).json({
+      error: true,
+      message: 'Internal server error while creating service request',
+    });
+  }
+};
+
   
+  exports.fetchpaymenthistory = async (req, res) => {
     try {
-      const db = await connectToDatabase();
-      const serviceRecordsCollection = db.collection('service_records');
+      const { user_id } = req.body;
   
-      // Get the latest task_id and increment it
-      const lastTask = await serviceRecordsCollection
-        .find({})
-        .sort({ task_id: -1 })
-        .limit(1)
+      if (!user_id) {
+        return res
+          .status(400)
+          .json({ success: false, message: 'user_id is required in request body' });
+      }
+  
+      const db = await connectToDatabase();
+      const paymentCollection = db.collection('payments');
+      const orderCollection = db.collection('orders');
+  
+      // Fetch payment records for the user
+      const payments = await paymentCollection.find({ user_id }).toArray();
+  
+      // Convert each payment's orderId (string) to ObjectId safely
+      const orderIdMap = {};
+      const validOrderObjectIds = [];
+  
+      for (const payment of payments) {
+        if (payment.orderId) {
+          try {
+            const oid = new ObjectId(payment.orderId);
+            orderIdMap[payment.orderId] = oid;
+            validOrderObjectIds.push(oid);
+          } catch (_) {
+            // ignore invalid ObjectId
+          }
+        }
+      }
+  
+      // Fetch all matching orders in one query
+      const orders = await orderCollection
+        .find({ _id: { $in: validOrderObjectIds } })
         .toArray();
   
-      const newTaskId = lastTask.length > 0 ? lastTask[0].task_id + 1 : 1;
+      // Map orders by stringified ObjectId
+      const orderMap = {};
+      for (const order of orders) {
+        orderMap[order._id.toString()] = order;
+      }
   
-      // Create the new task object
-      const newServiceRecord = {
-        task_id: newTaskId,
-        task_status: "Initiated",               // Always "Initiated"
-        task_type: 2,                           // Always integer 2
-        assigned_technician_id: null,
-        pending_reason: null,
-        created_date: new Date(),
-        modified_by: null,
-        modified_date: null,
-        assigned_date: null,
-        task_description,
-        image_before_service: [],
-        image_after_service: [],
-        task_created_by_user_id,
-        task_created_by_user_email,
-        role_id,                                // Added role_id
-        otp: null
-      };
+      // Attach matched order to each payment
+      const paymentsWithOrders = payments.map(payment => {
+        const order = orderMap[payment.orderId];
+        return {
+          ...payment,
+          orders: order ? [order] : []
+        };
+      });
   
-      // Insert into collection
-      await serviceRecordsCollection.insertOne(newServiceRecord);
-  
-      return res.status(200).json({
-        error: false,
-        message: 'Service request created successfully',
-        data: newServiceRecord,
+      res.status(200).json({
+        success: true,
+        message: 'Payment history with orders fetched successfully',
+        data: paymentsWithOrders
       });
   
     } catch (error) {
-      console.error('Error creating service request:', error);
-      return res.status(500).json({
-        error: true,
-        message: 'Internal server error while creating service request',
+      console.error('❌ Error fetching payment history:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Server error while fetching payment history'
       });
     }
   };
-  
