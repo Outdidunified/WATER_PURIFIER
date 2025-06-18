@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Swal from 'sweetalert2';
-const useLogin = ( handleLogin ) => {
+const useLogin = (handleLogin) => {
 
     const [step, setStep] = useState("login"); // login, otp, register
     const [phone, setPhone] = useState("");
@@ -16,7 +16,7 @@ const useLogin = ( handleLogin ) => {
 
     const validateEmail = (email) =>
         /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email);
-      
+
     // const validateEmail = (email) =>
     //     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -24,13 +24,13 @@ const useLogin = ( handleLogin ) => {
         if (!validateEmail(emailID)) {
             Swal.fire('Error', 'Enter a valid Gmail address (e.g. user@gmail.com).', 'error');
             return;
-        }        
+        }
 
         if (!/^[0-9]{4}$/.test(password)) {
             Swal.fire('Error', 'Password must be a 4-digit number.', 'error');
             return;
         }
-        
+
         setLoading(true);
         try {
             const res = await fetch("/api/api/website/auth/email", {
@@ -43,7 +43,7 @@ const useLogin = ( handleLogin ) => {
 
             if (res.status === 200 && data.status.toLowerCase() === "success") {
                 Swal.fire("Success", data.message || "Login successful.", "success");
-               // setTimeout(() => window.location.href = "/", 2000);
+                // setTimeout(() => window.location.href = "/", 2000);
                 handleLogin(data);
 
                 // setTimeout(() => {
@@ -134,12 +134,25 @@ const useLogin = ( handleLogin ) => {
                 body: JSON.stringify({ email: emailID, otp })
             });
 
-            const data = await res.json();
+            const responseData = await res.json();
 
-            if (res.status === 200 && data.error === false) {
-                handleLogin(data); // Save token, user info, etc.
-                Swal.fire('Success', data.message || 'OTP verified. Redirecting...', 'success');
-                setTimeout(() => window.location.href = "/", 2000);
+            if (res.status === 200 && responseData.error === false) {
+                const user = {
+                    user_id: responseData.data.user_id,
+                    email: responseData.data.email,
+                    role_id: responseData.data.role_id,
+                    is_subscribed: responseData.data.is_subscribed
+                };
+
+                const loginPayload = {
+                    user,
+                    token: responseData.token
+                };
+
+                handleLogin(loginPayload);
+
+                Swal.fire('Success', responseData.message || 'OTP verified. Redirecting...', 'success');
+                // setTimeout(() => window.location.href = "/", 2000);
                 setName('');
                 setEmailID('');
                 setCity('');
@@ -155,7 +168,7 @@ const useLogin = ( handleLogin ) => {
             setLoadingVotp(false);
         }
     };
-      
+
     const handleRegister = async () => {
         if (!name.trim()) {
             Swal.fire('Error', 'Name is required.', 'error');
@@ -216,7 +229,7 @@ const useLogin = ( handleLogin ) => {
         } finally {
             setLoadingReg(false);
         }
-    };    
+    };
 
     const commonInputStyle = {
         padding: '12px',

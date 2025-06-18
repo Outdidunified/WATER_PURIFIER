@@ -158,9 +158,9 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                 >
                                     {loadingVotp ? "Verifying..." : "Verify & Login"}
                                 </button>
-                                <p style={{ textAlign: 'center' }}>
+                                {/* <p style={{ textAlign: 'center' }}>
                                     Back to <button onClick={() => setStep("login")} style={{ color: '#007bff', background: 'none', border: 'none' }}>Login</button>
-                                </p>
+                                </p> */}
                             </div>
                         )}
 
