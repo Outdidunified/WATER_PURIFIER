@@ -42,12 +42,20 @@ const storage = multer.diskStorage({
 
 // File filter to accept only images
 const fileFilter = (req, file, cb) => {
+    console.log('📥 Incoming file upload:');
+    console.log('➡️ fieldname:', file.fieldname);
+    console.log('➡️ originalname:', file.originalname);
+    console.log('➡️ mimetype:', file.mimetype);
+
     if (file.mimetype.startsWith('image/')) {
+        console.log('✅ Accepted');
         cb(null, true);
     } else {
+        console.error('❌ Rejected - Only image files are allowed!');
         cb(new Error('Only image files are allowed!'), false);
     }
 };
+
 
 // Create the multer instance with configuration
 const upload = multer({
