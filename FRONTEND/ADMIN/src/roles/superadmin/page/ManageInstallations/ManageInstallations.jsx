@@ -14,7 +14,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
     isLoading,
     error, technicians,
     filteredInstallations,
-    reassignInstallation,
+    reassignInstallation,orders,
     handleSearchChange,
     assignInstallation, installationTasks,
   } = useManageInstallation(userInfo);
@@ -46,32 +46,46 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
     setAssignLoading(false);
   };
 
-  const handleAssignSubmit = async (e) => {
-    e.preventDefault();
-    if (!assignedTechnicianId || !selectedInstallation) return;
+ const handleAssignSubmit = async (e) => {
+  e.preventDefault();
+  if (!assignedTechnicianId || !selectedInstallation) return;
 
-    setAssignLoading(true);
+  setAssignLoading(true);
 
-    if (assignMode === 'reassign') {
-      await reassignInstallation({
-        task_id: selectedInstallation.task_id,
-        technician_id: assignedTechnicianId,
-      });
-    } else {
-      const payload = {
-        technician_role_id: selectedInstallation.assignedTechnician?.technician_role_id || '',
-        technician_user_id: selectedInstallation.assignedTechnician?.technician_user_id || '',
-        technician_id: assignedTechnicianId,
-        order_user_id: selectedInstallation.order_user_id || '',
-        customOrderId: selectedInstallation.customOrderId || '',
-        wp_device_id: selectedInstallation.wp_device_id || '',
-        assigned_by: userInfo?.email || '',
-      };
-      await assignInstallation(payload);
+  if (assignMode === 'reassign') {
+    await reassignInstallation({
+      task_id: selectedInstallation.task_id,
+      technician_id: assignedTechnicianId,
+    });
+  } else {
+    const technicianDetails = technicians.find(
+      (tech) => tech.technician_id === assignedTechnicianId
+    );
+
+    if (!technicianDetails) {
+      showErrorAlert("Technician details not found.");
+      setAssignLoading(false);
+      return;
     }
 
-    closeAssignModal();
-  };
+    const payload = {
+      technician_role_id: technicianDetails.role_id || '',
+      technician_user_id: technicianDetails.user_id || '',
+      technician_id: assignedTechnicianId,
+      order_user_id: selectedInstallation.user_id || '',
+      customOrderId: selectedInstallation.customOrderId || '',
+      wp_device_id: selectedInstallation.wp_device_id || '',
+      assigned_by: userInfo?.email || '',
+    };
+
+    await assignInstallation(payload);
+    await fetchData(); // ✅ This will update the orders list with assigned_technician_id
+  }
+
+  closeAssignModal();
+};
+
+
 
 
 
@@ -125,102 +139,80 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                       </div>
                     </div>
 
-                    <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                      <table className="table table-striped">
-                        <thead
-                          style={{
-                            textAlign: 'center',
-                            position: 'sticky',
-                            top: 0,
-                            zIndex: 1,
-                          }}
-                        >
-                          <tr>
-                            <th>Sl.No</th>
-                            <th>Status</th>
-                            <th>Task Type</th>
-                            <th>Description</th>
-                            <th>Device ID</th>
-                            <th>Technician ID</th>
-                            <th>Assigned Date</th>
-                            <th>Assign</th>
-                            <th>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody style={{ textAlign: 'center' }}>
-                          {isLoading ? (
-                            <tr>
-                              <td colSpan="9">Loading...</td>
-                            </tr>
-                          ) : error ? (
-                            <tr>
-                              <td colSpan="9">Error: {error}</td>
-                            </tr>
-                          ) : installationTasks.length > 0 ? (
-                            installationTasks.map((item, index) => (
-                              <tr key={item._id || index}>
-                                <td>{index + 1}</td>
-                                <td>{item.task_status || '-'}</td>
-                                <td>
-                                  {{
-                                    1: 'Installation',
-                                    2: 'Maintenance',
-                                    3: 'Repair',
-                                  }[item.task_type] || 'Other'}
-                                </td>
-                                <td>{item.task_description || '-'}</td>
-                                <td>{item.wp_device_id || '-'}</td>
-                                <td>{item.assigned_technician_id || '-'}</td>  {/* directly from task */}
-                                <td>
-                                  {item.assigned_date
-                                    ? new Date(item.assigned_date).toLocaleDateString()
-                                    : '-'}
-                                </td>
-                                <td>
-                                  <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
-                                    <button
-                                      type="button"
-                                      className="btn btn-primary"
-                                      onClick={() => handleAssignClick(item, 'assign')}
-                                      disabled={!!item.assigned_technician_id}
-                                    >
-                                      Assign
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="btn btn-warning"
-                                      onClick={() => handleAssignClick(item, 'reassign')}
-                                      disabled={!item.assigned_technician_id}
-                                    >
-                                      Reassign
-                                    </button>
-                                  </div>
-                                </td>
+                   <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+  <table className="table table-striped">
+    <thead style={{ textAlign: 'center', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#fff' }}>
+      <tr>
+        <th>Sl.No</th>
+        <th>Order ID</th>
+        <th>Model</th>
+        <th>Total</th>
+        <th>Device ID</th>
+        <th>User Name</th>
+        <th>Assign</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody style={{ textAlign: 'center' }}>
+      {isLoading ? (
+        <tr>
+          <td colSpan="10">Loading...</td>
+        </tr>
+      ) : error ? (
+        <tr>
+          <td colSpan="10">Error: {error}</td>
+        </tr>
+      ) : Array.isArray(orders) && orders.length > 0 ? (
+        orders.map((order, index) => (
+          <tr key={order._id || index}>
+            <td>{index + 1}</td>
+            <td>{order.customOrderId || '-'}</td>
+            <td>{order.modelName || '-'}</td>
+            <td>₹{order.grandTotal || 0}</td>
+            <td>{order.wp_device_id || '-'}</td>
+            <td>{order.deliveryAddress?.name || '-'}</td>
+            <td>
+              <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => handleAssignClick(order, 'assign')}
+                  disabled={!!order.assigned_technician_id}
+                >
+                  Assign
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-warning"
+                  onClick={() => handleAssignClick(order, 'reassign')}
+                  disabled={!order.assigned_technician_id}
+                >
+                  Reassign
+                </button>
+              </div>
+            </td>
+            <td>
+              <button
+                type="button"
+                className="btn btn-outline-success btn-icon-text"
+                onClick={() => handleViewInstallation(order)}
+              >
+                <i className="mdi mdi-eye"></i> View
+              </button>
+            </td>
+          </tr>
+        ))
+      ) : (
+        <tr>
+          <td colSpan="9">No installation records found.</td>
+        </tr>
+      )}
+    </tbody>
+  </table>
+</div>
 
 
 
-
-                                <td>
-                                  <button
-                                    type="button"
-                                    className="btn btn-outline-success btn-icon-text"
-                                    onClick={() => handleViewInstallation(item)}
-                                  >
-                                    <i className="mdi mdi-eye"></i> View
-                                  </button>
-                                </td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td colSpan="9">No installation records found.</td>
-                            </tr>
-                          )}
-                        </tbody>
-
-
-                      </table>
-                    </div>
                   </div>
                 </div>
               </div>
