@@ -9,7 +9,7 @@ const generateToken = (userId) => {
 };
 
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
-
+//register
 exports.register = async (req, res) => {
   const { name, email, phone, password, city, createdby } = req.body;
 
