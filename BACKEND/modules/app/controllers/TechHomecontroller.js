@@ -58,6 +58,13 @@ const transporter = nodemailer.createTransport({
 });
 
 exports.updateTaskDetails = async (req, res) => {
+  console.log('----- Incoming Request to /updateTaskDetails -----');
+  console.log('➡️ Body:', req.body);
+  console.log('➡️ Files:', req.files);
+  console.log('➡️ Headers:', req.headers);
+  console.log('➡️ Content-Type:', req.headers['content-type']);
+  console.log('---------------------------------------------------');
+  
   const {
     task_id,
     user_id,
