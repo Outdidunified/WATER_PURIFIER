@@ -264,7 +264,6 @@ exports.verifyRazorpayPayment = async (req, res) => {
             userUpdatePayload.security_deposit_added = true;
         }
 
-        // ✅ Update User (set and add to array, and unset old single device field)
         await db.collection('users').updateOne(
             { user_id: order.user_id },
             {
@@ -274,7 +273,6 @@ exports.verifyRazorpayPayment = async (req, res) => {
             }
         );
 
-        // ✅ Update Product Model Quantity
         if (order.productModelId) {
             const productModel = await db.collection('product_models').findOne({ _id: new ObjectId(order.productModelId) });
 
@@ -305,7 +303,6 @@ exports.verifyRazorpayPayment = async (req, res) => {
             }
         }
 
-        // ✅ Send Subscription Email
         try {
             await sendSubscriptionConfirmationEmail(user, order, userNewExpiry);
         } catch (emailError) {

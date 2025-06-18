@@ -5,28 +5,33 @@ const {connectToDatabase}=require('../../../config/db')
 exports.getAllProductsWithPlans = async (req, res) => {
   try {
     const db = await connectToDatabase();
-    const userId = parseInt(req.query.user_id);
 
-    // Fetch all product models
+    // Get all product models
     const products = await db.collection('product_models').find({}).toArray();
 
-    // Fetch all completed orders with assigned devices
-    const allPurchasedOrders = await db.collection('orders').find({
+    // Get all devices already assigned to completed orders
+    const completedOrders = await db.collection('orders').find({
       paymentStatus: 'Completed',
       wp_device_id: { $exists: true, $ne: null }
     }).toArray();
 
-    // Get all purchased product model IDs
-    const purchasedProductModelIds = new Set(
-      allPurchasedOrders.map(order => order.productModelId?.toString())
-    );
+    // Extract all used wp_device_ids
+    const usedDeviceIds = new Set(completedOrders.map(order => order.wp_device_id));
 
-    // Filter out products where isOutOfStockForUser would be true
-    const availableProducts = products.filter(product => {
-      const productModelIdStr = product._id.toString();
-      const isOutOfStockForUser = purchasedProductModelIds.has(productModelIdStr);
-      return !isOutOfStockForUser;
-    });
+    const availableProducts = [];
+
+    for (const product of products) {
+      // Check if there's any available device not already used in orders
+      const availableDevice = await db.collection('device_details').findOne({
+        model_id: Number(product.model_id),
+        status: true,
+        wp_device_id: { $nin: Array.from(usedDeviceIds) }
+      });
+
+      if (availableDevice) {
+        availableProducts.push(product);
+      }
+    }
 
     res.status(200).json({
       status: 'Success',
@@ -44,6 +49,7 @@ exports.getAllProductsWithPlans = async (req, res) => {
     });
   }
 };
+
 
 
 

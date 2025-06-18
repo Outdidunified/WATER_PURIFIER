@@ -69,7 +69,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
               </div>
             </div>
 
-            {/* Edit Modal */}
+            {/* Edit Modal
             {showEditForm && (
               <div className="modalStyle" style={modalStyle}>
                 <div className="modalContentStyle" style={{ maxHeight: '680px', overflowY: 'auto' }}>
@@ -142,7 +142,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                   </form>
                 </div>
               </div>
-            )}
+            )} */}
 
             {/* Order List Table */}
             <div className="row">
@@ -221,13 +221,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                                     >
                                       <i className="mdi mdi-eye"></i> View
                                     </button>
-                                    <button
-                                      type="button"
-                                      className="btn btn-outline-primary btn-icon-text"
-                                      onClick={() => handleEditOrder(order)}
-                                    >
-                                      <i className="mdi mdi-pencil btn-icon-prepend"></i> Update
-                                    </button>
+                                   
                                   </td>
                                 </tr>
                               ))

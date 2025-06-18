@@ -150,7 +150,7 @@ const useManageInstallation = (userInfo) => {
     handleSearchChange,
     assignInstallation,
     reassignInstallation,
-    refetch: fetchData,
+    refetch: fetchData,orders
   };
 };
 
