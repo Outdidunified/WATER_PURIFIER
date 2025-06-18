@@ -69,7 +69,7 @@ router.post('/FetchContact', verifyToken, Controller.FetchContact);
 router.post('/FetchOrders', verifyToken, Controller.FetchOrders);
 
 // Route to UpdateOrdersStatus 
-router.post('/UpdateOrdersStatus', verifyToken, Controller.UpdateOrdersStatus);
+// router.post('/UpdateOrdersStatus', verifyToken, Controller.UpdateOrdersStatus);
 
 // 8.Manage Roles
 // Route to AddUserRoles
