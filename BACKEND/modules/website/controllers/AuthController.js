@@ -152,7 +152,7 @@ exports.login = async (req, res) => {
     };
     console.log(`Generated OTP for ${email}:`, otp);
 
-    await EmailConfig(email, otp); // ✅ Use imported function only
+    await sendOtpEmail(email, otp); // ✅ Use imported function only
 
     const response = { error: false, message: 'OTP sent successfully to email' };
     console.log("Sending /login response:", response);
@@ -344,7 +344,7 @@ exports.sendOtp = async (req, res) => {
     await db.collection('users').updateOne({ email }, { $set: { otp, otpExpires, otpGeneratedAt } });
 
     // Send OTP via email (Water Purifier website OTP for login)
-    await EmailConfig(email, otp);
+    await sendOtpEmail(email, otp);
     console.log(`OTP sent to email: ${email} - ${otp}`);
 
     res.status(200).json({ error:false,status: 'success', message: 'OTP sent to your email' });
