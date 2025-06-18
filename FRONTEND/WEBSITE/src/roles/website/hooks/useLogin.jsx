@@ -204,7 +204,7 @@ const useLogin = ( handleLogin ) => {
 
                 // Clear fields
                 setName('');
-                setEmailID('');
+                // setEmailID('');
                 setCity('');
                 setPassword('');
                 setPhone('');
