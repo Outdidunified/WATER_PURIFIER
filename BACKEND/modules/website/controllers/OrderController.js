@@ -207,8 +207,6 @@ exports.verifyRazorpayPayment = async (req, res) => {
         }
 
         const subscribedAt = new Date();
-
-        // ✅ Always start new subscription from today (not from previous expiry)
         const durationStr = order.selectedDuration?.duration_time_limit || '30 days';
         const durationInDays = parseInt(durationStr.split(' ')[0], 10) || 30;
 
@@ -248,12 +246,11 @@ exports.verifyRazorpayPayment = async (req, res) => {
             }
         );
 
-        // ✅ Update User
+        // ✅ Prepare User Update Payload
         const userUpdatePayload = {
             is_subscribed: true,
             subscribed_at: subscribedAt,
             subscription_expiry_date: userNewExpiry,
-            assigned_device_id: order.wp_device_id || null,
             active_label: order.selectedPlan?.label || null,
             active_plan_id: order.selectedPlan?.plans_id || null,
             active_duration_id: order.selectedDuration?.duration_time_limit || null,
@@ -267,17 +264,22 @@ exports.verifyRazorpayPayment = async (req, res) => {
             userUpdatePayload.security_deposit_added = true;
         }
 
+        // ✅ Update User (set and add to array, and unset old single device field)
         await db.collection('users').updateOne(
             { user_id: order.user_id },
-            { $set: userUpdatePayload }
+            {
+                $set: userUpdatePayload,
+                $addToSet: { assigned_device_ids: order.wp_device_id || null },
+                $unset: { assigned_device_id: "" } // 🔥 remove old field
+            }
         );
 
-        // ✅ Update Device Quantity (decrease by 1)
+        // ✅ Update Product Model Quantity
         if (order.productModelId) {
             const productModel = await db.collection('product_models').findOne({ _id: new ObjectId(order.productModelId) });
 
             if (!productModel) {
-                return res.status(404).json({ message: 'Product model not found for device quantity update' });
+                return res.status(404).json({ message: 'Product model not found' });
             }
 
             let currentQty = productModel.wp_device_quantity;
@@ -285,9 +287,8 @@ exports.verifyRazorpayPayment = async (req, res) => {
             if (typeof currentQty === 'string') {
                 currentQty = parseInt(currentQty, 10);
                 if (isNaN(currentQty)) {
-                    return res.status(500).json({ message: 'Device quantity is invalid and cannot be updated' });
+                    return res.status(500).json({ message: 'Invalid device quantity' });
                 }
-
                 await db.collection('product_models').updateOne(
                     { _id: new ObjectId(order.productModelId) },
                     { $set: { wp_device_quantity: currentQty } }
@@ -300,27 +301,12 @@ exports.verifyRazorpayPayment = async (req, res) => {
                     { $inc: { wp_device_quantity: -1 } }
                 );
             } else {
-                return res.status(400).json({ message: 'Device quantity is zero or invalid, cannot decrement' });
+                return res.status(400).json({ message: 'Device quantity is zero or invalid' });
             }
         }
 
-        // ✅ Send Confirmation Email
+        // ✅ Send Subscription Email
         try {
-            const emailSubject = 'Water Purifier - Subscription Confirmed';
-            const emailBody = `
-                <div style="font-family: Arial, sans-serif; padding: 20px;">
-                    <h2>Hi ${user.name || 'Customer'},</h2>
-                    <p>Your subscription has been successfully activated!</p>
-                    <ul>
-                        <li><strong>Product:</strong> ${order.modelName}</li>
-                        <li><strong>Plan:</strong> ${order.selectedPlan?.label}</li>
-                        <li><strong>Duration:</strong> ${order.selectedDuration?.duration_time_limit}</li>
-                        <li><strong>Subscription Expiry:</strong> ${userNewExpiry.toDateString()}</li>
-                    </ul>
-                    <p>Thank you for choosing us!</p>
-                    <p>— Water Purifier Team</p>
-                </div>
-            `;
             await sendSubscriptionConfirmationEmail(user, order, userNewExpiry);
         } catch (emailError) {
             console.error('Error sending subscription confirmation email:', emailError);
@@ -328,13 +314,13 @@ exports.verifyRazorpayPayment = async (req, res) => {
 
         return res.status(200).json({
             status: 'success',
-            message: 'Payment verified, subscription activated, device quantity updated',
+            message: 'Payment verified and subscription activated',
             subscriptionExpiryDate: userNewExpiry
         });
 
     } catch (error) {
         console.error('Error verifying Razorpay payment:', error);
-        return res.status(500).json({ message: 'Error verifying payment', error: error.message });
+        return res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 };
 
