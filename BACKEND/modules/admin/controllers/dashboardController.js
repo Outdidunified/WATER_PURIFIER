@@ -204,6 +204,13 @@ const AddProductModels = async (req, res) => {
             return [];
         };
 
+        // if (!model_name || !main_img || !sub_img_1 || !sub_img_2 || !sub_img_3 || !sub_img_4 || !product_specifications || !wp_device_quantity || !plans || !duration || !product_details) {
+        //     return res.status(400).json({
+        //         status: 'Failed',
+        //         message: 'All field required for update'
+        //     });
+        // }
+
         let productModels;
 
         // Handle different body formats
@@ -815,56 +822,56 @@ const FetchOrders = async (req, res) => {
 }
 
 // UpdateOrdersStatus
-const UpdateOrdersStatus = async (req, res) => {
-    const { order_id, orderStatus, modified_by } = req.body;
+// const UpdateOrdersStatus = async (req, res) => {
+//     const { order_id, orderStatus, modified_by } = req.body;
 
-    // Validate input
-    if (!order_id || !orderStatus || !modified_by) {
-        return res.status(400).json({
-            status: 'Failed',
-            message: 'All fields (order_id, orderStatus, modified_by) are required'
-        });
-    }
+//     // Validate input
+//     if (!order_id || !orderStatus || !modified_by) {
+//         return res.status(400).json({
+//             status: 'Failed',
+//             message: 'All fields (order_id, orderStatus, modified_by) are required'
+//         });
+//     }
 
-    try {
-        const db = await database.connectToDatabase();
-        const collection = db.collection("orders");
+//     try {
+//         const db = await database.connectToDatabase();
+//         const collection = db.collection("orders");
 
-        const objectId = new ObjectId(order_id); // Convert string to ObjectId
+//         const objectId = new ObjectId(order_id); // Convert string to ObjectId
 
-        const existingOrder = await collection.findOne({ _id: objectId });
+//         const existingOrder = await collection.findOne({ _id: objectId });
 
-        if (!existingOrder) {
-            return res.status(404).json({
-                status: 'Failed',
-                message: `Order with _id ${order_id} not found`
-            });
-        }
+//         if (!existingOrder) {
+//             return res.status(404).json({
+//                 status: 'Failed',
+//                 message: `Order with _id ${order_id} not found`
+//             });
+//         }
 
-        const result = await collection.updateOne(
-            { _id: objectId },
-            {
-                $set: {
-                    orderStatus,
-                    modified_by,
-                    modifiedDate: new Date()
-                }
-            }
-        );
+//         const result = await collection.updateOne(
+//             { _id: objectId },
+//             {
+//                 $set: {
+//                     orderStatus,
+//                     modified_by,
+//                     modifiedDate: new Date()
+//                 }
+//             }
+//         );
 
-        return res.status(200).json({
-            status: 'Success',
-            message: 'Order status updated successfully'
-        });
+//         return res.status(200).json({
+//             status: 'Success',
+//             message: 'Order status updated successfully'
+//         });
 
-    } catch (error) {
-        console.error("Error in UpdateOrdersStatus:", error);
-        return res.status(500).json({
-            status: 'Failed',
-            message: 'Internal Server Error'
-        });
-    }
-};
+//     } catch (error) {
+//         console.error("Error in UpdateOrdersStatus:", error);
+//         return res.status(500).json({
+//             status: 'Failed',
+//             message: 'Internal Server Error'
+//         });
+//     }
+// };
 
 // 8.Manage Roles
 // AddUserRoles controller
@@ -1282,18 +1289,33 @@ const FetchInstallationService = async (req, res) => {
 const FetchSelectUserOrders = async (req, res) => {
     try {
         const db = await database.connectToDatabase();
-        const collection = db.collection("orders");
+        const ordersCollection = db.collection("orders");
+        const serviceRecordsCollection = db.collection("service_records");
 
-        // Filter: Only orders with orderStatus "Created" AND paymentStatus "Completed"
-        const pendingOrders = await collection.find({
+        // Step 1: Get relevant orders
+        const pendingOrders = await ordersCollection.find({
             orderStatus: "Confirmed",
             paymentStatus: "Completed"
         }).toArray();
 
+        // Step 2: Enrich each order with assigned_technician_id (if exists)
+        const enrichedOrders = await Promise.all(pendingOrders.map(async (order) => {
+            const wpDeviceId = order.wp_device_id;
+
+            // Find matching service record by wp_device_id
+            const serviceRecord = await serviceRecordsCollection.findOne({ wp_device_id: wpDeviceId });
+
+            // Attach technician ID if found, else null
+            return {
+                ...order,
+                assigned_technician_id: serviceRecord?.assigned_technician_id || null
+            };
+        }));
+
         return res.status(200).json({
             status: 'Success',
             message: 'Pending installation orders fetched successfully',
-            data: pendingOrders
+            data: enrichedOrders
         });
 
     } catch (error) {
@@ -1306,14 +1328,13 @@ const FetchSelectUserOrders = async (req, res) => {
     }
 };
 
-
 // Send OTP email
-async function sendAssignInstallationEmail(email, otd) {
+async function sendAssignInstallationEmail(email, otp) {
     try {
         const subject = 'Installation OTP - IonHive Water Purifier';
         const text = `Hi IonHive water purifier user,
 
-        Your installation OTP is: ${otd}
+        Your installation OTP is: ${otp}
 
         Once your IonHive device is installed by our technician, please share this OTP with them to complete the installation process.
 
@@ -1323,7 +1344,7 @@ async function sendAssignInstallationEmail(email, otd) {
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
                 <h2 style="color: #333;">Hi IonHive Water Purifier User,</h2>
                 <p style="font-size: 16px; color: #555;">
-                    Your installation OTP is: <strong style="color: #000;">${otd}</strong>
+                    Your installation OTP is: <strong style="color: #000;">${otp}</strong>
                 </p>
                 <p style="font-size: 16px; color: #555;">
                     Once our installation technician completes your setup, they will request this OTP from you to verify successful installation.
@@ -1423,7 +1444,7 @@ const AssignInstallation = async (req, res) => {
             task_created_by_user_id: order_user_id,
             task_created_by_user_email: orderUser.email,
             wp_device_id,
-            otd: otp,
+            otp: otp,
             created_date: now,
             created_by: assigned_by,
             assigned_by
@@ -1598,13 +1619,13 @@ async function sendEmailService(to, subject, text, html) {
 }
 
 // Send OTP email
-async function sendAssignServiceEmail(task_created_by_user_email, otd) {
-    console.log(task_created_by_user_email, otd)
+async function sendAssignServiceEmail(task_created_by_user_email, otp) {
+    console.log(task_created_by_user_email, otp)
     try {
         const subject = 'Service OTP - IonHive Water Purifier';
         const text = `Hi IonHive water purifier user,
 
-        Your service OTP is: ${otd}
+        Your service OTP is: ${otp}
 
         Once your IonHive device is installed by our technician, please share this OTP with them to complete the installation process.
 
@@ -1614,7 +1635,7 @@ async function sendAssignServiceEmail(task_created_by_user_email, otd) {
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
                 <h2 style="color: #333;">Hi IonHive Water Purifier User,</h2>
                 <p style="font-size: 16px; color: #555;">
-                    Your service OTP is: <strong style="color: #000;">${otd}</strong>
+                    Your service OTP is: <strong style="color: #000;">${otp}</strong>
                 </p>
                 <p style="font-size: 16px; color: #555;">
                     Once our service technician completes your setup, they will request this OTP from you to verify successful service.
@@ -1678,7 +1699,7 @@ const AssignService = async (req, res) => {
                     task_status: "Pending",
                     assigned_technician_id,
                     assigned_date: now,
-                    otd: otp,
+                    otp: otp,
                     assigned_by,
                     modified_by: assigned_by,
                     modified_date: now
@@ -1718,7 +1739,7 @@ const AssignService = async (req, res) => {
             message: 'Service task updated and OTP sent to user',
             task_id,
             assigned_technician_id,
-            otd: otp
+            otp: otp
         });
 
     } catch (err) {
@@ -1792,7 +1813,8 @@ const ReAssignService = async (req, res) => {
 
 module.exports = {
     authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
-    UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders, UpdateOrdersStatus, AddUserRoles, FetchUserRoles, UpdateUserRoles,
+    UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders,AddUserRoles, FetchUserRoles, UpdateUserRoles,
     AddUsers, FetchUsers, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
-    FetchSelectServiceTask, AssignService, ReAssignService
+    FetchSelectServiceTask, AssignService, ReAssignService,
+    // UpdateOrdersStatus,
 };
