@@ -16,7 +16,7 @@ exports.getAllProductsWithPlans = async (req, res) => {
 
     // 2. Get all product models
     const allProducts = await db.collection('product_models').find({}).toArray();
-
+//available
     const availableProducts = [];
 
     for (const product of allProducts) {
