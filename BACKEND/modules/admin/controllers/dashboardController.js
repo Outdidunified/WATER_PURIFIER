@@ -879,51 +879,57 @@ const AddUserRoles = async (req, res) => {
     try {
         const userRoles = Array.isArray(req.body) ? req.body : [req.body];
 
-        if (!userRoles.length || !userRoles[0].role_id || !userRoles[0].role_name) {
-            return res.status(400).json({
-                status: 'Failed',
-                message: 'Invalid or empty role data'
-            });
+        if (!userRoles.length) {
+            return res.status(400).json({ status: 'Failed', message: 'No role data provided' });
         }
 
         const db = await database.connectToDatabase();
-        const collection = db.collection("user_roles");
+        const collection = db.collection('user_roles');
+
+        const docsToAdd = [];
+        const duplicates = [];
 
         for (const role of userRoles) {
             const { role_id, role_name } = role;
-
-            const existingRole = await collection.findOne({ role_id, role_name });
-
-            if (existingRole) {
+            if (role_id == null || !role_name) {
                 return res.status(400).json({
                     status: 'Failed',
-                    message: `Role ID '${role_id}' with name '${role_name}' already exists.`,
-                    added: [],
-                    skipped: [
-                        {
-                            role_id,
-                            role_name,
-                            reason: 'Duplicate'
-                        }
-                    ]
+                    message: 'Missing role_id or role_name',
+                    problematic: role
                 });
+            }
+
+            // Only check for duplicate role_id (not necessarily role_name)
+            const exists = await collection.findOne({ role_id });
+            if (exists) {
+                duplicates.push({ role_id, existing: exists.role_name });
+            } else {
+                docsToAdd.push(role);
             }
         }
 
+        if (duplicates.length > 0) {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Some roles could not be added due to duplicate role_id',
+                duplicates
+            });
+        }
+
+        // All role_ids are unique now, safe to insert
         const now = new Date();
-        const docsToInsert = userRoles.map(role => ({
-            ...role,
+        const toInsert = docsToAdd.map(r => ({
+            ...r,
             created_date: now,
             status: true
         }));
 
-        await collection.insertMany(docsToInsert);
+        await collection.insertMany(toInsert);
 
         res.status(200).json({
             status: 'Success',
-            message: `${docsToInsert.length} role(s) added successfully`,
-            added: docsToInsert,
-            skipped: []
+            message: `${toInsert.length} role(s) added.`,
+            added: toInsert
         });
 
     } catch (err) {
@@ -934,7 +940,7 @@ const AddUserRoles = async (req, res) => {
         });
     }
 };
-
+  
 // FetchUserRoles
 const FetchUserRoles = async (req, res) => {
     try {
