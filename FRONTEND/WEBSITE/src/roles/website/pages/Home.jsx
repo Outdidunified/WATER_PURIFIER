@@ -142,6 +142,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 finalMonthlyPrice: parseFloat(finalMonthlyPrice.toFixed(2)),
                 grandTotal: grandTotalWithDeposit,
                 securityDeposit,
+                wp_device_id: selectedProduct.wp_device_id, 
                 deliveryAddress: {
                     name,
                     phone: phone.trim(), // as string
