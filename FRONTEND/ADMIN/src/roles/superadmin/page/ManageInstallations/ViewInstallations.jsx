@@ -14,7 +14,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
   };
 
  
-  return (
+return (
     <div className="container-scroller">
       <Header userInfo={userInfo} handleLogout={handleLogout} />
       <div className="container-fluid page-body-wrapper">
@@ -29,7 +29,6 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                   </div>
                   <div className="col-12 col-xl-4">
                     <div className="justify-content-end d-flex">
-                     
                       <button type="button" className="btn btn-success" onClick={handleBack}>
                         Back
                       </button>
@@ -47,75 +46,86 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                   <div className="col-lg-12 grid-margin stretch-card">
                     <div className="card">
                       <div className="card-body">
-                        <h4
-                          className="card-title"
-                          style={{ textAlign: 'center', paddingBottom: '10px' }}
-                        >
+                        <h4 className="card-title text-center pb-3">
+                          Order ID: {task.customOrderId}
                         </h4>
                         <hr />
+
                         <div className="row viewDataCss">
                           <div className="col-md-4">
-                            <strong>Status:</strong> <span>{task.task_status || '-'}</span>
+                            <strong>Model Name:</strong> {task.modelName || '-'}
                           </div>
                           <div className="col-md-4">
-                            <strong>Type:</strong>{' '}
-                            <span>
-                              {{
-                                1: 'Installation',
-                                2: 'Maintenance',
-                                3: 'Repair',
-                              }[task.task_type] || '-'}
-                            </span>
+                            <strong>Device ID:</strong> {task.wp_device_id || '-'}
                           </div>
                           <div className="col-md-4">
-                            <strong>Description:</strong>{' '}
-                            <span>{task.task_description || '-'}</span>
+                            <strong>Technician ID:</strong> {task.assigned_technician_id || '-'}
                           </div>
                         </div>
-                        <div className="row viewDataCss" style={{ marginTop: '10px' }}>
+
+                        <div className="row viewDataCss mt-2">
                           <div className="col-md-4">
-                            <strong>Technician ID:</strong>{' '}
-                            <span>{task.assigned_technician_id || '-'}</span>
+                            <strong>Plan:</strong> {task.selectedPlan?.label || '-'} (
+                            {task.selectedPlan?.capacity || '-'})
                           </div>
                           <div className="col-md-4">
-                            <strong>Assigned Date:</strong>{' '}
-                            <span>{new Date(task.assigned_date).toLocaleString() || '-'}</span>
+                            <strong>Duration:</strong> {task.selectedDuration?.duration_time_limit || '-'}
                           </div>
                           <div className="col-md-4">
-                            <strong>Created By:</strong>{' '}
-                            <span>{task.task_created_by_user_email || '-'}</span>
-                          </div>
-                        </div>
-                        <div className="row viewDataCss" style={{ marginTop: '10px' }}>
-                          <div className="col-md-4">
-                            <strong>Device ID:</strong> <span>{task.wp_device_id || '-'}</span>
-                          </div>
-                          <div className="col-md-4">
-                            <strong>OTD:</strong> <span>{task.otd || '-'}</span>
-                          </div>
-                          <div className="col-md-4">
-                            <strong>Created Date:</strong>{' '}
-                            <span>{new Date(task.created_date).toLocaleString() || '-'}</span>
+                            <strong>Grand Total:</strong> ₹{task.grandTotal || '-'}
                           </div>
                         </div>
-                        <div className="row viewDataCss" style={{ marginTop: '10px' }}>
+
+                        <div className="row viewDataCss mt-2">
                           <div className="col-md-4">
-                            <strong>Created By:</strong> <span>{task.created_by || '-'}</span>
+                            <strong>Payment Status:</strong> {task.paymentStatus || '-'}
                           </div>
                           <div className="col-md-4">
-                            <strong>Assigned By:</strong> <span>{task.assigned_by || '-'}</span>
+                            <strong>Order Status:</strong> {task.orderStatus || '-'}
                           </div>
                           <div className="col-md-4">
-                            <strong>Modified By:</strong> <span>{task.modified_by || '-'}</span>
+                            <strong>Subscription Expiry:</strong>{' '}
+                            {task.subscriptionExpiryDate
+                              ? new Date(task.subscriptionExpiryDate).toLocaleDateString()
+                              : '-'}
                           </div>
                         </div>
-                        <div className="row viewDataCss" style={{ marginTop: '10px' }}>
+
+                        <div className="row viewDataCss mt-2">
                           <div className="col-md-4">
-                            <strong>Modified Date:</strong>{' '}
-                            <span>{new Date(task.modified_date).toLocaleString() || '-'}</span>
+                            <strong>Customer Name:</strong> {task.deliveryAddress?.name || '-'}
                           </div>
-                           <div className="col-md-4">
-                            <strong>Task ID:</strong> <span>{task.task_id || '-'}</span>
+                          <div className="col-md-4">
+                            <strong>Phone:</strong> {task.deliveryAddress?.phone || '-'}
+                          </div>
+                          <div className="col-md-4">
+                            <strong>City:</strong> {task.deliveryAddress?.city || '-'}
+                          </div>
+                        </div>
+
+                        <div className="row viewDataCss mt-2">
+                          <div className="col-md-4">
+                            <strong>Address:</strong>{' '}
+                            {`${task.deliveryAddress?.addressLine1 || ''} ${task.deliveryAddress?.addressLine2 || ''}`.trim() || '-'}
+                          </div>
+                          <div className="col-md-4">
+                            <strong>Pincode:</strong> {task.deliveryAddress?.pincode || '-'}
+                          </div>
+                          <div className="col-md-4">
+                            <strong>Created At:</strong>{' '}
+                            {task.createdAt ? new Date(task.createdAt).toLocaleString() : '-'}
+                          </div>
+                        </div>
+
+                        <div className="row viewDataCss mt-2">
+                          <div className="col-md-4">
+                            <strong>Razorpay Order ID:</strong> {task.razorpayOrderId || '-'}
+                          </div>
+                          <div className="col-md-4">
+                            <strong>Razorpay Payment ID:</strong> {task.razorpayPaymentId || '-'}
+                          </div>
+                          <div className="col-md-4">
+                            <strong>Total Litre:</strong> {task.totalLitre || '-'}
                           </div>
                         </div>
                       </div>
@@ -130,6 +140,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
       </div>
     </div>
   );
-};
+}
+
 
 export default ViewInstallations;
