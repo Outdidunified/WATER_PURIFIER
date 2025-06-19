@@ -31761,6 +31761,15 @@ th, td {
 }
 
 
+.long-message-cell {
+  max-width: 400px;
+  white-space: pre-wrap;  /* Preserve line breaks */
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  text-align: left;       /* Align text for readability */
+  vertical-align: top;
+}
 
 .dashboard-wrapper {
   display: flex;
@@ -31860,5 +31869,7 @@ th, td {
   background-color: #dc3545;  /* Red */
   color: white;
 }
+
+
 
 
