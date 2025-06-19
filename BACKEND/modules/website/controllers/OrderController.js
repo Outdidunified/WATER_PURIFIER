@@ -12,7 +12,6 @@ function generateOrderId() {
 }
 
 
-
 exports.createSubscriptionOrder = async (req, res) => {
   try {
     const {
@@ -25,20 +24,21 @@ exports.createSubscriptionOrder = async (req, res) => {
       gstAmount,
       securityDeposit,
       grandTotal,
-      priceWithGST
+      priceWithGST,
+      wp_device_id // ✅ newly added
     } = req.body;
 
     const db = await connectToDatabase();
     const user = await db.collection('users').findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Validate all required fields
+    // Validate required fields
     if (
       !productModelId || !selectedPlanId || !selectedDurationId || !deliveryAddress ||
       finalMonthlyPrice === undefined || discountAmount === undefined || priceWithGST === undefined ||
-      gstAmount === undefined || grandTotal === undefined
+      gstAmount === undefined || grandTotal === undefined || !wp_device_id
     ) {
-      return res.status(400).json({ message: 'All fields except securityDeposit are required' });
+      return res.status(400).json({ message: 'All fields including wp_device_id are required (except securityDeposit)' });
     }
 
     // Validate security deposit for first-time users
@@ -93,9 +93,34 @@ exports.createSubscriptionOrder = async (req, res) => {
       return res.status(404).json({ message: 'No available devices for this product model' });
     }
 
+    // Validate selected device
+    const device = await db.collection('device_details').findOne({
+      wp_device_id: wp_device_id,
+      model_id: Number(productModel.model_id),
+      status: true
+    });
+
+    if (!device) {
+      return res.status(404).json({ message: 'Invalid or unavailable device for this product' });
+    }
+
+    // Check if device already used in any completed order
+    const deviceUsed = await db.collection('orders').findOne({
+      wp_device_id: wp_device_id,
+      paymentStatus: 'Completed'
+    });
+
+    if (deviceUsed) {
+      return res.status(400).json({
+        status: 'failed',
+        message: 'This device has already been used in a completed order. Please choose another device.'
+      });
+    }
+
     // Get selected plan and duration
     const selectedPlan = productModel.plans.find(plan => plan.plans_id === selectedPlanId);
     const selectedDuration = productModel.duration.find(dur => dur.duration_id === selectedDurationId);
+
     if (!selectedPlan || !selectedDuration) {
       return res.status(404).json({ message: 'Selected plan or duration not found' });
     }
@@ -104,18 +129,11 @@ exports.createSubscriptionOrder = async (req, res) => {
     const capacityString = selectedPlan?.capacity || "";
     const totalLitre = parseInt(capacityString.match(/\d+/)?.[0] || "0", 10);
 
-    // Get available device
-    const device = await db.collection('device_details').findOne({
-      model_id: Number(productModel.model_id),
-      status: true
-    });
-    if (!device) return res.status(404).json({ message: 'Device not found for this model' });
-
     // Determine effective security deposit
     const effectiveSecurityDeposit = user.security_deposit_added ? 0 : securityDeposit;
     const totalAmountForRazorpay = grandTotal;
 
-    // Razorpay order
+    // Create Razorpay order
     const razorpayOrder = await razorpay.orders.create({
       amount: Math.round(totalAmountForRazorpay * 100),
       currency: 'INR',
@@ -124,12 +142,13 @@ exports.createSubscriptionOrder = async (req, res) => {
 
     const customOrderId = generateOrderId();
 
+    // Save Order
     const newOrder = {
       customOrderId,
       user_id: user.user_id,
       productModelId,
       modelName: productModel.model_name,
-      wp_device_id: device.wp_device_id,
+      wp_device_id,
       selectedPlan,
       selectedDuration,
       grandTotal: totalAmountForRazorpay,
@@ -145,7 +164,7 @@ exports.createSubscriptionOrder = async (req, res) => {
     const result = await db.collection('orders').insertOne(newOrder);
     const orderId = result.insertedId;
 
-    // Payment document
+    // Save Payment
     await db.collection('payments').insertOne({
       user_id: user.user_id,
       orderId,
@@ -180,7 +199,7 @@ exports.createSubscriptionOrder = async (req, res) => {
           _id: productModel._id,
           model_name: productModel.model_name
         },
-        wp_device_id: device.wp_device_id,
+        wp_device_id,
         selectedPlan,
         selectedDuration,
         costBreakdown: {
