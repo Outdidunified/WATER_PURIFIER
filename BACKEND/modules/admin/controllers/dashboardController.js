@@ -1083,6 +1083,7 @@ const AddUsers = async (req, res) => {
                 createdDate: now,
                 status: true,
                 role_name,
+                phone: parseInt(user.phone),
                 password: parseInt(user.password),
             };
 
@@ -1155,7 +1156,7 @@ const UpdateUsers = async (req, res) => {
         const updatedData = {
             name,
             password:parseInt(password),
-            phone,
+            phone: parseInt(phone),
             city,
             modifiedBy,
             status,
