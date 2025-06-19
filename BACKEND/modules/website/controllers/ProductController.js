@@ -30,7 +30,7 @@ exports.getAllProductsWithPlans = async (req, res) => {
       if (availableDevice) {
         availableProducts.push({
           ...product,
-          availableDeviceId: availableDevice.wp_device_id // Optional
+          wp_device_id: availableDevice.wp_device_id // Optional
         });
       }
     }
