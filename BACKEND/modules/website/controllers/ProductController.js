@@ -6,34 +6,36 @@ exports.getAllProductsWithPlans = async (req, res) => {
   try {
     const db = await connectToDatabase();
 
-    // Get all product models
-    const products = await db.collection('product_models').find({}).toArray();
-
-    // Get all devices already assigned to completed orders
-    const completedOrders = await db.collection('orders').find({
+    // 1. Get all wp_device_ids used in completed orders by any user
+    const allCompletedOrders = await db.collection('orders').find({
       paymentStatus: 'Completed',
       wp_device_id: { $exists: true, $ne: null }
     }).toArray();
 
-    // Extract all used wp_device_ids
-    const usedDeviceIds = new Set(completedOrders.map(order => order.wp_device_id));
+    const usedDeviceIds = new Set(allCompletedOrders.map(order => order.wp_device_id));
+
+    // 2. Get all product models
+    const allProducts = await db.collection('product_models').find({}).toArray();
 
     const availableProducts = [];
 
-    for (const product of products) {
-      // Check if there's any available device not already used in orders
+    for (const product of allProducts) {
+      // 3. Find any device for this product model that is still unused
       const availableDevice = await db.collection('device_details').findOne({
         model_id: Number(product.model_id),
         status: true,
-        wp_device_id: { $nin: Array.from(usedDeviceIds) }
+        wp_device_id: { $nin: Array.from(usedDeviceIds) } // Only unused devices
       });
 
       if (availableDevice) {
-        availableProducts.push(product);
+        availableProducts.push({
+          ...product,
+          availableDeviceId: availableDevice.wp_device_id // Optional
+        });
       }
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       status: 'Success',
       error: false,
       data: availableProducts
@@ -41,7 +43,7 @@ exports.getAllProductsWithPlans = async (req, res) => {
 
   } catch (err) {
     console.error('Failed to fetch product models:', err);
-    res.status(500).json({
+    return res.status(500).json({
       status: 'Error',
       error: true,
       message: 'Failed to fetch product models',
@@ -49,6 +51,7 @@ exports.getAllProductsWithPlans = async (req, res) => {
     });
   }
 };
+
 
 
 
