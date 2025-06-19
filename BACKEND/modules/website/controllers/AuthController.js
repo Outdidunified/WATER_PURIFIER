@@ -362,8 +362,25 @@ exports.loginWithEmail = async (req, res) => {
       return res.status(400).json({ error: true, status: 'failed', message: 'Invalid email or password' });
     }
 
+    // Generate JWT token
     const token = generateToken(user._id);
-    res.status(200).json({ error: false, status: 'success', message: 'Login successful', token, user });
+
+    // Return only selected fields
+    const minimalUser = {
+      role_id: user.role_id,
+      user_id: user.user_id,
+      status: user.status,
+      email: user.email,
+    };
+
+    res.status(200).json({
+      error: false,
+      status: 'success',
+      message: 'Login successful',
+      token,
+      user: minimalUser,
+    });
+
   } catch (err) {
     res.status(500).json({ error: true, status: 'error', message: 'Login error', error: err.message });
   }
