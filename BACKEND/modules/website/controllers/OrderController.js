@@ -32,7 +32,7 @@ exports.createSubscriptionOrder = async (req, res) => {
     const user = await db.collection('users').findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // ✅ Validate required fields
+    // Validate all required fields
     if (
       !productModelId || !selectedPlanId || !selectedDurationId || !deliveryAddress ||
       finalMonthlyPrice === undefined || discountAmount === undefined || priceWithGST === undefined ||
@@ -41,28 +41,51 @@ exports.createSubscriptionOrder = async (req, res) => {
       return res.status(400).json({ message: 'All fields except securityDeposit are required' });
     }
 
-    // ✅ Security deposit check for new users
+    // Validate security deposit for first-time users
     if (!user.security_deposit_added && (securityDeposit === undefined || securityDeposit === null)) {
-      return res.status(400).json({ message: 'securityDeposit is required for new users' });
+      return res.status(400).json({ message: 'Security deposit is required for new users' });
     }
 
-    // ✅ Prevent multiple active subscriptions
     const now = new Date();
-    const activeOrder = await db.collection('orders').findOne({
+
+    // Fetch all completed orders (active or expired)
+    const pastOrders = await db.collection('orders').find({
       user_id: user.user_id,
-      productModelId: productModelId,
-      paymentStatus: 'Completed',
-      subscriptionExpiryDate: { $gte: now }
-    });
+      paymentStatus: 'Completed'
+    }).sort({ createdAt: -1 }).toArray();
+
+    const activeOrder = pastOrders.find(order => new Date(order.subscriptionExpiryDate) >= now);
 
     if (activeOrder) {
-      return res.status(400).json({
-        status: 'failed',
-        message: 'You already have an active subscription for this product. Please wait until it expires before subscribing again.'
-      });
+      if (activeOrder.productModelId === productModelId) {
+        return res.status(400).json({
+          status: 'failed',
+          message: 'You already have an active subscription for this product. Please wait until it expires before subscribing again.'
+        });
+      } else {
+        return res.status(400).json({
+          status: 'failed',
+          message: 'You already have a subscription to another product. Only one product subscription is allowed per user.'
+        });
+      }
     }
 
-    // ✅ Get product model
+    // Enforce: If user previously used same product, they must renew with same plan and duration
+    const previousOrderForSameProduct = pastOrders.find(order => order.productModelId === productModelId);
+
+    if (previousOrderForSameProduct) {
+      const prevPlanId = previousOrderForSameProduct?.selectedPlan?.plans_id;
+      const prevDurationId = previousOrderForSameProduct?.selectedDuration?.duration_id;
+
+      if (selectedPlanId !== prevPlanId || selectedDurationId !== prevDurationId) {
+        return res.status(400).json({
+          status: 'failed',
+          message: 'Renewal must be done with the same plan and duration as your previous subscription.'
+        });
+      }
+    }
+
+    // Get product model
     const productModel = await db.collection('product_models').findOne({ _id: new ObjectId(productModelId) });
     if (!productModel) return res.status(404).json({ message: 'Product model not found' });
 
@@ -70,36 +93,37 @@ exports.createSubscriptionOrder = async (req, res) => {
       return res.status(404).json({ message: 'No available devices for this product model' });
     }
 
-    // ✅ Get selected plan and duration
+    // Get selected plan and duration
     const selectedPlan = productModel.plans.find(plan => plan.plans_id === selectedPlanId);
     const selectedDuration = productModel.duration.find(dur => dur.duration_id === selectedDurationId);
     if (!selectedPlan || !selectedDuration) {
       return res.status(404).json({ message: 'Selected plan or duration not found' });
     }
 
-    // ✅ Extract totalLitre from selectedPlan.capacity (e.g., "120L/M" → 120)
+    // Extract litres
     const capacityString = selectedPlan?.capacity || "";
     const totalLitre = parseInt(capacityString.match(/\d+/)?.[0] || "0", 10);
 
-    // ✅ Get available device
-    const device = await db.collection('device_details').findOne({ model_id: Number(productModel.model_id), status: true });
+    // Get available device
+    const device = await db.collection('device_details').findOne({
+      model_id: Number(productModel.model_id),
+      status: true
+    });
     if (!device) return res.status(404).json({ message: 'Device not found for this model' });
 
+    // Determine effective security deposit
     const effectiveSecurityDeposit = user.security_deposit_added ? 0 : securityDeposit;
+    const totalAmountForRazorpay = grandTotal;
 
-    // ✅ Calculate payment
-    const totalAmountForRazorpay = grandTotal - effectiveSecurityDeposit;
-
-    // ✅ Create Razorpay order
+    // Razorpay order
     const razorpayOrder = await razorpay.orders.create({
-      amount: Math.round(totalAmountForRazorpay * 100), // in paise
+      amount: Math.round(totalAmountForRazorpay * 100),
       currency: 'INR',
       receipt: `order_rcptid_${Math.floor(Math.random() * 1000000)}`
     });
 
     const customOrderId = generateOrderId();
 
-    // ✅ Insert new order
     const newOrder = {
       customOrderId,
       user_id: user.user_id,
@@ -121,8 +145,8 @@ exports.createSubscriptionOrder = async (req, res) => {
     const result = await db.collection('orders').insertOne(newOrder);
     const orderId = result.insertedId;
 
-    // ✅ Insert payment record
-    const paymentDoc = {
+    // Payment document
+    await db.collection('payments').insertOne({
       user_id: user.user_id,
       orderId,
       razorpayOrderId: razorpayOrder.id,
@@ -136,17 +160,14 @@ exports.createSubscriptionOrder = async (req, res) => {
       paymentStatus: 'Pending',
       createdAt: new Date(),
       updatedAt: new Date()
-    };
+    });
 
-    await db.collection('payments').insertOne(paymentDoc);
-
-    // ✅ Generate Razorpay signature
     const signatureBase = razorpayOrder.id + '|' + orderId.toString();
     const generatedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(signatureBase)
       .digest('hex');
 
-    // ✅ Success response
+    // ✅ SUCCESS
     return res.status(200).json({
       status: 'success',
       message: 'Order created and Razorpay payment initiated',
@@ -222,7 +243,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // ✅ Update Order
+        //  Update Order
         await db.collection('orders').updateOne(
             { _id: order._id },
             {
@@ -236,7 +257,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
             }
         );
 
-        // ✅ Update Payment
+        //  Update Payment
         await db.collection('payments').updateOne(
             { razorpayOrderId: razorpay_order_id },
             {
@@ -250,7 +271,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
             }
         );
 
-        // ✅ Prepare User Update Payload
+        //  Prepare User Update Payload
         const userUpdatePayload = {
             is_subscribed: true,
             subscribed_at: subscribedAt,
@@ -273,7 +294,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
             {
                 $set: userUpdatePayload,
                 $addToSet: { assigned_device_ids: order.wp_device_id || null },
-                $unset: { assigned_device_id: "" } // 🔥 remove old field
+                $unset: { assigned_device_id: "" } //  remove old field
             }
         );
 

@@ -26,7 +26,7 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
       return res.status(404).json({ error: true, message: 'User not found' });
     }
 
-    if (!user.isSubscribed || !user.active_order_id) {
+    if (!user.is_subscribed || !user.active_order_id) {
       return res.status(200).json({
         error: false,
         message: 'User is not subscribed',

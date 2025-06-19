@@ -66,19 +66,20 @@ const Sidebar = () => {
           </Link>
         </li>
 
-         <li className={location.pathname === '/superadmin/ManageCallRequests'? 'nav-item active' : 'nav-item'}>
-          <Link className="nav-link" to="/superadmin/ManageCallRequests">
-            <i className="icon-head menu-icon mdi mdi-cart"></i>
-            <span className="menu-title">Manage Call Requests</span>
-          </Link>
-        </li>
+        <li className={location.pathname === '/superadmin/ManageCallRequests' ? 'nav-item active' : 'nav-item'}>
+  <Link className="nav-link" to="/superadmin/ManageCallRequests">
+    <i className="icon-head menu-icon mdi mdi-phone-in-talk"></i>
+    <span className="menu-title">Manage Call Requests</span>
+  </Link>
+</li>
 
-         <li className={location.pathname === '/superadmin/ManageContact' ? 'nav-item active' : 'nav-item'}>
-          <Link className="nav-link" to="/superadmin/ManageContact">
-            <i className="icon-head menu-icon mdi mdi-cart"></i>
-            <span className="menu-title">Manage Enquire</span>
-          </Link>
-        </li>
+<li className={location.pathname === '/superadmin/ManageContact' ? 'nav-item active' : 'nav-item'}>
+  <Link className="nav-link" to="/superadmin/ManageContact">
+    <i className="icon-head menu-icon mdi mdi-email-outline"></i>
+    <span className="menu-title">Manage Enquire</span>
+  </Link>
+</li>
+
 
         <li className={location.pathname === '/superadmin/Profile' ? 'nav-item active' : 'nav-item'}>
           <Link className="nav-link" to="/superadmin/Profile">

@@ -41,7 +41,7 @@ exports.fetchUserDetails = async (req, res) => {
         phone,
         city,
         status,
-        issubscribed,
+        is_subscribed,
         createdDate
       } = user;
   
@@ -53,7 +53,7 @@ exports.fetchUserDetails = async (req, res) => {
         phone,
         city,
         status,
-        issubscribed,
+        is_subscribed,
         createdDate,
       };
   
