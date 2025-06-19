@@ -1261,31 +1261,6 @@ const FetchInstallationService = async (req, res) => {
 };
 
 // FetchSelectUserOrders
-// const FetchSelectUserOrders = async (req, res) => {
-//     try {
-//         const db = await database.connectToDatabase();
-//         const collection = db.collection("orders");
-
-//         // Filter orders where installation_status is "Pending"
-//         const pendingOrders = await collection.find({ installation_status: "Pending", }).toArray();
-
-//         return res.status(200).json({
-//             status: 'Success',
-//             message: 'Pending installation orders fetched successfully',
-//             data: pendingOrders
-//         });
-
-//     } catch (error) {
-//         console.error("Error in FetchSelectUserOrders:", error);
-//         logger?.error?.(error);
-//         return res.status(500).json({
-//             status: 'Failed',
-//             message: 'Internal Server Error'
-//         });
-//     }
-// };
-
-// FetchSelectUserOrders
 const FetchSelectUserOrders = async (req, res) => {
     try {
         const db = await database.connectToDatabase();
@@ -1298,17 +1273,20 @@ const FetchSelectUserOrders = async (req, res) => {
             paymentStatus: "Completed"
         }).toArray();
 
-        // Step 2: Enrich each order with assigned_technician_id (if exists)
+        // Step 2: Enrich each order with assigned technician ID or null
         const enrichedOrders = await Promise.all(pendingOrders.map(async (order) => {
             const wpDeviceId = order.wp_device_id;
+            const userId = order.user_id;
 
-            // Find matching service record by wp_device_id
-            const serviceRecord = await serviceRecordsCollection.findOne({ wp_device_id: wpDeviceId });
+            // Only fetch service record if device ID matches
+            const serviceRecord = await serviceRecordsCollection.findOne({
+                wp_device_id: wpDeviceId,
+                task_created_by_user_id: userId // <-- ensure technician created by same user
+            });
 
-            // Attach technician ID if found, else null
             return {
                 ...order,
-                assigned_technician_id: serviceRecord?.assigned_technician_id || null
+                assigned_technician_id: serviceRecord ? serviceRecord.assigned_technician_id : null
             };
         }));
 
@@ -1327,7 +1305,7 @@ const FetchSelectUserOrders = async (req, res) => {
         });
     }
 };
-
+  
 // Send OTP email
 async function sendAssignInstallationEmail(email, otp) {
     try {
