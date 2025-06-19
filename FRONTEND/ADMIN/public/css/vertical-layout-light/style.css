@@ -28900,6 +28900,7 @@ background: linear-gradient(to bottom, #1e2a38, #3c4a57);
   z-index: 999;
 }
 
+
 .sidebar .nav .nav-item .nav-link {
   display: -webkit-flex;
   display: flex;
@@ -30520,6 +30521,29 @@ background: linear-gradient(to bottom, #1e2a38, #3c4a57);
     width: calc(100% - 70px);
   }
 }
+/* Collapse sidebar to icon-only */
+body.sidebar-icon-only .sidebar {
+  width: 60px !important;
+  transition: width 0.3s ease;
+}
+
+/* Hide the text in collapsed sidebar */
+body.sidebar-icon-only .sidebar .menu-title {
+  display: none !important;
+}
+
+/* Center the icon inside collapsed sidebar */
+body.sidebar-icon-only .sidebar .nav .nav-item .nav-link {
+  justify-content: center;
+  padding: 0.75rem 0.5rem;
+}
+
+/* Remove margin from icon */
+body.sidebar-icon-only .sidebar .nav .nav-item .nav-link i.menu-icon {
+  margin-right: 0 !important;
+}
+
+
 
 @media (min-width: 992px) {
   .sidebar-hidden .sidebar {
