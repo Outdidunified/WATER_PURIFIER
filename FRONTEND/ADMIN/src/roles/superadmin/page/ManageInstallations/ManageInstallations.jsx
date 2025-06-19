@@ -143,6 +143,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
         <th>Total</th>
         <th>Device ID</th>
         <th>User Name</th>
+        <th>Technician ID</th>
         <th>Assign</th>
         <th>Actions</th>
                           </tr>
@@ -165,7 +166,8 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
             <td>{item.modelName || '-'}</td>
             <td>₹{item.grandTotal || 0}</td>
             <td>{item.wp_device_id || '-'}</td>
-            <td>{item.deliveryAddress?.name || '-'}</td>                                <td>
+            <td>{item.deliveryAddress?.name || '-'}</td>
+            <td>{item.assigned_technician_id || '-'}</td>                                <td>
                                   <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
                                     <button
                                       type="button"
