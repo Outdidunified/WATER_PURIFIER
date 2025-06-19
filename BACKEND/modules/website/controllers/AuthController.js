@@ -144,54 +144,70 @@ exports.login = async (req, res) => {
 
   try {
     const db = await connectToDatabase();
-
-    // Fetch role info
     const role = await db.collection('user_roles').findOne({ role_id: Number(role_id) });
     if (!role) {
       return res.status(404).json({ error: true, message: 'Role not found' });
     }
 
-    // Generate OTP
+    const existingUser = await db.collection('users').findOne({ email, role_id: Number(role_id) });
+
     const otp = generateOtp();
     const otpGeneratedAt = new Date();
-    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 min validity
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    const createdDate = new Date();
 
-    // Auto-increment user_id
-    const lastUser = await db.collection('users').find().sort({ user_id: -1 }).limit(1).toArray();
-    const newUserId = lastUser.length > 0 ? lastUser[0].user_id + 1 : 1;
+    if (existingUser) {
+      await db.collection('users').updateOne(
+        { email },
+        { $set: { otp, otpGeneratedAt, otpExpires } }
+      );
 
-    // Insert user with default empty fields
-    await db.collection('users').insertOne({
-      name: "",
-      phone: "",
-      city: "",
-      password: "",
-      email,
-      otp,
-      otpGeneratedAt,
-      otpExpires,
-      role_id: role.role_id,
-      role_name: role.role_name,
-      user_id: newUserId,
-      status: true,
-      is_subscribed: false,
-      createdDate: new Date()
-    });
+      await sendOtpEmail(email, otp);
+      console.log(`Existing user — OTP updated and sent to ${email} | OTP: ${otp}`);
 
-    // Send OTP
-    await sendOtpEmail(email, otp);
-    console.log(`OTP sent to ${email} | OTP: ${otp}`);
+      return res.status(200).json({
+        error: false,
+        message: 'OTP sent to email for login'
+      });
+    } else {
+      const lastUser = await db.collection('users').find().sort({ user_id: -1 }).limit(1).toArray();
+      const newUserId = lastUser.length > 0 ? lastUser[0].user_id + 1 : 1;
 
-    return res.status(200).json({
-      error: false,
-      message: 'Registered successfully. OTP sent to email.'
-    });
+      await db.collection('users').insertOne({
+        name: "",
+        phone: "",
+        city: "",
+        password: "",
+        email,
+        otp,
+        otpGeneratedAt,
+        otpExpires,
+        role_id: role.role_id,
+        role_name: role.role_name,
+        user_id: newUserId,
+        status: true,
+        is_subscribed: false,
+        createdDate
+      });
 
+      await sendOtpEmail(email, otp);
+      console.log(`New user registered and OTP sent to ${email} | OTP: ${otp}`);
+
+      return res.status(200).json({
+        error: false,
+        message: 'Registered successfully. OTP sent to email.'
+      });
+    }
   } catch (error) {
-    console.error('Registration error:', error);
-    return res.status(500).json({ error: true, message: 'Registration failed', details: error.message });
+    console.error('Registration/Login error:', error);
+    return res.status(500).json({
+      error: true,
+      message: 'Registration/Login failed',
+      details: error.message
+    });
   }
 };
+
 
 
 
