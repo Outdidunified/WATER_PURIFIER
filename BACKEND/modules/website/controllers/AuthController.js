@@ -133,7 +133,7 @@ await sendOtpEmail(email, otp);
 
 
 
-exports.login = async (req, res) => {
+exports.login = async (req, res) => { 
   console.log("Received /login request:", req.body);
 
   const { email, role_id } = req.body;
@@ -145,23 +145,50 @@ exports.login = async (req, res) => {
   }
 
   try {
-    const otp = generateOtp();
-    otpStore[email] = {
-      otp,
-      expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
-    };
-    console.log(`Generated OTP for ${email}:`, otp);
+    const db = await connectToDatabase();
+    const user = await db.collection('users').findOne({ email });
 
-    await sendOtpEmail(email, otp); // ✅ Use imported function only
+    if (!user) {
+      const response = { error: true, message: 'User not found' };
+      console.log("Sending /login response:", response);
+      return res.status(404).json(response);
+    }
+
+    if (user.role_id !== 3) {
+      const response = { error: true, message: 'Only End Users (role_id 3) can log in here' };
+      console.log("Sending /login response:", response);
+      return res.status(403).json(response);
+    }
+
+    const otp = generateOtp();
+    const otpGeneratedAt = new Date();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
+
+    // Save OTP to MongoDB user document
+    await db.collection('users').updateOne(
+      { email },
+      {
+        $set: {
+          otp,
+          otpGeneratedAt,
+          otpExpires
+        }
+      }
+    );
+
+    await sendOtpEmail(email, otp);
+    console.log(`OTP sent to email: ${email} | OTP: ${otp}`);
 
     const response = { error: false, message: 'OTP sent successfully to email' };
     console.log("Sending /login response:", response);
     res.status(200).json(response);
+
   } catch (error) {
     console.error('Email error:', error);
     res.status(500).json({ error: true, message: 'Failed to send OTP' });
   }
 };
+
 
 exports.technicianLogin = async (req, res) => {
   console.log("Received /technicianLogin request:", req.body);
@@ -238,26 +265,41 @@ exports.technicianLogin = async (req, res) => {
 
 exports.verifyOtp = async (req, res) => {
   const { email, otp } = req.body;
+  console.log('Received OTP verification request');
+  console.log(' Email:', email, ' OTP:', otp);
 
   if (!email || !otp) {
+    console.log(' Missing email or OTP in request');
     return res.status(400).json({ error: true, message: 'Email and OTP are required' });
   }
 
   try {
     const db = await connectToDatabase();
+    console.log(' Connected to database');
 
     const user = await db.collection('users').findOne({ email });
+    console.log(' User found:', !!user, '| User data:', user);
 
     if (!user || !user.otp || !user.otpGeneratedAt) {
+      console.log(' Invalid OTP request - user not found or OTP missing');
       return res.status(400).json({ error: true, message: 'Invalid OTP request' });
     }
 
-    // Recalculate 5-minute expiry window from the stored generation time
     const generatedAt = new Date(user.otpGeneratedAt);
     const expiryTime = new Date(generatedAt.getTime() + 5 * 60 * 1000);
     const currentTime = new Date();
 
-    if (user.otp !== otp || currentTime > expiryTime) {
+    console.log(' OTP Generated At:', generatedAt);
+    console.log(' Current Time:', currentTime);
+    console.log(' Expiry Time:', expiryTime);
+
+    if (user.otp !== otp) {
+      console.log('OTP does not match');
+      return res.status(400).json({ error: true, message: 'Invalid or expired OTP' });
+    }
+
+    if (currentTime > expiryTime) {
+      console.log('OTP has expired');
       return res.status(400).json({ error: true, message: 'Invalid or expired OTP' });
     }
 
@@ -266,9 +308,11 @@ exports.verifyOtp = async (req, res) => {
       { email },
       { $unset: { otp: "", otpExpires: "", otpGeneratedAt: "" } }
     );
+    console.log(' Cleared OTP fields for user');
 
-    // Generate token (use your token logic here)
-    const token = generateToken(user._id); // or user.user_id if preferred
+    // Generate token
+    const token = generateToken(user._id);
+    console.log(' Token generated');
 
     res.status(200).json({
       error: false,
@@ -281,8 +325,10 @@ exports.verifyOtp = async (req, res) => {
         is_subscribed: user.isSubscribed || false
       }
     });
+    console.log(' OTP verified and login successful');
 
   } catch (err) {
+    console.error(' OTP verification failed:', err.message);
     res.status(500).json({
       error: true,
       message: 'OTP verification failed',

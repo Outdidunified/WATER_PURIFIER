@@ -1,4 +1,3 @@
-//ManageInstallations
 import { useState, useEffect, useCallback } from 'react';
 import axiosInstance from '../../../../utils/utils';
 import { showErrorAlert, showSuccessAlert } from '../../../../utils/alert';
@@ -12,6 +11,7 @@ const useManageInstallation = (userInfo) => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Fetch API calls
   const fetchTechnicians = async () => {
     const res = await axiosInstance.post('/api/admin/FetchInstallationService');
     return res.data?.data || [];
@@ -27,6 +27,7 @@ const useManageInstallation = (userInfo) => {
     return res.data?.data || [];
   };
 
+  // Main fetchData function
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -38,31 +39,33 @@ const useManageInstallation = (userInfo) => {
 
       setTechnicians(techs);
       setOrders(ords);
-      setInstallationTasks(tasks);
+      setInstallationTasks(tasks); // ✅ Fixed: set installationTasks from tasks
 
       const allServiceRecords = techs.flatMap(tech =>
-  (tech.service_records || []).map(record => ({
-    ...record,
-    technician_name: tech.name,
-    technician_id: tech.technician_id,
-    technician_user_id: tech.user_id,
-    technician_role_id: tech.role_id,
-  }))
-);
+        (tech.service_records || []).map(record => ({
+          ...record,
+          technician_name: tech.name,
+          technician_id: tech.technician_id,
+          technician_user_id: tech.user_id,
+          technician_role_id: tech.role_id,
+        }))
+      );
 
-
-      const enrichedTasks = tasks.map(task => {
+      const enrichedTasks = ords.map(order => {
         const assignedTechnician = allServiceRecords.find(
-          rec => rec.wp_device_id === task.wp_device_id
+          rec => rec.wp_device_id === order.wp_device_id
         ) || null;
 
-        const orderInfo = ords.find(order => order.wp_device_id === task.wp_device_id) || {};
+        const matchingTask = tasks.find(
+          task => task.wp_device_id === order.wp_device_id
+        );
 
         return {
-          ...task,
+          ...order,
+          task_id: matchingTask?.task_id || null, // ✅ Add task_id for reassignment
           assignedTechnician,
-          order_user_id: orderInfo.user_id || '',
-          customOrderId: orderInfo.customOrderId || '',
+          order_user_id: order.user_id || '',
+          customOrderId: order.customOrderId || '',
         };
       });
 
@@ -79,20 +82,22 @@ const useManageInstallation = (userInfo) => {
     fetchData();
   }, [fetchData]);
 
+  // Search functionality
   const handleSearchChange = (e) => {
     const value = e.target.value.toLowerCase();
     setSearchTerm(value);
 
-    const filteredEnriched = installationTasks.filter(task =>
-      task.wp_device_id?.toLowerCase().includes(value) ||
-      task.task_description?.toLowerCase().includes(value) ||
-      task.task_id?.toString().includes(value) ||
-      task.assignedTechnician?.technician_id?.toLowerCase().includes(value)
+    const filteredEnriched = orders.filter(order =>
+      order.wp_device_id?.toLowerCase().includes(value) ||
+      order.customOrderId?.toLowerCase().includes(value) ||
+      order.user_id?.toString().includes(value) ||
+      order.deliveryAddress?.name?.toLowerCase().includes(value)
     );
 
     setDisplayTasks(filteredEnriched);
   };
 
+  // Assign new technician
   const assignInstallation = async ({
     technician_role_id,
     technician_user_id,
@@ -123,6 +128,7 @@ const useManageInstallation = (userInfo) => {
     }
   };
 
+  // Reassign existing installation task
   const reassignInstallation = async ({ task_id, technician_id }) => {
     try {
       const payload = {
@@ -150,7 +156,7 @@ const useManageInstallation = (userInfo) => {
     handleSearchChange,
     assignInstallation,
     reassignInstallation,
-    refetch: fetchData,orders
+    refetch: fetchData,
   };
 };
 
