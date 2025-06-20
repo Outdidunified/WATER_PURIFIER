@@ -73,7 +73,9 @@ const Contact = ({ userInfo, token, handleLogout }) => {
                                     <form className="php-email-form" onSubmit={handleSubmits}>
                                         <div className="row gy-4">
                                             <div className="col-md-6">
-                                                <input type="text" name="name" className="form-control" placeholder="Your Name" required value={formData.name} onChange={handleChange} />
+                                                <input type="text" name="name" className="form-control" placeholder="Your Name" required value={formData.name} onChange={(e) => {
+                                                    if (/^[a-zA-Z\s]*$/.test(e.target.value)) handleChange(e);
+                                                }} />
                                             </div>
 
                                             <div className="col-md-6">

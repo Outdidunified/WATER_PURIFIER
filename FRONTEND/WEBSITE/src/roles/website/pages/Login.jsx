@@ -29,12 +29,12 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
             const domainPart = lowerCaseEmail.slice(atIndex + 1).replace(/@/g, ""); // Remove additional '@'
             const sanitizedEmail = `${firstPart}${domainPart}`;
 
-            // Limit the email address to 30 characters
-            return sanitizedEmail.slice(0, 30);
+            // Limit the email address to 50 characters
+            return sanitizedEmail.slice(0, 50);
         }
 
-        // No @ symbol: Limit to 30 characters and return
-        return lowerCaseEmail.slice(0, 30);
+        // No @ symbol: Limit to 50 characters and return
+        return lowerCaseEmail.slice(0, 50);
     };
 
     return (
@@ -173,7 +173,10 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                     placeholder="Full Name"
                                     style={commonInputStyle}
                                     value={name}
-                                    onChange={(e) => setName(e.target.value)}
+                                    // onChange={(e) => setName(e.target.value)}
+                                    onChange={(e) => {
+                                        if (/^[a-zA-Z\s]*$/.test(e.target.value)) setName(e.target.value);
+                                    }}
                                     required
                                 />
                                 <input
