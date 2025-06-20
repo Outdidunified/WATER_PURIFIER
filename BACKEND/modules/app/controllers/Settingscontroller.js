@@ -145,8 +145,7 @@ exports.fetchUserDetails = async (req, res) => {
     !task_created_by_user_id ||
     !task_created_by_user_email ||
     !task_description ||
-    !role_id ||
-    !device_id
+    !role_id
   ) {
     return res.status(400).json({
       error: true,
@@ -169,7 +168,8 @@ exports.fetchUserDetails = async (req, res) => {
       });
     }
 
-    const isDeviceAssigned = user.assigned_device_ids?.includes(device_id);
+    const isDeviceAssigned = user.assigned_device_ids;
+    console.log('isDeviceAssigned',isDeviceAssigned)
 
     if (!isDeviceAssigned) {
       return res.status(403).json({
