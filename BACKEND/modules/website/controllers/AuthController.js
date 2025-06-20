@@ -91,7 +91,7 @@ exports.register = async (req, res) => {
     res.status(201).json({
       status: 'success',
       error: false,
-      message: 'User registered. OTP sent to email/phone.',
+      message: 'User registered. OTP sent to email',
       user: {
         id: result.insertedId,
         user_id: newUserId,
