@@ -67,12 +67,12 @@ const useContact = () => {
             const domainPart = lowerCaseEmail.slice(atIndex + 1).replace(/@/g, ""); // Remove additional '@'
             const sanitizedEmail = `${firstPart}${domainPart}`;
 
-            // Limit the email address to 30 characters
-            return sanitizedEmail.slice(0, 30);
+            // Limit the email address to 50 characters
+            return sanitizedEmail.slice(0, 50);
         }
 
-        // No @ symbol: Limit to 30 characters and return
-        return lowerCaseEmail.slice(0, 30);
+        // No @ symbol: Limit to 50 characters and return
+        return lowerCaseEmail.slice(0, 50);
     };
 
     return { formData, handleChange, handleSubmits, loading, sanitizeEmail };
