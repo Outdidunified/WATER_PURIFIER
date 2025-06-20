@@ -41,19 +41,24 @@ async function sendEmail(to, subject, text, html) {
 }
 
 // OTP Email
-async function sendOtpEmail(email, otp) {
+async function sendOtpEmail(email, otp, password = null) {
   const subject = 'Water Purifier Website - OTP for Login';
-  const text = `Hello ${email},\n\nYou requested to login... Your OTP is: ${otp}`;
+  const text = `Hello ${email},\n\nYour OTP is: ${otp}${password ? `\nYour temporary password: ${password}` : ''}`;
+
   const html = `
     <div style="font-family: Arial, sans-serif;">
       <h2>Water Purifier Website</h2>
       <p>Hello <strong>${email}</strong>,</p>
       <p>Your OTP is:</p>
       <div style="font-size: 20px; font-weight: bold;">${otp}</div>
+      ${password ? `<p>Your temporary password is: <strong>${password}</strong></p>` : ''}
+      <p>Use this password for email login.</p>
     </div>
   `;
+
   return sendEmail(email, subject, text, html);
 }
+
 
 // Subscription Confirmation Email
 async function sendSubscriptionConfirmationEmail(user, order, userNewExpiry) {
@@ -74,6 +79,8 @@ async function sendSubscriptionConfirmationEmail(user, order, userNewExpiry) {
   `;
   return sendEmail(user.email, subject, '', html);
 }
+
+
 
 module.exports = {
   sendOtpEmail,

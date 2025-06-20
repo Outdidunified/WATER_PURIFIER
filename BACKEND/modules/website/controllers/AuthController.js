@@ -8,6 +8,9 @@ const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
+const generateNumericPassword = () => Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit password
+
+
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 //register
 exports.register = async (req, res) => {
@@ -24,6 +27,7 @@ exports.register = async (req, res) => {
   try {
     const db = await connectToDatabase();
 
+    // Only allow registration for End User role
     const role = await db.collection('user_roles').findOne({ role_id: 3 });
     if (!role || !role.status) {
       return res.status(403).json({
@@ -33,30 +37,23 @@ exports.register = async (req, res) => {
       });
     }
 
-    const usersWithSameEmailOrPhone = await db.collection('users').find({
+    // Check if any user exists with the same email
+    const existingUsers = await db.collection('users').find({
       $or: [{ email }]
     }).toArray();
 
-    const sameRoleExists = usersWithSameEmailOrPhone.find(u => u.role_id === 3);
-    if (sameRoleExists) {
+    const endUserExists = existingUsers.find(u => u.role_id === 3);
+    if (endUserExists) {
       return res.status(400).json({
         status: 'failed',
         error: true,
-        message: 'End User with same email/phone already exists'
+        message: 'End User with same email already exists'
       });
     }
 
-    const technicianExists = usersWithSameEmailOrPhone.find(u => u.role_id === 2);
-    if (!technicianExists && usersWithSameEmailOrPhone.length > 0) {
-      return res.status(400).json({
-        status: 'failed',
-        error: true,
-        message: 'User already exists with different role'
-      });
-    }
 
     const otp = generateOtp();
-    const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // expires in 5 min
     const otpGeneratedAt = new Date();
     const createdDate = new Date();
 
@@ -78,13 +75,12 @@ exports.register = async (req, res) => {
       role_id: role.role_id,
       role_name: role.role_name,
       user_id: newUserId,
-  is_subscribed: false
+      is_subscribed: false
     });
 
-   
-
+    // Send OTP
     if (email) {
-await sendOtpEmail(email, otp);
+      await sendOtpEmail(email, otp);
       console.log(`OTP sent to email: ${email}`);
     }
 
@@ -113,6 +109,7 @@ await sendOtpEmail(email, otp);
     });
 
   } catch (err) {
+    console.error('Registration error:', err.message);
     res.status(500).json({
       status: 'error',
       error: true,
@@ -125,7 +122,7 @@ await sendOtpEmail(email, otp);
 
 
 exports.login = async (req, res) => {
-  console.log("Received /register request:", req.body);
+  console.log("Received /registerOrLogin request:", req.body);
 
   const { email, role_id } = req.body;
 
@@ -136,39 +133,49 @@ exports.login = async (req, res) => {
   try {
     const db = await connectToDatabase();
     const role = await db.collection('user_roles').findOne({ role_id: Number(role_id) });
+
     if (!role) {
       return res.status(404).json({ error: true, message: 'Role not found' });
     }
 
-    const existingUser = await db.collection('users').findOne({ email, role_id: Number(role_id) });
-
     const otp = generateOtp();
     const otpGeneratedAt = new Date();
-    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
     const createdDate = new Date();
 
+    const existingUser = await db.collection('users').findOne({ email, role_id: Number(role_id) });
+
     if (existingUser) {
+      // Existing user: only update OTP
       await db.collection('users').updateOne(
-        { email },
+        { email, role_id: Number(role_id) },
         { $set: { otp, otpGeneratedAt, otpExpires } }
       );
 
-      await sendOtpEmail(email, otp);
-      console.log(`Existing user — OTP updated and sent to ${email} | OTP: ${otp}`);
+      await sendOtpEmail(email, otp); // No password this time
+      console.log(`Existing user — OTP sent to ${email}: ${otp}`);
 
       return res.status(200).json({
         error: false,
-        message: 'OTP sent to email for login'
+        message: 'OTP sent to email for login',
+        data: {
+          user_id: existingUser.user_id,
+          role_id: existingUser.role_id,
+          email: existingUser.email
+        }
       });
     } else {
+      // New user: generate 4-digit password
+      const generatedPassword = generateNumericPassword();
+
       const lastUser = await db.collection('users').find().sort({ user_id: -1 }).limit(1).toArray();
       const newUserId = lastUser.length > 0 ? lastUser[0].user_id + 1 : 1;
 
-      await db.collection('users').insertOne({
+      const newUser = {
         name: "",
         phone: null,
         city: "",
-        password: "",
+        password: parseInt(generatedPassword),
         email,
         otp,
         otpGeneratedAt,
@@ -179,25 +186,34 @@ exports.login = async (req, res) => {
         status: true,
         is_subscribed: false,
         createdDate
-      });
+      };
 
-      await sendOtpEmail(email, otp);
-      console.log(`New user registered and OTP sent to ${email} | OTP: ${otp}`);
+      await db.collection('users').insertOne(newUser);
+
+      await sendOtpEmail(email, otp, generatedPassword); // include password
+      console.log(`New user registered — OTP + Password sent to ${email}: OTP=${otp}, Password=${generatedPassword}`);
 
       return res.status(200).json({
         error: false,
-        message: 'Registered successfully. OTP sent to email.'
+        message: 'Registered successfully. OTP and password sent to email.',
+        data: {
+          user_id: newUserId,
+          role_id: role.role_id,
+          email
+        }
       });
     }
+
   } catch (error) {
-    console.error('Registration/Login error:', error);
+    console.error('Register/Login error:', error);
     return res.status(500).json({
       error: true,
-      message: 'Registration/Login failed',
+      message: 'Register/Login failed',
       details: error.message
     });
   }
 };
+
 
 
 
@@ -275,59 +291,65 @@ exports.technicianLogin = async (req, res) => {
     res.status(500).json({ error: true, message: 'Internal server error' });
   }
 };
-
 exports.verifyOtp = async (req, res) => {
-  const { email, otp } = req.body;
-  console.log('Received OTP verification request');
-  console.log(' Email:', email, ' OTP:', otp);
+  const { email, otp, role_id } = req.body;
 
-  if (!email || !otp) {
-    console.log(' Missing email or OTP in request');
-    return res.status(400).json({ error: true, message: 'Email and OTP are required' });
+  console.log('\nOTP Verification Request Received');
+  console.log('Email:', email);
+  console.log('OTP:', otp);
+  console.log('Role ID:', role_id);
+
+  if (!email || !otp || !role_id) {
+    console.log('Missing required fields (email, otp, or role_id)');
+    return res.status(400).json({
+      error: true,
+      message: 'Email, OTP, and role_id are required'
+    });
   }
 
   try {
     const db = await connectToDatabase();
-    console.log(' Connected to database');
+    console.log('Connected to database');
 
-    const user = await db.collection('users').findOne({ email });
-    console.log(' User found:', !!user, '| User data:', user);
+    const user = await db.collection('users').findOne({ email, role_id: Number(role_id) });
 
-    if (!user || !user.otp || !user.otpGeneratedAt) {
-      console.log(' Invalid OTP request - user not found or OTP missing');
-      return res.status(400).json({ error: true, message: 'Invalid OTP request' });
+    if (!user) {
+      console.log('User not found with provided email and role_id');
+      return res.status(400).json({ error: true, message: 'User not found' });
+    }
+
+    if (!user.otp || !user.otpGeneratedAt) {
+      console.log('OTP data missing in user');
+      return res.status(400).json({ error: true, message: 'OTP not found or expired' });
     }
 
     const generatedAt = new Date(user.otpGeneratedAt);
     const expiryTime = new Date(generatedAt.getTime() + 5 * 60 * 1000);
     const currentTime = new Date();
 
-    console.log(' OTP Generated At:', generatedAt);
-    console.log(' Current Time:', currentTime);
-    console.log(' Expiry Time:', expiryTime);
+    console.log('OTP Generated At:', generatedAt);
+    console.log('Current Time:', currentTime);
+    console.log('Expiry Time:', expiryTime);
 
-    if (user.otp !== otp) {
+    if (String(user.otp) !== String(otp)) {
       console.log('OTP does not match');
       return res.status(400).json({ error: true, message: 'Invalid or expired OTP' });
     }
 
     if (currentTime > expiryTime) {
       console.log('OTP has expired');
-      return res.status(400).json({ error: true, message: 'Invalid or expired OTP' });
+      return res.status(400).json({ error: true, message: 'OTP expired. Please request a new one.' });
     }
 
-    // Clear OTP after successful verification
     await db.collection('users').updateOne(
-      { email },
+      { email, role_id: Number(role_id) },
       { $unset: { otp: "", otpExpires: "", otpGeneratedAt: "" } }
     );
-    console.log(' Cleared OTP fields for user');
+    console.log('OTP fields cleared successfully');
 
-    // Generate token
     const token = generateToken(user._id);
-    console.log(' Token generated');
 
-    res.status(200).json({
+    return res.status(200).json({
       error: false,
       message: 'Login successful',
       token,
@@ -338,11 +360,10 @@ exports.verifyOtp = async (req, res) => {
         is_subscribed: user.is_subscribed || false
       }
     });
-    console.log(' OTP verified and login successful');
 
   } catch (err) {
-    console.error(' OTP verification failed:', err.message);
-    res.status(500).json({
+    console.error('OTP verification failed:', err.message);
+    return res.status(500).json({
       error: true,
       message: 'OTP verification failed',
       details: err.message
@@ -351,34 +372,53 @@ exports.verifyOtp = async (req, res) => {
 };
 
 
-exports.loginWithEmail = async (req, res) => {
-  const { email, password } = req.body;
 
-  if (!email || !password)
-    return res.status(400).json({ error: true, status: 'failed', message: 'Email and password are required' });
+
+
+
+exports.loginWithEmail = async (req, res) => {
+  const { email, password, role_id } = req.body;
+
+  if (!email || !password || !role_id) {
+    return res.status(400).json({
+      error: true,
+      status: 'failed',
+      message: 'Email, password, and role_id are required'
+    });
+  }
 
   try {
     const db = await connectToDatabase();
-    const user = await db.collection('users').findOne({ email });
+    const user = await db.collection('users').findOne({ email, role_id: Number(role_id) });
 
     if (!user) {
-      return res.status(400).json({ error: true, status: 'failed', message: 'Invalid email or password' });
+      return res.status(400).json({
+        error: true,
+        status: 'failed',
+        message: 'Invalid credentials'
+      });
     }
 
-    // Check if user is deactivated
-    if (user.status === false) {
-      return res.status(403).json({ error: true, status: 'failed', message: 'Your account is deactivated. Please contact support.' });
+    if (Number(role_id) !== 3) {
+      return res.status(403).json({
+        error: true,
+        status: 'failed',
+        message: 'Only End Users are allowed'
+      });
     }
 
-    // Check password
-    if (user.password !== password) {
-      return res.status(400).json({ error: true, status: 'failed', message: 'Invalid email or password' });
+    if (!user.status) {
+      return res.status(403).json({
+        error: true,
+        status: 'failed',
+        message: 'Your account is deactivated. Please contact support.'
+      });
     }
 
-    // Generate JWT token
+  
+
     const token = generateToken(user._id);
 
-    // Return only selected fields
     const minimalUser = {
       role_id: user.role_id,
       user_id: user.user_id,
@@ -395,9 +435,16 @@ exports.loginWithEmail = async (req, res) => {
     });
 
   } catch (err) {
-    res.status(500).json({ error: true, status: 'error', message: 'Login error', error: err.message });
+    res.status(500).json({
+      error: true,
+      status: 'error',
+      message: 'Login error',
+      error: err.message
+    });
   }
 };
+
+
 
 
 exports.sendOtp = async (req, res) => {
