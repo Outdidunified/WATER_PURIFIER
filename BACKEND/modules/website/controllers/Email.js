@@ -1,21 +1,32 @@
 const nodemailer = require('nodemailer');
 
 // Create transporter
-const transporter = nodemailer.createTransport({
-  host: 'smtppro.zoho.in',
-  port: 465,
-  secure: true,
-  auth: {
-    user: 'anish@outdidtech.com',
-    pass: '5XuiNJvgeijM',
-  },
+// const transporter = nodemailer.createTransport({
+//   host: 'smtppro.zoho.in',
+//   port: 465,
+//   secure: true,
+//   auth: {
+//     user: 'anish@outdidtech.com',
+//     pass: '5XuiNJvgeijM',
+//   },
+// });
+
+// Create a transporter object
+let transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com", // Gmail SMTP server
+    port: 465, // 465 for SSL or 587 for TLS
+    secure: true, // true for SSL
+    auth: {
+        user: "info@outdidunified.com", // Your Gmail email address
+        pass: "yylh zjwo psvr slqb", // App Password (not your regular Gmail password)
+    },
 });
 
 // Generic send email
 async function sendEmail(to, subject, text, html) {
   try {
     const info = await transporter.sendMail({
-      from: '"Water Purifier Service" <anish@outdidtech.com>',
+      from: '"Water Purifier Service" <info@outdidunified.com>',
       to,
       subject,
       text,
