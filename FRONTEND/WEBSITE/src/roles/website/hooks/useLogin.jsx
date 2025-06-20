@@ -36,7 +36,7 @@ const useLogin = (handleLogin) => {
             const res = await fetch("/api/api/website/auth/email", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: emailID, password: parseInt(password) }),
+                body: JSON.stringify({ email: emailID, password: parseInt(password),role_id:3 }),
             });
 
             const data = await res.json();
@@ -126,48 +126,52 @@ const useLogin = (handleLogin) => {
     // };
 
     const handleVerifyOtp = async () => {
-        setLoadingVotp(true);
-        try {
-            const res = await fetch("/api/api/website/auth/verify-otp", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: emailID, otp })
-            });
+  setLoadingVotp(true);
+  try {
+    const res = await fetch("/api/api/website/auth/verify-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: emailID,
+        otp,
+        role_id: 3  // Ensure you pass the correct role_id (3 = EndUser)
+      })
+    });
 
-            const responseData = await res.json();
+    const responseData = await res.json();
 
-            if (res.status === 200 && responseData.error === false) {
-                const user = {
-                    user_id: responseData.data.user_id,
-                    email: responseData.data.email,
-                    role_id: responseData.data.role_id,
-                    is_subscribed: responseData.data.is_subscribed
-                };
+    if (res.status === 200 && responseData.error === false) {
+      const user = {
+        user_id: responseData.data.user_id,
+        email: responseData.data.email,
+        role_id: responseData.data.role_id,
+        is_subscribed: responseData.data.is_subscribed
+      };
 
-                const loginPayload = {
-                    user,
-                    token: responseData.token
-                };
+      const loginPayload = {
+        user,
+        token: responseData.token
+      };
 
-                handleLogin(loginPayload);
+      handleLogin(loginPayload);
 
-                Swal.fire('Success', responseData.message || 'OTP verified. Redirecting...', 'success');
-                // setTimeout(() => window.location.href = "/", 2000);
-                setName('');
-                setEmailID('');
-                setCity('');
-                setPassword('');
-                setPhone('');
-            } else {
-                Swal.fire('Error', data.message || 'Invalid OTP.', 'error');
-            }
+      Swal.fire('Success', responseData.message || 'OTP verified. Redirecting...', 'success');
 
-        } catch (err) {
-            Swal.fire('Error', 'Verification failed.', 'error');
-        } finally {
-            setLoadingVotp(false);
-        }
-    };
+      setName('');
+      setEmailID('');
+      setCity('');
+      setPassword('');
+      setPhone('');
+    } else {
+      Swal.fire('Error', responseData.message || 'Invalid OTP.', 'error');
+    }
+  } catch (err) {
+    Swal.fire('Error', 'Verification failed.', 'error');
+  } finally {
+    setLoadingVotp(false);
+  }
+};
+
 
     const handleRegister = async () => {
         if (!name.trim()) {
