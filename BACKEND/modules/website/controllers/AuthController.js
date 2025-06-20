@@ -81,16 +81,7 @@ exports.register = async (req, res) => {
   is_subscribed: false
     });
 
-    await db.collection('user_roles').insertOne({
-      user_id: newUserId,
-      role_id: role.role_id,
-      role_name: role.role_name,
-      created_date: createdDate,
-      created_by: createdby,
-      modified_by: createdby,
-      modified_date: createdDate,
-      status: true
-    });
+   
 
     if (email) {
 await sendOtpEmail(email, otp);
@@ -175,7 +166,7 @@ exports.login = async (req, res) => {
 
       await db.collection('users').insertOne({
         name: "",
-        phone: "",
+        phone: null,
         city: "",
         password: "",
         email,
