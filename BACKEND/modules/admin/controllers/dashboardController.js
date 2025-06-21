@@ -204,13 +204,6 @@ const AddProductModels = async (req, res) => {
             return [];
         };
 
-        // if (!model_name || !main_img || !sub_img_1 || !sub_img_2 || !sub_img_3 || !sub_img_4 || !product_specifications || !wp_device_quantity || !plans || !duration || !product_details) {
-        //     return res.status(400).json({
-        //         status: 'Failed',
-        //         message: 'All field required for update'
-        //     });
-        // }
-
         let productModels;
 
         // Handle different body formats
@@ -250,7 +243,12 @@ const AddProductModels = async (req, res) => {
                 return res.status(400).json({ status: 'Failed', message: 'Missing required fields in product' });
             }
 
-            // Duplicate check
+            const quantityInt = parseInt(wp_device_quantity);
+            if (isNaN(quantityInt)) {
+                return res.status(400).json({ status: 'Failed', message: 'wp_device_quantity must be a valid number' });
+            }
+
+            // Check for duplicate model name
             const existing = await collection.findOne({ model_name: model_name.trim() });
             if (existing) {
                 return res.status(409).json({
@@ -277,7 +275,7 @@ const AddProductModels = async (req, res) => {
                 sub_img_3,
                 sub_img_4,
                 product_specifications,
-                wp_device_quantity,
+                wp_device_quantity: quantityInt, 
                 product_details,
                 plans: plans.map((p, idx) => ({ ...p, plans_id: idx + 1 })),
                 duration: duration.map((d, idx) => ({ ...d, duration_id: idx + 1 })),
@@ -300,6 +298,8 @@ const AddProductModels = async (req, res) => {
         res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
     }
 };
+
+
 
 // FetchProductModels
 const FetchProductModels = async (req, res) => {
@@ -498,6 +498,12 @@ const UpdateProductModels = async (req, res) => {
                 return res.status(400).json({ status: 'Failed', message: 'Invalid model_id format' });
             }
 
+            // Validate wp_device_quantity
+            const quantityInt = parseInt(wp_device_quantity);
+            if (isNaN(quantityInt)) {
+                return res.status(400).json({ status: 'Failed', message: 'wp_device_quantity must be a valid number' });
+            }
+
             let status;
             if (typeof rawStatus === 'boolean') {
                 status = rawStatus;
@@ -514,15 +520,11 @@ const UpdateProductModels = async (req, res) => {
                 return res.status(400).json({ status: 'Failed', message: 'Missing or invalid required fields in product' });
             }
 
-            // Duplicate model_name check
-            // const duplicate = await collection.findOne({
-            //     model_name: model_name.trim(),
-            // });
-
+            // Duplicate check excluding current model_id
             const duplicate = await collection.findOne({
                 model_name: model_name.trim(),
-                model_id: { $ne: model_id }  // Exclude the current document
-            });            
+                model_id: { $ne: model_id }
+            });
 
             if (duplicate) {
                 return res.status(409).json({
@@ -538,6 +540,7 @@ const UpdateProductModels = async (req, res) => {
             const sub_img_4 = req.files?.['sub_img_4']?.[0]?.filename || product.sub_img_4 || '';
             const product_specifications = req.files?.['spec_pdf']?.[0]?.filename || product.product_specifications || '';
 
+            // Auto-assign missing plans_id
             const lastPlanIdDoc = await collection.aggregate([
                 { $unwind: '$plans' },
                 { $sort: { 'plans.plans_id': -1 } },
@@ -550,6 +553,7 @@ const UpdateProductModels = async (req, res) => {
                 p.plans_id && Number.isInteger(p.plans_id) ? p : { ...p, plans_id: nextPlansId++ }
             );
 
+            // Auto-assign missing duration_id
             const lastDurationIdDoc = await collection.aggregate([
                 { $unwind: '$duration' },
                 { $sort: { 'duration.duration_id': -1 } },
@@ -574,7 +578,7 @@ const UpdateProductModels = async (req, res) => {
                         sub_img_2,
                         sub_img_3,
                         sub_img_4,
-                        wp_device_quantity,
+                        wp_device_quantity: quantityInt,
                         product_details,
                         product_specifications,
                         plans: updatedPlans,
@@ -598,6 +602,7 @@ const UpdateProductModels = async (req, res) => {
         res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
     }
 };
+
 
 // 4. Device Details
 // AddDeviceDetails controller
@@ -635,23 +640,23 @@ const AddDeviceDetails = async (req, res) => {
             if (!model) {
                 return res.status(400).json({
                     status: 'Failed',
-                    message: `Model ID '${device.model_nam}' does not exist.`,
+                    message: `Model ID '${device.model_id}' does not exist.`,
                 });
             }
 
             // Convert wp_device_quantity string to number
-            let quantity = Number(model.wp_device_quantity);
+            let quantity = parseInt(model.wp_device_quantity);
             if (isNaN(quantity)) {
                 return res.status(500).json({
                     status: 'Failed',
-                    message: `Model ID '${device.model_nam}' has invalid device quantity value.`,
+                    message: `Model ID '${device.model_id}' has invalid device quantity value.`,
                 });
             }
 
             if (quantity < 1) {
                 return res.status(400).json({
                     status: 'Failed',
-                    message: `Model ID '${device.model_nam}' has no available quantity.`,
+                    message: `Model ID '${device.model_id}' has no available quantity.`,
                 });
             }
 
@@ -664,11 +669,11 @@ const AddDeviceDetails = async (req, res) => {
                 status: true,
             });
 
-            // Manually decrement wp_device_quantity and update as string
-            quantity = quantity - 1;
+            // ✅ Decrement quantity and store as integer
+            quantity -= 1;
             await modelCollection.updateOne(
                 { model_id: device.model_id },
-                { $set: { wp_device_quantity: quantity.toString() } }
+                { $set: { wp_device_quantity: quantity } } // ✅ Keep it as number
             );
         }
 
@@ -688,6 +693,7 @@ const AddDeviceDetails = async (req, res) => {
         });
     }
 };
+
   
 // FetchDeviceDetails
 const FetchDeviceDetails = async (req, res) => {

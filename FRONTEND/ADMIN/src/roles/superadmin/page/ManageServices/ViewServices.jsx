@@ -9,7 +9,7 @@ const ViewServices = ({ userInfo, handleLogout }) => {
   const installationTasks = useViewServices();
 
   const handleBack = () => {
-    navigate('/superadmin/ManageInstallations');
+    navigate('/superadmin/ManageServices');
   };
 
  
