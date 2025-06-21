@@ -10,7 +10,7 @@ const ViewOrders = ({ userInfo, handleLogout }) => {
   const order = useViewOrders();
 
   const handleBack = () => {
-    navigate('/superadmin/Manageorders');
+    navigate('/superadmin/ManageOrders');
   };
 
   return (
