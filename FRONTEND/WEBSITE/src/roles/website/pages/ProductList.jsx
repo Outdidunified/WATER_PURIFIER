@@ -157,6 +157,7 @@ const ProductList = ({ userInfo, token, handleLogout }) => {
                     addressLine2,
                     pincode: pincode.trim(), // if string else parseInt
                     city,
+                    email: emailID,
                 }
             };
 

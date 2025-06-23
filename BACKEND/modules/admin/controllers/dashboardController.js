@@ -814,18 +814,38 @@ const FetchContact = async (req, res) => {
 const FetchOrders = async (req, res) => {
     try {
         const db = await database.connectToDatabase();
-        const collection = db.collection("orders");
+        const ordersCollection = db.collection("orders");
+        const usersCollection = db.collection("users");
 
-        const orders = await collection.find().toArray();
+        // Get all orders
+        const orders = await ordersCollection.find().toArray();
 
-        return res.status(200).json({ status: 'Success', data: orders });
+        // Extract unique numeric user_ids from orders
+        const userIds = [...new Set(orders.map(order => order.user_id))];
+
+        // Fetch users by user_id (not _id)
+        const users = await usersCollection.find({ user_id: { $in: userIds } }).toArray();
+
+        // Create a map of user_id -> email
+        const userMap = {};
+        users.forEach(user => {
+            userMap[user.user_id] = user.email;
+        });
+
+        // Attach email to each order
+        const ordersWithEmails = orders.map(order => ({
+            ...order,
+            email: userMap[order.user_id] || null,
+        }));
+
+        return res.status(200).json({ status: 'Success', data: ordersWithEmails });
 
     } catch (error) {
         console.error("Error in FetchOrders:", error);
         logger?.error?.(error);
         return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
     }
-}
+};
 
 // UpdateOrdersStatus
 // const UpdateOrdersStatus = async (req, res) => {
