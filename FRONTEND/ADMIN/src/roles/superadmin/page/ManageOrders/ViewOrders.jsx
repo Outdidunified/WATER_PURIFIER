@@ -83,6 +83,10 @@ const ViewOrders = ({ userInfo, handleLogout }) => {
                       <div className="col-md-4"><strong>Phone:</strong> <span>{order.deliveryAddress?.phone || '-'}</span></div>
                       <div className="col-md-4"><strong>Address:</strong> <span>{order.deliveryAddress?.addressLine1 || '-'}, {order.deliveryAddress?.city || '-'}, {order.deliveryAddress?.state || '-'} - {order.deliveryAddress?.pincode || '-'}</span></div>
                     </div>
+<div className="row viewDataCss mt-3">
+  <div className="col-md-4"><strong>Address Line 2:</strong> <span>{order.deliveryAddress?.addressLine2 || '-'}</span></div>
+  <div className="col-md-4"><strong>Email:</strong> <span>{order.deliveryAddress?.email || '-'}</span></div>
+</div>
 
                   </div>
                 </div>
