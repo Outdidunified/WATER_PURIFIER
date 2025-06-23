@@ -150,6 +150,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                     addressLine2,
                     pincode: pincode.trim(), // if string else parseInt
                     city,
+                    email: emailID,
                 }
             };
 
@@ -796,12 +797,15 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 style={{
                                                     boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
                                                     borderRadius: '20px',
-                                                    maxWidth: '80%',
+                                                    width: '400px',
+                                                    height: '300px',
+                                                    objectFit: 'cover',
                                                 }}
                                             />
 
-                                            {/* Thumbnails */}
-                                            <div className="d-flex justify-content-center gap-2">
+                                            {/* Thumbnails + Selected MainImage Preview */}
+                                            <div className="d-flex justify-content-center align-items-center gap-3 mt-3">
+                                                {/* Thumbnail Images */}
                                                 {[1, 2, 3, 4].map((num) => {
                                                     const subImg = products[selectedModelIndex]?.[`sub_img_${num}`];
                                                     return subImg ? (
@@ -812,16 +816,33 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                             className="rounded"
                                                             style={{
                                                                 width: "80px",
+                                                                height: "60px",
+                                                                objectFit: "cover",
                                                                 border: (mainImage === subImg) ? "2px solid #0d83fd" : "1px solid #ccc",
-                                                                cursor: "pointer"
+                                                                cursor: "pointer",
                                                             }}
                                                             onClick={() => setMainImage(subImg)}
                                                         />
                                                     ) : null;
                                                 })}
-                                            </div>
 
+                                                {/* Small preview of current main image */}
+                                                {mainImage && (
+                                                    <img
+                                                        src={`/upload/img/${mainImage}`}
+                                                        alt="Selected Main Preview"
+                                                        style={{
+                                                            width: "80px",
+                                                            height: "60px",
+                                                            objectFit: "cover",
+                                                            border: "2px dashed #0d83fd",
+                                                            borderRadius: "6px",
+                                                        }}
+                                                    />
+                                                )}
+                                            </div>
                                         </div>
+
 
                                     </div>
                                 </div>
