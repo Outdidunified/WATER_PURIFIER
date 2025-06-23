@@ -126,6 +126,7 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                             <th>Sl.No</th>
                             <th>Status</th>
                             <th>Task Type</th>
+                            <th>User Name</th>
                             <th>Description</th>
                             <th>Device ID</th>
                             <th>Technician ID</th>
@@ -156,6 +157,7 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                                     3: 'Repair',
                                   }[item.task_type] || 'Other'}
                                 </td>
+                                <td>{item.task_created_by_user_email||'-'}</td>
                                 <td>{item.task_description || '-'}</td>
                                 <td>{item.wp_device_id || '-'}</td>
                                 <td>{item.assigned_technician_id || '-'}</td>
