@@ -281,7 +281,7 @@ exports.updateTaskDetails = async (req, res) => {
       }).toArray();
   
       if (!tasks || tasks.length === 0) {
-        return res.status(404).json({ error: true, message: 'No tasks found for this technician' });
+        return res.status(402).json({ error: true, message: 'No tasks found for this technician' });
       }
   
       return res.status(200).json({
