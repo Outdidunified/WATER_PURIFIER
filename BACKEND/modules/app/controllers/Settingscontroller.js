@@ -75,57 +75,63 @@ exports.fetchUserDetails = async (req, res) => {
 
   
   
-  exports.updateUserDetails = async (req, res) => {
-    const { user_id, email, role_id, name, phone, city } = req.body;
-  
-    if (!user_id || !email || !role_id) {
-      return res.status(400).json({ error: true, message: 'user_id, email, and role_id are required' });
+ exports.updateUserDetails = async (req, res) => {
+  const { user_id, email, role_id, name, phone, city } = req.body;
+
+  if (!user_id || !email || !role_id) {
+    return res.status(400).json({ error: true, message: 'user_id, email, and role_id are required' });
+  }
+
+  try {
+    const db = await connectToDatabase();
+    const usersCollection = db.collection('users');
+
+    // Fetch existing user
+    const existingUser = await usersCollection.findOne({
+      user_id: parseInt(user_id),
+      role_id: parseInt(role_id)
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: true, message: 'User not found with provided user_id and role_id' });
     }
-  
-    try {
-      const db = await connectToDatabase();
-      const usersCollection = db.collection('users');
-  
-      // Check if the user exists
-      const existingUser = await usersCollection.findOne({
-        user_id: parseInt(user_id),
-        email: email,
-        role_id: parseInt(role_id)
-      });
-  
-      if (!existingUser) {
-        return res.status(404).json({ error: true, message: 'User not found with provided credentials' });
-      }
-  
-      // Prepare fields to update
-      const updateFields = {
-        ...(name !== undefined && { name }),
-        ...(phone !== undefined && { phone }),
-        ...(city !== undefined && { city }),
-        modifiedBy: email,
-        modifiedDate: new Date()
-      };
-  
-      // Update user
-      const result = await usersCollection.updateOne(
-        { user_id: parseInt(user_id), email, role_id: parseInt(role_id) },
-        { $set: updateFields }
-      );
-  
-      if (result.modifiedCount === 0) {
-        return res.status(400).json({ error: true, message: 'No changes were made' });
-      }
-  
-      return res.status(200).json({
-        error: false,
-        message: 'User details updated successfully',
-        data: updateFields
-      });
-    } catch (error) {
-      console.error('Update user error:', error);
-      res.status(500).json({ error: true, message: 'Server error while updating user details' });
+
+    // Check if new values differ from existing ones
+    const isSameData =
+      (name === undefined || name === existingUser.name) &&
+      (phone === undefined || phone === existingUser.phone) &&
+      (city === undefined || city === existingUser.city);
+
+    if (isSameData) {
+      return res.status(402).json({ error: true, message: 'No changes were made. Same data submitted.' });
     }
-  };
+
+    // Prepare update
+    const updateFields = {
+      ...(name !== undefined && { name }),
+      ...(phone !== undefined && { phone }),
+      ...(city !== undefined && { city }),
+      modifiedBy: email,
+      modifiedDate: new Date()
+    };
+
+    const result = await usersCollection.updateOne(
+      { user_id: parseInt(user_id), role_id: parseInt(role_id) },
+      { $set: updateFields }
+    );
+
+    return res.status(200).json({
+      error: false,
+      message: 'User details updated successfully',
+      data: updateFields
+    });
+
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ error: true, message: 'Server error while updating user details' });
+  }
+};
+
   
  exports.createServiceRequest = async (req, res) => {
   const {
