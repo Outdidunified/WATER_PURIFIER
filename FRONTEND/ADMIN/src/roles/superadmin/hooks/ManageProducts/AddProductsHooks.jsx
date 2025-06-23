@@ -22,7 +22,8 @@ const useAddProducts = (userInfo) => {
   const [wpDeviceQuantity, setWpDeviceQuantity] = useState(0);
   const [plans, setPlans] = useState([{ plans_id: 1, label: '', capacity: '', price: '' }]);
   const [durations, setDurations] = useState([
-    { duration_id: 1, duration_time_limit: '', gst: '', discount: '', security_deposit: '' },
+    { duration_id: 1, duration_time_limit: '', gst: '', discount: '', security_deposit: '',    durationError: ''
+ },
   ]);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -118,12 +119,23 @@ const useAddProducts = (userInfo) => {
     ]);
   };
 
-  const handleDurationChange = (index, field, value) => {
-    const updatedDurations = durations.map((duration, idx) =>
-      idx === index ? { ...duration, [field]: value } : duration
-    );
-    setDurations(updatedDurations);
-  };
+const handleDurationChange = (index, field, value) => {
+  const updatedDurations = durations.map((duration, idx) => {
+    if (idx === index) {
+      return {
+        ...duration,
+        [field]: value,
+        durationError: ''  // optional: clear error directly
+      };
+    }
+    return duration;
+  });
+
+  setDurations(updatedDurations);
+};
+
+
+
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
@@ -143,7 +155,7 @@ const useAddProducts = (userInfo) => {
 
     for (let plan of plans) {
       if (!plan.label || !plan.capacity || plan.price === '' || isNaN(Number(plan.price))) {
-        showErrorAlert("Invalid Plan", "Each plan must have label, capacity, and numeric price.");
+        showErrorAlert("Give valid Plan", "Each plan must have label, capacity, and numeric price.");
         setLoading(false);
         return;
       }
@@ -156,7 +168,7 @@ const useAddProducts = (userInfo) => {
         dur.discount === '' || isNaN(Number(dur.discount)) ||
         dur.security_deposit === '' || isNaN(Number(dur.security_deposit))
       ) {
-        showErrorAlert("Invalid Duration", "Each duration must have valid data.");
+        showErrorAlert("Give Valid Duration", "Each duration must have valid data.");
         setLoading(false);
         return;
       }

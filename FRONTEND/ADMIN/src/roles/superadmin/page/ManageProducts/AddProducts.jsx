@@ -253,19 +253,20 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
   {durations.map((duration, index) => (
     <div className="row mb-3" key={index}>
       <div className="col-md-3">
-        <InputField
-          placeholder="Duration"
-          value={duration.duration_time_limit}
-          onChange={(e) =>
-            handleDurationChange(
-              index,
-              'duration_time_limit',
-              e.target.value.replace(/[^a-zA-Z0-9 ]/g, '')
-            )
-          }
-          required
-          maxLength={15}
-        />
+     <select
+  className="form-control"
+  value={duration.duration_time_limit}
+  onChange={(e) => handleDurationChange(index, 'duration_time_limit', e.target.value)}
+  required
+>
+  <option value="28 days">28 days</option>
+  <option value="60 days">60 days</option>
+  <option value="90 days">90 days</option>
+  <option value="180 days">180 days</option>
+  <option value="360 days">360 days</option>
+</select>
+
+
       </div>
       <div className="col-md-3">
        <InputField

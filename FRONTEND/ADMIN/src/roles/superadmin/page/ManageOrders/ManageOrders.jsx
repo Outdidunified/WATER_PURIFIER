@@ -180,6 +180,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                             <th>Plan</th>
                             <th>Duration</th>
                             <th>User</th>
+                            <th>Email</th>
                             <th>City</th>
                             <th>Status</th>
                             <th>Payment</th>
@@ -202,6 +203,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                                   <td>{order.selectedPlan?.label}</td>
                                   <td>{order.selectedDuration?.duration_time_limit}</td>
                                   <td>{order.deliveryAddress?.name}</td>
+                                  <td>{order.email || '-'}</td>
                                   <td>{order.deliveryAddress?.city}</td>
                                   <td>
                                     <span className={`badge-status badge-${order.orderStatus.toLowerCase()}`}>
