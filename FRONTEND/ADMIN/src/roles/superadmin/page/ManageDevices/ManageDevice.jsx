@@ -56,14 +56,16 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                         <div className="row">
                             <div className="col-md-12 grid-margin">
                                 <div className="row">
-                                    <div className="col-12 col-xl-8 mb-4 mb-xl-0">
+                                    <div className="col-12 col-xl-6 mb-4 mb-xl-0">
                                         <h3 className="font-weight-bold">Manage Device</h3>
                                     </div>
-                                    <div className="col-12 col-xl-4">
+                                    <div className="col-12 col-xl-6">
                                         <div className="justify-content-end d-flex">
-                                            <button type="button" className="btn btn-success" onClick={() => { handleAddStationToggle(); fetchModels(); }}>
+                                            <button type="button" className="btn btn-success" style={{ marginBottom: '10px', marginRight: '10px' }}
+                                                onClick={() => { handleAddStationToggle(); fetchModels(); }}>
                                                 Add Device
                                             </button>
+
 
                                             {/* Add Device Modal */}
                                             <div className="modalStyle" style={modalAddStyle}>
@@ -117,20 +119,20 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                                                     required
                                                                 >
                                                                     <option value="">Select Model</option>
-                                                                   {models
-  .filter(model => model.status) // only include models with status === true
-  .map(model => (
-    <option key={model.id} value={model.model_name}>
-      {model.model_name}
-    </option>
-))}
+                                                                    {models
+                                                                        .filter(model => model.status) // only include models with status === true
+                                                                        .map(model => (
+                                                                            <option key={model.id} value={model.model_name}>
+                                                                                {model.model_name}
+                                                                            </option>
+                                                                        ))}
 
                                                                 </select>
                                                             </div>
 
                                                             {error && <div className="text-danger mt-2">{error}</div>}
 
-                                                            <div className="text-center mt-4">
+                                                            <div className="text-center mt-4 mr-5">
                                                                 <ReusableButton type="submit" loading={loading} disabled={loading}>
                                                                     Add Device
                                                                 </ReusableButton>
@@ -181,7 +183,6 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                                     <tr>
                                                         <th>Sl.No</th>
                                                         <th>WP Device ID</th>
-                                                        <th>Model ID</th>
                                                         <th>Model Name</th>
                                                         <th>Created By</th>
                                                         <th>Created Date</th>
@@ -195,8 +196,14 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                                             <tr key={station._id || index}>
                                                                 <td>{index + 1}</td>
                                                                 <td>{station.wp_device_id || '-'}</td>
-                                                                <td>{station.model_id || '-'}</td>
-                                                                <td>{station.model_name || '-'}</td>
+                                                                <td style={{
+                                                                    whiteSpace: 'pre-wrap',
+                                                                    wordBreak: 'break-word',
+                                                                    maxWidth: '250px',
+                                                                    textAlign: 'center'
+                                                                }}>
+                                                                    {station.model_name || '-'}
+                                                                </td>
                                                                 <td>{station.createdby || '-'}</td>
                                                                 <td>{station.createddate ? new Date(station.createddate).toLocaleString() : '-'}</td>
                                                                 <td>

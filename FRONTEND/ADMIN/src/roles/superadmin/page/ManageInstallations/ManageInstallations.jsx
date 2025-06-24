@@ -143,6 +143,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
         <th>Total</th>
         <th>Device ID</th>
         <th>User Name</th>
+        <th>Email ID</th>
         <th>Technician ID</th>
         <th>Assign</th>
         <th>Actions</th>
@@ -163,10 +164,11 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
  <tr key={item._id || index}>
             <td>{index + 1}</td>
             <td>{item.customOrderId || '-'}</td>
-            <td>{item.modelName || '-'}</td>
+            <td >{item.modelName || '-'}</td>
             <td>₹{item.grandTotal || 0}</td>
             <td>{item.wp_device_id || '-'}</td>
             <td>{item.deliveryAddress?.name || '-'}</td>
+            <td>{item.user_email || '-'}</td>
             <td>{item.assigned_technician_id || '-'}</td>                                <td>
                                   <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
                                     <button
