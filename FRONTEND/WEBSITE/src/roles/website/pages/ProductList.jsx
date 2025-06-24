@@ -31,7 +31,7 @@ const ProductList = ({ userInfo, token, handleLogout }) => {
                 );
 
                 setProducts(filteredProducts);
-                  
+
                 // setProducts(productArray);
             } catch (err) {
                 setError(err.message || 'Something went wrong');
@@ -619,12 +619,15 @@ const ProductList = ({ userInfo, token, handleLogout }) => {
                                                 style={{
                                                     boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
                                                     borderRadius: '20px',
-                                                    maxWidth: '80%',
+                                                    width: '450px',
+                                                    height: '450px',
+                                                    objectFit: 'cover',
                                                 }}
                                             />
 
                                             {/* Thumbnails */}
-                                            <div className="d-flex justify-content-center gap-2">
+                                            <div className="d-flex justify-content-center align-items-center gap-3 mt-3">
+                                                {/* Sub Images */}
                                                 {[1, 2, 3, 4].map((num) => {
                                                     const subImg = products[selectedModelIndex]?.[`sub_img_${num}`];
                                                     return subImg ? (
@@ -635,15 +638,33 @@ const ProductList = ({ userInfo, token, handleLogout }) => {
                                                             className="rounded"
                                                             style={{
                                                                 width: "80px",
+                                                                height: "60px",
+                                                                objectFit: "cover",
                                                                 border: (mainImage === subImg) ? "2px solid #0d83fd" : "1px solid #ccc",
-                                                                cursor: "pointer"
+                                                                cursor: "pointer",
                                                             }}
                                                             onClick={() => setMainImage(subImg)}
                                                         />
                                                     ) : null;
                                                 })}
-                                            </div>
 
+                                                {/* Main Image Preview (clickable) */}
+                                                {products[selectedModelIndex]?.main_img && (
+                                                    <img
+                                                        src={`/upload/img/${products[selectedModelIndex].main_img}`}
+                                                        alt="Main Preview"
+                                                        className="rounded"
+                                                        style={{
+                                                            width: "80px",
+                                                            height: "60px",
+                                                            objectFit: "cover",
+                                                            border: (mainImage === products[selectedModelIndex].main_img) ? "2px solid #0d83fd" : "2px dashed #0d83fd",
+                                                            cursor: "pointer",
+                                                        }}
+                                                        onClick={() => setMainImage(products[selectedModelIndex].main_img)}
+                                                    />
+                                                )}
+                                            </div>
                                         </div>
 
                                     </div>
@@ -1043,7 +1064,7 @@ const ProductList = ({ userInfo, token, handleLogout }) => {
                                                                 value={formDataCallRequest.name}
                                                                 onChange={(e) => {
                                                                     if (/^[a-zA-Z\s]*$/.test(e.target.value)) handleChangeCallRequest(e);
-                                                                }} 
+                                                                }}
                                                                 required
                                                             />
                                                         </div>
