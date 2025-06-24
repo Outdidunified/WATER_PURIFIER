@@ -114,7 +114,7 @@ const ManageProducts = ({ userInfo, handleLogout }) => {
                                                             posts.map((dataItem, index) => (
                                                                 <tr key={index}>
                                                                     <td>{index + 1}</td>
-                                                                    <td>{dataItem.model_name || '-'}</td>
+                                                                    <td >{dataItem.model_name || '-'}</td>
                                                                     <td className="py-1">
                                                                         <img
                                                                             src={`/upload/img/${dataItem.main_img}`}

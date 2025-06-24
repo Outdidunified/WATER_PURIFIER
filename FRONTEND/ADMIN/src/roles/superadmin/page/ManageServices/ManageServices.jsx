@@ -126,7 +126,7 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                             <th>Sl.No</th>
                             <th>Status</th>
                             <th>Task Type</th>
-                            <th>User Name</th>
+                            <th>Email ID</th>
                             <th>Description</th>
                             <th>Device ID</th>
                             <th>Technician ID</th>
@@ -157,8 +157,15 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                                     3: 'Repair',
                                   }[item.task_type] || 'Other'}
                                 </td>
-                                <td>{item.task_created_by_user_email||'-'}</td>
-                                <td>{item.task_description || '-'}</td>
+                                <td>{item.task_created_by_user_email || '-'}</td>
+                                <td style={{
+                                  whiteSpace: 'pre-wrap',
+                                  wordBreak: 'break-word',
+                                  maxWidth: '300px',
+                                  textAlign: 'center'
+                                }}>
+                                  {item.task_description || '-'}
+                                </td>
                                 <td>{item.wp_device_id || '-'}</td>
                                 <td>{item.assigned_technician_id || '-'}</td>
                                 <td>{item.assigned_date ? new Date(item.assigned_date).toLocaleDateString() : '-'}</td>
@@ -251,22 +258,22 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                 <label htmlFor="technicianId" className="mb-1" style={{ fontWeight: '500' }}>
                   Technician ID
                 </label>
-              <select
-  className="form-control"
-  id="technicianId"
-  value={assignedTechnicianId}
-  onChange={(e) => setAssignedTechnicianId(e.target.value)}
-  required
->
-  <option value="">Select Technician</option>
-  {technicians
-    .filter((tech) => tech.status) 
-    .map((tech) => (
-      <option key={tech.technician_id} value={tech.technician_id}>
-        {tech.technician_id} - {tech.name}
-      </option>
-    ))}
-</select>
+                <select
+                  className="form-control"
+                  id="technicianId"
+                  value={assignedTechnicianId}
+                  onChange={(e) => setAssignedTechnicianId(e.target.value)}
+                  required
+                >
+                  <option value="">Select Technician</option>
+                  {technicians
+                    .filter((tech) => tech.status)
+                    .map((tech) => (
+                      <option key={tech.technician_id} value={tech.technician_id}>
+                        {tech.technician_id} - {tech.name}
+                      </option>
+                    ))}
+                </select>
 
               </div>
 

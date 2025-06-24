@@ -128,6 +128,13 @@ return (
                             <strong>Total Litre:</strong> {task.totalLitre || '-'}
                           </div>
                         </div>
+
+                          <div className="row viewDataCss mt-2">
+                          <div className="col-md-4">
+                            <strong>Task Status:</strong> {task.task_status || '-'}
+                          </div>
+                          
+                        </div>
                       </div>
                     </div>
                   </div>
