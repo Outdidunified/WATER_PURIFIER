@@ -1298,28 +1298,32 @@ const FetchSelectUserOrders = async (req, res) => {
     try {
         const db = await database.connectToDatabase();
         const ordersCollection = db.collection("orders");
+        const usersCollection = db.collection("users");
         const serviceRecordsCollection = db.collection("service_records");
 
-        // Step 1: Get relevant orders
+        // Step 1: Get all relevant orders
         const pendingOrders = await ordersCollection.find({
             orderStatus: "Confirmed",
             paymentStatus: "Completed"
         }).toArray();
 
-        // Step 2: Enrich each order with assigned technician ID or null
+        // Step 2: Enrich each order
         const enrichedOrders = await Promise.all(pendingOrders.map(async (order) => {
-            const wpDeviceId = order.wp_device_id;
             const userId = order.user_id;
+            const wpDeviceId = order.wp_device_id;
 
-            // Only fetch service record if device ID matches
-            const serviceRecord = await serviceRecordsCollection.findOne({
-                wp_device_id: wpDeviceId,
-                task_created_by_user_id: userId // <-- ensure technician created by same user
-            });
+            // Get email from users table using user_id
+            const user = await usersCollection.findOne({ user_id: userId });
+            const userEmail = user ? user.email : null;
+
+            // Find matching service record using wp_device_id
+            const serviceRecord = await serviceRecordsCollection.findOne({ wp_device_id: wpDeviceId });
 
             return {
                 ...order,
-                assigned_technician_id: serviceRecord ? serviceRecord.assigned_technician_id : null
+                user_email: userEmail,
+                assigned_technician_id: serviceRecord ? serviceRecord.assigned_technician_id : null,
+                task_status: serviceRecord ? (serviceRecord.task_status || null) : null
             };
         }));
 

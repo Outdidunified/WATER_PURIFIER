@@ -797,15 +797,15 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 style={{
                                                     boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
                                                     borderRadius: '20px',
-                                                    width: '400px',
-                                                    height: '300px',
+                                                    width: '450px',
+                                                    height: '450px',
                                                     objectFit: 'cover',
                                                 }}
                                             />
 
-                                            {/* Thumbnails + Selected MainImage Preview */}
+                                            {/* Thumbnails */}
                                             <div className="d-flex justify-content-center align-items-center gap-3 mt-3">
-                                                {/* Thumbnail Images */}
+                                                {/* Sub Images */}
                                                 {[1, 2, 3, 4].map((num) => {
                                                     const subImg = products[selectedModelIndex]?.[`sub_img_${num}`];
                                                     return subImg ? (
@@ -826,23 +826,24 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                     ) : null;
                                                 })}
 
-                                                {/* Small preview of current main image */}
-                                                {mainImage && (
+                                                {/* Main Image Preview (clickable) */}
+                                                {products[selectedModelIndex]?.main_img && (
                                                     <img
-                                                        src={`/upload/img/${mainImage}`}
-                                                        alt="Selected Main Preview"
+                                                        src={`/upload/img/${products[selectedModelIndex].main_img}`}
+                                                        alt="Main Preview"
+                                                        className="rounded"
                                                         style={{
                                                             width: "80px",
                                                             height: "60px",
                                                             objectFit: "cover",
-                                                            border: "2px dashed #0d83fd",
-                                                            borderRadius: "6px",
+                                                            border: (mainImage === products[selectedModelIndex].main_img) ? "2px solid #0d83fd" : "2px dashed #0d83fd",
+                                                            cursor: "pointer",
                                                         }}
+                                                        onClick={() => setMainImage(products[selectedModelIndex].main_img)}
                                                     />
                                                 )}
                                             </div>
                                         </div>
-
 
                                     </div>
                                 </div>
