@@ -389,9 +389,18 @@ exports.loginWithEmail = async (req, res) => {
 
   try {
     const db = await connectToDatabase();
+
     const user = await db.collection('users').findOne({ email, role_id: Number(role_id) });
 
     if (!user) {
+      return res.status(400).json({
+        error: true,
+        status: 'failed',
+        message: 'Invalid credentials'
+      });
+    }
+
+    if (user.password !== password) {
       return res.status(400).json({
         error: true,
         status: 'failed',
@@ -414,8 +423,6 @@ exports.loginWithEmail = async (req, res) => {
         message: 'Your account is deactivated. Please contact support.'
       });
     }
-
-  
 
     const token = generateToken(user._id);
 
