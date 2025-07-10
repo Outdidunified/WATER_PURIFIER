@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const { sendOtpEmail } = require('../controllers/Email');
 const { connectToDatabase } = require('../../../config/db');
 const otpStore = {};
+const { checkAndResetSubscription } = require('../../../services/subscriptionChecker');
 
 
 const generateToken = (userId) => {
@@ -120,7 +121,6 @@ exports.register = async (req, res) => {
 };
 
 
-
 exports.login = async (req, res) => {
   console.log("Received /registerOrLogin request:", req.body);
 
@@ -146,13 +146,16 @@ exports.login = async (req, res) => {
     const existingUser = await db.collection('users').findOne({ email, role_id: Number(role_id) });
 
     if (existingUser) {
-      // Existing user: only update OTP
+      //  Check and reset expired subscription if needed
+      await checkAndResetSubscription(db, existingUser);
+
+      // Update OTP
       await db.collection('users').updateOne(
         { email, role_id: Number(role_id) },
         { $set: { otp, otpGeneratedAt, otpExpires } }
       );
 
-      await sendOtpEmail(email, otp); // No password this time
+      await sendOtpEmail(email, otp);
       console.log(`Existing user — OTP sent to ${email}: ${otp}`);
 
       return res.status(200).json({
@@ -165,9 +168,7 @@ exports.login = async (req, res) => {
         }
       });
     } else {
-      // New user: generate 4-digit password
       const generatedPassword = generateNumericPassword();
-
       const lastUser = await db.collection('users').find().sort({ user_id: -1 }).limit(1).toArray();
       const newUserId = lastUser.length > 0 ? lastUser[0].user_id + 1 : 1;
 
@@ -190,7 +191,7 @@ exports.login = async (req, res) => {
 
       await db.collection('users').insertOne(newUser);
 
-      await sendOtpEmail(email, otp, generatedPassword); // include password
+      await sendOtpEmail(email, otp, generatedPassword);
       console.log(`New user registered — OTP + Password sent to ${email}: OTP=${otp}, Password=${generatedPassword}`);
 
       return res.status(200).json({
@@ -213,6 +214,7 @@ exports.login = async (req, res) => {
     });
   }
 };
+
 
 
 
@@ -373,9 +375,6 @@ exports.verifyOtp = async (req, res) => {
 
 
 
-
-
-
 exports.loginWithEmail = async (req, res) => {
   const { email, password, role_id } = req.body;
 
@@ -424,6 +423,9 @@ exports.loginWithEmail = async (req, res) => {
       });
     }
 
+    // ✅ Check and reset expired subscriptions
+    await checkAndResetSubscription(db, user);
+
     const token = generateToken(user._id);
 
     const minimalUser = {
@@ -450,6 +452,7 @@ exports.loginWithEmail = async (req, res) => {
     });
   }
 };
+
 
 
 
