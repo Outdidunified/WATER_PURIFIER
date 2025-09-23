@@ -8,6 +8,8 @@ const settingsRoutes = require('../modules/app/routes/SettingsRoutes');
 const technicianHomeRoutes = require('../modules/app/routes/TechnicianHomeRoutes');
 const enduserhomeRoutes = require('../modules/app/routes/EndUserHomeRoutes');
 const analyticsRoutes = require('../modules/app/routes/AnalyticsRoutes');
+const mqttRoutes = require('../modules/app/routes/MqttRoutes');  // <-- new import
+
 
 
 
@@ -17,6 +19,7 @@ router.use('/settings', settingsRoutes);
 router.use('/technicianhome', technicianHomeRoutes);
 router.use('/enduserhome', enduserhomeRoutes);
 router.use('/analytics', analyticsRoutes);
+router.use('/mqtt', mqttRoutes);
 
 
 module.exports = router;

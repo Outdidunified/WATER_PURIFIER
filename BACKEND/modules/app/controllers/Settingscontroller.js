@@ -121,10 +121,14 @@ exports.fetchUserDetails = async (req, res) => {
     );
 
     return res.status(200).json({
-      error: false,
-      message: 'User details updated successfully',
-      data: updateFields
-    });
+  error: false,
+  message: 'User details updated successfully',
+  data: {
+    user_id: parseInt(user_id),
+    ...updateFields
+  }
+});
+
 
   } catch (error) {
     console.error('Update user error:', error);
