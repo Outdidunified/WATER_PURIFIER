@@ -2,8 +2,12 @@
 # MacOS system files
 .DS_Store
 
+# Node.js dependencies
+BACKEND/node_modules/
+BACKEND/Log/*.log
+BACKEND/public/uploads/*
+
 # MacOS system files
 .DS_Store
-Frontend/.DS_Store
-Frontend/node_modules/
+FRONTEND/WEBSITE/node_modules/
 
