@@ -5,6 +5,7 @@ const { ObjectId } = require("mongodb");
 const logger = require('../../../middlewares/requestLogger');
 const multerImg = require('../middlewares/imgMiddleware');
 const nodemailer = require('nodemailer');
+const { normalizeDeliveryAddress } = require('../../website/models/DeliveryAddress');
 
 // Email transporter setup
 const transporter = nodemailer.createTransport({
@@ -1590,6 +1591,7 @@ const AssignInstallation = async (req, res) => {
         const db = await database.connectToDatabase();
         const serviceRecords = db.collection("service_records");
         const usersCollection = db.collection("users");
+        const ordersCollection = db.collection("orders");
         const technicianDetailsCollection = db.collection("technician_details");
 
         const {
@@ -1648,17 +1650,27 @@ const AssignInstallation = async (req, res) => {
             });
         }
 
+        // Fetch order details to enrich the task
+        const orderDoc = await ordersCollection.findOne({ customOrderId });
+        if (!orderDoc) {
+            return res.status(404).json({
+                status: 'Failed',
+                message: 'Order not found for given customOrderId'
+            });
+        }
+        const normalizedAddress = normalizeDeliveryAddress(orderDoc.deliveryAddress || {});
+
         // Generate task ID and OTP
         const lastTask = await serviceRecords.find().sort({ task_id: -1 }).limit(1).toArray();
         const nextTaskId = lastTask.length > 0 ? lastTask[0].task_id + 1 : 1;
         const otp = Math.floor(100000 + Math.random() * 900000);
         const now = new Date();
 
-        // Prepare new task
+        // Prepare new task (enriched with address and product info)
         const newTask = {
             task_id: nextTaskId,
             task_status: "Pending",
-            task_type: 1,
+            task_type: 1, // Installation
             task_description: "Ordered a new device",
             assigned_technician_id: technician_id,
             assigned_date: now,
@@ -1668,7 +1680,19 @@ const AssignInstallation = async (req, res) => {
             otp: otp,
             created_date: now,
             created_by: assigned_by,
-            assigned_by
+            assigned_by,
+            // Enriched fields for technician app
+            address: normalizedAddress,
+            product: {
+                model_name: orderDoc?.modelName,
+                wp_device_id: orderDoc?.wp_device_id || wp_device_id,
+                selectedPlan: orderDoc?.selectedPlan,
+                selectedDuration: orderDoc?.selectedDuration
+            },
+            order: {
+                customOrderId: orderDoc?.customOrderId,
+                user_id: orderDoc?.user_id
+            }
         };
 
         // Insert task

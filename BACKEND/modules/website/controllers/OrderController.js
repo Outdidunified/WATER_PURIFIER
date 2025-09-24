@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const { connectToDatabase } = require('../../../config/db');
 const { ObjectId } = require('mongodb');
 const { sendSubscriptionConfirmationEmail } = require('../controllers/Email');
+const { validateDeliveryAddress, normalizeDeliveryAddress } = require('../models/DeliveryAddress');
 
 
 function generateOrderId() {
@@ -48,6 +49,15 @@ exports.createSubscriptionOrder = async (req, res) => {
         message: 'All fields including wp_device_id are required (except securityDeposit)'
       });
     }
+
+    // Validate deliveryAddress (with district required)
+    const addrResult = validateDeliveryAddress(deliveryAddress);
+    if (!addrResult.valid) {
+      return res.status(400).json({ message: addrResult.message });
+    }
+
+    // Normalize before storing
+    const normalizedAddress = normalizeDeliveryAddress(deliveryAddress);
 
     if (!user.security_deposit_added && (securityDeposit === undefined || securityDeposit === null)) {
       return res.status(400).json({ message: 'Security deposit is required for new users' });
@@ -149,7 +159,7 @@ exports.createSubscriptionOrder = async (req, res) => {
       selectedPlan,
       selectedDuration,
       grandTotal: totalAmountForRazorpay,
-      deliveryAddress,
+      deliveryAddress: normalizedAddress,
       paymentStatus: 'Pending',
       orderStatus: 'Created',
       razorpayOrderId: razorpayOrder.id,
@@ -205,7 +215,7 @@ exports.createSubscriptionOrder = async (req, res) => {
           securityDeposit: effectiveSecurityDeposit,
           totalPrice: totalAmountForRazorpay
         },
-        deliveryAddress,
+        deliveryAddress: normalizedAddress,
         totalLitre
       }
     });
