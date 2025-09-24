@@ -2057,10 +2057,86 @@ const ReAssignService = async (req, res) => {
     }
 };
 
+// Admin Fetch APIs additions
+// 1) Fetch sellers (role_id = 4). Optional district filter.
+const FetchSellers = async (req, res) => {
+    try {
+        const { district } = req.body || {};
+        const db = await database.connectToDatabase();
+        const usersCollection = db.collection('users');
+
+        const query = { role_id: 4 };
+        if (district && String(district).trim() !== '') {
+            query.district = new RegExp(`^${String(district).trim()}$`, 'i');
+        }
+
+        const sellers = await usersCollection.find(query).toArray();
+        return res.status(200).json({ status: 'Success', data: sellers });
+    } catch (error) {
+        console.error('Error in FetchSellers:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// 2) Fetch orders by district (uses deliveryAddress.district)
+const FetchOrdersByDistrict = async (req, res) => {
+    try {
+        const { district } = req.body || {};
+        if (!district || String(district).trim() === '') {
+            return res.status(400).json({ status: 'Failed', message: 'district is required' });
+        }
+
+        const db = await database.connectToDatabase();
+        const ordersCollection = db.collection('orders');
+        const usersCollection = db.collection('users');
+
+        const districtRegex = new RegExp(`^${String(district).trim()}$`, 'i');
+        const orders = await ordersCollection.find({ 'deliveryAddress.district': districtRegex }).toArray();
+
+        const userIds = [...new Set(orders.map(o => o.user_id))];
+        const users = await usersCollection.find({ user_id: { $in: userIds } }).toArray();
+        const userMap = {};
+        users.forEach(u => { userMap[u.user_id] = u.email; });
+
+        const ordersWithEmail = orders.map(o => ({ ...o, email: userMap[o.user_id] || null }));
+        return res.status(200).json({ status: 'Success', data: ordersWithEmail });
+    } catch (error) {
+        console.error('Error in FetchOrdersByDistrict:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// 3) Fetch technicians by district (role_id = 2)
+const FetchTechniciansByDistrict = async (req, res) => {
+    try {
+        const { district } = req.body || {};
+        if (!district || String(district).trim() === '') {
+            return res.status(400).json({ status: 'Failed', message: 'district is required' });
+        }
+
+        const db = await database.connectToDatabase();
+        const usersCollection = db.collection('users');
+
+        const technicians = await usersCollection.find({
+            role_id: 2,
+            district: new RegExp(`^${String(district).trim()}$`, 'i')
+        }).toArray();
+
+        return res.status(200).json({ status: 'Success', data: technicians });
+    } catch (error) {
+        console.error('Error in FetchTechniciansByDistrict:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
 module.exports = {
     authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
     UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders,AddUserRoles, FetchUserRoles, UpdateUserRoles,
     AddUsers, FetchUsers, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
-    FetchSelectServiceTask, AssignService, ReAssignService,assignPermissions,fetchPermissionsByRole
+    FetchSelectServiceTask, AssignService, ReAssignService,assignPermissions,fetchPermissionsByRole,
+    FetchSellers, FetchOrdersByDistrict, FetchTechniciansByDistrict
     // UpdateOrdersStatus,
 };
