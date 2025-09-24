@@ -52,11 +52,22 @@ const Sidebar = () => {
           </Link>
         </li>
 
-        <li className={location.pathname === '/superadmin/ManageUsers' || location.pathname === '/superadmin/EditManageUsers' || location.pathname === '/superadmin/ViewManageUser' ? 'nav-item active' : 'nav-item'}>
-          <Link className="nav-link" to="/superadmin/ManageUsers">
+        <li className={location.pathname === '/superadmin/ManageUsers' || location.pathname === '/superadmin/EditManageUsers' || location.pathname === '/superadmin/ViewManageUser' || location.pathname === '/superadmin/ManageSellers' ? 'nav-item active' : 'nav-item'}>
+          <a className="nav-link" data-toggle="collapse" href="#ui-basic-users" aria-expanded="false" aria-controls="ui-basic-users">
             <i className="icon-head menu-icon mdi mdi-account-multiple"></i>
-            <span className="menu-title">Manage Users</span>
-          </Link>
+            <span className="menu-title">Users</span>
+            <i className="menu-arrow"></i>
+          </a>
+          <div className="collapse" id="ui-basic-users">
+            <ul className="nav flex-column sub-menu">
+              <li className="nav-item">
+                <Link className="nav-link" to="/superadmin/ManageUsers">Manage Users</Link>
+              </li>
+              <li className="nav-item">
+                <Link className="nav-link" to="/superadmin/ManageSellers">Manage Sellers</Link>
+              </li>
+            </ul>
+          </div>
         </li>
 
         <li className={location.pathname === '/superadmin/ManageOrders' || location.pathname==='/superadmin/ViewOrders'? 'nav-item active' : 'nav-item'}>

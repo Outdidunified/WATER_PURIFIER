@@ -8,6 +8,9 @@ import EditManageDevice from '../../roles/superadmin/page/ManageDevices/EditMana
 import ManageUsers from '../../roles/superadmin/page/ManageUser/ManageUsers';
 import ViewManageUser from '../../roles/superadmin/page/ManageUser/ViewManageUser';
 import EditManageUsers from '../../roles/superadmin/page/ManageUser/EditManageUsers';;
+import ManageSellers from '../../roles/superadmin/page/ManageUser/ManageSellers';
+import ViewManageSeller from '../../roles/superadmin/page/ManageUser/ViewManageSeller';
+import EditManageSeller from '../../roles/superadmin/page/ManageUser/EditManageSeller';
 import Profile from '../../roles/superadmin/page/Profile/Profile';
 import Header from '../../roles/superadmin/components/Header';
 import ManageOrders from '../../roles/superadmin/page/ManageOrders/ManageOrders';
@@ -115,6 +118,30 @@ const SuperAdminApp = () => {
           path="/ManageUsers"
           element={loggedIn ? (
             <ManageUsers userInfo={userInfo} handleLogout={handleLogout} />
+          ) : (
+            <Navigate to="/superadmin" />
+          )}
+        />
+        <Route
+          path="/ManageSellers"
+          element={loggedIn ? (
+            <ManageSellers userInfo={userInfo} handleLogout={handleLogout} />
+          ) : (
+            <Navigate to="/superadmin" />
+          )}
+        />
+        <Route
+          path="/ViewManageSeller"
+          element={loggedIn ? (
+            <ViewManageSeller userInfo={userInfo} handleLogout={handleLogout} />
+          ) : (
+            <Navigate to="/superadmin" />
+          )}
+        />
+        <Route
+          path="/EditManageSeller"
+          element={loggedIn ? (
+            <EditManageSeller userInfo={userInfo} handleLogout={handleLogout} />
           ) : (
             <Navigate to="/superadmin" />
           )}
