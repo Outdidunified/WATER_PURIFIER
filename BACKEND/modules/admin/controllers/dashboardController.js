@@ -34,6 +34,89 @@ async function sendEmail(to, subject, text, html) {
     }
 }
 
+
+//role based permission
+const assignPermissions = async (req, res) => {
+  const { role_id, permissions } = req.body;
+
+  if (!role_id || !permissions || !Array.isArray(permissions)) {
+    return res.status(400).json({
+      status: "Failed",
+      message: "role_id and permissions array are required",
+    });
+  }
+
+  const { db, client } = await connectToDatabase();
+  const permissionsCollection = db.collection("permissions");
+
+  try {
+    const results = [];
+
+    for (const p of permissions) {
+      const module = p.module;
+      if (!module) continue;
+
+      // Check if permission exists for this role + module
+      const existing = await permissionsCollection.findOne({ role_id, module });
+
+      if (existing) {
+        await permissionsCollection.updateOne(
+          { role_id, module },
+          { $set: { ...p, status: p.status !== undefined ? p.status : true } }
+        );
+        results.push({ action: "updated", permission: { role_id, ...p } });
+      } else {
+        await permissionsCollection.insertOne({ role_id, ...p, status: p.status !== undefined ? p.status : true });
+        results.push({ action: "created", permission: { role_id, ...p } });
+      }
+    }
+
+    return res.status(200).json({
+      status: "Success",
+      message: "Permissions assigned/updated successfully",
+      data: results,
+    });
+  } catch (err) {
+    console.error("Error in assignPermissions:", err);
+    return res.status(500).json({ status: "Failed", message: "Internal Server Error" });
+  } finally {
+    await client.close();
+  }
+};
+
+
+
+const fetchPermissionsByRole = async (req, res) => {
+  const roleIds = req.query.ids ? req.query.ids.split(",").map(Number) : [];
+
+  if (!roleIds.length) {
+    return res.status(400).json({ status: "Failed", message: "roleIds required" });
+  }
+
+  const { db, client } = await connectToDatabase();
+  const permissionsCollection = db.collection("permissions");
+
+  try {
+    const permissions = await permissionsCollection.find({ role_id: { $in: roleIds } }).toArray();
+
+    return res.status(200).json({
+      status: "Success",
+      message: "Permissions fetched successfully",
+      data: permissions,
+    });
+  } catch (err) {
+    console.error("Error in fetchPermissionsByRole:", err);
+    return res.status(500).json({ status: "Failed", message: "Internal Server Error" });
+  } finally {
+    await client.close();
+  }
+};
+
+
+
+
+
+
 // 1. Login Controller
 const authenticate = async (req, res) => {
     try {
@@ -1937,6 +2020,6 @@ module.exports = {
     authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
     UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders,AddUserRoles, FetchUserRoles, UpdateUserRoles,
     AddUsers, FetchUsers, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
-    FetchSelectServiceTask, AssignService, ReAssignService,
+    FetchSelectServiceTask, AssignService, ReAssignService,assignPermissions,fetchPermissionsByRole
     // UpdateOrdersStatus,
 };
