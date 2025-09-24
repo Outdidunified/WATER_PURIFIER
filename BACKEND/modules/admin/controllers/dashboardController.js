@@ -941,7 +941,10 @@ const AddUserRoles = async (req, res) => {
                 role_id: nextRoleId++,
                 role_name,
                 created_date: new Date(),
+                created_by: role.created_by || 'system',
                 status: true,
+                modified_by: null,
+                modified_date: null,
             });
         }
 
@@ -1054,7 +1057,7 @@ const AddUsers = async (req, res) => {
     try {
         const users = Array.isArray(req.body) ? req.body : [req.body];
 
-        if (!users.length || !users[0].role_id || !users[0].email) {
+        if (!users.length || !users[0].email) {
             return res.status(400).json({
                 status: 'Failed',
                 message: 'Invalid or empty user data',
@@ -1117,32 +1120,47 @@ const AddUsers = async (req, res) => {
             if (role_name) {
                 let existingRole = await rolesColl.findOne({ role_name });
                 if (!existingRole) {
-                    // Auto-create role with next role_id
+                    // Auto-create role with next role_id and capture audit metadata
                     const lastRole = await rolesColl.find().sort({ role_id: -1 }).limit(1).toArray();
                     const nextRoleId = lastRole.length > 0 ? lastRole[0].role_id + 1 : 1;
-                    await rolesColl.insertOne({ role_id: nextRoleId, role_name, created_date: new Date(), status: true });
+                    await rolesColl.insertOne({
+                        role_id: nextRoleId,
+                        role_name,
+                        created_date: new Date(),
+                        status: true,
+                        modified_by: user.modified_by || user.createdby || user.email || 'system',
+                        modified_date: new Date()
+                    });
                     role_id = nextRoleId;
                 } else {
                     role_id = existingRole.role_id;
                 }
             } else if (role_id != null) {
-                // If only role_id provided: resolve role_name; if not exists, create default role name
+                // If only role_id provided: resolve role_name; if not exists, reject (no placeholder role names)
                 let existingRole = await rolesColl.findOne({ role_id });
                 if (!existingRole) {
-                    // Create a role_name like Role-<id>
-                    role_name = `Role-${role_id}`;
-                    await rolesColl.insertOne({ role_id, role_name, created_date: new Date(), status: true });
+                    return res.status(400).json({
+                        status: 'Failed',
+                        message: `Role with role_id ${role_id} does not exist. Provide a valid role_id or a role_name to auto-create.`
+                    });
                 } else {
                     role_name = existingRole.role_name;
                 }
             } else {
-                // Neither role_name nor role_id provided: ensure EndUser exists, assign it
+                // Neither role_name nor role_id provided: ensure EndUser exists or create it with audit
                 role_name = 'EndUser';
                 let existingRole = await rolesColl.findOne({ role_name });
                 if (!existingRole) {
                     const lastRole = await rolesColl.find().sort({ role_id: -1 }).limit(1).toArray();
                     const nextRoleId = lastRole.length > 0 ? lastRole[0].role_id + 1 : 1;
-                    await rolesColl.insertOne({ role_id: nextRoleId, role_name, created_date: new Date(), status: true });
+                    await rolesColl.insertOne({
+                        role_id: nextRoleId,
+                        role_name,
+                        created_date: new Date(),
+                        status: true,
+                        modified_by: user.modified_by || user.createdby || user.email || 'system',
+                        modified_date: new Date()
+                    });
                     role_id = nextRoleId;
                 } else {
                     role_id = existingRole.role_id;
