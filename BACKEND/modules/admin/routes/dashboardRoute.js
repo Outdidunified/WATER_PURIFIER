@@ -71,6 +71,8 @@ router.post('/FetchContact', verifyToken, Controller.FetchContact);
 // 7.Manage orders
 // Route to FetchOrders
 router.post('/FetchOrders', verifyToken, Controller.FetchOrders);
+// Route to FetchOrdersByDistrict
+router.post('/FetchOrdersByDistrict', verifyToken, Controller.FetchOrdersByDistrict);
 
 // Route to UpdateOrdersStatus 
 // router.post('/UpdateOrdersStatus', verifyToken, Controller.UpdateOrdersStatus);
@@ -91,6 +93,10 @@ router.post('/AddUsers', verifyToken, Controller.AddUsers);
 
 // Route to FetchUsers
 router.post('/FetchUsers', verifyToken, Controller.FetchUsers);
+// Route to FetchSellers (role 4)
+router.post('/FetchSellers', verifyToken, Controller.FetchSellers);
+// Route to FetchTechniciansByDistrict (role 2)
+router.post('/FetchTechniciansByDistrict', verifyToken, Controller.FetchTechniciansByDistrict);
 
 // Route to UpdateUsers
 router.post('/UpdateUsers', verifyToken, Controller.UpdateUsers);
