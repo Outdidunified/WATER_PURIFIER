@@ -36,7 +36,14 @@ exports.fetchUserDetails = async (req, res) => {
       name,
       email: dbEmail,
       phone,
+      address,
+      addressline1,
+      addressline2,
       city,
+      district,
+      state,
+      country,
+      pincode,
       status,
       is_subscribed,
       createdDate
@@ -47,7 +54,14 @@ exports.fetchUserDetails = async (req, res) => {
       name,
       email: dbEmail,
       phone,
+      address,
+      addressline1,
+      addressline2: addressline2 || '',
       city,
+      district,
+      state,
+      country,
+      pincode,
       status,
       is_subscribed,
       createdDate,
@@ -76,10 +90,41 @@ exports.fetchUserDetails = async (req, res) => {
   
   
  exports.updateUserDetails = async (req, res) => {
-  const { user_id, email, role_id, name, phone, city } = req.body;
+  const { 
+    user_id, 
+    email, 
+    role_id, 
+    name, 
+    phone, 
+    address,
+    addressline1,
+    addressline2, // optional
+    city, 
+    district,
+    state,
+    country,
+    pincode
+  } = req.body;
 
   if (!user_id || !email || !role_id) {
     return res.status(400).json({ error: true, message: 'user_id, email, and role_id are required' });
+  }
+
+  // Validate required address fields (same pattern used elsewhere)
+  const missingFields = [];
+  if (!address) missingFields.push('address');
+  if (!addressline1) missingFields.push('addressline1');
+  if (!city) missingFields.push('city');
+  if (!district) missingFields.push('district');
+  if (!state) missingFields.push('state');
+  if (!country) missingFields.push('country');
+  if (!pincode) missingFields.push('pincode');
+  if (missingFields.length) {
+    return res.status(400).json({
+      error: true,
+      message: `Missing required fields: ${missingFields.join(', ')}`,
+      missing: missingFields
+    });
   }
 
   try {
@@ -100,7 +145,14 @@ exports.fetchUserDetails = async (req, res) => {
     const isSameData =
       (name === undefined || name === existingUser.name) &&
       (phone === undefined || phone === existingUser.phone) &&
-      (city === undefined || city === existingUser.city);
+      (address === undefined || address === existingUser.address) &&
+      (addressline1 === undefined || addressline1 === existingUser.addressline1) &&
+      (addressline2 === undefined || addressline2 === existingUser.addressline2) &&
+      (city === undefined || city === existingUser.city) &&
+      (district === undefined || district === existingUser.district) &&
+      (state === undefined || state === existingUser.state) &&
+      (country === undefined || country === existingUser.country) &&
+      (pincode === undefined || pincode === existingUser.pincode);
 
     if (isSameData) {
       return res.status(402).json({ error: true, message: 'No changes were made. Same data submitted.' });
@@ -110,7 +162,14 @@ exports.fetchUserDetails = async (req, res) => {
     const updateFields = {
       ...(name !== undefined && { name }),
       ...(phone !== undefined && { phone }),
+      ...(address !== undefined && { address }),
+      ...(addressline1 !== undefined && { addressline1 }),
+      ...(addressline2 !== undefined && { addressline2 }),
       ...(city !== undefined && { city }),
+      ...(district !== undefined && { district }),
+      ...(state !== undefined && { state }),
+      ...(country !== undefined && { country }),
+      ...(pincode !== undefined && { pincode }),
       modifiedBy: email,
       modifiedDate: new Date()
     };
