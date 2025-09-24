@@ -5,7 +5,7 @@ const { ObjectId } = require("mongodb");
 const logger = require('../../../middlewares/requestLogger');
 const multerImg = require('../middlewares/imgMiddleware');
 const nodemailer = require('nodemailer');
-const MODULES = require('./modules.config');
+
 // Email transporter setup
 const transporter = nodemailer.createTransport({
     host: 'smtppro.zoho.in', // SMTP server address
@@ -1596,6 +1596,7 @@ const AssignInstallation = async (req, res) => {
         const db = await database.connectToDatabase();
         const serviceRecords = db.collection("service_records");
         const usersCollection = db.collection("users");
+        const ordersCollection = db.collection("orders");
         const technicianDetailsCollection = db.collection("technician_details");
 
         const {
@@ -1654,17 +1655,27 @@ const AssignInstallation = async (req, res) => {
             });
         }
 
+        // Fetch order details to enrich the task
+        const orderDoc = await ordersCollection.findOne({ customOrderId });
+        if (!orderDoc) {
+            return res.status(404).json({
+                status: 'Failed',
+                message: 'Order not found for given customOrderId'
+            });
+        }
+        const normalizedAddress = normalizeDeliveryAddress(orderDoc.deliveryAddress || {});
+
         // Generate task ID and OTP
         const lastTask = await serviceRecords.find().sort({ task_id: -1 }).limit(1).toArray();
         const nextTaskId = lastTask.length > 0 ? lastTask[0].task_id + 1 : 1;
         const otp = Math.floor(100000 + Math.random() * 900000);
         const now = new Date();
 
-        // Prepare new task
+        // Prepare new task (enriched with address and product info)
         const newTask = {
             task_id: nextTaskId,
             task_status: "Pending",
-            task_type: 1,
+            task_type: 1, // Installation
             task_description: "Ordered a new device",
             assigned_technician_id: technician_id,
             assigned_date: now,
@@ -1674,7 +1685,19 @@ const AssignInstallation = async (req, res) => {
             otp: otp,
             created_date: now,
             created_by: assigned_by,
-            assigned_by
+            assigned_by,
+            // Enriched fields for technician app
+            address: normalizedAddress,
+            product: {
+                model_name: orderDoc?.modelName,
+                wp_device_id: orderDoc?.wp_device_id || wp_device_id,
+                selectedPlan: orderDoc?.selectedPlan,
+                selectedDuration: orderDoc?.selectedDuration
+            },
+            order: {
+                customOrderId: orderDoc?.customOrderId,
+                user_id: orderDoc?.user_id
+            }
         };
 
         // Insert task
@@ -2039,10 +2062,85 @@ const ReAssignService = async (req, res) => {
     }
 };
 
+// Admin Fetch APIs additions
+// 1) Fetch sellers (role_id = 4). Optional district filter.
+const FetchSellers = async (req, res) => {
+    try {
+        const { district } = req.body || {};
+        const db = await database.connectToDatabase();
+        const usersCollection = db.collection('users');
+
+        const query = { role_id: 4 };
+        if (district && String(district).trim() !== '') {
+            query.district = new RegExp(`^${String(district).trim()}$`, 'i');
+        }
+
+        const sellers = await usersCollection.find(query).toArray();
+        return res.status(200).json({ status: 'Success', data: sellers });
+    } catch (error) {
+        console.error('Error in FetchSellers:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// 2) Fetch orders by district (uses deliveryAddress.district)
+const FetchOrdersByDistrict = async (req, res) => {
+    try {
+        const { district } = req.body || {};
+        if (!district || String(district).trim() === '') {
+            return res.status(400).json({ status: 'Failed', message: 'district is required' });
+        }
+
+        const db = await database.connectToDatabase();
+        const ordersCollection = db.collection('orders');
+        const usersCollection = db.collection('users');
+
+        const districtRegex = new RegExp(`^${String(district).trim()}$`, 'i');
+        const orders = await ordersCollection.find({ 'deliveryAddress.district': districtRegex }).toArray();
+
+        const userIds = [...new Set(orders.map(o => o.user_id))];
+        const users = await usersCollection.find({ user_id: { $in: userIds } }).toArray();
+        const userMap = {};
+        users.forEach(u => { userMap[u.user_id] = u.email; });
+
+        const ordersWithEmail = orders.map(o => ({ ...o, email: userMap[o.user_id] || null }));
+        return res.status(200).json({ status: 'Success', data: ordersWithEmail });
+    } catch (error) {
+        console.error('Error in FetchOrdersByDistrict:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// 3) Fetch technicians by district (role_id = 2)
+const FetchTechniciansByDistrict = async (req, res) => {
+    try {
+        const { district } = req.body || {};
+        if (!district || String(district).trim() === '') {
+            return res.status(400).json({ status: 'Failed', message: 'district is required' });
+        }
+
+        const db = await database.connectToDatabase();
+        const usersCollection = db.collection('users');
+
+        const technicians = await usersCollection.find({
+            role_id: 2,
+            district: new RegExp(`^${String(district).trim()}$`, 'i')
+        }).toArray();
+
+        return res.status(200).json({ status: 'Success', data: technicians });
+    } catch (error) {
+        console.error('Error in FetchTechniciansByDistrict:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
 module.exports = {
     authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
     UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders,AddUserRoles, FetchUserRoles, UpdateUserRoles,
     AddUsers, FetchUsers, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
-    FetchSelectServiceTask, AssignService, ReAssignService,assignPermissions,fetchPermissionsByRole,getModules
+    FetchSelectServiceTask, AssignService, ReAssignService,assignPermissions,fetchPermissionsByRole
     // UpdateOrdersStatus,
 };

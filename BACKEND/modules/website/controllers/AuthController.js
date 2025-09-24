@@ -78,21 +78,25 @@ exports.register = async (req, res) => {
       user_id: newUserId,
       is_subscribed: false
     });
-
+    // Before (incomplete and causing error)
+/*
     // Send OTP
     if (email) {
-      await sendOtpEmail(email, otp);
-      console.log(`OTP sent to email: ${email}`);
-    }
+    //   await sendOtpEmail(email, otp);
+    //   console.log(`OTP sent to email: ${email}`);
+    // }
 
-    if (phone) {
-      console.log(`OTP sent to phone: ${phone}: ${otp}`);
-    }
+    // if (phone) {
+    //   console.log(`OTP sent to phone: ${phone}: ${otp}`);
+    // }
+*/
 
+// After
+// OTP sending disabled by requirement; proceed without sending.
     res.status(201).json({
       status: 'success',
       error: false,
-      message: 'User registered. OTP sent to email',
+      message: 'User registered successfully',
       user: {
         id: result.insertedId,
         user_id: newUserId,
