@@ -11,6 +11,7 @@
  * @property {string} district
  * @property {string} state
  * @property {string} pincode      // 6 digits (India)
+ * @property {string} email      
  */
 
 /** Trim string fields safely */
@@ -33,6 +34,7 @@ function normalizeDeliveryAddress(address = {}) {
     district: trimVal(address.district || ''),
     state: trimVal(address.state || ''),
     pincode: trimVal(address.pincode || ''),
+    email: trimVal(address.email || ''),
   };
 }
 
@@ -46,7 +48,7 @@ function validateDeliveryAddress(address) {
     return { valid: false, message: 'deliveryAddress must be an object' };
   }
 
-  const required = ['name', 'phone', 'street', 'city', 'district', 'state', 'pincode'];
+  const required = ['name', 'phone', 'street', 'city', 'district', 'state', 'pincode', 'email'];
   for (const field of required) {
     if (!address[field] || String(address[field]).trim() === '') {
       return { valid: false, message: `deliveryAddress.${field} is required` };
@@ -61,6 +63,12 @@ function validateDeliveryAddress(address) {
   const pin = String(address.pincode).replace(/\D/g, '');
   if (!/^\d{6}$/.test(pin)) {
     return { valid: false, message: 'deliveryAddress.pincode must be a 6-digit number' };
+  }
+
+  const email = String(address.email || '').trim();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return { valid: false, message: 'deliveryAddress.email must be a valid email address' };
   }
 
   return { valid: true };
