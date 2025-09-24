@@ -36,7 +36,6 @@ exports.fetchUserDetails = async (req, res) => {
       name,
       email: dbEmail,
       phone,
-      address,
       addressline1,
       addressline2,
       city,
@@ -54,7 +53,6 @@ exports.fetchUserDetails = async (req, res) => {
       name,
       email: dbEmail,
       phone,
-      address,
       addressline1,
       addressline2: addressline2 || '',
       city,
@@ -96,7 +94,6 @@ exports.fetchUserDetails = async (req, res) => {
     role_id, 
     name, 
     phone, 
-    address,
     addressline1,
     addressline2, // optional
     city, 
@@ -110,9 +107,8 @@ exports.fetchUserDetails = async (req, res) => {
     return res.status(400).json({ error: true, message: 'user_id, email, and role_id are required' });
   }
 
-  // Validate required address fields (same pattern used elsewhere)
+  // Validate required address fields (without 'address')
   const missingFields = [];
-  if (!address) missingFields.push('address');
   if (!addressline1) missingFields.push('addressline1');
   if (!city) missingFields.push('city');
   if (!district) missingFields.push('district');
@@ -145,7 +141,6 @@ exports.fetchUserDetails = async (req, res) => {
     const isSameData =
       (name === undefined || name === existingUser.name) &&
       (phone === undefined || phone === existingUser.phone) &&
-      (address === undefined || address === existingUser.address) &&
       (addressline1 === undefined || addressline1 === existingUser.addressline1) &&
       (addressline2 === undefined || addressline2 === existingUser.addressline2) &&
       (city === undefined || city === existingUser.city) &&
@@ -162,7 +157,6 @@ exports.fetchUserDetails = async (req, res) => {
     const updateFields = {
       ...(name !== undefined && { name }),
       ...(phone !== undefined && { phone }),
-      ...(address !== undefined && { address }),
       ...(addressline1 !== undefined && { addressline1 }),
       ...(addressline2 !== undefined && { addressline2 }),
       ...(city !== undefined && { city }),

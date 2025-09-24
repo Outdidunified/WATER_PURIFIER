@@ -24,7 +24,6 @@ exports.register = async (req, res) => {
     createdby,
     role_name: reqRoleName,
     role_id: reqRoleId,
-    address,
     addressline1,
     addressline2, // optional
     district,
@@ -43,7 +42,6 @@ exports.register = async (req, res) => {
 
   // Address validation (align with admin AddUsers) - return only missing fields
   const missingFields = [];
-  if (!address) missingFields.push('address');
   if (!addressline1) missingFields.push('addressline1');
   if (!city) missingFields.push('city');
   if (!district) missingFields.push('district');
@@ -148,7 +146,6 @@ exports.register = async (req, res) => {
       email,
       phone: parseInt(phone),
       password: parseInt(password),
-      address,
       addressline1,
       addressline2, // optional
       city,
@@ -188,7 +185,6 @@ exports.register = async (req, res) => {
         name,
         email,
         phone: parseInt(phone),
-        address,
         addressline1,
         addressline2: addressline2 || '',
         city,

@@ -1177,7 +1177,6 @@ const AddUsers = async (req, res) => {
 
             // REQUIRED address fields validation
             const {
-                address,
                 addressline1,
                 addressline2, // optional
                 city,
@@ -1188,7 +1187,6 @@ const AddUsers = async (req, res) => {
             } = user;
 
             const missingFields = [];
-            if (!address) missingFields.push('address');
             if (!addressline1) missingFields.push('addressline1');
             if (!city) missingFields.push('city');
             if (!district) missingFields.push('district');
@@ -1280,7 +1278,6 @@ const AddUsers = async (req, res) => {
                 status: true,
                 phone: parseInt(user.phone),
                 password: parseInt(user.password),
-                address,
                 addressline1,
                 addressline2, // optional
                 city,
@@ -1341,7 +1338,6 @@ const UpdateUsers = async (req, res) => {
             email,
             password,
             phone,
-            address,
             addressline1,
             addressline2, // optional
             city,
@@ -1360,9 +1356,8 @@ const UpdateUsers = async (req, res) => {
             });
         }
 
-        // REQUIRED address fields validation for update
+        // REQUIRED address fields validation for update (without 'address')
         const missingFields = [];
-        if (!address) missingFields.push('address');
         if (!addressline1) missingFields.push('addressline1');
         if (!city) missingFields.push('city');
         if (!district) missingFields.push('district');
@@ -1394,7 +1389,6 @@ const UpdateUsers = async (req, res) => {
             name,
             password: parseInt(password),
             phone: parseInt(phone),
-            address,
             addressline1,
             addressline2, // optional
             city,
