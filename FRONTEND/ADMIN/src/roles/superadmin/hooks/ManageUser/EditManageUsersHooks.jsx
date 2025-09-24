@@ -1,5 +1,4 @@
-// useEditManageUsers.jsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axiosInstance from '../../../../utils/utils';
 import { showSuccessAlert, showErrorAlert } from '../../../../utils/alert';
@@ -8,14 +7,11 @@ const useEditManageUsers = (userInfo) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Get user data from location state or localStorage
   const storedData = localStorage.getItem('editDeviceData');
   const dataItem = location.state?.user || (storedData ? JSON.parse(storedData) : null);
 
   useEffect(() => {
-    if (dataItem) {
-      localStorage.setItem('editDeviceData', JSON.stringify(dataItem));
-    }
+    if (dataItem) localStorage.setItem('editDeviceData', JSON.stringify(dataItem));
   }, [dataItem]);
 
   const [errorMessage, setErrorMessage] = useState('');
@@ -27,54 +23,51 @@ const useEditManageUsers = (userInfo) => {
   const [password, setPassword] = useState(dataItem?.password || '');
   const [phone, setPhone] = useState(dataItem?.phone || '');
   const [city, setCity] = useState(dataItem?.city || '');
+  const [addressline1, setAddressLine1] = useState(dataItem?.addressline1 || '');
+  const [addressline2, setAddressLine2] = useState(dataItem?.addressline2 || '');
+  const [district, setDistrict] = useState(dataItem?.district || '');
+  const [state, setState] = useState(dataItem?.state || '');
+  const [country, setCountry] = useState(dataItem?.country || '');
+  const [pincode, setPincode] = useState(dataItem?.pincode || '');
 
   const [initialValues] = useState({
     password: dataItem?.password || '',
     phone: dataItem?.phone || '',
     status: dataItem?.status ? 'true' : 'false',
-    city: dataItem?.city || ''
+    city: dataItem?.city || '',
+    addressline1: dataItem?.addressline1 || '',
+    addressline2: dataItem?.addressline2 || '',
+    district: dataItem?.district || '',
+    state: dataItem?.state || '',
+    country: dataItem?.country || '',
+    pincode: dataItem?.pincode || ''
   });
 
   const isModified =
     String(password) !== String(initialValues.password) ||
     String(phone) !== String(initialValues.phone) ||
     selectStatus !== initialValues.status ||
-    String(city).trim() !== String(initialValues.city).trim();
+    String(city).trim() !== String(initialValues.city).trim() ||
+    String(addressline1).trim() !== String(initialValues.addressline1).trim() ||
+    String(addressline2).trim() !== String(initialValues.addressline2).trim() ||
+    String(district).trim() !== String(initialValues.district).trim() ||
+    String(state).trim() !== String(initialValues.state).trim() ||
+    String(country).trim() !== String(initialValues.country).trim() ||
+    String(pincode).trim() !== String(initialValues.pincode).trim();
 
-  const handleStatusChange = (e) => {
-    setSelectedStatus(e.target.value);
-  };
+  const handleStatusChange = (e) => setSelectedStatus(e.target.value);
 
-  const backManageUser = () => {
-    navigate('/superadmin/ManageUsers');
-  };
+  const backManageUser = () => navigate('/superadmin/ManageUsers');
 
   const editManageUser = async (e) => {
     e.preventDefault();
 
-    const phoneRegex = /^\d{10}$/;
-    if (!phone) {
-      setErrorMessage("Phone can't be empty.");
-      return;
-    }
-    if (!phoneRegex.test(phone)) {
-      setErrorMessage('Oops! Phone must be a 10-digit number.');
-      return;
-    }
-
-    const passwordRegex = /^\d{4}$/;
-    if (!password) {
-      setErrorMessage("Password can't be empty.");
-      return;
-    }
-    if (!passwordRegex.test(password)) {
-      setErrorMessage('Oops! Password must be a 4-digit number.');
-      return;
-    }
+    if (!phone || !/^\d{10}$/.test(phone)) return setErrorMessage('Phone must be 10 digits');
+    if (!password || !/^\d{4}$/.test(password)) return setErrorMessage('Password must be 4 digits');
+    if (!pincode || !/^\d{6}$/.test(pincode)) return setErrorMessage('Pincode must be 6 digits');
 
     try {
       setIsLoading(true);
-
       const updatedUser = {
         user_id: dataItem.user_id,
         role_id: dataItem.role_id,
@@ -83,8 +76,14 @@ const useEditManageUsers = (userInfo) => {
         password: parseInt(password),
         phone: parseInt(phone),
         city,
+        addressline1,
+        addressline2,
+        district,
+        state,
+        country,
+        pincode,
         modifiedby: userInfo.email,
-        status: selectStatus === 'true',
+        status: selectStatus === 'true'
       };
 
       const response = await axiosInstance.post('/api/admin/UpdateUsers', updatedUser);
@@ -93,17 +92,13 @@ const useEditManageUsers = (userInfo) => {
         showSuccessAlert('User updated successfully');
         backManageUser();
       } else {
-        showErrorAlert('Error', 'Failed to update user, ' + response.data.message);
+        showErrorAlert('Error', response.data?.message || 'Failed to update user');
       }
     } catch (error) {
       showErrorAlert('Error', 'An error occurred while updating the user');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const goBack = () => {
-    navigate(-1);
   };
 
   return {
@@ -115,12 +110,17 @@ const useEditManageUsers = (userInfo) => {
     password, setPassword,
     phone, setPhone,
     city, setCity,
+    addressline1, setAddressLine1,
+    addressline2, setAddressLine2,
+    district, setDistrict,
+    state, setState,
+    country, setCountry,
+    pincode, setPincode,
     initialValues,
     isModified,
     handleStatusChange,
     backManageUser,
     editManageUser,
-    goBack,
     isloading
   };
 };

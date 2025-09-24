@@ -217,10 +217,6 @@ exports.createSubscriptionOrder = async (req, res) => {
 };
 
 
-
-
-
-
 exports.verifyRazorpayPayment = async (req, res) => {
     try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;

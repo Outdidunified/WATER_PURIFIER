@@ -5,7 +5,7 @@ const { ObjectId } = require("mongodb");
 const logger = require('../../../middlewares/requestLogger');
 const multerImg = require('../middlewares/imgMiddleware');
 const nodemailer = require('nodemailer');
-
+const MODULES = require('./modules.config');
 // Email transporter setup
 const transporter = nodemailer.createTransport({
     host: 'smtppro.zoho.in', // SMTP server address
@@ -34,19 +34,23 @@ async function sendEmail(to, subject, text, html) {
     }
 }
 
+const getModules = async (req, res) => {
+  return res.status(200).json({
+    status: "Success",
+    message: "Modules fetched successfully",
+    data: MODULES,
+  });
+};
 
 //role based permission
 const assignPermissions = async (req, res) => {
   const { role_id, permissions } = req.body;
 
   if (!role_id || !permissions || !Array.isArray(permissions)) {
-    return res.status(400).json({
-      status: "Failed",
-      message: "role_id and permissions array are required",
-    });
+    return res.status(400).json({ status: "Failed", message: "role_id and permissions array are required" });
   }
 
-  const { db, client } = await connectToDatabase();
+  const db = await database.connectToDatabase();
   const permissionsCollection = db.collection("permissions");
 
   try {
@@ -56,7 +60,6 @@ const assignPermissions = async (req, res) => {
       const module = p.module;
       if (!module) continue;
 
-      // Check if permission exists for this role + module
       const existing = await permissionsCollection.findOne({ role_id, module });
 
       if (existing) {
@@ -71,21 +74,16 @@ const assignPermissions = async (req, res) => {
       }
     }
 
-    return res.status(200).json({
-      status: "Success",
-      message: "Permissions assigned/updated successfully",
-      data: results,
-    });
+    return res.status(200).json({ status: "Success", message: "Permissions assigned/updated successfully", data: results });
   } catch (err) {
-    console.error("Error in assignPermissions:", err);
+    console.error(err);
     return res.status(500).json({ status: "Failed", message: "Internal Server Error" });
   } finally {
-    await client.close();
+    // No manual client closing needed; handled by db module
   }
 };
 
-
-
+// Fetch permissions by roleIds (like findByRoles)
 const fetchPermissionsByRole = async (req, res) => {
   const roleIds = req.query.ids ? req.query.ids.split(",").map(Number) : [];
 
@@ -93,22 +91,25 @@ const fetchPermissionsByRole = async (req, res) => {
     return res.status(400).json({ status: "Failed", message: "roleIds required" });
   }
 
-  const { db, client } = await connectToDatabase();
+  const db = await database.connectToDatabase();
   const permissionsCollection = db.collection("permissions");
 
   try {
     const permissions = await permissionsCollection.find({ role_id: { $in: roleIds } }).toArray();
 
-    return res.status(200).json({
-      status: "Success",
-      message: "Permissions fetched successfully",
-      data: permissions,
+    // Filter to only include modules defined in MODULES and actions that are true
+    const filteredPermissions = permissions.filter(p => {
+      const mod = MODULES.find(m => m.module === p.module);
+      if (!mod) return false;
+      return p.can_create || p.can_view || p.can_update || p.can_delete;
     });
+
+    return res.status(200).json({ status: "Success", message: "Permissions fetched successfully", data: filteredPermissions });
   } catch (err) {
-    console.error("Error in fetchPermissionsByRole:", err);
+    console.error(err);
     return res.status(500).json({ status: "Failed", message: "Internal Server Error" });
   } finally {
-    await client.close();
+    // No manual client closing needed; handled by db module
   }
 };
 
@@ -126,27 +127,31 @@ const authenticate = async (req, res) => {
             return res.status(401).json({ message: 'Email and Password are required' });
         }
 
-        const role_id = 1; // Hardcoded role_id for admin
-
         const db = await database.connectToDatabase();
         const usersCollection = db.collection('users');
 
-        // Check user by email, role_id, and status
+        // Find user by email, active status, and allowed roles (1 or 4)
         const user = await usersCollection.findOne({
             email,
-            role_id: role_id,
-            status: true
+            status: true,
+            role_id: { $in: [1, 4] } // Only allow role_id 1 (admin) or 4 (seller)
         });
 
         if (!user) {
-            return res.status(401).json({ message: 'Invalid credentials or user is deactivated' });
+            return res.status(401).json({ message: 'Invalid credentials, user is deactivated, or role not allowed' });
         }
 
-        if (user.password !== password) {
+        // Check password (number or string)
+        if (user.password !== Number(password) && user.password !== password) {
             return res.status(401).json({ message: 'Invalid password' });
         }
 
-        const token = jwt.sign({ userId: user._id }, JWT_SECRET);
+        // Generate JWT token
+        const token = jwt.sign(
+            { userId: user._id, role_id: user.role_id },
+            JWT_SECRET,
+            { expiresIn: '1d' }
+        );
 
         return res.status(200).json({
             status: 'Success',
@@ -156,7 +161,6 @@ const authenticate = async (req, res) => {
                 role_id: user.role_id,
                 name: user.name,
                 email: user.email,
-                password: user.password,
                 phone: user.phone,
                 createdby: user.createdby,
                 modifiedby: user.modifiedby,
@@ -172,6 +176,8 @@ const authenticate = async (req, res) => {
         return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
     }
 };
+
+
 
 // Profile
 // Fetch Admin Profile
@@ -1890,7 +1896,7 @@ const AssignService = async (req, res) => {
             assigned_by
         } = req.body;
 
-        
+
         if (!task_id || !task_created_by_user_email || !assigned_technician_id || !assigned_by) {
             return res.status(400).json({
                 status: 'Failed',
@@ -2037,6 +2043,6 @@ module.exports = {
     authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
     UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders,AddUserRoles, FetchUserRoles, UpdateUserRoles,
     AddUsers, FetchUsers, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
-    FetchSelectServiceTask, AssignService, ReAssignService,assignPermissions,fetchPermissionsByRole
+    FetchSelectServiceTask, AssignService, ReAssignService,assignPermissions,fetchPermissionsByRole,getModules
     // UpdateOrdersStatus,
 };

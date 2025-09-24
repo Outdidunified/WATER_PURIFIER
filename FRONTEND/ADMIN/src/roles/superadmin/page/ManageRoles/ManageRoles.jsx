@@ -1,5 +1,4 @@
-//ManageRoles
-import React from 'react';
+import React, { useState } from 'react';
 import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
 import Footer from '../../components/Footer';
@@ -7,42 +6,114 @@ import { useNavigate } from 'react-router-dom';
 import ReusableButton from '../../../../utils/ReusableButton';
 import InputField from '../../../../utils/InputField';
 import useManageRoles from '../../hooks/ManageRoles/ManageRolesHooks';
+import axiosInstance from '../../../../utils/utils';
+import { showSuccessAlert, showErrorAlert } from '../../../../utils/alert';
 
 const ManageRoles = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
-
   const {
     handleSearchInputChange,
-    loading,
-    modalAddStyle,
-    error,
-    roleId, roles, tableError,
-    createdBy, formError, formLoading,
-    posts,isAllRolesCreated,
-    isLoading, isAddDisabled,
-    errorMessage,
-    setRoleId,
-    setCreatedBy,
+    roles,
+    tableError,
+    formError,
+    formLoading,
+    isLoading,
+    isAddDisabled,
+    setRoleName,
     openAddModal,
     closeAddModal,
-    addManageUser, handleAddRoleSubmit, isDuplicateRole,
-    isAddModalOpen, roleName, setRoleName,
+    handleAddRoleSubmit,
+    isDuplicateRole,
+    isAddModalOpen,
+    roleName,
   } = useManageRoles(userInfo);
+
+  // State for Grant Access Modal
+  const [grantModalOpen, setGrantModalOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [permissions, setPermissions] = useState([]);
+  const [permissionsLoading, setPermissionsLoading] = useState(false);
+
+  // Fetch permissions + all modules
+  const openGrantAccessModal = async (role) => {
+    setSelectedRole(role);
+    setGrantModalOpen(true);
+    setPermissionsLoading(true);
+
+    try {
+      // 1. Fetch assigned permissions
+      const permRes = await axiosInstance.get(`/api/admin/by-role?ids=${role.role_id}`);
+
+      // 2. Fetch all modules
+      const modulesRes = await axiosInstance.get('/api/admin/modules');
+
+      if (
+        permRes.status === 200 &&
+        permRes.data.status === 'Success' &&
+        modulesRes.status === 200 &&
+        modulesRes.data.status === 'Success'
+      ) {
+        const assigned = permRes.data.data; // permissions from DB
+        const allModules = modulesRes.data.data; // modules list
+
+        // Merge modules with existing permissions
+        const merged = allModules.map((m) => {
+          const found = assigned.find((p) => p.module === m.module);
+          return {
+            module: m.module,
+            can_create: found ? found.can_create : false,
+            can_view: found ? found.can_view : false,
+            can_update: found ? found.can_update : false,
+            can_delete: found ? found.can_delete : false,
+          };
+        });
+
+        setPermissions(merged);
+      } else {
+        showErrorAlert('Error', 'Failed to fetch permissions/modules');
+      }
+    } catch (error) {
+      showErrorAlert('Error', 'An error occurred while fetching permissions/modules');
+    } finally {
+      setPermissionsLoading(false);
+    }
+  };
+
+  const handlePermissionChange = (index, field, value) => {
+    const updated = [...permissions];
+    updated[index][field] = value;
+    setPermissions(updated);
+  };
+
+  const handleSavePermissions = async () => {
+    try {
+      const payload = {
+        role_id: selectedRole.role_id,
+        permissions,
+      };
+      const response = await axiosInstance.post('/api/admin/assign', payload);
+      if (response.status === 200 && response.data.status === 'Success') {
+        showSuccessAlert('Success', 'Permissions updated successfully');
+        setGrantModalOpen(false);
+      } else {
+        showErrorAlert('Error', response.data.message || 'Failed to update permissions');
+      }
+    } catch (error) {
+      showErrorAlert('Error', 'An error occurred while updating permissions');
+    }
+  };
 
   const handleViewRoles = (dataItem) => {
     navigate('/superadmin/ViewRoles', { state: { dataItem } });
   };
 
   return (
-    <div className='container-scroller'>
-      {/* Header */}
+    <div className="container-scroller">
       <Header userInfo={userInfo} handleLogout={handleLogout} />
       <div className="container-fluid page-body-wrapper">
-        {/* Sidebar */}
         <Sidebar />
         <div className="main-panel">
           <div className="content-wrapper">
-
             {/* Title & Add Button */}
             <div className="row">
               <div className="col-md-12 grid-margin">
@@ -52,21 +123,46 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
                   </div>
                   <div className="col-12 col-xl-4">
                     <div className="justify-content-end d-flex">
-                    <button
-  type="button"
-  className="btn btn-success"
-  onClick={openAddModal}
-  disabled={isAllRolesCreated} // ✅ disable if all roles are created
->
-  {isAllRolesCreated ? 'Roles Created' : 'Add Role'}
-</button>
+                      <button type="button" className="btn btn-success" onClick={openAddModal}>
+                        Add Role
+                      </button>
 
+                      {/* Add Role Modal */}
                       {isAddModalOpen && (
-                        <div className="modalStyle" style={modalAddStyle}>
-                          <div className="modalContentStyle" style={{ maxHeight: '680px', overflowY: 'auto' }}>
+                        <div
+                          className="modalStyle"
+                          style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            backgroundColor: 'rgba(0,0,0,0.5)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 9999,
+                          }}
+                        >
+                          <div
+                            className="modalContentStyle"
+                            style={{
+                              background: '#fff',
+                              padding: '20px',
+                              borderRadius: '8px',
+                              maxWidth: '600px',
+                              width: '100%',
+                              maxHeight: '680px',
+                              overflowY: 'auto',
+                            }}
+                          >
                             <span
                               onClick={closeAddModal}
-                              style={{ float: 'right', cursor: 'pointer', fontSize: '30px' }}
+                              style={{
+                                float: 'right',
+                                cursor: 'pointer',
+                                fontSize: '30px',
+                              }}
                             >
                               &times;
                             </span>
@@ -74,38 +170,35 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
                             <form className="card" onSubmit={handleAddRoleSubmit}>
                               <div className="card-body">
                                 <div style={{ textAlign: 'center' }}>
-                                  <h4 className="card-title" style={{ alignItems: 'center' }}>Add Role</h4>
+                                  <h4 className="card-title">Add Role</h4>
                                 </div>
 
                                 <div className="table-responsive pt-3">
+                                  {/* Role Name input */}
                                   <div className="input-group mb-3">
                                     <div className="input-group-prepend">
-                                      <span className="input-group-text custom-input-group-text" style={{ width: '125px' }}>
-                                        Role
+                                      <span
+                                        className="input-group-text"
+                                        style={{ width: '125px' }}
+                                      >
+                                        Role Name
                                       </span>
                                     </div>
-                                    <select
-                                      className="form-control custom-select-rounded"
-                                      value={roleId}
-                                      onChange={(e) => {
-                                        const selectedRoleId = e.target.value;
-                                        const selectedRoleName = e.target.options[e.target.selectedIndex].text;
-                                        setRoleId(selectedRoleId);
-                                        setRoleName(selectedRoleName);
-                                      }}
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      placeholder="Enter role name"
+                                      value={roleName}
+                                      onChange={(e) => setRoleName(e.target.value)}
                                       required
-                                    >
-                                      <option value="">Select Role</option>
-                                      <option value="1">Admin</option>
-                                      <option value="2">Technician</option>
-                                      <option value="3">End User</option>
-                                    </select>
+                                    />
                                   </div>
                                 </div>
 
-                                {/* Show error messages */}
                                 {formError && <div className="text-danger">{formError}</div>}
-                                {isDuplicateRole && <div className="text-danger">This role already exists.</div>}
+                                {isDuplicateRole && (
+                                  <div className="text-danger">This role already exists.</div>
+                                )}
                                 <br />
 
                                 <ReusableButton
@@ -117,10 +210,6 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
                                 </ReusableButton>
                               </div>
                             </form>
-
-
-
-
                           </div>
                         </div>
                       )}
@@ -139,7 +228,9 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
                       <div className="col-md-12 grid-margin">
                         <div className="row">
                           <div className="col-4 col-xl-8">
-                            <h4 className="card-title" style={{ paddingTop: '10px' }}>List Of Roles</h4>
+                            <h4 className="card-title" style={{ paddingTop: '10px' }}>
+                              List Of Roles
+                            </h4>
                           </div>
                           <div className="col-8 col-xl-4">
                             <div className="input-group">
@@ -163,7 +254,14 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
 
                     <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
                       <table className="table table-striped">
-                        <thead style={{ textAlign: 'center', position: 'sticky', tableLayout: 'fixed', top: 0, backgroundColor: 'white' }}>
+                        <thead
+                          style={{
+                            textAlign: 'center',
+                            position: 'sticky',
+                            top: 0,
+                            backgroundColor: 'white',
+                          }}
+                        >
                           <tr>
                             <th>Sl.No</th>
                             <th>Role ID</th>
@@ -172,44 +270,68 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
                             <th>Created Date</th>
                             <th>Status</th>
                             <th>Option</th>
+                            <th>Grant Access</th>
                           </tr>
                         </thead>
                         <tbody style={{ textAlign: 'center' }}>
                           {isLoading ? (
                             <tr>
-                              <td colSpan="7" style={{ marginTop: '50px', textAlign: 'center' }}>Loading...</td>
+                              <td colSpan="8">Loading...</td>
                             </tr>
                           ) : tableError ? (
                             <tr>
-                              <td colSpan="7" style={{ marginTop: '50px', textAlign: 'center' }}>Error: {tableError}</td>
+                              <td colSpan="8">Error: {tableError}</td>
                             </tr>
-                          ) : (
-                            Array.isArray(roles) && roles.length > 0 ? (
-                              roles.map((dataItem, index) => (
-                                <tr key={dataItem._id || index}>
-                                  <td>{index + 1}</td>
-                                  <td>{dataItem.role_id || '-'}</td>
-                                  <td>{dataItem.role_name || '-'}</td>
-                                  <td>{dataItem.created_by || '-'}</td>
-                                  <td>{new Date(dataItem.created_date).toLocaleDateString() || '-'}</td>
-                                  <td>{dataItem.status ? <span className="text-success">Active</span> : <span className="text-danger">DeActive</span>}</td>
-                                  <td>
-                                    <button
-                                      type="button"
-                                      className="btn btn-outline-success btn-icon-text"
-                                      onClick={() => handleViewRoles(dataItem)}
-                                      style={{ marginBottom: '10px', marginRight: '10px' }}
-                                    >
-                                      <i className="mdi mdi-eye"></i>View
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))
-                            ) : (
-                              <tr>
-                                <td colSpan="7" style={{ marginTop: '50px', textAlign: 'center' }}>No roles found</td>
+                          ) : Array.isArray(roles) && roles.length > 0 ? (
+                            roles.map((dataItem, index) => (
+                              <tr key={dataItem._id || index}>
+                                <td>{index + 1}</td>
+                                <td>{dataItem.role_id || '-'}</td>
+                                <td>{dataItem.role_name || '-'}</td>
+                                <td>{dataItem.created_by || '-'}</td>
+                                <td>
+                                  {dataItem.created_date
+                                    ? new Date(dataItem.created_date).toLocaleDateString()
+                                    : '-'}
+                                </td>
+                                <td>
+                                  {dataItem.status ? (
+                                    <span className="text-success">Active</span>
+                                  ) : (
+                                    <span className="text-danger">DeActive</span>
+                                  )}
+                                </td>
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline-success btn-icon-text"
+                                    onClick={() => handleViewRoles(dataItem)}
+                                    style={{ marginBottom: '10px', marginRight: '10px' }}
+                                  >
+                                    <i className="mdi mdi-eye"></i>View
+                                  </button>
+                                </td>
+                               <td>
+  {/* Show Grant Access button only for role_id 1 or 4 */}
+  {Number(dataItem.role_id) === 1 || Number(dataItem.role_id) === 4 ? (
+    <button
+      type="button"
+      className="btn btn-outline-primary btn-icon-text"
+      onClick={() => openGrantAccessModal(dataItem)}
+    >
+      Grant Access
+    </button>
+  ) : (
+    <span>-</span>
+  )}
+</td>
+
                               </tr>
-                            )
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan="8">No roles found</td>
+                            </tr>
                           )}
                         </tbody>
                       </table>
@@ -219,9 +341,113 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
               </div>
             </div>
 
-          </div>
+            {/* Grant Access Modal */}
+            {grantModalOpen && (
+              <div
+                className="modalStyle"
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 9999,
+                }}
+              >
+                <div
+                  className="modalContentStyle"
+                  style={{
+                    background: '#fff',
+                    padding: '20px',
+                    borderRadius: '8px',
+                    maxWidth: '800px',
+                    width: '100%',
+                    maxHeight: '680px',
+                    overflowY: 'auto',
+                  }}
+                >
+                  <span
+                    onClick={() => setGrantModalOpen(false)}
+                    style={{
+                      float: 'right',
+                      cursor: 'pointer',
+                      fontSize: '30px',
+                    }}
+                  >
+                    &times;
+                  </span>
 
-          {/* Footer */}
+                  <h4 style={{ textAlign: 'center' }}>Grant Access - {selectedRole?.role_name}</h4>
+                  {permissionsLoading ? (
+                    <p>Loading permissions...</p>
+                  ) : (
+                    <table className="table table-bordered mt-3">
+                      <thead>
+                        <tr>
+                          <th>Module</th>
+                          <th>Create</th>
+                          <th>View</th>
+                          <th>Update</th>
+                          <th>Delete</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {permissions.map((perm, index) => (
+                          <tr key={index}>
+                            <td>{perm.module}</td>
+                            <td>
+                              <input
+                                type="checkbox"
+                                checked={perm.can_create}
+                                onChange={(e) =>
+                                  handlePermissionChange(index, 'can_create', e.target.checked)
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="checkbox"
+                                checked={perm.can_view}
+                                onChange={(e) =>
+                                  handlePermissionChange(index, 'can_view', e.target.checked)
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="checkbox"
+                                checked={perm.can_update}
+                                onChange={(e) =>
+                                  handlePermissionChange(index, 'can_update', e.target.checked)
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="checkbox"
+                                checked={perm.can_delete}
+                                onChange={(e) =>
+                                  handlePermissionChange(index, 'can_delete', e.target.checked)
+                                }
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+
+                  <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                    <ReusableButton onClick={handleSavePermissions}>Save Permissions</ReusableButton>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
           <Footer />
         </div>
       </div>

@@ -30,13 +30,21 @@ const useManageUsers = (userInfo) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
+  const [role, setRole] = useState(3); // Default to EndUser
+  const [address, setAddress] = useState('');
+  const [addressline1, setAddressline1] = useState('');
+  const [addressline2, setAddressline2] = useState('');
   const [city, setCity] = useState('');
+  const [district, setDistrict] = useState('');
+  const [stateField, setStateField] = useState('');
+  const [pincode, setPincode] = useState('');
+  const [country, setCountry] = useState(''); // <-- Added country
+
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState(null);
 
   // Roles
   const [roles, setRoles] = useState([]);
-  const [role, setRole] = useState(3); // Default to EndUser
 
   const fetchRoles = useCallback(async () => {
     try {
@@ -93,7 +101,8 @@ const useManageUsers = (userInfo) => {
       item.name?.toUpperCase().includes(searchTerm) ||
       item.email?.toUpperCase().includes(searchTerm) ||
       item.phone?.toString().includes(searchTerm) ||
-      item.city?.toUpperCase().includes(searchTerm)
+      item.city?.toUpperCase().includes(searchTerm) ||
+      item.country?.toUpperCase().includes(searchTerm) // <-- include country in search
     );
     setPosts(filtered);
   };
@@ -115,8 +124,15 @@ const useManageUsers = (userInfo) => {
         email,
         password,
         phone,
-        city,
         createdby: userInfo.email,
+        address,
+        addressline1,
+        addressline2,
+        city,
+        district,
+        state: stateField,
+        pincode,
+        country // <-- added country here
       };
 
       const response = await axiosInstance.post('api/admin/AddUsers', payload);
@@ -146,8 +162,15 @@ const useManageUsers = (userInfo) => {
     setEmail('');
     setPassword('');
     setPhone('');
-    setCity('');
     setRole(3);
+    setAddress('');
+    setAddressline1('');
+    setAddressline2('');
+    setCity('');
+    setDistrict('');
+    setStateField('');
+    setPincode('');
+    setCountry(''); // <-- reset country
   };
 
   return {
@@ -161,20 +184,21 @@ const useManageUsers = (userInfo) => {
     openAddModal,
     closeAddModal,
     isAddModalOpen,
-    name,
-    setName,
-    email,
-    setEmail,
-    password,
-    setPassword,
-    phone,
-    setPhone,
-    city,
-    setCity,
+    name, setName,
+    email, setEmail,
+    password, setPassword,
+    phone, setPhone,
+    role, setRole,
+    address, setAddress,
+    addressline1, setAddressline1,
+    addressline2, setAddressline2,
+    city, setCity,
+    district, setDistrict,
+    stateField, setStateField,
+    pincode, setPincode,
+    country, setCountry, // <-- expose country
     handleAddUserSubmit,
-    role,
-    setRole,
-    roles, // expose roles for dropdown
+    roles
   };
 };
 

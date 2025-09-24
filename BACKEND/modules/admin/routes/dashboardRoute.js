@@ -11,6 +11,7 @@ const { upload } = require('../middlewares/imgMiddleware');
 // Route to check login credentials
 router.post('/CheckLoginCredentials', Controller.authenticate);
 router.post("/assign", Controller.assignPermissions);
+router.get('/modules', Controller.getModules);
 
 // Fetch permissions by role
 router.get("/by-role", Controller.fetchPermissionsByRole);

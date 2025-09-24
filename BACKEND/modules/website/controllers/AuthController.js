@@ -15,22 +15,7 @@ const generateNumericPassword = () => Math.floor(1000 + Math.random() * 9000).to
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 //register
 exports.register = async (req, res) => {
-  const {
-    name,
-    email,
-    phone,
-    password,
-    city,
-    createdby,
-    role_name: reqRoleName,
-    role_id: reqRoleId,
-    addressline1,
-    addressline2, // optional
-    district,
-    state,
-    country,
-    pincode
-  } = req.body;
+  const { name, email, phone, password, city, createdby } = req.body;
 
   if (!name || !password || !city || (!email && !phone)) {
     return res.status(400).json({
@@ -40,98 +25,33 @@ exports.register = async (req, res) => {
     });
   }
 
-  // Address validation (align with admin AddUsers) - return only missing fields
-  const missingFields = [];
-  if (!addressline1) missingFields.push('addressline1');
-  if (!city) missingFields.push('city');
-  if (!district) missingFields.push('district');
-  if (!state) missingFields.push('state');
-  if (!country) missingFields.push('country');
-  if (!pincode) missingFields.push('pincode');
-  if (missingFields.length) {
-    return res.status(400).json({
-      status: 'failed',
-      error: true,
-      message: `Missing required fields: ${missingFields.join(', ')}`,
-      missing: missingFields
-    });
-  }
-
   try {
     const db = await connectToDatabase();
 
-    // Determine role: support role_id, else role_name, else ensure EndUser exists
-    const rolesColl = db.collection('user_roles');
-    let roleDoc = null;
-    const roleNameTrim = (reqRoleName || '').trim();
-    const roleIdNum = reqRoleId != null ? Number(reqRoleId) : null;
-
-    if (roleIdNum != null && !Number.isNaN(roleIdNum)) {
-      // Resolve by role_id
-      roleDoc = await rolesColl.findOne({ role_id: roleIdNum });
-      if (!roleDoc) {
-        return res.status(400).json({
-          status: 'failed',
-          error: true,
-          message: `Role with role_id ${roleIdNum} does not exist. Provide a valid role_id or a role_name to auto-create.`
-        });
-      }
-    } else if (roleNameTrim) {
-      // Resolve by role_name, auto-create if missing
-      roleDoc = await rolesColl.findOne({ role_name: roleNameTrim });
-      if (!roleDoc) {
-        const lastRole = await rolesColl.find().sort({ role_id: -1 }).limit(1).toArray();
-        const nextRoleId = lastRole.length > 0 ? lastRole[0].role_id + 1 : 1;
-        const newRole = {
-          role_id: nextRoleId,
-          role_name: roleNameTrim,
-          created_date: new Date(),
-          created_by: createdby || email || 'system',
-          status: true,
-          modified_by: null,
-          modified_date: null,
-        };
-        await rolesColl.insertOne(newRole);
-        roleDoc = newRole;
-      }
-    } else {
-      // Default to EndUser, ensure it exists
-      const defaultName = 'EndUser';
-      roleDoc = await rolesColl.findOne({ role_name: defaultName });
-      if (!roleDoc) {
-        const lastRole = await rolesColl.find().sort({ role_id: -1 }).limit(1).toArray();
-        const nextRoleId = lastRole.length > 0 ? lastRole[0].role_id + 1 : 1;
-        const newRole = {
-          role_id: nextRoleId,
-          role_name: defaultName,
-          created_date: new Date(),
-          created_by: createdby || email || 'system',
-          status: true,
-          modified_by: null,
-          modified_date: null,
-        };
-        await rolesColl.insertOne(newRole);
-        roleDoc = newRole;
-      }
-    }
-
-    if (!roleDoc || roleDoc.status === false) {
+    // Only allow registration for End User role
+    const role = await db.collection('user_roles').findOne({ role_id: 3 });
+    if (!role || !role.status) {
       return res.status(403).json({
         status: 'failed',
         error: true,
-        message: 'Registration is not allowed for the specified role'
+        message: 'Registration is only allowed for EndUser role'
       });
     }
 
-    // Check if a user exists with same email for this role
-    const existingUser = await db.collection('users').findOne({ email, role_id: roleDoc.role_id });
-    if (existingUser) {
+    // Check if any user exists with the same email
+    const existingUsers = await db.collection('users').find({
+      $or: [{ email }]
+    }).toArray();
+
+    const endUserExists = existingUsers.find(u => u.role_id === 3);
+    if (endUserExists) {
       return res.status(400).json({
         status: 'failed',
         error: true,
-        message: `User with email already exists for role ${roleDoc.role_name}`
+        message: 'End User with same email already exists'
       });
     }
+
 
     const otp = generateOtp();
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // expires in 5 min
@@ -144,23 +64,17 @@ exports.register = async (req, res) => {
     const result = await db.collection('users').insertOne({
       name,
       email,
-      phone: parseInt(phone),
-      password: parseInt(password),
-      addressline1,
-      addressline2, // optional
+      phone,
+      password,
       city,
-      district,
-      state,
-      country,
-      pincode,
       otp,
       otpExpires,
       otpGeneratedAt,
       createdby,
       createdDate,
       status: true,
-      role_id: roleDoc.role_id,
-      role_name: roleDoc.role_name,
+      role_id: role.role_id,
+      role_name: role.role_name,
       user_id: newUserId,
       is_subscribed: false
     });
@@ -184,19 +98,13 @@ exports.register = async (req, res) => {
         user_id: newUserId,
         name,
         email,
-        phone: parseInt(phone),
-        addressline1,
-        addressline2: addressline2 || '',
+        phone,
         city,
-        district,
-        state,
-        country,
-        pincode,
         createdby,
         createdDate,
         status: true,
-        role_id: roleDoc.role_id,
-        role_name: roleDoc.role_name,
+        role_id: role.role_id,
+        role_name: role.role_name,
         isSubscribed: false
       }
     });

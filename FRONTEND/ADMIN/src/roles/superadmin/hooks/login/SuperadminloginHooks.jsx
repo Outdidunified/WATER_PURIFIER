@@ -23,7 +23,7 @@ export const useSuperAdminLogin = (handleLogin) => {
       const parsedPassword = parseInt(passwords);
 
 
-      const baseurl=`${import.meta.env.VITE_API_URL}api/admin/CheckLoginCredentials`
+      const baseurl=`${import.meta.env.VITE_API_URL}/api/admin/CheckLoginCredentials`
       const response=await axios({ method:'post',url:baseurl,data:{
         email,password:parsedPassword
       }})

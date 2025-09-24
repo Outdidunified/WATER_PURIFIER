@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Route, Routes, Navigate, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+// Pages
 import Login from '../../roles/superadmin/page/Login';
 import Dashboard from '../../roles/superadmin/page/Dashboard/Dashboard';
 import ManageDevice from '../../roles/superadmin/page/ManageDevices/ManageDevice';
@@ -7,51 +9,71 @@ import ViewManageDevice from '../../roles/superadmin/page/ManageDevices/ViewMana
 import EditManageDevice from '../../roles/superadmin/page/ManageDevices/EditManageDevice';
 import ManageUsers from '../../roles/superadmin/page/ManageUser/ManageUsers';
 import ViewManageUser from '../../roles/superadmin/page/ManageUser/ViewManageUser';
-import EditManageUsers from '../../roles/superadmin/page/ManageUser/EditManageUsers';;
+import EditManageUsers from '../../roles/superadmin/page/ManageUser/EditManageUsers';
 import Profile from '../../roles/superadmin/page/Profile/Profile';
 import Header from '../../roles/superadmin/components/Header';
 import ManageOrders from '../../roles/superadmin/page/ManageOrders/ManageOrders';
+import ViewOrders from '../../roles/superadmin/page/ManageOrders/ViewOrders';
 import ManageRoles from '../../roles/superadmin/page/ManageRoles/ManageRoles';
+import ViewRoles from '../../roles/superadmin/page/ManageRoles/ViewRoles';
+import EditRoles from '../../roles/superadmin/page/ManageRoles/EditRoles';
 import ManageServices from '../../roles/superadmin/page/ManageServices/ManageServices';
+import ViewServices from '../../roles/superadmin/page/ManageServices/ViewServices';
 import ManageInstallations from '../../roles/superadmin/page/ManageInstallations/ManageInstallations';
+import ViewInstallations from '../../roles/superadmin/page/ManageInstallations/ViewInstallations';
 import AddProducts from '../../roles/superadmin/page/ManageProducts/AddProducts';
 import ManageProducts from '../../roles/superadmin/page/ManageProducts/ManageProducts';
 import EditProducts from '../../roles/superadmin/page/ManageProducts/EditProducts';
 import ViewProducts from '../../roles/superadmin/page/ManageProducts/ViewProducts';
-import ViewOrders from '../../roles/superadmin/page/ManageOrders/ViewOrders';
-import ViewRoles from '../../roles/superadmin/page/ManageRoles/ViewRoles';
-import EditRoles from '../../roles/superadmin/page/ManageRoles/EditRoles';
 import ManageContact from '../../roles/superadmin/page/ManageContact/ManageContact';
 import ManageCallRequests from '../../roles/superadmin/page/ManageCallRequests/ManageCallRequests';
-import ViewInstallations from '../../roles/superadmin/page/ManageInstallations/ViewInstallations';
-import ViewServices from '../../roles/superadmin/page/ManageServices/ViewServices'
-//superadmin
+import axiosInstance from '../../utils/utils';
+
 const SuperAdminApp = () => {
   const storedUser = JSON.parse(sessionStorage.getItem('superAdminUser'));
   const [loggedIn, setLoggedIn] = useState(!!storedUser);
   const [userInfo, setUserInfo] = useState(storedUser || {});
+  const [permissions, setPermissions] = useState([]);
   const navigate = useNavigate();
 
+  // Fetch permissions from API
+  useEffect(() => {
+    if (loggedIn) {
+      axiosInstance
+        .get(`/api/admin/by-role?ids=${userInfo.role_id}`)
+        .then((res) => {
+          if (res.data.status === 'Success') {
+            setPermissions(res.data.data);
+            sessionStorage.setItem('superAdminPermissions', JSON.stringify(res.data.data));
+          }
+        })
+        .catch((err) => console.error(err));
+    }
+  }, [loggedIn, userInfo.role_id]);
+
   const handleLogin = (data) => {
-  const user = data.user;
-  const token = data.token; 
+    const user = data.user;
+    const token = data.token; 
 
-  setUserInfo(user);
-  setLoggedIn(true);
-  sessionStorage.setItem('superAdminUser', JSON.stringify(user));
-  sessionStorage.setItem('superAdminToken', token);
-  navigate('/superadmin/Dashboard');
-};
+    setUserInfo(user);
+    setLoggedIn(true);
+    sessionStorage.setItem('superAdminUser', JSON.stringify(user));
+    sessionStorage.setItem('superAdminToken', token);
+    navigate('/superadmin/Dashboard');
+  };
 
-  // Handle logout
   const handleLogout = () => {
     setLoggedIn(false);
     setUserInfo({});
+    setPermissions([]);
     sessionStorage.removeItem('superAdminUser');
     sessionStorage.removeItem('superAdminToken');
-
+    sessionStorage.removeItem('superAdminPermissions');
     navigate('/superadmin');
   };
+
+  // Helper to check permission
+  const canView = (module) => permissions.find(p => p.module === module)?.can_view;
 
   return (
     <>
@@ -61,205 +83,98 @@ const SuperAdminApp = () => {
           path="/"
           element={loggedIn ? <Navigate to="/superadmin/Dashboard" /> : <Login handleLogin={handleLogin} />}
         />
-        <Route
-          path="/Dashboard"
-          element={loggedIn ? (
-              <Dashboard userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-              <Navigate to="/superadmin" />
-          )}
-        />
-         <Route
-          path="ManageInstallations"
-          element={loggedIn ? (
-            <ManageInstallations userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
 
-         <Route
-          path="ViewInstallations"
-          element={loggedIn ? (
-            <ViewInstallations userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
-        
-        <Route
-          path="/ManageDevice"
-          element={loggedIn ? (
-            <ManageDevice userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
-        <Route
-          path="/ViewManageDevice"
-          element={loggedIn ? (
-            <ViewManageDevice userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
-        <Route
-          path="/EditManageDevice"
-          element={loggedIn ? (
-            <EditManageDevice userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
-        <Route
-          path="/ManageUsers"
-          element={loggedIn ? (
-            <ManageUsers userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
-        <Route
-          path="/ViewManageUser"
-          element={loggedIn ? (
-            <ViewManageUser userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
-         <Route
-          path="/EditManageUsers"
-          element={loggedIn ? (
-            <EditManageUsers userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
-        
-         <Route
-          path="/ManageProducts"
-          element={loggedIn ? (
-            <ManageProducts userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
+        {canView('dashboard') && (
+          <Route
+            path="/Dashboard"
+            element={<Dashboard userInfo={userInfo} handleLogout={handleLogout} />}
+          />
+        )}
 
-         <Route
-          path="/ViewProducts"
-          element={loggedIn ? (
-            <ViewProducts userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
+        {canView('manage_devices') && (
+          <>
+            <Route
+              path="/ManageDevice"
+              element={<ManageDevice userInfo={userInfo} handleLogout={handleLogout} />}
+            />
+            <Route
+              path="/ViewManageDevice"
+              element={<ViewManageDevice userInfo={userInfo} handleLogout={handleLogout} />}
+            />
+            <Route
+              path="/EditManageDevice"
+              element={<EditManageDevice userInfo={userInfo} handleLogout={handleLogout} />}
+            />
+          </>
+        )}
 
-        
-        <Route
-          path="/EditProducts"
-          element={loggedIn ? (
-            <EditProducts userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
+        {canView('manage_users') && (
+          <>
+            <Route
+              path="/ManageUsers"
+              element={<ManageUsers userInfo={userInfo} handleLogout={handleLogout} />}
+            />
+            <Route
+              path="/ViewManageUser"
+              element={<ViewManageUser userInfo={userInfo} handleLogout={handleLogout} />}
+            />
+            <Route
+              path="/EditManageUsers"
+              element={<EditManageUsers userInfo={userInfo} handleLogout={handleLogout} />}
+            />
+          </>
+        )}
 
-        <Route
-          path="/AddProducts"
-          element={loggedIn ? (
-            <AddProducts userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
-        
-      
-        <Route
-          path="/Profile"
-          element={loggedIn ? (
-            <Profile userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
+        {canView('manage_products') && (
+          <>
+            <Route path="/ManageProducts" element={<ManageProducts userInfo={userInfo} handleLogout={handleLogout} />} />
+            <Route path="/ViewProducts" element={<ViewProducts userInfo={userInfo} handleLogout={handleLogout} />} />
+            <Route path="/EditProducts" element={<EditProducts userInfo={userInfo} handleLogout={handleLogout} />} />
+            <Route path="/AddProducts" element={<AddProducts userInfo={userInfo} handleLogout={handleLogout} />} />
+          </>
+        )}
 
-        
-        <Route
-          path="/ManageOrders"
-          element={loggedIn ? (
-            <ManageOrders userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
+        {canView('manage_installations') && (
+          <>
+            <Route path="/ManageInstallations" element={<ManageInstallations userInfo={userInfo} handleLogout={handleLogout} />} />
+            <Route path="/ViewInstallations" element={<ViewInstallations userInfo={userInfo} handleLogout={handleLogout} />} />
+          </>
+        )}
 
-         <Route
-          path="/ViewOrders"
-          element={loggedIn ? (
-            <ViewOrders userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
+        {canView('manage_services') && (
+          <>
+            <Route path="/ManageServices" element={<ManageServices userInfo={userInfo} handleLogout={handleLogout} />} />
+            <Route path="/ViewServices" element={<ViewServices userInfo={userInfo} handleLogout={handleLogout} />} />
+          </>
+        )}
 
-        <Route
-          path="/ManageRoles"
-          element={loggedIn ? (
-            <ManageRoles userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
+        {canView('manage_roles') && (
+          <>
+            <Route path="/ManageRoles" element={<ManageRoles userInfo={userInfo} handleLogout={handleLogout} />} />
+            <Route path="/ViewRoles" element={<ViewRoles userInfo={userInfo} handleLogout={handleLogout} />} />
+            <Route path="/EditRoles" element={<EditRoles userInfo={userInfo} handleLogout={handleLogout} />} />
+          </>
+        )}
 
-         <Route
-          path="/ViewRoles"
-          element={loggedIn ? (
-            <ViewRoles userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
+        {canView('manage_orders') && (
+          <>
+            <Route path="/ManageOrders" element={<ManageOrders userInfo={userInfo} handleLogout={handleLogout} />} />
+            <Route path="/ViewOrders" element={<ViewOrders userInfo={userInfo} handleLogout={handleLogout} />} />
+          </>
+        )}
 
-         <Route
-          path="/EditRoles"
-          element={loggedIn ? (
-            <EditRoles userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
-         <Route
-          path="/ManageServices"
-          element={loggedIn ? (
-            <ManageServices userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
-                 <Route
-          path="/ViewServices"
-          element={loggedIn ? (
-            <ViewServices userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
-         <Route
-          path="/ManageContact"
-          element={loggedIn ? (
-            <ManageContact userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
-         <Route
-          path="/ManageCallRequests"
-          element={loggedIn ? (
-            <ManageCallRequests userInfo={userInfo} handleLogout={handleLogout} />
-          ) : (
-            <Navigate to="/superadmin" />
-          )}
-        />
+        {canView('manage_call_requests') && (
+          <Route path="/ManageCallRequests" element={<ManageCallRequests userInfo={userInfo} handleLogout={handleLogout} />} />
+        )}
+
+        {canView('manage_contact') && (
+          <Route path="/ManageContact" element={<ManageContact userInfo={userInfo} handleLogout={handleLogout} />} />
+        )}
+
+        <Route path="/Profile" element={<Profile userInfo={userInfo} handleLogout={handleLogout} />} />
+
+        {/* Redirect if route not permitted */}
+        <Route path="*" element={<Navigate to={loggedIn ? "/superadmin/Dashboard" : "/superadmin"} />} />
       </Routes>
     </>
   );
