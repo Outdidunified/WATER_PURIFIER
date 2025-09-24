@@ -900,10 +900,11 @@ const FetchOrders = async (req, res) => {
 // };
 
 // 8.Manage Roles
-// AddUserRoles controller
+// AddUserRoles controller (auto-assign role_id = last role_id + 1 based on role_name)
 const AddUserRoles = async (req, res) => {
     try {
-        const userRoles = Array.isArray(req.body) ? req.body : [req.body];
+        const incoming = Array.isArray(req.body) ? req.body : [req.body];
+        const userRoles = incoming.filter(Boolean);
 
         if (!userRoles.length) {
             return res.status(400).json({ status: 'Failed', message: 'No role data provided' });
@@ -912,50 +913,55 @@ const AddUserRoles = async (req, res) => {
         const db = await database.connectToDatabase();
         const collection = db.collection('user_roles');
 
+        // Find the current max role_id once
+        const lastRole = await collection.find().sort({ role_id: -1 }).limit(1).toArray();
+        let nextRoleId = lastRole.length > 0 ? lastRole[0].role_id + 1 : 1;
+
         const docsToAdd = [];
         const duplicates = [];
 
         for (const role of userRoles) {
-            const { role_id, role_name } = role;
-            if (role_id == null || !role_name) {
+            const role_name = (role?.role_name || '').trim();
+            if (!role_name) {
                 return res.status(400).json({
                     status: 'Failed',
-                    message: 'Missing role_id or role_name',
+                    message: 'Missing role_name',
                     problematic: role
                 });
             }
 
-            // Only check for duplicate role_id (not necessarily role_name)
-            const exists = await collection.findOne({ role_id });
+            // Check for duplicate role_name
+            const exists = await collection.findOne({ role_name });
             if (exists) {
-                duplicates.push({ role_id, existing: exists.role_name });
-            } else {
-                docsToAdd.push(role);
+                duplicates.push({ role_name, existing_role_id: exists.role_id });
+                continue;
             }
+
+            docsToAdd.push({
+                role_id: nextRoleId++,
+                role_name,
+                created_date: new Date(),
+                status: true,
+            });
         }
 
-        if (duplicates.length > 0) {
+        if (duplicates.length && !docsToAdd.length) {
             return res.status(400).json({
                 status: 'Failed',
-                message: 'Some roles could not be added due to duplicate role_id',
+                message: 'All provided role_name(s) already exist',
                 duplicates
             });
         }
 
-        // All role_ids are unique now, safe to insert
-        const now = new Date();
-        const toInsert = docsToAdd.map(r => ({
-            ...r,
-            created_date: now,
-            status: true
-        }));
-
-        await collection.insertMany(toInsert);
+        if (docsToAdd.length) {
+            await collection.insertMany(docsToAdd);
+        }
 
         res.status(200).json({
             status: 'Success',
-            message: `${toInsert.length} role(s) added.`,
-            added: toInsert
+            message: `${docsToAdd.length} role(s) added.`,
+            added: docsToAdd,
+            skipped_duplicates: duplicates,
         });
 
     } catch (err) {
@@ -987,25 +993,29 @@ const FetchUserRoles = async (req, res) => {
 // UpdateUserRoles
 const UpdateUserRoles = async (req, res) => {
     try {
-        const { role_id, role_name, modified_by, status } = req.body;
-
-        if (!role_id || !role_name) {
-            return res.status(400).json({
-                status: 'Failed',
-                message: 'role_id and role_name are required for update'
-            });
-        }
+        let { role_id, role_name, modified_by, status, new_role_name } = req.body;
 
         const db = await database.connectToDatabase();
         const collection = db.collection("user_roles");
 
-        // Check if the role exists
-        const existingRole = await collection.findOne({ role_id, role_name });
+        // Resolve role by either role_id or role_name
+        let filter = null;
+        if (role_id != null) {
+            filter = { role_id: Number(role_id) };
+        } else if (role_name) {
+            filter = { role_name: String(role_name).trim() };
+        } else {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Provide role_id or role_name to update'
+            });
+        }
 
+        const existingRole = await collection.findOne(filter);
         if (!existingRole) {
             return res.status(404).json({
                 status: 'Failed',
-                message: `Role with ID '${role_id}' and name '${role_name}' does not exist`
+                message: 'Role not found'
             });
         }
 
@@ -1015,30 +1025,26 @@ const UpdateUserRoles = async (req, res) => {
             modified_date: new Date()
         };
 
+        if (new_role_name) {
+            updatedData.role_name = String(new_role_name).trim();
+        }
+
         // Remove undefined fields
         Object.keys(updatedData).forEach(key => {
-            if (updatedData[key] === undefined) {
-                delete updatedData[key];
-            }
+            if (updatedData[key] === undefined) delete updatedData[key];
         });
 
-        const result = await collection.updateOne(
-            { role_id, role_name },
-            { $set: updatedData }
-        );
+        await collection.updateOne({ role_id: existingRole.role_id }, { $set: updatedData });
 
         res.status(200).json({
             status: 'Success',
             message: 'User role updated successfully',
-            data: updatedData
+            data: { role_id: existingRole.role_id, ...updatedData }
         });
 
     } catch (err) {
         console.error("Error in UpdateUserRoles:", err);
-        res.status(500).json({
-            status: 'Failed',
-            message: 'Internal Server Error'
-        });
+        res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
     }
 };
 
@@ -1081,7 +1087,67 @@ const AddUsers = async (req, res) => {
         };
 
         for (const user of users) {
-            const { role_id, email } = user;
+            const { email } = user;
+
+            // REQUIRED address fields validation
+            const {
+                address,
+                addressline1,
+                addressline2, // optional
+                city,
+                district,
+                state,
+                pincode
+            } = user;
+
+            if (!address || !addressline1 || !city || !district || !state || !pincode) {
+                return res.status(400).json({
+                    status: 'Failed',
+                    message: 'address, addressline1, city, district, state, pincode are required'
+                });
+            }
+
+            const rolesColl = db.collection('user_roles');
+
+            // Determine role by role_name first; if missing, use provided role_id; if neither, default create EndUser role
+            let role_name = (user.role_name || '').trim();
+            let role_id = user.role_id != null ? Number(user.role_id) : null;
+
+            // If role_name provided: resolve or create role and set role_id
+            if (role_name) {
+                let existingRole = await rolesColl.findOne({ role_name });
+                if (!existingRole) {
+                    // Auto-create role with next role_id
+                    const lastRole = await rolesColl.find().sort({ role_id: -1 }).limit(1).toArray();
+                    const nextRoleId = lastRole.length > 0 ? lastRole[0].role_id + 1 : 1;
+                    await rolesColl.insertOne({ role_id: nextRoleId, role_name, created_date: new Date(), status: true });
+                    role_id = nextRoleId;
+                } else {
+                    role_id = existingRole.role_id;
+                }
+            } else if (role_id != null) {
+                // If only role_id provided: resolve role_name; if not exists, create default role name
+                let existingRole = await rolesColl.findOne({ role_id });
+                if (!existingRole) {
+                    // Create a role_name like Role-<id>
+                    role_name = `Role-${role_id}`;
+                    await rolesColl.insertOne({ role_id, role_name, created_date: new Date(), status: true });
+                } else {
+                    role_name = existingRole.role_name;
+                }
+            } else {
+                // Neither role_name nor role_id provided: ensure EndUser exists, assign it
+                role_name = 'EndUser';
+                let existingRole = await rolesColl.findOne({ role_name });
+                if (!existingRole) {
+                    const lastRole = await rolesColl.find().sort({ role_id: -1 }).limit(1).toArray();
+                    const nextRoleId = lastRole.length > 0 ? lastRole[0].role_id + 1 : 1;
+                    await rolesColl.insertOne({ role_id: nextRoleId, role_name, created_date: new Date(), status: true });
+                    role_id = nextRoleId;
+                } else {
+                    role_id = existingRole.role_id;
+                }
+            }
 
             // Check for duplicate email for the same role
             const existingUser = await collection.findOne({ role_id, email });
@@ -1094,33 +1160,26 @@ const AddUsers = async (req, res) => {
 
             const now = new Date();
 
-            let role_name = '';
-            switch (role_id) {
-                case 1:
-                    role_name = 'Admin';
-                    break;
-                case 2:
-                    role_name = 'Technician';
-                    break;
-                case 3:
-                    role_name = 'EndUser';
-                    break;
-                default:
-                    role_name = 'Unknown';
-            }
-
             const newUser = {
                 ...user,
+                role_id,
+                role_name,
                 user_id: nextUserId++,
                 createdDate: now,
                 status: true,
-                role_name,
                 phone: parseInt(user.phone),
                 password: parseInt(user.password),
+                address,
+                addressline1,
+                addressline2, // optional
+                city,
+                district,
+                state,
+                pincode
             };
 
-            // Assign technician_id if role_id == 2
-            if (role_id === 2) {
+            // Assign technician_id if role_name === Technician (or role_id == 2)
+            if (role_name === 'Technician' || role_id === 2) {
                 newUser.technician_id = await getNextTechnicianId();
             }
 
@@ -1163,12 +1222,36 @@ const FetchUsers = async (req, res) => {
 // UpdateUsers
 const UpdateUsers = async (req, res) => {
     try {
-        const { role_id, user_id, name, email, password, phone, city, modifiedBy, status } = req.body;
+        const {
+            role_id,
+            user_id,
+            name,
+            email,
+            password,
+            phone,
+            address,
+            addressline1,
+            addressline2, // optional
+            city,
+            district,
+            state,
+            pincode,
+            modifiedBy,
+            status
+        } = req.body;
 
         if (!role_id || !user_id) {
             return res.status(400).json({
                 status: 'Failed',
                 message: 'role_id and user_id are required for update'
+            });
+        }
+
+        // REQUIRED address fields validation for update
+        if (!address || !addressline1 || !city || !district || !state || !pincode) {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'address, addressline1, city, district, state, pincode are required'
             });
         }
 
@@ -1187,9 +1270,15 @@ const UpdateUsers = async (req, res) => {
 
         const updatedData = {
             name,
-            password:parseInt(password),
+            password: parseInt(password),
             phone: parseInt(phone),
+            address,
+            addressline1,
+            addressline2, // optional
             city,
+            district,
+            state,
+            pincode,
             modifiedBy,
             status,
             modifiedDate: new Date()
