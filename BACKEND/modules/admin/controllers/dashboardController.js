@@ -1896,6 +1896,7 @@ const AssignService = async (req, res) => {
             assigned_by
         } = req.body;
 
+        
         if (!task_id || !task_created_by_user_email || !assigned_technician_id || !assigned_by) {
             return res.status(400).json({
                 status: 'Failed',
