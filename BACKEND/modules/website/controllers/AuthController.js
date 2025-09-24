@@ -29,6 +29,7 @@ exports.register = async (req, res) => {
     addressline2, // optional
     district,
     state,
+    country,
     pincode
   } = req.body;
 
@@ -47,6 +48,7 @@ exports.register = async (req, res) => {
   if (!city) missingFields.push('city');
   if (!district) missingFields.push('district');
   if (!state) missingFields.push('state');
+  if (!country) missingFields.push('country');
   if (!pincode) missingFields.push('pincode');
   if (missingFields.length) {
     return res.status(400).json({
@@ -152,6 +154,7 @@ exports.register = async (req, res) => {
       city,
       district,
       state,
+      country,
       pincode,
       otp,
       otpExpires,
@@ -191,6 +194,7 @@ exports.register = async (req, res) => {
         city,
         district,
         state,
+        country,
         pincode,
         createdby,
         createdDate,

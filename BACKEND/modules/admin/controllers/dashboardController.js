@@ -1183,54 +1183,63 @@ const AddUsers = async (req, res) => {
                 city,
                 district,
                 state,
+                country,
                 pincode
             } = user;
 
-            if (!address || !addressline1 || !city || !district || !state || !pincode) {
+            const missingFields = [];
+            if (!address) missingFields.push('address');
+            if (!addressline1) missingFields.push('addressline1');
+            if (!city) missingFields.push('city');
+            if (!district) missingFields.push('district');
+            if (!state) missingFields.push('state');
+            if (!country) missingFields.push('country');
+            if (!pincode) missingFields.push('pincode');
+            if (missingFields.length) {
                 return res.status(400).json({
                     status: 'Failed',
-                    message: 'address, addressline1, city, district, state, pincode are required'
+                    message: `Missing required fields: ${missingFields.join(', ')}`,
+                    missing: missingFields
                 });
             }
 
             const rolesColl = db.collection('user_roles');
 
-            // Determine role by role_name first; if missing, use provided role_id; if neither, default create EndUser role
+            // Determine role: prefer role_id if provided; else role_name; else ensure EndUser exists
             let role_name = (user.role_name || '').trim();
             let role_id = user.role_id != null ? Number(user.role_id) : null;
 
-            // If role_name provided: resolve or create role and set role_id
-            if (role_name) {
+            if (role_id != null && !Number.isNaN(role_id)) {
+                // Resolve by role_id, do not auto-create by id
+                const existingRole = await rolesColl.findOne({ role_id });
+                if (!existingRole) {
+                    return res.status(400).json({
+                        status: 'Failed',
+                        message: `Role with role_id ${role_id} does not exist. Provide a valid role_id or a role_name to auto-create.`
+                    });
+                }
+                role_name = existingRole.role_name;
+            } else if (role_name) {
+                // Resolve by role_name; auto-create if missing with audit fields
                 let existingRole = await rolesColl.findOne({ role_name });
                 if (!existingRole) {
-                    // Auto-create role with next role_id and capture audit metadata
                     const lastRole = await rolesColl.find().sort({ role_id: -1 }).limit(1).toArray();
                     const nextRoleId = lastRole.length > 0 ? lastRole[0].role_id + 1 : 1;
                     await rolesColl.insertOne({
                         role_id: nextRoleId,
                         role_name,
                         created_date: new Date(),
+                        created_by: user.createdby || user.email || 'system',
                         status: true,
-                        modified_by: user.modified_by || user.createdby || user.email || 'system',
-                        modified_date: new Date()
+                        modified_by: null,
+                        modified_date: null,
                     });
                     role_id = nextRoleId;
                 } else {
                     role_id = existingRole.role_id;
                 }
-            } else if (role_id != null) {
-                // If only role_id provided: resolve role_name; if not exists, reject (no placeholder role names)
-                let existingRole = await rolesColl.findOne({ role_id });
-                if (!existingRole) {
-                    return res.status(400).json({
-                        status: 'Failed',
-                        message: `Role with role_id ${role_id} does not exist. Provide a valid role_id or a role_name to auto-create.`
-                    });
-                } else {
-                    role_name = existingRole.role_name;
-                }
             } else {
-                // Neither role_name nor role_id provided: ensure EndUser exists or create it with audit
+                // Neither provided: ensure EndUser exists (auto-create if missing)
                 role_name = 'EndUser';
                 let existingRole = await rolesColl.findOne({ role_name });
                 if (!existingRole) {
@@ -1240,9 +1249,10 @@ const AddUsers = async (req, res) => {
                         role_id: nextRoleId,
                         role_name,
                         created_date: new Date(),
+                        created_by: user.createdby || user.email || 'system',
                         status: true,
-                        modified_by: user.modified_by || user.createdby || user.email || 'system',
-                        modified_date: new Date()
+                        modified_by: null,
+                        modified_date: null,
                     });
                     role_id = nextRoleId;
                 } else {
@@ -1276,6 +1286,7 @@ const AddUsers = async (req, res) => {
                 city,
                 district,
                 state,
+                country,
                 pincode
             };
 
@@ -1336,6 +1347,7 @@ const UpdateUsers = async (req, res) => {
             city,
             district,
             state,
+            country,
             pincode,
             modifiedBy,
             status
@@ -1349,10 +1361,19 @@ const UpdateUsers = async (req, res) => {
         }
 
         // REQUIRED address fields validation for update
-        if (!address || !addressline1 || !city || !district || !state || !pincode) {
+        const missingFields = [];
+        if (!address) missingFields.push('address');
+        if (!addressline1) missingFields.push('addressline1');
+        if (!city) missingFields.push('city');
+        if (!district) missingFields.push('district');
+        if (!state) missingFields.push('state');
+        if (!country) missingFields.push('country');
+        if (!pincode) missingFields.push('pincode');
+        if (missingFields.length) {
             return res.status(400).json({
                 status: 'Failed',
-                message: 'address, addressline1, city, district, state, pincode are required'
+                message: `Missing required fields: ${missingFields.join(', ')}`,
+                missing: missingFields
             });
         }
 
@@ -1379,6 +1400,7 @@ const UpdateUsers = async (req, res) => {
             city,
             district,
             state,
+            country,
             pincode,
             modifiedBy,
             status,
