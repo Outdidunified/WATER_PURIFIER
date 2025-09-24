@@ -9,7 +9,10 @@ const { upload } = require('../middlewares/imgMiddleware');
 // 1.Login
 // Route to check login credentials
 router.post('/CheckLoginCredentials', Controller.authenticate);
+router.post("/assign", Controller.assignPermissions);
 
+// Fetch permissions by role
+router.get("/by-role", Controller.fetchPermissionsByRole);
 // 2.Profile
 // Route to FetchAdminProfile 
 router.post('/FetchAdminProfile', verifyToken, Controller.FetchAdminProfile);
