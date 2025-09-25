@@ -15,6 +15,9 @@ const adminRoutes = require('./routes/adminRoutes');
 const websiteRoutes = require('./routes/websiteRoutes');
 const appRoutes = require('./routes/appRoutes');
 
+// Initialize MQTT Client for telemetry data collection
+require('./modules/app/services/mqttClient');
+
 const path = require('path');
 
 // Initialize Express App
