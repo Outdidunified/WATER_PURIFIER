@@ -13,6 +13,8 @@ function generateOrderId() {
 }
 
 
+
+
 exports.createSubscriptionOrder = async (req, res) => {
   try {
     const {
@@ -50,7 +52,7 @@ exports.createSubscriptionOrder = async (req, res) => {
       });
     }
 
-    // Validate deliveryAddress (with district required)
+    // Validate deliveryAddress (district required)
     const addrResult = validateDeliveryAddress(deliveryAddress);
     if (!addrResult.valid) {
       return res.status(400).json({ message: addrResult.message });
@@ -59,47 +61,12 @@ exports.createSubscriptionOrder = async (req, res) => {
     // Normalize before storing
     const normalizedAddress = normalizeDeliveryAddress(deliveryAddress);
 
+    // Require security deposit for first-time users
     if (!user.security_deposit_added && (securityDeposit === undefined || securityDeposit === null)) {
       return res.status(400).json({ message: 'Security deposit is required for new users' });
     }
 
-    const now = new Date();
-
-    const pastOrders = await db.collection('orders').find({
-      user_id: user.user_id,
-      paymentStatus: 'Completed'
-    }).sort({ createdAt: -1 }).toArray();
-
-    const activeOrder = pastOrders.find(order => new Date(order.subscriptionExpiryDate) >= now);
-
-    if (activeOrder) {
-      if (activeOrder.productModelId === productModelId) {
-        return res.status(400).json({
-          status: 'failed',
-          message: 'You already have an active subscription for this product. Please wait until it expires before subscribing again.'
-        });
-      } else {
-        return res.status(400).json({
-          status: 'failed',
-          message: 'You already have a subscription to another product. Only one product subscription is allowed per user.'
-        });
-      }
-    }
-
-    const previousOrderForSameProduct = pastOrders.find(order => order.productModelId === productModelId);
-
-    if (previousOrderForSameProduct) {
-      const prevPlanId = previousOrderForSameProduct?.selectedPlan?.plans_id;
-      const prevDurationId = previousOrderForSameProduct?.selectedDuration?.duration_id;
-
-      if (selectedPlanId !== prevPlanId || selectedDurationId !== prevDurationId) {
-        return res.status(400).json({
-          status: 'failed',
-          message: 'Renewal must be done with the same plan and duration as your previous subscription.'
-        });
-      }
-    }
-
+    // Check product model
     const productModel = await db.collection('product_models').findOne({ _id: new ObjectId(productModelId) });
     if (!productModel) return res.status(404).json({ message: 'Product model not found' });
 
@@ -107,6 +74,7 @@ exports.createSubscriptionOrder = async (req, res) => {
       return res.status(404).json({ message: 'No available devices for this product model' });
     }
 
+    // Validate device availability
     const device = await db.collection('device_details').findOne({
       wp_device_id: wp_device_id,
       model_id: Number(productModel.model_id),
@@ -129,6 +97,7 @@ exports.createSubscriptionOrder = async (req, res) => {
       });
     }
 
+    // Validate selected plan and duration
     const selectedPlan = productModel.plans.find(plan => plan.plans_id === selectedPlanId);
     const selectedDuration = productModel.duration.find(dur => dur.duration_id === selectedDurationId);
 
@@ -142,6 +111,7 @@ exports.createSubscriptionOrder = async (req, res) => {
     const effectiveSecurityDeposit = user.security_deposit_added ? 0 : securityDeposit;
     const totalAmountForRazorpay = grandTotal;
 
+    // Create Razorpay order
     const razorpayOrder = await razorpay.orders.create({
       amount: Math.round(totalAmountForRazorpay * 100),
       currency: 'INR',
@@ -150,6 +120,7 @@ exports.createSubscriptionOrder = async (req, res) => {
 
     const customOrderId = generateOrderId();
 
+    // Insert order
     const newOrder = {
       customOrderId,
       user_id: user.user_id,
@@ -171,6 +142,7 @@ exports.createSubscriptionOrder = async (req, res) => {
     const result = await db.collection('orders').insertOne(newOrder);
     const orderId = result.insertedId;
 
+    // Insert payment details
     await db.collection('payments').insertOne({
       user_id: user.user_id,
       orderId,
@@ -187,6 +159,7 @@ exports.createSubscriptionOrder = async (req, res) => {
       updatedAt: new Date()
     });
 
+    // Generate Razorpay signature for frontend verification
     const signatureBase = razorpayOrder.id + '|' + orderId.toString();
     const generatedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(signatureBase)
@@ -225,6 +198,7 @@ exports.createSubscriptionOrder = async (req, res) => {
     return res.status(500).json({ message: 'Failed to create order', error: err.message });
   }
 };
+
 
 
 exports.verifyRazorpayPayment = async (req, res) => {
