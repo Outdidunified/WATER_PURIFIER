@@ -5,6 +5,7 @@ const { ObjectId } = require("mongodb");
 const logger = require('../../../middlewares/requestLogger');
 const multerImg = require('../middlewares/imgMiddleware');
 const nodemailer = require('nodemailer');
+const MODULES = require('./modules.config');
 
 // Email transporter setup
 const transporter = nodemailer.createTransport({
