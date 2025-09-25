@@ -2203,24 +2203,73 @@ const GetOrdersByDistrict = async (req, res) => {
     }
 };
 
-// 6) GET: Installations by district (service_records.task_type = 1)
 const GetInstallationsByDistrict = async (req, res) => {
-    try {
-        const { district } = req.query || {};
-        if (!district || String(district).trim() === '') {
-            return res.status(400).json({ status: 'Failed', message: 'district is required' });
-        }
-        const db = await database.connectToDatabase();
-        const serviceRecords = db.collection('service_records');
-        const districtRegex = new RegExp(`^${String(district).trim()}$`, 'i');
-        const records = await serviceRecords.find({ task_type: 1, 'address.district': districtRegex }).toArray();
-        return res.status(200).json({ status: 'Success', data: records });
-    } catch (error) {
-        console.error('Error in GetInstallationsByDistrict:', error);
-        logger?.error?.(error);
-        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+  try {
+    const { district } = req.query || {};
+    if (!district || String(district).trim() === '') {
+      return res.status(400).json({ status: 'Failed', message: 'district is required' });
     }
+
+    const db = await database.connectToDatabase();
+    const ordersCollection = db.collection('orders');
+    const serviceRecordsCollection = db.collection('service_records');
+    const usersCollection = db.collection('users');
+
+    // Case-insensitive district match
+    const districtRegex = new RegExp(`^${String(district).trim()}$`, 'i');
+
+    // Step 1: Get orders in this district
+    const orders = await ordersCollection.find({
+      'deliveryAddress.district': districtRegex
+    }).toArray();
+
+    if (!orders.length) {
+      return res.status(200).json({ status: 'Success', data: [] });
+    }
+
+    // Step 2: Collect wp_device_ids
+    const wpDeviceIds = orders.map(o => o.wp_device_id);
+
+    // Step 3: Find service_records of type = 1 (installation) linked to those devices
+    const serviceRecords = await serviceRecordsCollection.find({
+      wp_device_id: { $in: wpDeviceIds },
+      task_type: 1
+    }).toArray();
+
+    // Step 4: Map orders by wp_device_id for join
+    const orderMap = {};
+    orders.forEach(o => {
+      orderMap[o.wp_device_id] = o;
+    });
+
+    // Step 5: Collect user_ids from orders
+    const userIds = [...new Set(orders.map(o => o.user_id))];
+    const users = await usersCollection.find({ user_id: { $in: userIds } }).toArray();
+
+    const userMap = {};
+    users.forEach(u => {
+      userMap[u.user_id] = u.email;
+    });
+
+    // Step 6: Merge service record with order + email
+    const installations = serviceRecords.map(sr => {
+      const order = orderMap[sr.wp_device_id] || {};
+      return {
+        ...sr,
+        order, // attach order details
+        email: userMap[order.user_id] || null
+      };
+    });
+
+    return res.status(200).json({ status: 'Success', data: installations });
+  } catch (error) {
+    console.error('Error in GetInstallationsByDistrict:', error);
+    logger?.error?.(error);
+    return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+  }
 };
+
+
 
 // 7) GET: Services by district (service_records.task_type = 2)
 const GetServicesByDistrict = async (req, res) => {
