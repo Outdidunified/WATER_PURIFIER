@@ -38,13 +38,22 @@ const useManageUsers = (userInfo) => {
   const [district, setDistrict] = useState('');
   const [stateField, setStateField] = useState('');
   const [pincode, setPincode] = useState('');
-  const [country, setCountry] = useState(''); // <-- Added country
+  const [country, setCountry] = useState('');
 
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState(null);
 
   // Roles
   const [roles, setRoles] = useState([]);
+
+  // Seller assignment modal state (role_id === 4)
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assignMode, setAssignMode] = useState('assign'); // 'assign' | 'reassign'
+  const [selectedSeller, setSelectedSeller] = useState(null);
+  const [assignState, setAssignState] = useState('');
+  const [assignDistrict, setAssignDistrict] = useState('');
+  const [assignStatus, setAssignStatus] = useState(false);
+  const [assignLoading, setAssignLoading] = useState(false);
 
   const fetchRoles = useCallback(async () => {
     try {
@@ -95,6 +104,19 @@ const useManageUsers = (userInfo) => {
     }
   }, [fetchUsers, fetchRoles]);
 
+  // Common modal container style to match other modals
+  const modalAddStyle = {
+    display: 'block',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    pointerEvents: 'auto',
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    height: '100vh',
+    width: '100vw',
+    zIndex: 1050,
+  };
+
   const handleSearchInputChange = (e) => {
     const searchTerm = e.target.value.toUpperCase();
     const filtered = data.filter((item) =>
@@ -102,7 +124,7 @@ const useManageUsers = (userInfo) => {
       item.email?.toUpperCase().includes(searchTerm) ||
       item.phone?.toString().includes(searchTerm) ||
       item.city?.toUpperCase().includes(searchTerm) ||
-      item.country?.toUpperCase().includes(searchTerm) // <-- include country in search
+      item.country?.toUpperCase().includes(searchTerm)
     );
     setPosts(filtered);
   };
@@ -132,7 +154,7 @@ const useManageUsers = (userInfo) => {
         district,
         state: stateField,
         pincode,
-        country // <-- added country here
+        country
       };
 
       const response = await axiosInstance.post('api/admin/AddUsers', payload);
@@ -157,6 +179,68 @@ const useManageUsers = (userInfo) => {
     }
   };
 
+  // Open assignment modal for sellers (role_id === 4)
+  const openAssignSellerModal = (user, mode = 'assign') => {
+    setSelectedSeller(user);
+    setAssignMode(mode);
+    // Pre-fill
+    const existingState = user?.assigned_state || user?.state || '';
+    const existingDistrict = user?.assigned_district || user?.district || '';
+    setAssignState(existingState);
+    setAssignDistrict(existingDistrict);
+    setAssignStatus(Boolean(user?.assigned_status));
+    setAssignModalOpen(true);
+  };
+
+  const closeAssignSellerModal = () => {
+    setAssignModalOpen(false);
+    setSelectedSeller(null);
+    setAssignState('');
+    setAssignDistrict('');
+    setAssignStatus(false);
+    setAssignLoading(false);
+  };
+
+  const handleSellerAssignSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedSeller) return;
+
+    // For first-time assignment ensure state/district are present
+    if (assignMode === 'assign') {
+      if (!assignState?.trim() || !assignDistrict?.trim()) {
+        showErrorAlert('Validation', 'State and District are required for assignment');
+        return;
+      }
+    }
+
+    try {
+      setAssignLoading(true);
+      const payload = {
+        seller_id: selectedSeller.user_id,
+        assign_state: String(assignState || '').trim(),
+        assign_district: String(assignDistrict || '').trim(),
+        assign_status: !!assignStatus,
+      };
+
+      const url = assignMode === 'reassign' ? '/api/admin/ReAssignSeller' : '/api/admin/AssignSeller';
+      const resp = await axiosInstance.post(url, payload);
+
+      if (resp.status === 200 && resp.data.status === 'Success') {
+        await fetchUsers();
+        closeAssignSellerModal();
+        showSuccessAlert('Success', assignMode === 'reassign' ? 'Seller reassigned successfully' : 'Seller assigned successfully');
+      } else {
+        const msg = resp.data?.message || 'Assignment failed';
+        showErrorAlert('Error', msg);
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || 'Assignment failed';
+      showErrorAlert('Error', msg);
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+
   const resetForm = () => {
     setName('');
     setEmail('');
@@ -170,17 +254,18 @@ const useManageUsers = (userInfo) => {
     setDistrict('');
     setStateField('');
     setPincode('');
-    setCountry(''); // <-- reset country
+    setCountry('');
   };
 
   return {
+    // table
     posts,
-    tableLoading,
-    tableError,
-    formLoading,
-    formError,
+    isLoading: tableLoading,
+    error: tableError,
     handleSearchInputChange,
     handleViewUser,
+
+    // add user modal
     openAddModal,
     closeAddModal,
     isAddModalOpen,
@@ -196,9 +281,26 @@ const useManageUsers = (userInfo) => {
     district, setDistrict,
     stateField, setStateField,
     pincode, setPincode,
-    country, setCountry, // <-- expose country
+    country, setCountry,
+    formLoading,
+    formError,
     handleAddUserSubmit,
-    roles
+    roles,
+
+    // seller assignment modal
+    assignModalOpen,
+    assignMode,
+    selectedSeller,
+    assignState, setAssignState,
+    assignDistrict, setAssignDistrict,
+    assignStatus, setAssignStatus,
+    assignLoading,
+    openAssignSellerModal,
+    closeAssignSellerModal,
+    handleSellerAssignSubmit,
+
+    // styles
+    modalAddStyle,
   };
 };
 
