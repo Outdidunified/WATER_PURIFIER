@@ -2138,9 +2138,9 @@ const FetchTechniciansByDistrict = async (req, res) => {
 };
 
 module.exports = {
-    authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
-    UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders,AddUserRoles, FetchUserRoles, UpdateUserRoles,
-    AddUsers, FetchUsers, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
-    FetchSelectServiceTask, AssignService, ReAssignService,assignPermissions,fetchPermissionsByRole
+    getModules, authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
+    UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders, AddUserRoles, FetchUserRoles, UpdateUserRoles,
+    AddUsers, FetchUsers, FetchSellers, FetchOrdersByDistrict, FetchTechniciansByDistrict, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
+    FetchSelectServiceTask, AssignService, ReAssignService, assignPermissions, fetchPermissionsByRole
     // UpdateOrdersStatus,
 };
