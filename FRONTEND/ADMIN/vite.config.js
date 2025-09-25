@@ -9,12 +9,12 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://192.168.1.30:5001',
+        target: 'http://192.168.0.35:5001',
         changeOrigin: true,
         rewrite: path => path.replace(/^\/api/, ''),
       },
       '/upload': {
-        target: 'http://192.168.1.30:5001',
+        target: 'http://192.168.0.35:5001',
         changeOrigin: true,
       },
     },
