@@ -18,7 +18,6 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
     handleSearchChange,
     assignInstallation, installationTasks,
   } = useManageInstallation(userInfo);
-
   // Modal state
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [selectedInstallation, setSelectedInstallation] = useState(null);
@@ -168,8 +167,10 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
             <td>₹{item.grandTotal || 0}</td>
             <td>{item.wp_device_id || '-'}</td>
             <td>{item.deliveryAddress?.name || '-'}</td>
-            <td>{item.user_email || '-'}</td>
-            <td>{item.assigned_technician_id || '-'}</td>                                <td>
+            <td>{item.email || '-'}</td>
+            <td>{item.service_records && item.service_records.length > 0
+      ? item.service_records[0].assigned_technician_id
+      : '-'}</td>                                <td>
                                   <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
                                     <button
                                       type="button"

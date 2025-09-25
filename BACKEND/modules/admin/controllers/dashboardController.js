@@ -6,6 +6,7 @@ const logger = require('../../../middlewares/requestLogger');
 const multerImg = require('../middlewares/imgMiddleware');
 const nodemailer = require('nodemailer');
 const MODULES = require('./modules.config');
+const { normalizeDeliveryAddress } = require('../../../modules/website/models/DeliveryAddress');
 
 // Email transporter setup
 const transporter = nodemailer.createTransport({
@@ -1457,43 +1458,28 @@ const UpdateUsers = async (req, res) => {
 const FetchInstallationService = async (req, res) => {
     try {
         const db = await database.connectToDatabase();
-        const usersCollection = db.collection("users");
+        const ordersCollection = db.collection("orders");
 
-        const technicians = await usersCollection.aggregate([
-            { $match: { role_id: 2 } },
-
-            // Lookup technician_details (single object or null)
-            {
-                $lookup: {
-                    from: "technician_details",
-                    localField: "technician_id",
-                    foreignField: "technician_id",
-                    as: "technician_details"
-                }
-            },
-            {
-                $addFields: {
-                    technician_details: {
-                        $cond: [
-                            { $gt: [{ $size: "$technician_details" }, 0] },
-                            { $arrayElemAt: ["$technician_details", 0] },
-                            null
-                        ]
-                    }
-                }
-            },
-
-            // Lookup service_records (array)
+        const installations = await ordersCollection.aggregate([
             {
                 $lookup: {
                     from: "service_records",
-                    localField: "technician_id",
-                    foreignField: "assigned_technician_id",
+                    let: { deviceId: "$wp_device_id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$wp_device_id", "$$deviceId"] },
+                                        { $eq: ["$task_type", 1] }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
                     as: "service_records"
                 }
             },
-
-            // Convert empty service_records arrays to null
             {
                 $addFields: {
                     service_records: {
@@ -1504,14 +1490,35 @@ const FetchInstallationService = async (req, res) => {
                         ]
                     }
                 }
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "user_id",
+                    foreignField: "user_id",
+                    as: "user"
+                }
+            },
+            {
+                $addFields: {
+                    email: {
+                        $cond: [
+                            { $gt: [{ $size: "$user" }, 0] },
+                            { $arrayElemAt: ["$user.email", 0] },
+                            null
+                        ]
+                    }
+                }
+            },
+            {
+                $project: { user: 0 }
             }
-
         ]).toArray();
 
         return res.status(200).json({
             status: "Success",
-            message: "Technician users fetched successfully",
-            data: technicians
+            message: "Installations fetched successfully",
+            data: installations
         });
 
     } catch (error) {
@@ -1528,34 +1535,68 @@ const FetchSelectUserOrders = async (req, res) => {
     try {
         const db = await database.connectToDatabase();
         const ordersCollection = db.collection("orders");
-        const usersCollection = db.collection("users");
-        const serviceRecordsCollection = db.collection("service_records");
 
-        // Step 1: Get all relevant orders
-        const pendingOrders = await ordersCollection.find({
-            orderStatus: "Confirmed",
-            paymentStatus: "Completed"
-        }).toArray();
-
-        // Step 2: Enrich each order
-        const enrichedOrders = await Promise.all(pendingOrders.map(async (order) => {
-            const userId = order.user_id;
-            const wpDeviceId = order.wp_device_id;
-
-            // Get email from users table using user_id
-            const user = await usersCollection.findOne({ user_id: userId });
-            const userEmail = user ? user.email : null;
-
-            // Find matching service record using wp_device_id
-            const serviceRecord = await serviceRecordsCollection.findOne({ wp_device_id: wpDeviceId });
-
-            return {
-                ...order,
-                user_email: userEmail,
-                assigned_technician_id: serviceRecord ? serviceRecord.assigned_technician_id : null,
-                task_status: serviceRecord ? (serviceRecord.task_status || null) : null
-            };
-        }));
+        // Get pending orders with service_records
+        const enrichedOrders = await ordersCollection.aggregate([
+            {
+                $match: {
+                    orderStatus: "Confirmed",
+                    paymentStatus: "Completed"
+                }
+            },
+            {
+                $lookup: {
+                    from: "service_records",
+                    let: { deviceId: "$wp_device_id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$wp_device_id", "$$deviceId"] },
+                                        { $eq: ["$task_type", 1] }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    as: "service_records"
+                }
+            },
+            {
+                $addFields: {
+                    service_records: {
+                        $cond: [
+                            { $gt: [{ $size: "$service_records" }, 0] },
+                            "$service_records",
+                            null
+                        ]
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "user_id",
+                    foreignField: "user_id",
+                    as: "user"
+                }
+            },
+            {
+                $addFields: {
+                    email: {
+                        $cond: [
+                            { $gt: [{ $size: "$user" }, 0] },
+                            { $arrayElemAt: ["$user.email", 0] },
+                            null
+                        ]
+                    }
+                }
+            },
+            {
+                $project: { user: 0 }
+            }
+        ]).toArray();
 
         return res.status(200).json({
             status: 'Success',
@@ -1820,21 +1861,72 @@ const ReAssignInstallation = async (req, res) => {
 const FetchSelectInstallationTask = async (req, res) => {
     try {
         const db = await database.connectToDatabase();
-        const collection = db.collection("service_records");
+        const ordersCollection = db.collection("orders");
 
-        // Fetch all service_records
-        // Filter service_records where task_type is 1 like "Installation"
-        const allServices = await collection.find({ task_type: 1 }).toArray();
+        const installations = await ordersCollection.aggregate([
+            {
+                $lookup: {
+                    from: "service_records",
+                    let: { deviceId: "$wp_device_id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$wp_device_id", "$$deviceId"] },
+                                        { $eq: ["$task_type", 1] }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    as: "service_records"
+                }
+            },
+            {
+                $addFields: {
+                    service_records: {
+                        $cond: [
+                            { $gt: [{ $size: "$service_records" }, 0] },
+                            "$service_records",
+                            null
+                        ]
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "user_id",
+                    foreignField: "user_id",
+                    as: "user"
+                }
+            },
+            {
+                $addFields: {
+                    email: {
+                        $cond: [
+                            { $gt: [{ $size: "$user" }, 0] },
+                            { $arrayElemAt: ["$user.email", 0] },
+                            null
+                        ]
+                    }
+                }
+            },
+            {
+                $project: { user: 0 }
+            }
+        ]).toArray();
 
         return res.status(200).json({
-            status: 'Success',
-            message: 'All installation records fetched successfully',
-            data: allServices
+            status: "Success",
+            message: "Installations fetched successfully",
+            data: installations
         });
 
     } catch (error) {
         console.error("Error in FetchSelectInstallationTask:", error);
-        logger?.error?.(error); // Optional logger
+        logger?.error?.(error);
         return res.status(500).json({
             status: 'Failed',
             message: 'Internal Server Error'
@@ -1848,8 +1940,7 @@ const FetchSelectServiceTask = async (req, res) => {
         const db = await database.connectToDatabase();
         const collection = db.collection("service_records");
 
-        // Fetch all service_records
-        // Filter service_records where task_type is 2 like "Service"
+        // Fetch all service_records where task_type is 2 (Services)
         const allServices = await collection.find({ task_type: 2 }).toArray();
 
         return res.status(200).json({
@@ -2135,17 +2226,16 @@ const FetchOrdersByDistrict = async (req, res) => {
 const FetchTechniciansByDistrict = async (req, res) => {
     try {
         const { district } = req.body || {};
-        if (!district || String(district).trim() === '') {
-            return res.status(400).json({ status: 'Failed', message: 'district is required' });
-        }
 
         const db = await database.connectToDatabase();
         const usersCollection = db.collection('users');
 
-        const technicians = await usersCollection.find({
-            role_id: 2,
-            district: new RegExp(`^${String(district).trim()}$`, 'i')
-        }).toArray();
+        const query = { role_id: 2 };
+        if (district && String(district).trim() !== '') {
+            query.district = new RegExp(`^${String(district).trim()}$`, 'i');
+        }
+
+        const technicians = await usersCollection.find(query).toArray();
 
         return res.status(200).json({ status: 'Success', data: technicians });
     } catch (error) {
@@ -2206,23 +2296,18 @@ const GetOrdersByDistrict = async (req, res) => {
 const GetInstallationsByDistrict = async (req, res) => {
   try {
     const { district } = req.query || {};
-    if (!district || String(district).trim() === '') {
-      return res.status(400).json({
-        status: 'Failed',
-        message: 'district is required'
-      });
-    }
 
     const db = await database.connectToDatabase();
     const ordersCollection = db.collection("orders");
 
-    // Case-insensitive regex
-    const districtRegex = new RegExp(`^${String(district).trim()}$`, "i");
+    const matchStage = {};
+    if (district && String(district).trim() !== '') {
+      // Case-insensitive regex
+      matchStage["deliveryAddress.district"] = new RegExp(`^${String(district).trim()}$`, "i");
+    }
 
     const installations = await ordersCollection.aggregate([
-      {
-        $match: { "deliveryAddress.district": districtRegex }
-      },
+      ...(Object.keys(matchStage).length > 0 ? [{ $match: matchStage }] : []),
       {
         $lookup: {
           from: "service_records",
@@ -2279,6 +2364,7 @@ const GetInstallationsByDistrict = async (req, res) => {
 
     return res.status(200).json({
       status: "Success",
+      message: "Installations fetched successfully",
       data: installations
     });
 
@@ -2287,11 +2373,11 @@ const GetInstallationsByDistrict = async (req, res) => {
     logger?.error?.(error);
     return res.status(500).json({
       status: "Failed",
-      message: "Internal Server Error"
+      message: "Internal Server Error",
+      data: null
     });
   }
 };
-
 
 
 
@@ -2299,77 +2385,42 @@ const GetInstallationsByDistrict = async (req, res) => {
 const GetServicesByDistrict = async (req, res) => {
   try {
     const { district } = req.query || {};
-    if (!district || String(district).trim() === '') {
-      return res.status(400).json({ status: 'Failed', message: 'district is required' });
-    }
-
     const db = await database.connectToDatabase();
-    const ordersCollection = db.collection("orders");
+    const serviceRecordsCollection = db.collection("service_records");
 
-    // Case-insensitive regex
-    const districtRegex = new RegExp(String(district).trim(), "i");
+    const pipeline = [
+      // Filter service_records for task_type = 2 (Services)
+      { $match: { task_type: 2 } },
 
-    const services = await ordersCollection.aggregate([
-      // Step 1: Match orders by district
-      { $match: { "deliveryAddress.district": districtRegex } },
-
-      // Step 2: Lookup service_records for task_type = 2 (Services)
+      // Lookup order to get district
       {
         $lookup: {
-          from: "service_records",
-          let: { deviceId: "$wp_device_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ["$wp_device_id", "$$deviceId"] },
-                    { $eq: ["$task_type", 2] } // <-- Services
-                  ]
-                }
-              }
-            }
-          ],
-          as: "service_records"
+          from: "orders",
+          localField: "wp_device_id",
+          foreignField: "wp_device_id",
+          as: "order"
         }
       },
       {
         $addFields: {
-          service_records: {
-            $cond: [
-              { $gt: [{ $size: "$service_records" }, 0] },
-              "$service_records",
-              null
-            ]
-          }
+          order: { $arrayElemAt: ["$order", 0] }
         }
       },
 
-      // Step 3: Lookup user email
+      // Filter by district if provided
+      ...(district && String(district).trim() !== '' ? [
+        { $match: { "order.deliveryAddress.district": new RegExp(String(district).trim(), "i") } }
+      ] : []),
+
+      // Project to flatten
       {
-        $lookup: {
-          from: "users",
-          localField: "user_id",
-          foreignField: "user_id",
-          as: "user"
+        $project: {
+          order: 0
         }
-      },
-      {
-        $addFields: {
-          email: {
-            $cond: [
-              { $gt: [{ $size: "$user" }, 0] },
-              { $arrayElemAt: ["$user.email", 0] },
-              null
-            ]
-          }
-        }
-      },
+      }
+    ];
 
-      // Step 4: Clean up
-      { $project: { user: 0 } }
-
-    ]).toArray();
+    const services = await serviceRecordsCollection.aggregate(pipeline).toArray();
 
     return res.status(200).json({ status: 'Success', data: services });
 
@@ -2556,12 +2607,121 @@ const DeactivateSellerAssignment = async (req, res) => {
     }
 };
 
+// FetchOrdersByUserId - Get all orders for a specific user
+const FetchOrdersByUserId = async (req, res) => {
+    try {
+        const { user_id } = req.body;
+
+        // Validate input
+        if (!user_id) {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'user_id is required'
+            });
+        }
+
+        const db = await database.connectToDatabase();
+        const ordersCollection = db.collection("orders");
+        const usersCollection = db.collection("users");
+        const serviceRecordsCollection = db.collection("service_records");
+
+        // Convert user_id to number if it's a string
+        const userIdInt = parseInt(user_id);
+        if (isNaN(userIdInt)) {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Invalid user_id format'
+            });
+        }
+
+        // Check if user exists
+        const user = await usersCollection.findOne({ user_id: userIdInt });
+        if (!user) {
+            return res.status(404).json({
+                status: 'Failed',
+                message: 'User not found'
+            });
+        }
+
+        // Get all orders for the specific user
+        const orders = await ordersCollection.find({ user_id: userIdInt }).sort({ createdAt: -1 }).toArray();
+
+        if (!orders.length) {
+            return res.status(200).json({
+                status: 'Success',
+                message: 'No orders found for this user',
+                data: [],
+                user: {
+                    user_id: user.user_id,
+                    name: user.name,
+                    email: user.email,
+                    phone: user.phone
+                }
+            });
+        }
+
+        // Enrich orders with service records and installation status
+        const enrichedOrders = await Promise.all(orders.map(async (order) => {
+            // Find service record for this device
+            const serviceRecord = await serviceRecordsCollection.findOne({ 
+                wp_device_id: order.wp_device_id 
+            });
+
+            return {
+                ...order,
+                email: user.email,
+                user_name: user.name,
+                user_phone: user.phone,
+                service_record: serviceRecord ? {
+                    task_id: serviceRecord.task_id,
+                    task_status: serviceRecord.task_status,
+                    task_type: serviceRecord.task_type,
+                    assigned_technician_id: serviceRecord.assigned_technician_id,
+                    assigned_date: serviceRecord.assigned_date,
+                    completed_date: serviceRecord.completed_date
+                } : null,
+                installation_status: serviceRecord ? serviceRecord.task_status : 'Not Assigned'
+            };
+        }));
+
+        return res.status(200).json({
+            status: 'Success',
+            message: `Found ${orders.length} order(s) for user ${user.name}`,
+            data: enrichedOrders,
+            user: {
+                user_id: user.user_id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                role_id: user.role_id,
+                district: user.district,
+                is_subscribed: user.is_subscribed,
+                subscription_expiry_date: user.subscription_expiry_date
+            },
+            summary: {
+                total_orders: orders.length,
+                completed_orders: orders.filter(o => o.paymentStatus === 'Completed').length,
+                pending_orders: orders.filter(o => o.paymentStatus === 'Pending').length,
+                total_amount: orders.reduce((sum, o) => sum + (o.grandTotal || 0), 0)
+            }
+        });
+
+    } catch (error) {
+        console.error("Error in FetchOrdersByUserId:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ 
+            status: 'Failed', 
+            message: 'Internal Server Error' 
+        });
+    }
+};
+
 module.exports = {
     getModules, authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
     UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders, AddUserRoles, FetchUserRoles, UpdateUserRoles,
     AddUsers, FetchUsers, FetchSellers, FetchOrdersByDistrict, FetchTechniciansByDistrict, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
     FetchSelectServiceTask, AssignService, ReAssignService, assignPermissions, fetchPermissionsByRole,
     GetUsersByDistrict, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
-    AssignSeller, ReAssignSeller, DeactivateSellerAssignment
+    AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchOrdersByUserId
     // UpdateOrdersStatus,
 };

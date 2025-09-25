@@ -13,7 +13,7 @@ const useManageInstallation = (userInfo) => {
 
   // Fetch API calls
   const fetchTechnicians = async () => {
-    const res = await axiosInstance.post('/api/admin/FetchInstallationService');
+    const res = await axiosInstance.post('/api/admin/FetchTechniciansByDistrict');
     return res.data?.data || [];
   };
 
@@ -70,8 +70,9 @@ const useManageInstallation = (userInfo) => {
 
         return {
           ...order,
-          task_id: matchingTask?.task_id || null, // ✅ Add task_id for reassignment
+          task_id: matchingTask?.service_records?.[0]?.task_id || null, // ✅ Add task_id for reassignment
           assignedTechnician,
+          assigned_technician_id: order.service_records?.[0]?.assigned_technician_id || null,
           order_user_id: order.user_id || '',
           customOrderId: order.customOrderId || '',
         };

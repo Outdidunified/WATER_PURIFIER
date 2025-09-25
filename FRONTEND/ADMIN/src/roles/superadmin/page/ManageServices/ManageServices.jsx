@@ -139,11 +139,11 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                         <tbody style={{ textAlign: 'center' }}>
                           {isLoading ? (
                             <tr>
-                              <td colSpan="15">Loading...</td>
+                              <td colSpan="10">Loading...</td>
                             </tr>
                           ) : error ? (
                             <tr>
-                              <td colSpan="15">Error: {error}</td>
+                              <td colSpan="10">Error: {error}</td>
                             </tr>
                           ) : serviceTasks.length > 0 ? (
                             serviceTasks.map((item, index) => (
@@ -203,7 +203,7 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                             ))
                           ) : (
                             <tr>
-                              <td colSpan="15">No installation records found.</td>
+                              <td colSpan="10">No service records found.</td>
                             </tr>
                           )}
                         </tbody>

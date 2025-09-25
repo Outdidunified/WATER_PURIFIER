@@ -12,13 +12,8 @@ const useManageServices = (userInfo) => {
   const [searchTerm, setSearchTerm] = useState('');
 
 const fetchTechnicians = async () => {
-  const res = await axiosInstance.post('/api/admin/FetchInstallationService');
-  const rawTechnicians = res.data?.data || [];
-  return rawTechnicians.map(tech => ({
-    ...tech,
-    technician_id: tech.technician_id || tech.technician_details?.technician_id || '',
-    name: tech.name || 'Unnamed',
-  }));
+  const res = await axiosInstance.post('/api/admin/FetchTechniciansByDistrict');
+  return res.data?.data || [];
 };
 
 
