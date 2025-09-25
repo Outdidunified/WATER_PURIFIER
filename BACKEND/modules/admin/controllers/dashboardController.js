@@ -163,6 +163,7 @@ const authenticate = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 phone: user.phone,
+                district: user.district, // include district so frontend can filter seller orders
                 createdby: user.createdby,
                 modifiedby: user.modifiedby,
                 createddate: user.createddate,
