@@ -75,7 +75,11 @@ const useManageUsers = (userInfo) => {
       setTableLoading(true);
       setTableError(null);
 
-      const response = await axiosInstance.post('api/admin/FetchUsers');
+      const isSeller = Number(userInfo?.role_id) === 4;
+      const url = isSeller ? '/api/admin/users/by-district' : 'api/admin/FetchUsers';
+      const response = isSeller
+        ? await axiosInstance.get(url, { params: { district: userInfo?.district } })
+        : await axiosInstance.post(url);
 
       if (response.status === 200 && response.data.status === 'Success') {
         const fetchedData = response.data.data || [];
@@ -94,7 +98,7 @@ const useManageUsers = (userInfo) => {
     } finally {
       setTableLoading(false);
     }
-  }, []);
+  }, [userInfo?.role_id]);
 
   useEffect(() => {
     if (!fetchUsersCalled.current) {

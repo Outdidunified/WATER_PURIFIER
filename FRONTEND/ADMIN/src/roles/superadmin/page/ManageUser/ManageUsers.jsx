@@ -326,22 +326,23 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                                 <td>
                                   {dataItem.role_id === 4 && (
                                     <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
-                                      <button
-                                        type="button"
-                                        className="btn btn-primary"
-                                        onClick={() => openAssignSellerModal(dataItem, 'assign')}
-                                        disabled={!!dataItem.assigned_status}
-                                      >
-                                        Assign
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="btn btn-warning"
-                                        onClick={() => openAssignSellerModal(dataItem, 'reassign')}
-                                        disabled={!dataItem.assigned_status}
-                                      >
-                                        Reassign
-                                      </button>
+                                      {dataItem.assigned_status ? (
+                                        <button
+                                          type="button"
+                                          className="btn btn-warning"
+                                          onClick={() => openAssignSellerModal(dataItem, 'reassign')}
+                                        >
+                                          Reassign
+                                        </button>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          className="btn btn-primary"
+                                          onClick={() => openAssignSellerModal(dataItem, 'assign')}
+                                        >
+                                          Assign
+                                        </button>
+                                      )}
                                     </div>
                                   )}
                                 </td>

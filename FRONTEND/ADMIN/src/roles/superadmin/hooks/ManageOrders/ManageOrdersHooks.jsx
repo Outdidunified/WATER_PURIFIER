@@ -20,7 +20,11 @@ const useManageOrders = (userInfo) => {
     const fetchOrders = async () => {
         try {
             setLoading(true);
-            const res = await axiosInstance.post('api/admin/FetchOrders');
+            const isSeller = Number(userInfo?.role_id) === 4;
+            const url = isSeller ? '/api/admin/orders/by-district' : 'api/admin/FetchOrders';
+            const res = isSeller
+              ? await axiosInstance.get(url, { params: { district: userInfo?.district } })
+              : await axiosInstance.post(url);
             if (res.data.status === 'Success') {
                 setOrders(res.data.data);
                 setFilteredOrders(res.data.data);

@@ -18,12 +18,20 @@ const useManageInstallation = (userInfo) => {
   };
 
   const fetchOrders = async () => {
-    const res = await axiosInstance.post('/api/admin/FetchSelectUserOrders');
+    const isSeller = Number(userInfo?.role_id) === 4;
+    const url = isSeller ? '/api/admin/installations/by-district' : '/api/admin/FetchSelectUserOrders';
+    const res = isSeller
+      ? await axiosInstance.get(url, { params: { district: userInfo?.district } })
+      : await axiosInstance.post(url);
     return res.data?.data || [];
   };
 
   const fetchInstallationTasks = async () => {
-    const res = await axiosInstance.post('/api/admin/FetchSelectInstallationTask');
+    const isSeller = Number(userInfo?.role_id) === 4;
+    const url = isSeller ? '/api/admin/installations/by-district' : '/api/admin/FetchSelectInstallationTask';
+    const res = isSeller
+      ? await axiosInstance.get(url, { params: { district: userInfo?.district } })
+      : await axiosInstance.post(url);
     return res.data?.data || [];
   };
 

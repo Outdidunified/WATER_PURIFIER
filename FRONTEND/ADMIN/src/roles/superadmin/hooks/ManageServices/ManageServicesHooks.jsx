@@ -23,7 +23,11 @@ const fetchTechnicians = async () => {
 
 
   const fetchServiceTasks = async () => {
-    const res = await axiosInstance.post('/api/admin/FetchSelectServiceTask');
+    const isSeller = Number(userInfo?.role_id) === 4;
+    const url = isSeller ? '/api/admin/services/by-district' : '/api/admin/FetchSelectServiceTask';
+    const res = isSeller
+      ? await axiosInstance.get(url, { params: { district: userInfo?.district } })
+      : await axiosInstance.post(url);
     return res.data?.data || [];
   };
 
