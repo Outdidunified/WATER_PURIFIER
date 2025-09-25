@@ -76,16 +76,16 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
 
                       {isAddModalOpen && (
                         <div className="modalStyle" style={modalAddStyle}>
-                          <div className="modalContentStyle card" style={{ maxHeight: '80vh', overflowY: 'auto', width: '720px' }}>
-                            <div className="card-body">
-                              <span
-                                onClick={closeAddModal}
-                                style={{ float: 'right', cursor: 'pointer', fontSize: '30px' }}
-                              >
-                                &times;
-                              </span>
+                          <div className="modalContentStyle" style={{ maxHeight: '680px', overflowY: 'auto' }}>
+                            <span
+                              onClick={closeAddModal}
+                              style={{ float: 'right', cursor: 'pointer', fontSize: '30px' }}
+                            >
+                              &times;
+                            </span>
 
-                              <form onSubmit={handleAddSellerSubmit}>
+                            <form className="card" onSubmit={handleAddSellerSubmit}>
+                              <div className="card-body">
                                 <div style={{ textAlign: 'center' }}>
                                   <h4 className="card-title">Add Seller</h4>
                                 </div>
@@ -93,7 +93,7 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
                                 {/* Name */}
                                 <div className="input-group mb-3">
                                   <div className="input-group-prepend">
-                                    <span className="input-group-text" style={{ color: 'black', width: '140px' }}>Name</span>
+                                    <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Name</span>
                                   </div>
                                   <InputField
                                     placeholder="Name"
@@ -109,7 +109,7 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
                                 {/* Email */}
                                 <div className="input-group mb-3">
                                   <div className="input-group-prepend">
-                                    <span className="input-group-text" style={{ color: 'black', width: '140px' }}>Email</span>
+                                    <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Email</span>
                                   </div>
                                   <InputField
                                     type="email"
@@ -124,15 +124,15 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
                                 {/* Password */}
                                 <div className="input-group mb-3">
                                   <div className="input-group-prepend">
-                                    <span className="input-group-text" style={{ color: 'black', width: '140px' }}>Password</span>
+                                    <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Password</span>
                                   </div>
                                   <InputField
                                     type="text"
                                     placeholder="4-digit Password"
                                     value={password}
                                     maxLength={4}
-                                    pattern="^\d{4}$"
-                                    title="Password must be exactly 4 digits"
+                                    pattern="^[1-9][0-9]{3}$"
+                                    title="Password must be exactly 4 digits and not start with 0"
                                     onChange={(e) => {
                                       const value = e.target.value.replace(/[^0-9]/g, '');
                                       setPassword(value);
@@ -144,7 +144,7 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
                                 {/* Phone */}
                                 <div className="input-group mb-3">
                                   <div className="input-group-prepend">
-                                    <span className="input-group-text" style={{ color: 'black', width: '140px' }}>Phone</span>
+                                    <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Phone</span>
                                   </div>
                                   <InputField
                                     type="tel"
@@ -165,7 +165,7 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
                                 {/* Addressline1 */}
                                 <div className="input-group mb-3">
                                   <div className="input-group-prepend">
-                                    <span className="input-group-text" style={{ color: 'black', width: '140px' }}>Address Line 1</span>
+                                    <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Address Line 1</span>
                                   </div>
                                   <InputField
                                     placeholder="Address Line 1"
@@ -179,7 +179,7 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
                                 {/* Addressline2 (optional) */}
                                 <div className="input-group mb-3">
                                   <div className="input-group-prepend">
-                                    <span className="input-group-text" style={{ color: 'black', width: '140px' }}>Address Line 2</span>
+                                    <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Address Line 2</span>
                                   </div>
                                   <InputField
                                     placeholder="Address Line 2 (optional)"
@@ -192,7 +192,7 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
                                 {/* City */}
                                 <div className="input-group mb-3">
                                   <div className="input-group-prepend">
-                                    <span className="input-group-text" style={{ color: 'black', width: '140px' }}>City</span>
+                                    <span className="input-group-text" style={{ color: 'black', width: '125px' }}>City</span>
                                   </div>
                                   <InputField
                                     placeholder="City"
@@ -208,7 +208,7 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
                                 {/* District */}
                                 <div className="input-group mb-3">
                                   <div className="input-group-prepend">
-                                    <span className="input-group-text" style={{ color: 'black', width: '140px' }}>District</span>
+                                    <span className="input-group-text" style={{ color: 'black', width: '125px' }}>District</span>
                                   </div>
                                   <InputField
                                     placeholder="District"
@@ -224,7 +224,7 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
                                 {/* State */}
                                 <div className="input-group mb-3">
                                   <div className="input-group-prepend">
-                                    <span className="input-group-text" style={{ color: 'black', width: '140px' }}>State</span>
+                                    <span className="input-group-text" style={{ color: 'black', width: '125px' }}>State</span>
                                   </div>
                                   <InputField
                                     placeholder="State"
@@ -240,7 +240,7 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
                                 {/* Country */}
                                 <div className="input-group mb-3">
                                   <div className="input-group-prepend">
-                                    <span className="input-group-text" style={{ color: 'black', width: '140px' }}>Country</span>
+                                    <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Country</span>
                                   </div>
                                   <InputField
                                     placeholder="Country"
@@ -256,7 +256,7 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
                                 {/* Pincode */}
                                 <div className="input-group mb-3">
                                   <div className="input-group-prepend">
-                                    <span className="input-group-text" style={{ color: 'black', width: '140px' }}>Pincode</span>
+                                    <span className="input-group-text" style={{ color: 'black', width: '125px' }}>Pincode</span>
                                   </div>
                                   <InputField
                                     placeholder="Pincode"
@@ -274,8 +274,8 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
                                 <ReusableButton type="submit" loading={formLoading} disabled={formLoading}>
                                   Add
                                 </ReusableButton>
-                              </form>
-                            </div>
+                              </div>
+                            </form>
                           </div>
                         </div>
                       )}
@@ -321,9 +321,9 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
                         <thead style={{ textAlign: 'center', position: 'sticky', tableLayout: 'fixed', top: 0, backgroundColor: 'white' }}>
                           <tr>
                             <th>Sl.No</th>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Phone</th>
+                            <th>Role Name</th>
+                            <th>User Name</th>
+                            <th>Email ID</th>
                             <th>District</th>
                             <th>Status</th>
                             <th>Option</th>
@@ -332,19 +332,19 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
                         <tbody style={{ textAlign: 'center' }}>
                           {tableLoading ? (
                             <tr>
-                              <td colSpan="7" style={{ marginTop: '50px', textAlign: 'center' }}>Loading...</td>
+                              <td colSpan="6" style={{ marginTop: '50px', textAlign: 'center' }}>Loading...</td>
                             </tr>
                           ) : tableError ? (
                               <tr>
-                                <td colSpan="7" style={{ marginTop: '50px', textAlign: 'center' }}>Error: {tableError}</td>
+                                <td colSpan="6" style={{ marginTop: '50px', textAlign: 'center' }}>Error: {tableError}</td>
                               </tr>
                           ) : Array.isArray(posts) && posts.length > 0 ? (
                             posts.map((item, index) => (
                               <tr key={item._id || index}>
                                 <td>{index + 1}</td>
+                                <td>Seller</td>
                                 <td>{item.name || '-'}</td>
                                 <td>{item.email || '-'}</td>
-                                <td>{item.phone || '-'}</td>
                                 <td>{item.district || '-'}</td>
                                 <td>{item.status ? <span className="text-success">Active</span> : <span className="text-danger">DeActive</span>}</td>
                                 <td>
@@ -361,7 +361,7 @@ const ManageSellers = ({ userInfo, handleLogout }) => {
                             ))
                           ) : (
                             <tr>
-                              <td colSpan="7" style={{ marginTop: '50px', textAlign: 'center' }}>No sellers found</td>
+                              <td colSpan="6" style={{ marginTop: '50px', textAlign: 'center' }}>No sellers found</td>
                             </tr>
                           )}
                         </tbody>
