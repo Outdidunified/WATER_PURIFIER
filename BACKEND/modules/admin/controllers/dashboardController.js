@@ -1409,6 +1409,22 @@ const UpdateUsers = async (req, res) => {
             modifiedDate: new Date()
         };
 
+        // If profile state/district changed, deactivate seller assignment
+        try {
+            const incomingState = state != null ? String(state).trim() : undefined;
+            const incomingDistrict = district != null ? String(district).trim() : undefined;
+            const previousState = String(existingUser.state || '').trim();
+            const previousDistrict = String(existingUser.district || '').trim();
+            let stateDistrictChanged = false;
+            if (incomingState !== undefined && incomingState.toLowerCase() !== previousState.toLowerCase()) stateDistrictChanged = true;
+            if (incomingDistrict !== undefined && incomingDistrict.toLowerCase() !== previousDistrict.toLowerCase()) stateDistrictChanged = true;
+            if (stateDistrictChanged && existingUser.role_id === 4) {
+                updatedData.assigned_status = false;
+            }
+        } catch (e) {
+            // noop: do not block updates if comparison fails
+        }
+
         // Remove any undefined fields
         Object.keys(updatedData).forEach(key => {
             if (updatedData[key] === undefined) {
@@ -2139,10 +2155,271 @@ const FetchTechniciansByDistrict = async (req, res) => {
     }
 };
 
+// 4) GET: Users by district (optional role_id filter)
+const GetUsersByDistrict = async (req, res) => {
+    try {
+        const { district, role_id } = req.query || {};
+        if (!district || String(district).trim() === '') {
+            return res.status(400).json({ status: 'Failed', message: 'district is required' });
+        }
+        const db = await database.connectToDatabase();
+        const usersCollection = db.collection('users');
+        const query = { district: new RegExp(`^${String(district).trim()}$`, 'i') };
+        if (role_id !== undefined) {
+            const r = Number(role_id);
+            if (!Number.isNaN(r)) query.role_id = r;
+        }
+        const users = await usersCollection.find(query).toArray();
+        return res.status(200).json({ status: 'Success', data: users });
+    } catch (error) {
+        console.error('Error in GetUsersByDistrict:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// 5) GET: Orders by district (deliveryAddress.district)
+const GetOrdersByDistrict = async (req, res) => {
+    try {
+        const { district } = req.query || {};
+        if (!district || String(district).trim() === '') {
+            return res.status(400).json({ status: 'Failed', message: 'district is required' });
+        }
+        const db = await database.connectToDatabase();
+        const ordersCollection = db.collection('orders');
+        const usersCollection = db.collection('users');
+        const districtRegex = new RegExp(`^${String(district).trim()}$`, 'i');
+        const orders = await ordersCollection.find({ 'deliveryAddress.district': districtRegex }).toArray();
+        const userIds = [...new Set(orders.map(o => o.user_id))];
+        const users = await usersCollection.find({ user_id: { $in: userIds } }).toArray();
+        const userMap = {};
+        users.forEach(u => { userMap[u.user_id] = u.email; });
+        const ordersWithEmail = orders.map(o => ({ ...o, email: userMap[o.user_id] || null }));
+        return res.status(200).json({ status: 'Success', data: ordersWithEmail });
+    } catch (error) {
+        console.error('Error in GetOrdersByDistrict:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// 6) GET: Installations by district (service_records.task_type = 1)
+const GetInstallationsByDistrict = async (req, res) => {
+    try {
+        const { district } = req.query || {};
+        if (!district || String(district).trim() === '') {
+            return res.status(400).json({ status: 'Failed', message: 'district is required' });
+        }
+        const db = await database.connectToDatabase();
+        const serviceRecords = db.collection('service_records');
+        const districtRegex = new RegExp(`^${String(district).trim()}$`, 'i');
+        const records = await serviceRecords.find({ task_type: 1, 'address.district': districtRegex }).toArray();
+        return res.status(200).json({ status: 'Success', data: records });
+    } catch (error) {
+        console.error('Error in GetInstallationsByDistrict:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// 7) GET: Services by district (service_records.task_type = 2)
+const GetServicesByDistrict = async (req, res) => {
+    try {
+        const { district } = req.query || {};
+        if (!district || String(district).trim() === '') {
+            return res.status(400).json({ status: 'Failed', message: 'district is required' });
+        }
+        const db = await database.connectToDatabase();
+        const serviceRecords = db.collection('service_records');
+        const districtRegex = new RegExp(`^${String(district).trim()}$`, 'i');
+        const records = await serviceRecords.find({ task_type: 2, 'address.district': districtRegex }).toArray();
+        return res.status(200).json({ status: 'Success', data: records });
+    } catch (error) {
+        console.error('Error in GetServicesByDistrict:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// Seller assignment APIs
+// Assign seller to state/district with status
+const AssignSeller = async (req, res) => {
+    try {
+        const { seller_id, assign_state, assign_district, assign_status } = req.body || {};
+        const modifier = req.user?.userId || 'system';
+        if (seller_id === undefined || !assign_state || !assign_district || assign_status === undefined) {
+            return res.status(400).json({ status: 'Failed', message: 'seller_id, assign_state, assign_district, assign_status are required' });
+        }
+        const db = await database.connectToDatabase();
+        const usersCollection = db.collection('users');
+        const userIdInt = parseInt(seller_id);
+
+        const seller = await usersCollection.findOne({ user_id: userIdInt, role_id: 4 });
+        if (!seller) {
+            return res.status(404).json({ status: 'Failed', message: 'Seller not found' });
+        }
+
+        const incomingState = String(assign_state).trim();
+        const incomingDistrict = String(assign_district).trim();
+        const existingState = String(seller.assigned_state || '').trim();
+        const existingDistrict = String(seller.assigned_district || '').trim();
+
+        const statusStr = String(assign_status).trim().toLowerCase();
+        const statusBool = assign_status === true || assign_status === 1 || statusStr === '1' || statusStr === 'true';
+
+        // If seller already has an assignment, only allow when state & district match (case-insensitive)
+        if (existingState && existingDistrict) {
+            const sameState = existingState.toLowerCase() === incomingState.toLowerCase();
+            const sameDistrict = existingDistrict.toLowerCase() === incomingDistrict.toLowerCase();
+            if (!sameState || !sameDistrict) {
+                return res.status(400).json({ status: 'Failed', message: 'Assigned state/district change is not allowed' });
+            }
+            // Same assignment → update status only
+            const updateResult = await usersCollection.updateOne(
+                { user_id: userIdInt },
+                { $set: { assigned_status: statusBool, modifiedby: modifier, modifieddate: new Date() } }
+            );
+            if (!updateResult.modifiedCount) {
+                return res.status(500).json({ status: 'Failed', message: 'Assignment update failed' });
+            }
+            return res.status(200).json({ status: 'Success', message: 'Seller assignment status updated' });
+        }
+
+        // Initial assignment (no existing state/district) → allow setting
+        const updateResult = await usersCollection.updateOne(
+            { user_id: userIdInt },
+            {
+                $set: {
+                    assigned_state: incomingState,
+                    assigned_district: incomingDistrict,
+                    assigned_status: statusBool,
+                    modifiedby: modifier,
+                    modifieddate: new Date()
+                }
+            }
+        );
+
+        if (!updateResult.modifiedCount) {
+            return res.status(500).json({ status: 'Failed', message: 'Assignment update failed' });
+        }
+
+        return res.status(200).json({ status: 'Success', message: 'Seller assigned successfully' });
+    } catch (error) {
+        console.error('Error in AssignSeller:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// ReAssign seller to different state/district with status
+const ReAssignSeller = async (req, res) => {
+    try {
+        const { seller_id, assign_state, assign_district, assign_status } = req.body || {};
+        const modifier = req.user?.userId || 'system';
+        if (seller_id === undefined || !assign_state || !assign_district || assign_status === undefined) {
+            return res.status(400).json({ status: 'Failed', message: 'seller_id, assign_state, assign_district, assign_status are required' });
+        }
+        const db = await database.connectToDatabase();
+        const usersCollection = db.collection('users');
+        const userIdInt = parseInt(seller_id);
+
+        const seller = await usersCollection.findOne({ user_id: userIdInt, role_id: 4 });
+        if (!seller) {
+            return res.status(404).json({ status: 'Failed', message: 'Seller not found' });
+        }
+
+        const incomingState = String(assign_state).trim();
+        const incomingDistrict = String(assign_district).trim();
+        const existingState = String(seller.assigned_state || '').trim();
+        const existingDistrict = String(seller.assigned_district || '').trim();
+
+        const statusStr = String(assign_status).trim().toLowerCase();
+        const statusBool = assign_status === true || assign_status === 1 || statusStr === '1' || statusStr === 'true';
+
+        // If seller already has an assignment, only allow when state & district match (case-insensitive)
+        if (existingState && existingDistrict) {
+            const sameState = existingState.toLowerCase() === incomingState.toLowerCase();
+            const sameDistrict = existingDistrict.toLowerCase() === incomingDistrict.toLowerCase();
+            if (!sameState || !sameDistrict) {
+                return res.status(400).json({ status: 'Failed', message: 'Assigned state/district change is not allowed' });
+            }
+            // Same assignment → update status only
+            const updateResult = await usersCollection.updateOne(
+                { user_id: userIdInt },
+                { $set: { assigned_status: statusBool, modifiedby: modifier, modifieddate: new Date() } }
+            );
+            if (!updateResult.modifiedCount) {
+                return res.status(500).json({ status: 'Failed', message: 'Reassignment update failed' });
+            }
+            return res.status(200).json({ status: 'Success', message: 'Seller reassignment status updated' });
+        }
+
+        // Initial assignment (no existing state/district) → allow setting
+        const updateResult = await usersCollection.updateOne(
+            { user_id: userIdInt },
+            {
+                $set: {
+                    assigned_state: incomingState,
+                    assigned_district: incomingDistrict,
+                    assigned_status: statusBool,
+                    modifiedby: modifier,
+                    modifieddate: new Date()
+                }
+            }
+        );
+
+        if (!updateResult.modifiedCount) {
+            return res.status(500).json({ status: 'Failed', message: 'Reassignment update failed' });
+        }
+
+        return res.status(200).json({ status: 'Success', message: 'Seller reassigned successfully' });
+    } catch (error) {
+        console.error('Error in ReAssignSeller:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// Deactivate seller assignment (set assigned_status = false)
+const DeactivateSellerAssignment = async (req, res) => {
+    try {
+        const { seller_id } = req.body || {};
+        const modifier = req.user?.userId || 'system';
+        if (seller_id === undefined) {
+            return res.status(400).json({ status: 'Failed', message: 'seller_id is required' });
+        }
+        const db = await database.connectToDatabase();
+        const usersCollection = db.collection('users');
+        const userIdInt = parseInt(seller_id);
+
+        const seller = await usersCollection.findOne({ user_id: userIdInt, role_id: 4 });
+        if (!seller) {
+            return res.status(404).json({ status: 'Failed', message: 'Seller not found' });
+        }
+
+        const updateResult = await usersCollection.updateOne(
+            { user_id: userIdInt },
+            { $set: { assigned_status: false, modifiedby: modifier, modifieddate: new Date() } }
+        );
+
+        if (!updateResult.modifiedCount) {
+            return res.status(500).json({ status: 'Failed', message: 'Deactivate assignment failed' });
+        }
+
+        return res.status(200).json({ status: 'Success', message: 'Seller assignment deactivated successfully' });
+    } catch (error) {
+        console.error('Error in DeactivateSellerAssignment:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
 module.exports = {
     getModules, authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
     UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders, AddUserRoles, FetchUserRoles, UpdateUserRoles,
     AddUsers, FetchUsers, FetchSellers, FetchOrdersByDistrict, FetchTechniciansByDistrict, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
-    FetchSelectServiceTask, AssignService, ReAssignService, assignPermissions, fetchPermissionsByRole
+    FetchSelectServiceTask, AssignService, ReAssignService, assignPermissions, fetchPermissionsByRole,
+    GetUsersByDistrict, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
+    AssignSeller, ReAssignSeller, DeactivateSellerAssignment
     // UpdateOrdersStatus,
 };

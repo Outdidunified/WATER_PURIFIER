@@ -128,4 +128,19 @@ router.post('/AssignService', verifyToken, Controller.AssignService);
 // Route to ReAssignService
 router.post('/ReAssignService', verifyToken, Controller.ReAssignService);
 
+// Seller assignment routes
+router.post('/AssignSeller', verifyToken, Controller.AssignSeller);
+router.post('/ReAssignSeller', verifyToken, Controller.ReAssignSeller);
+router.post('/DeactivateSellerAssignment', verifyToken, Controller.DeactivateSellerAssignment);
+
+// New GET APIs by district
+// Users by district (optional role_id)
+router.get('/users/by-district', verifyToken, Controller.GetUsersByDistrict);
+// Orders by district
+router.get('/orders/by-district', verifyToken, Controller.GetOrdersByDistrict);
+// Installations by district
+router.get('/installations/by-district', verifyToken, Controller.GetInstallationsByDistrict);
+// Services by district
+router.get('/services/by-district', verifyToken, Controller.GetServicesByDistrict);
+
 module.exports = router;
