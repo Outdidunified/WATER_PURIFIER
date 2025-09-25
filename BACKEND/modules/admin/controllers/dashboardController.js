@@ -2606,8 +2606,6 @@ const DeactivateSellerAssignment = async (req, res) => {
         return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
     }
 };
-
-// FetchOrdersByUserId - Get all orders for a specific user
 const FetchOrdersByUserId = async (req, res) => {
     try {
         const { user_id } = req.body;
@@ -2643,6 +2641,14 @@ const FetchOrdersByUserId = async (req, res) => {
             });
         }
 
+        // ✅ Role-based restriction
+        if (user.role_id !== 3) {
+            return res.status(403).json({
+                status: 'Failed',
+                message: 'Unauthorized: only role_id 3 is allowed to access this data'
+            });
+        }
+
         // Get all orders for the specific user
         const orders = await ordersCollection.find({ user_id: userIdInt }).sort({ createdAt: -1 }).toArray();
 
@@ -2662,7 +2668,6 @@ const FetchOrdersByUserId = async (req, res) => {
 
         // Enrich orders with service records and installation status
         const enrichedOrders = await Promise.all(orders.map(async (order) => {
-            // Find service record for this device
             const serviceRecord = await serviceRecordsCollection.findOne({ 
                 wp_device_id: order.wp_device_id 
             });
@@ -2715,6 +2720,7 @@ const FetchOrdersByUserId = async (req, res) => {
         });
     }
 };
+
 
 module.exports = {
     getModules, authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
