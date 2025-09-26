@@ -1730,6 +1730,14 @@ const AssignInstallation = async (req, res) => {
         const otp = Math.floor(100000 + Math.random() * 900000);
         const now = new Date();
 
+        // Guard: block assignment if order not paid/confirmed
+        if (orderDoc?.paymentStatus !== 'Completed' || orderDoc?.orderStatus !== 'Confirmed') {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Cannot assign installation: order not paid/confirmed'
+            });
+        }
+
         // Prepare new task (enriched with address and product info)
         const newTask = {
             task_id: nextTaskId,
@@ -1823,6 +1831,16 @@ const ReAssignInstallation = async (req, res) => {
             });
         }
 
+        // Guard: block reassignment if related order not paid
+        const ordersCollection = db.collection("orders");
+        const relatedOrder = await ordersCollection.findOne({ wp_device_id: existingTask.wp_device_id || existingTask.device_id });
+        if (!relatedOrder || relatedOrder.paymentStatus !== 'Completed') {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Cannot reassign installation: related order is not paid'
+            });
+        }
+
         // Update the record
         const now = new Date();
         const updateResult = await serviceRecords.updateOne(
@@ -1864,6 +1882,12 @@ const FetchSelectInstallationTask = async (req, res) => {
         const ordersCollection = db.collection("orders");
 
         const installations = await ordersCollection.aggregate([
+            {
+                $match: {
+                    orderStatus: "Confirmed",
+                    paymentStatus: "Completed"
+                }
+            },
             {
                 $lookup: {
                     from: "service_records",
@@ -1940,8 +1964,21 @@ const FetchSelectServiceTask = async (req, res) => {
         const db = await database.connectToDatabase();
         const collection = db.collection("service_records");
 
-        // Fetch all service_records where task_type is 2 (Services)
-        const allServices = await collection.find({ task_type: 2 }).toArray();
+        const allServices = await collection.aggregate([
+            { $match: { task_type: 2 } },
+            {
+                $lookup: {
+                    from: "orders",
+                    localField: "device_id",
+                    foreignField: "wp_device_id",
+                    as: "order"
+                }
+            },
+            { $addFields: { order: { $arrayElemAt: ["$order", 0] } } },
+            { $match: { "order.paymentStatus": "Completed" } },
+            { $addFields: { wp_device_id: "$device_id" } },
+            { $project: { device_id: 0, order: 0 } }
+        ]).toArray();
 
         return res.status(200).json({
             status: 'Success',
@@ -2051,6 +2088,26 @@ const AssignService = async (req, res) => {
 
         const { user_id, role_id, email } = technicianUser;
 
+        // Fetch existing task
+        const existingTask = await serviceRecords.findOne({ task_id });
+        if (!existingTask) {
+            return res.status(404).json({
+                status: 'Failed',
+                message: 'Task not found with given task_id',
+            });
+        }
+
+        // Resolve order by wp_device_id/device_id
+        const ordersCollection = db.collection("orders");
+        const wpId = existingTask.wp_device_id || existingTask.device_id;
+        const orderDoc = await ordersCollection.findOne({ wp_device_id: wpId });
+        if (!orderDoc || orderDoc.paymentStatus !== 'Completed') {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Cannot assign service: related order is not paid'
+            });
+        }
+
         // Update the existing task by task_id
         const updateResult = await serviceRecords.updateOne(
             { task_id: task_id },
@@ -2134,6 +2191,16 @@ const ReAssignService = async (req, res) => {
             return res.status(404).json({
                 status: 'Failed',
                 message: `Task with task_id ${task_id} not found.`,
+            });
+        }
+
+        // Guard: block reassignment if related order not paid
+        const ordersCollection = db.collection("orders");
+        const relatedOrder = await ordersCollection.findOne({ wp_device_id: existingTask.wp_device_id || existingTask.device_id });
+        if (!relatedOrder || relatedOrder.paymentStatus !== 'Completed') {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Cannot reassign service: related order is not paid'
             });
         }
 
@@ -2300,14 +2367,14 @@ const GetInstallationsByDistrict = async (req, res) => {
     const db = await database.connectToDatabase();
     const ordersCollection = db.collection("orders");
 
-    const matchStage = {};
+    const matchStage = { paymentStatus: "Completed", orderStatus: "Confirmed" };
     if (district && String(district).trim() !== '') {
       // Case-insensitive regex
       matchStage["deliveryAddress.district"] = new RegExp(`^${String(district).trim()}$`, "i");
     }
 
     const installations = await ordersCollection.aggregate([
-      ...(Object.keys(matchStage).length > 0 ? [{ $match: matchStage }] : []),
+      { $match: matchStage },
       {
         $lookup: {
           from: "service_records",
@@ -2414,12 +2481,19 @@ const GetServicesByDistrict = async (req, res) => {
         { $match: { "order.deliveryAddress.district": new RegExp(String(district).trim(), "i") } }
       ] : []),
 
+      // Only include paid (and optionally confirmed) orders
+      { $match: { "order.paymentStatus": "Completed" } },
+
       // Replace device_id with wp_device_id and remove order field
       {
+        $addFields: {
+          wp_device_id: "$device_id"
+        }
+      },
+      {
         $project: {
-          wp_device_id: "$device_id", // rename
-          device_id: 0,               // remove original
-          order: 0                    // remove order
+          device_id: 0,
+          order: 0
         }
       }
     ];

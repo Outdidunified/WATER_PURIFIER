@@ -160,6 +160,12 @@ async function autoAssignInstallation(order) {
             return;
         }
 
+        // Enforce payment and order status
+        if (order.paymentStatus !== 'Completed' || order.orderStatus !== 'Confirmed') {
+            console.log(`Skipping auto-assign for unpaid/unconfirmed order ${order.customOrderId || order.wp_device_id}`);
+            return;
+        }
+
         // Find best technician
         const technician = await findBestTechnician(normalizedAddress);
         if (!technician) {
@@ -243,6 +249,7 @@ async function autoAssignService(taskId) {
         const db = await connectToDatabase();
         const serviceRecords = db.collection("service_records");
         const usersCollection = db.collection("users");
+        const ordersCollection = db.collection("orders");
         const technicianDetailsCollection = db.collection("technician_details");
 
         // Find the task
@@ -250,6 +257,15 @@ async function autoAssignService(taskId) {
         if (!task) {
             console.log(`Task ${taskId} not found`);
             return;
+        }
+
+        // For service tasks tied to an order/device, enforce payment check
+        if (task.wp_device_id) {
+            const order = await ordersCollection.findOne({ wp_device_id: task.wp_device_id });
+            if (!order || order.paymentStatus !== 'Completed') {
+                console.log(`Skipping auto-assign service for unpaid/unknown order with device ${task.wp_device_id}`);
+                return;
+            }
         }
 
         // Get user address
@@ -359,6 +375,31 @@ async function autoAssignPendingTasks() {
             if (!normalizedAddress) {
                 console.log(`No address found for task ${task.task_id}, skipping`);
                 continue;
+            }
+
+            // Enforce payment rules before auto-assign
+            if (task.task_type === 1) {
+                // Installation must be paid and confirmed
+                let orderForTask = null;
+                if (task.wp_device_id) {
+                    orderForTask = await ordersCollection.findOne({ wp_device_id: task.wp_device_id });
+                }
+                if (!orderForTask && task.order && task.order.customOrderId) {
+                    orderForTask = await ordersCollection.findOne({ customOrderId: task.order.customOrderId });
+                }
+                if (!orderForTask || orderForTask.paymentStatus !== 'Completed' || orderForTask.orderStatus !== 'Confirmed') {
+                    console.log(`Skipping auto-assign installation ${task.task_id} due to unpaid/unconfirmed order`);
+                    continue;
+                }
+            } else if (task.task_type === 2) {
+                // Service must have related order paid if tied to a device
+                if (task.wp_device_id) {
+                    const orderForService = await ordersCollection.findOne({ wp_device_id: task.wp_device_id });
+                    if (!orderForService || orderForService.paymentStatus !== 'Completed') {
+                        console.log(`Skipping auto-assign service ${task.task_id} due to unpaid/unknown order for device ${task.wp_device_id}`);
+                        continue;
+                    }
+                }
             }
 
             // Find best technician
