@@ -2727,79 +2727,241 @@ const GetAnalytics = async (req, res) => {
     try {
         const db = await database.connectToDatabase();
         const paymentsCollection = db.collection("payments");
+        const ordersCollection = db.collection("orders");
+        const usersCollection = db.collection("users");
 
         const now = new Date();
-        const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
-        // Total pending payments (count)
-        const totalPendingPayments = await paymentsCollection.countDocuments({
-            paymentStatus: 'Pending'
-        });
+        // Helpers
+        const countPayments = (filter) => paymentsCollection.countDocuments(filter);
+        const countOrders = (filter) => ordersCollection.countDocuments(filter);
 
-        // Payments in last 2 hours (count of all payments)
-        const paymentsLast2Hours = await paymentsCollection.countDocuments({
-            createdAt: { $gte: twoHoursAgo }
-        });
+        // Payments summary
+        const [
+            paymentsTotal,
+            paymentsSuccess,
+            paymentsPending,
+            paymentsTodayTotal,
+            paymentsTodaySuccess,
+            paymentsWeekTotal,
+            paymentsWeekSuccess,
+            paymentsMonthTotal,
+            paymentsMonthSuccess,
+            paymentsYearTotal,
+            paymentsYearSuccess
+        ] = await Promise.all([
+            countPayments({}),
+            countPayments({ paymentStatus: 'Completed' }),
+            countPayments({ paymentStatus: 'Pending' }),
+            countPayments({ createdAt: { $gte: startOfToday } }),
+            countPayments({ paymentStatus: 'Completed', createdAt: { $gte: startOfToday } }),
+            countPayments({ createdAt: { $gte: sevenDaysAgo } }),
+            countPayments({ paymentStatus: 'Completed', createdAt: { $gte: sevenDaysAgo } }),
+            countPayments({ createdAt: { $gte: oneMonthAgo } }),
+            countPayments({ paymentStatus: 'Completed', createdAt: { $gte: oneMonthAgo } }),
+            countPayments({ createdAt: { $gte: oneYearAgo } }),
+            countPayments({ paymentStatus: 'Completed', createdAt: { $gte: oneYearAgo } }),
+        ]);
 
-        // Payments in last 7 days (count)
-        const paymentsLast7Days = await paymentsCollection.countDocuments({
-            createdAt: { $gte: sevenDaysAgo }
-        });
+        // Orders summary (using paymentStatus on orders)
+        const [
+            ordersTotal,
+            ordersSuccess,
+            ordersPending,
+            ordersTodayTotal,
+            ordersTodaySuccess,
+            ordersWeekTotal,
+            ordersWeekSuccess,
+            ordersMonthTotal,
+            ordersMonthSuccess,
+            ordersYearTotal,
+            ordersYearSuccess
+        ] = await Promise.all([
+            countOrders({}),
+            countOrders({ paymentStatus: 'Completed' }),
+            countOrders({ paymentStatus: 'Pending' }),
+            countOrders({ createdAt: { $gte: startOfToday } }),
+            countOrders({ paymentStatus: 'Completed', createdAt: { $gte: startOfToday } }),
+            countOrders({ createdAt: { $gte: sevenDaysAgo } }),
+            countOrders({ paymentStatus: 'Completed', createdAt: { $gte: sevenDaysAgo } }),
+            countOrders({ createdAt: { $gte: oneMonthAgo } }),
+            countOrders({ paymentStatus: 'Completed', createdAt: { $gte: oneMonthAgo } }),
+            countOrders({ createdAt: { $gte: oneYearAgo } }),
+            countOrders({ paymentStatus: 'Completed', createdAt: { $gte: oneYearAgo } })
+        ]);
 
-        // Payments in last month (count)
-        const paymentsLastMonth = await paymentsCollection.countDocuments({
-            createdAt: { $gte: oneMonthAgo }
-        });
+        // Users summary
+        const [
+            totalUsers,
+            sellersCount,
+            endUsersCount,
+            techniciansCount
+        ] = await Promise.all([
+            usersCollection.countDocuments({}),
+            usersCollection.countDocuments({ role_id: 4 }),
+            usersCollection.countDocuments({ role_id: 3 }),
+            usersCollection.countDocuments({ role_id: 2 })
+        ]);
 
-        // Payments in last year (count)
-        const paymentsLastYear = await paymentsCollection.countDocuments({
-            createdAt: { $gte: oneYearAgo }
-        });
-
-        // Revenue functions
-        const getRevenue = async (filter) => {
+        // Revenue (prefer payments collection, fallback to orders if zero)
+        const getRevenueFromPayments = async (filter) => {
             const result = await paymentsCollection.aggregate([
                 { $match: { ...filter, paymentStatus: 'Completed' } },
                 { $group: { _id: null, total: { $sum: '$totalPrice' } } }
             ]).toArray();
             return result.length > 0 ? result[0].total : 0;
         };
+        const getRevenueFromOrders = async (filter) => {
+            const result = await ordersCollection.aggregate([
+                { $match: { ...filter, paymentStatus: 'Completed' } },
+                { $addFields: { amount: { $ifNull: ['$totalPrice', '$grandTotal'] } } },
+                { $group: { _id: null, total: { $sum: '$amount' } } }
+            ]).toArray();
+            return result.length > 0 ? result[0].total : 0;
+        };
+        const revenueTotalPayments = await getRevenueFromPayments({});
+        const revenueDailyPayments = await getRevenueFromPayments({ createdAt: { $gte: oneDayAgo } });
+        const revenueWeeklyPayments = await getRevenueFromPayments({ createdAt: { $gte: sevenDaysAgo } });
+        const revenueMonthlyPayments = await getRevenueFromPayments({ createdAt: { $gte: oneMonthAgo } });
+        const revenueYearlyPayments = await getRevenueFromPayments({ createdAt: { $gte: oneYearAgo } });
 
-        // Total revenue
-        const totalRevenue = await getRevenue({});
+        const [
+            revenueTotalOrders,
+            revenueDailyOrders,
+            revenueWeeklyOrders,
+            revenueMonthlyOrders,
+            revenueYearlyOrders
+        ] = await Promise.all([
+            getRevenueFromOrders({}),
+            getRevenueFromOrders({ createdAt: { $gte: oneDayAgo } }),
+            getRevenueFromOrders({ createdAt: { $gte: sevenDaysAgo } }),
+            getRevenueFromOrders({ createdAt: { $gte: oneMonthAgo } }),
+            getRevenueFromOrders({ createdAt: { $gte: oneYearAgo } })
+        ]);
 
-        // Daily revenue (last 24 hours)
-        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        const revenueDaily = await getRevenue({ createdAt: { $gte: oneDayAgo } });
+        const revenue = {
+            total: revenueTotalPayments || revenueTotalOrders,
+            daily: revenueDailyPayments || revenueDailyOrders,
+            weekly: revenueWeeklyPayments || revenueWeeklyOrders,
+            monthly: revenueMonthlyPayments || revenueMonthlyOrders,
+            yearly: revenueYearlyPayments || revenueYearlyOrders
+        };
 
-        // Weekly revenue (last 7 days)
-        const revenueWeekly = await getRevenue({ createdAt: { $gte: sevenDaysAgo } });
+        // Optional custom date range via query: ?from=YYYY-MM-DD&to=YYYY-MM-DD (inclusive)
+        const { from: fromStr, to: toStr } = req.query || {};
+        let customRange = null;
+        if (fromStr && toStr) {
+            const start = new Date(fromStr);
+            const end = new Date(toStr);
+            if (isNaN(start) || isNaN(end)) {
+                return res.status(400).json({ status: 'Failed', message: 'Invalid from/to date. Use ISO format (YYYY-MM-DD).' });
+            }
+            end.setHours(23, 59, 59, 999);
 
-        // Monthly revenue (last 30 days)
-        const revenueMonthly = await getRevenue({ createdAt: { $gte: oneMonthAgo } });
+            const rangeFilter = { createdAt: { $gte: start, $lte: end } };
 
-        // Yearly revenue (last 365 days)
-        const revenueYearly = await getRevenue({ createdAt: { $gte: oneYearAgo } });
+            const [
+                paymentsRangeTotal,
+                paymentsRangeSuccess,
+                paymentsRangePending,
+                ordersRangeTotal,
+                ordersRangeSuccess,
+                ordersRangePending,
+                revenueRangePayments,
+                revenueRangeOrders
+            ] = await Promise.all([
+                countPayments(rangeFilter),
+                countPayments({ paymentStatus: 'Completed', ...rangeFilter }),
+                countPayments({ paymentStatus: 'Pending', ...rangeFilter }),
+                countOrders(rangeFilter),
+                countOrders({ paymentStatus: 'Completed', ...rangeFilter }),
+                countOrders({ paymentStatus: 'Pending', ...rangeFilter }),
+                getRevenueFromPayments(rangeFilter),
+                getRevenueFromOrders(rangeFilter)
+            ]);
+
+            const usersDateFilter = {
+                $or: [
+                    { createdAt: { $gte: start, $lte: end } },
+                    { createddate: { $gte: start, $lte: end } }
+                ]
+            };
+            const [
+                usersRangeTotal,
+                usersRangeSellers,
+                usersRangeEndUsers,
+                usersRangeTechnicians
+            ] = await Promise.all([
+                usersCollection.countDocuments(usersDateFilter),
+                usersCollection.countDocuments({ role_id: 4, ...usersDateFilter }),
+                usersCollection.countDocuments({ role_id: 3, ...usersDateFilter }),
+                usersCollection.countDocuments({ role_id: 2, ...usersDateFilter })
+            ]);
+
+            customRange = {
+                from: start,
+                to: end,
+                payments: {
+                    total: paymentsRangeTotal,
+                    successful: paymentsRangeSuccess,
+                    pending: paymentsRangePending
+                },
+                orders: {
+                    total: ordersRangeTotal,
+                    successful: ordersRangeSuccess,
+                    pending: ordersRangePending
+                },
+                users: {
+                    total: usersRangeTotal,
+                    sellers_role_4: usersRangeSellers,
+                    end_users_role_3: usersRangeEndUsers,
+                    technicians_role_2: usersRangeTechnicians
+                },
+                revenue: revenueRangePayments || revenueRangeOrders
+            };
+        }
+
+        const payload = {
+            payments: {
+                total: paymentsTotal,
+                successful: paymentsSuccess,
+                pending: paymentsPending,
+                by_period: {
+                    today: { total: paymentsTodayTotal, successful: paymentsTodaySuccess },
+                    weekly: { total: paymentsWeekTotal, successful: paymentsWeekSuccess },
+                    monthly: { total: paymentsMonthTotal, successful: paymentsMonthSuccess },
+                    yearly: { total: paymentsYearTotal, successful: paymentsYearSuccess }
+                }
+            },
+            orders: {
+                total: ordersTotal,
+                successful: ordersSuccess,
+                pending: ordersPending,
+                by_period: {
+                    today: { total: ordersTodayTotal, successful: ordersTodaySuccess },
+                    weekly: { total: ordersWeekTotal, successful: ordersWeekSuccess },
+                    monthly: { total: ordersMonthTotal, successful: ordersMonthSuccess },
+                    yearly: { total: ordersYearTotal, successful: ordersYearSuccess }
+                }
+            },
+            users: {
+                total: totalUsers,
+                sellers_role_4: sellersCount,
+                end_users_role_3: endUsersCount,
+                technicians_role_2: techniciansCount
+            },
+            revenue
+        };
+        if (customRange) payload.custom_range = customRange;
 
         return res.status(200).json({
             status: 'Success',
-            data: {
-                total_pending_payments: totalPendingPayments,
-                payments_last_2_hours: paymentsLast2Hours,
-                payments_last_7_days: paymentsLast7Days,
-                payments_last_month: paymentsLastMonth,
-                payments_last_year: paymentsLastYear,
-                revenue: {
-                    total: totalRevenue,
-                    daily: revenueDaily,
-                    weekly: revenueWeekly,
-                    monthly: revenueMonthly,
-                    yearly: revenueYearly
-                }
-            }
+            data: payload
         });
 
     } catch (error) {
