@@ -2722,12 +2722,102 @@ const FetchOrdersByUserId = async (req, res) => {
 };
 
 
+// Get Analytics
+const GetAnalytics = async (req, res) => {
+    try {
+        const db = await database.connectToDatabase();
+        const paymentsCollection = db.collection("payments");
+
+        const now = new Date();
+        const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+
+        // Total pending payments (count)
+        const totalPendingPayments = await paymentsCollection.countDocuments({
+            paymentStatus: 'Pending'
+        });
+
+        // Payments in last 2 hours (count of all payments)
+        const paymentsLast2Hours = await paymentsCollection.countDocuments({
+            createdAt: { $gte: twoHoursAgo }
+        });
+
+        // Payments in last 7 days (count)
+        const paymentsLast7Days = await paymentsCollection.countDocuments({
+            createdAt: { $gte: sevenDaysAgo }
+        });
+
+        // Payments in last month (count)
+        const paymentsLastMonth = await paymentsCollection.countDocuments({
+            createdAt: { $gte: oneMonthAgo }
+        });
+
+        // Payments in last year (count)
+        const paymentsLastYear = await paymentsCollection.countDocuments({
+            createdAt: { $gte: oneYearAgo }
+        });
+
+        // Revenue functions
+        const getRevenue = async (filter) => {
+            const result = await paymentsCollection.aggregate([
+                { $match: { ...filter, paymentStatus: 'Completed' } },
+                { $group: { _id: null, total: { $sum: '$totalPrice' } } }
+            ]).toArray();
+            return result.length > 0 ? result[0].total : 0;
+        };
+
+        // Total revenue
+        const totalRevenue = await getRevenue({});
+
+        // Daily revenue (last 24 hours)
+        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const revenueDaily = await getRevenue({ createdAt: { $gte: oneDayAgo } });
+
+        // Weekly revenue (last 7 days)
+        const revenueWeekly = await getRevenue({ createdAt: { $gte: sevenDaysAgo } });
+
+        // Monthly revenue (last 30 days)
+        const revenueMonthly = await getRevenue({ createdAt: { $gte: oneMonthAgo } });
+
+        // Yearly revenue (last 365 days)
+        const revenueYearly = await getRevenue({ createdAt: { $gte: oneYearAgo } });
+
+        return res.status(200).json({
+            status: 'Success',
+            data: {
+                total_pending_payments: totalPendingPayments,
+                payments_last_2_hours: paymentsLast2Hours,
+                payments_last_7_days: paymentsLast7Days,
+                payments_last_month: paymentsLastMonth,
+                payments_last_year: paymentsLastYear,
+                revenue: {
+                    total: totalRevenue,
+                    daily: revenueDaily,
+                    weekly: revenueWeekly,
+                    monthly: revenueMonthly,
+                    yearly: revenueYearly
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error("Error in GetAnalytics:", error);
+        logger?.error?.(error);
+        return res.status(500).json({
+            status: 'Failed',
+            message: 'Internal Server Error'
+        });
+    }
+};
+
 module.exports = {
     getModules, authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
     UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders, AddUserRoles, FetchUserRoles, UpdateUserRoles,
     AddUsers, FetchUsers, FetchSellers, FetchOrdersByDistrict, FetchTechniciansByDistrict, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
     FetchSelectServiceTask, AssignService, ReAssignService, assignPermissions, fetchPermissionsByRole,
     GetUsersByDistrict, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
-    AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchOrdersByUserId
+    AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchOrdersByUserId, GetAnalytics
     // UpdateOrdersStatus,
 };
