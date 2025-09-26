@@ -1,5 +1,5 @@
 // ManageUsers.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
@@ -8,8 +8,137 @@ import ReusableButton from '../../../../utils/ReusableButton';
 import InputField from '../../../../utils/InputField';
 import useManageUsers from '../../hooks/ManageUser/ManageUsersHooks';
 
+import { Country, State, City } from 'country-state-city';
+import { getDistricts } from 'india-state-district';
+import SelectField from '../../../../utils/SelectField';
+import { GeoService } from '../../../../services/GeoService';
+
 const ManageUsers = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
+
+  // Location dropdown states for add user
+  const [countries, setCountries] = useState([]);
+  const [states, setStates] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [selectedCountry, setSelectedCountry] = useState(null);
+  const [selectedState, setSelectedState] = useState(null);
+  const [selectedCity, setSelectedCity] = useState(null);
+  const [selectedDistrict, setSelectedDistrict] = useState(null);
+
+  // Location dropdown states for assign seller
+  const [assignCountries, setAssignCountries] = useState([]);
+  const [assignStates, setAssignStates] = useState([]);
+  const [assignDistricts, setAssignDistricts] = useState([]);
+  const [assignSelectedCountry, setAssignSelectedCountry] = useState(null);
+  const [assignSelectedState, setAssignSelectedState] = useState(null);
+
+  useEffect(() => {
+    // Load countries for add user using GeoService (India will be first)
+    const countryOptions = GeoService.getCountriesForSelect();
+    setCountries(countryOptions);
+    setAssignCountries(countryOptions);
+    
+    // Set India as default country
+    const defaultCountry = GeoService.getDefaultCountryOption();
+    setSelectedCountry(defaultCountry);
+    setCountry(defaultCountry.value);
+    
+    // Test districts library
+    try {
+      const testDistricts = getDistricts();
+      console.log('Districts library loaded:', testDistricts.length, 'districts available');
+    } catch (error) {
+      console.error('Districts library error:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedCountry) {
+      // Load states for add user using GeoService
+      const stateOptions = GeoService.getStatesForSelect(selectedCountry.isoCode);
+      setStates(stateOptions);
+      setSelectedState(null);
+    } else {
+      setStates([]);
+      setSelectedState(null);
+    }
+    // Reset city and district
+    setCities([]);
+    setSelectedCity(null);
+    setDistricts([]);
+    setSelectedDistrict(null);
+  }, [selectedCountry]);
+
+  useEffect(() => {
+    if (selectedState && selectedCountry) {
+      console.log('Loading districts for:', selectedState.value, 'in', selectedCountry.value);
+      
+      // Load districts using GeoService
+      const districtOptions = GeoService.getDistrictsForSelect(
+        selectedCountry.isoCode, 
+        selectedState.value
+      );
+      
+      console.log('Districts loaded:', districtOptions.length, 'options');
+      setDistricts(districtOptions);
+      setSelectedDistrict(null);
+    } else {
+      setDistricts([]);
+      setSelectedDistrict(null);
+    }
+    // Reset cities when state changes
+    setCities([]);
+    setSelectedCity(null);
+  }, [selectedState, selectedCountry]);
+
+  // New useEffect for cities based on district selection
+  useEffect(() => {
+    if (selectedDistrict && selectedState && selectedCountry) {
+      console.log('Loading ALL cities for district:', selectedDistrict.value);
+      
+      // Load cities using GeoService
+      const cityOptions = GeoService.getCitiesForSelect(
+        selectedCountry.isoCode,
+        selectedState.value,
+        selectedDistrict.value
+      );
+      
+      console.log(`All cities loaded:`, cityOptions.length, 'cities');
+      setCities(cityOptions);
+      setSelectedCity(null);
+    } else {
+      setCities([]);
+      setSelectedCity(null);
+    }
+  }, [selectedDistrict, selectedState, selectedCountry]);
+
+  useEffect(() => {
+    if (assignSelectedCountry) {
+      // Load states for assign seller using GeoService
+      const stateOptions = GeoService.getStatesForSelect(assignSelectedCountry.isoCode);
+      setAssignStates(stateOptions);
+      setAssignSelectedState(null);
+    } else {
+      setAssignStates([]);
+      setAssignSelectedState(null);
+    }
+    // Reset district
+    setAssignDistricts([]);
+  }, [assignSelectedCountry]);
+
+  useEffect(() => {
+    if (assignSelectedState && assignSelectedCountry) {
+      // Load districts for assign seller using GeoService
+      const districtOptions = GeoService.getDistrictsForSelect(
+        assignSelectedCountry.isoCode,
+        assignSelectedState.value
+      );
+      setAssignDistricts(districtOptions);
+    } else {
+      setAssignDistricts([]);
+    }
+  }, [assignSelectedState, assignSelectedCountry]);
 
   const {
     posts,
@@ -80,8 +209,8 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                   style={{
                     maxHeight: '750px',
                     overflowY: 'auto',
-                    width: '850px',
-                    minWidth: '800px',
+                    width: '1100px',
+                    minWidth: '1000px',
                     padding: '20px',
                   }}
                 >
@@ -92,179 +221,259 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                     &times;
                   </span>
 
-                  <form className="card" onSubmit={handleAddUserSubmit}>
+                  <form className="card" onSubmit={handleAddUserSubmit} style={{ border: 'none', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
                     <div className="card-body">
-                      <h4 className="card-title text-center">Add User</h4>
-                      <div className="table-responsive pt-3">
+                      <h4 className="card-title text-center mb-4" style={{ color: '#495057', fontWeight: '600' }}>Add User</h4>
+                      <div className="pt-3">
+                        
+                        {/* Common styles for better UI */}
+                        <style jsx>{`
+                          .input-group-text {
+                            background-color: #f8f9fa !important;
+                            border-color: #ced4da !important;
+                            font-weight: 500 !important;
+                            font-size: 14px !important;
+                            color: #495057 !important;
+                          }
+                          .form-control:focus {
+                            border-color: #80bdff !important;
+                            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+                          }
+                          .form-field {
+                            background-color: #fafafa;
+                            padding: 15px;
+                            border-radius: 8px;
+                            margin-bottom: 15px;
+                            border: 1px solid #e9ecef;
+                          }
+                          .form-field:hover {
+                            background-color: #f5f5f5;
+                            transition: background-color 0.2s ease;
+                          }
+                          .column-container {
+                            display: flex;
+                            gap: 30px;
+                          }
+                          .column {
+                            flex: 1;
+                          }
+                        `}</style>
 
-                        {/* Row 1: Role + Name */}
-                        <div className="d-flex mb-3" style={{ gap: '20px' }}>
-                          <div className="input-group flex-fill">
-                            <div className="input-group-prepend">
-                              <span className="input-group-text" style={{ width: '125px' }}>Role</span>
+                        <div className="column-container" style={{ alignItems: 'flex-start', gap: '30px' }}>
+                          {/* Left Column */}
+                          <div className="column">
+                            {/* Role */}
+                            <div className="form-field">
+                              <div className="input-group">
+                                <div className="input-group-prepend">
+                                  <span className="input-group-text" style={{ width: '125px' }}>Role</span>
+                                </div>
+                                <SelectField
+                                  value={roles.find(r => r.role_id === role) ? { value: role, label: roles.find(r => r.role_id === role).role_name } : null}
+                                  onChange={(option) => setRole(option ? option.value : '')}
+                                  options={roles.map(r => ({ value: r.role_id, label: r.role_name }))}
+                                  placeholder="Select Role"
+                                  required
+                                />
+                              </div>
                             </div>
-                            <select
-                              className="form-control"
-                              value={role}
-                              onChange={(e) => setRole(Number(e.target.value))}
-                              required
-                            >
-                              <option value="">Select Role</option>
-                              {roles.map(r => (
-                                <option key={r.role_id} value={r.role_id}>{r.role_name}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="input-group flex-fill">
-                            <div className="input-group-prepend">
-                              <span className="input-group-text" style={{ width: '125px' }}>Name</span>
-                            </div>
-                            <InputField
-                              placeholder="Name"
-                              value={name}
-                              maxLength={50}
-                              pattern="^[a-zA-Z ]*$"
-                              title="Only letters and spaces are allowed"
-                              onChange={e => setName(e.target.value.replace(/[^a-zA-Z ]/g, ''))}
-                              required
-                            />
-                          </div>
-                        </div>
 
-                        {/* Row 2: Email + Phone */}
-                        <div className="d-flex mb-3" style={{ gap: '20px' }}>
-                          <div className="input-group flex-fill">
-                            <div className="input-group-prepend">
-                              <span className="input-group-text" style={{ width: '125px' }}>Email</span>
+                            {/* Email */}
+                            <div className="form-field">
+                              <div className="input-group">
+                                <div className="input-group-prepend">
+                                  <span className="input-group-text" style={{ width: '125px' }}>Email</span>
+                                </div>
+                                <InputField
+                                  type="email"
+                                  placeholder="Email"
+                                  value={email}
+                                  maxLength={50}
+                                  onChange={e => setEmail(e.target.value.toLowerCase())}
+                                  required
+                                />
+                              </div>
                             </div>
-                            <InputField
-                              type="email"
-                              placeholder="Email"
-                              value={email}
-                              maxLength={50}
-                              onChange={e => setEmail(e.target.value.toLowerCase())}
-                              required
-                            />
-                          </div>
-                          <div className="input-group flex-fill">
-                            <div className="input-group-prepend">
-                              <span className="input-group-text" style={{ width: '125px' }}>Phone</span>
-                            </div>
-                            <InputField
-                              type="tel"
-                              placeholder="Phone"
-                              maxLength={10}
-                              pattern="^[1-9][0-9]{9}$"
-                              title="Phone must be 10 digits and should not start with 0"
-                              value={phone}
-                              onChange={e => {
-                                const val = e.target.value.replace(/[^0-9]/g, '');
-                                if (val.length === 1 && val === '0') return;
-                                setPhone(val);
-                              }}
-                              required
-                            />
-                          </div>
-                        </div>
 
-                        {/* Row 3: Password + Pincode */}
-                        <div className="d-flex mb-3" style={{ gap: '20px' }}>
-                          <div className="input-group flex-fill">
-                            <div className="input-group-prepend">
-                              <span className="input-group-text" style={{ width: '125px' }}>Password</span>
+                            {/* Password */}
+                            <div className="form-field">
+                              <div className="input-group">
+                                <div className="input-group-prepend">
+                                  <span className="input-group-text" style={{ width: '125px' }}>Password</span>
+                                </div>
+                                <InputField
+                                  type="text"
+                                  placeholder="4-digit Password"
+                                  value={password}
+                                  maxLength={4}
+                                  pattern="^[1-9][0-9]{3}$"
+                                  title="Password must be exactly 4 digits and not start with 0"
+                                  onChange={e => setPassword(e.target.value.replace(/[^0-9]/g, ''))}
+                                  required
+                                />
+                              </div>
                             </div>
-                            <InputField
-                              type="text"
-                              placeholder="4-digit Password"
-                              value={password}
-                              maxLength={4}
-                              pattern="^[1-9][0-9]{3}$"
-                              title="Password must be exactly 4 digits and not start with 0"
-                              onChange={e => setPassword(e.target.value.replace(/[^0-9]/g, ''))}
-                              required
-                            />
-                          </div>
-                          <div className="input-group flex-fill">
-                            <div className="input-group-prepend">
-                              <span className="input-group-text" style={{ width: '125px' }}>Pincode</span>
-                            </div>
-                            <InputField
-                              placeholder="Pincode"
-                              value={pincode}
-                              onChange={e => setPincode(e.target.value)}
-                            />
-                          </div>
-                        </div>
 
-                        {/* Row 4: Address Line1 + Address Line2 */}
-                        <div className="d-flex mb-3" style={{ gap: '20px' }}>
-                          <div className="input-group flex-fill">
-                            <div className="input-group-prepend">
-                              <span className="input-group-text" style={{ width: '125px' }}>Address Line1</span>
+                            {/* Address Line2 */}
+                            <div className="form-field">
+                              <div className="input-group">
+                                <div className="input-group-prepend">
+                                  <span className="input-group-text" style={{ width: '125px' }}>Address Line2</span>
+                                </div>
+                                <InputField
+                                  placeholder="Address Line2"
+                                  value={addressline2}
+                                  onChange={e => setAddressline2(e.target.value)}
+                                />
+                              </div>
                             </div>
-                            <InputField
-                              placeholder="Address Line1"
-                              value={addressline1}
-                              onChange={e => setAddressline1(e.target.value)}
-                            />
-                          </div>
-                          <div className="input-group flex-fill">
-                            <div className="input-group-prepend">
-                              <span className="input-group-text" style={{ width: '125px' }}>Address Line2</span>
-                            </div>
-                            <InputField
-                              placeholder="Address Line2"
-                              value={addressline2}
-                              onChange={e => setAddressline2(e.target.value)}
-                            />
-                          </div>
-                        </div>
 
-                        {/* Row 5: City + Country */}
-                        <div className="d-flex mb-3" style={{ gap: '20px' }}>
-                          <div className="input-group flex-fill">
-                            <div className="input-group-prepend">
-                              <span className="input-group-text" style={{ width: '125px' }}>City</span>
+                            {/* State */}
+                            <div className="form-field">
+                              <div className="input-group">
+                                <div className="input-group-prepend">
+                                  <span className="input-group-text" style={{ width: '125px' }}>State</span>
+                                </div>
+                                <SelectField
+                                  value={selectedState}
+                                  onChange={(option) => {
+                                    setSelectedState(option);
+                                    setStateField(option ? option.value : '');
+                                  }}
+                                  options={states}
+                                  placeholder="Select State"
+                                  isDisabled={!selectedCountry}
+                                />
+                              </div>
                             </div>
-                            <InputField
-                              placeholder="City"
-                              value={city}
-                              onChange={e => setCity(e.target.value)}
-                            />
-                          </div>
-                          <div className="input-group flex-fill">
-                            <div className="input-group-prepend">
-                              <span className="input-group-text" style={{ width: '125px' }}>Country</span>
-                            </div>
-                            <InputField
-                              placeholder="Country"
-                              value={country}
-                              onChange={e => setCountry(e.target.value)}
-                            />
-                          </div>
-                        </div>
 
-                        {/* Row 6: District + State */}
-                        <div className="d-flex mb-3" style={{ gap: '20px' }}>
-                          <div className="input-group flex-fill">
-                            <div className="input-group-prepend">
-                              <span className="input-group-text" style={{ width: '125px' }}>District</span>
+                            {/* City */}
+                            <div className="form-field">
+                              <div className="input-group">
+                                <div className="input-group-prepend">
+                                  <span className="input-group-text" style={{ width: '125px' }}>City</span>
+                                </div>
+                                <SelectField
+                                  value={selectedCity}
+                                  onChange={(option) => {
+                                    setSelectedCity(option);
+                                    setCity(option ? option.value : '');
+                                  }}
+                                  options={cities}
+                                  placeholder={`Select City${cities.length > 0 ? ` (${cities.length} available)` : ''}`}
+                                  isDisabled={!selectedDistrict}
+                                />
+                              </div>
                             </div>
-                            <InputField
-                              placeholder="District"
-                              value={district}
-                              onChange={e => setDistrict(e.target.value)}
-                            />
                           </div>
-                          <div className="input-group flex-fill">
-                            <div className="input-group-prepend">
-                              <span className="input-group-text" style={{ width: '125px' }}>State</span>
+
+                          {/* Right Column */}
+                          <div className="column">
+                            {/* Name */}
+                            <div className="form-field">
+                              <div className="input-group">
+                                <div className="input-group-prepend">
+                                  <span className="input-group-text" style={{ width: '125px' }}>Name</span>
+                                </div>
+                                <InputField
+                                  placeholder="Name"
+                                  value={name}
+                                  maxLength={50}
+                                  pattern="^[a-zA-Z ]*$"
+                                  title="Only letters and spaces are allowed"
+                                  onChange={e => setName(e.target.value.replace(/[^a-zA-Z ]/g, ''))}
+                                  required
+                                />
+                              </div>
                             </div>
-                            <InputField
-                              placeholder="State"
-                              value={stateField}
-                              onChange={e => setStateField(e.target.value)}
-                            />
+
+                            {/* Phone */}
+                            <div className="form-field">
+                              <div className="input-group">
+                                <div className="input-group-prepend">
+                                  <span className="input-group-text" style={{ width: '125px' }}>Phone</span>
+                                </div>
+                                <InputField
+                                  type="tel"
+                                  placeholder="Phone"
+                                  maxLength={10}
+                                  pattern="^[1-9][0-9]{9}$"
+                                  title="Phone must be 10 digits and should not start with 0"
+                                  value={phone}
+                                  onChange={e => {
+                                    const val = e.target.value.replace(/[^0-9]/g, '');
+                                    if (val.length === 1 && val === '0') return;
+                                    setPhone(val);
+                                  }}
+                                  required
+                                />
+                              </div>
+                            </div>
+
+                            {/* Address Line1 */}
+                            <div className="form-field">
+                              <div className="input-group">
+                                <div className="input-group-prepend">
+                                  <span className="input-group-text" style={{ width: '125px' }}>Address Line1</span>
+                                </div>
+                                <InputField
+                                  placeholder="Address Line1"
+                                  value={addressline1}
+                                  onChange={e => setAddressline1(e.target.value)}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Country */}
+                            <div className="form-field">
+                              <div className="input-group">
+                                <div className="input-group-prepend">
+                                  <span className="input-group-text" style={{ width: '125px' }}>Country</span>
+                                </div>
+                                <SelectField
+                                  value={selectedCountry}
+                                  onChange={(option) => {
+                                    setSelectedCountry(option);
+                                    setCountry(option ? option.value : '');
+                                  }}
+                                  options={countries}
+                                  placeholder="Select Country"
+                                />
+                              </div>
+                            </div>
+
+                            {/* District */}
+                            <div className="form-field">
+                              <div className="input-group">
+                                <div className="input-group-prepend">
+                                  <span className="input-group-text" style={{ width: '125px' }}>District</span>
+                                </div>
+                                <SelectField
+                                  value={selectedDistrict}
+                                  onChange={(option) => {
+                                    setSelectedDistrict(option);
+                                    setDistrict(option ? option.value : '');
+                                  }}
+                                  options={districts}
+                                  placeholder={`Select District${districts.length > 0 ? ` (${districts.length} available)` : ''}`}
+                                  isDisabled={!selectedState}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Pincode */}
+                            <div className="form-field">
+                              <div className="input-group">
+                                <div className="input-group-prepend">
+                                  <span className="input-group-text" style={{ width: '125px' }}>Pincode</span>
+                                </div>
+                                <InputField
+                                  placeholder="Pincode"
+                                  value={pincode}
+                                  onChange={e => setPincode(e.target.value)}
+                                />
+                              </div>
+                            </div>
                           </div>
                         </div>
 
@@ -412,11 +621,15 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                     {/* State */}
                     <div className="form-group mb-3">
                       <label className="mb-1" style={{ fontWeight: '500' }}>State</label>
-                      <input
-                        className="form-control"
-                        placeholder="State"
-                        value={assignState}
-                        onChange={(e) => setAssignState(e.target.value)}
+                      <SelectField
+                        value={assignSelectedState}
+                        onChange={(option) => {
+                          setAssignSelectedState(option);
+                          setAssignState(option ? option.value : '');
+                        }}
+                        options={assignStates}
+                        placeholder="Select State"
+                        isDisabled={!assignSelectedCountry}
                         required={assignMode === 'assign'}
                       />
                     </div>
@@ -424,11 +637,15 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                     {/* District */}
                     <div className="form-group mb-3">
                       <label className="mb-1" style={{ fontWeight: '500' }}>District</label>
-                      <input
-                        className="form-control"
-                        placeholder="District"
-                        value={assignDistrict}
-                        onChange={(e) => setAssignDistrict(e.target.value)}
+                      <SelectField
+                        value={assignSelectedDistrict}
+                        onChange={(option) => {
+                          setAssignSelectedDistrict(option);
+                          setAssignDistrict(option ? option.value : '');
+                        }}
+                        options={assignDistricts}
+                        placeholder="Select District"
+                        isDisabled={!assignSelectedState}
                         required={assignMode === 'assign'}
                       />
                     </div>
@@ -436,14 +653,15 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                     {/* Status */}
                     <div className="form-group mb-3">
                       <label className="mb-1" style={{ fontWeight: '500' }}>Assigned Status</label>
-                      <select
-                        className="form-control"
-                        value={assignStatus ? 'true' : 'false'}
-                        onChange={(e) => setAssignStatus(e.target.value === 'true')}
-                      >
-                        <option value="true">Active</option>
-                        <option value="false">Inactive</option>
-                      </select>
+                      <SelectField
+                        value={assignStatus ? { value: 'true', label: 'Active' } : { value: 'false', label: 'Inactive' }}
+                        onChange={(option) => setAssignStatus(option ? option.value === 'true' : false)}
+                        options={[
+                          { value: 'true', label: 'Active' },
+                          { value: 'false', label: 'Inactive' }
+                        ]}
+                        placeholder="Select Status"
+                      />
                     </div>
 
                     <div className="d-flex justify-content-end" style={{ gap: '10px', marginTop: '20px' }}>

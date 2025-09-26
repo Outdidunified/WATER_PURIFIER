@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
 import Footer from '../../components/Footer';
@@ -6,6 +6,11 @@ import { useNavigate } from 'react-router-dom';
 import ReusableButton from '../../../../utils/ReusableButton';
 import InputField from '../../../../utils/InputField';
 import useEditManageUsers from '../../hooks/ManageUser/EditManageUsersHooks';
+
+import { Country, State, City } from 'country-state-city';
+import { getDistricts } from 'india-state-district';
+import SelectField from '../../../../utils/SelectField';
+import { GeoService } from '../../../../services/GeoService';
 
 const EditManageUsers = ({ userInfo, handleLogout }) => {
     const navigate = useNavigate();
@@ -41,6 +46,101 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
         isloading: loading,
         backManageUser
     } = useEditManageUsers(userInfo);
+
+    // Location dropdown states
+    const [countries, setCountries] = useState([]);
+    const [states, setStates] = useState([]);
+    const [cities, setCities] = useState([]);
+    const [districts, setDistricts] = useState([]);
+    const [selectedCountry, setSelectedCountry] = useState(null);
+    const [selectedState, setSelectedState] = useState(null);
+    const [selectedCity, setSelectedCity] = useState(null);
+    const [selectedDistrict, setSelectedDistrict] = useState(null);
+
+    useEffect(() => {
+        // Load countries using GeoService (India will be first)
+        const countryOptions = GeoService.getCountriesForSelect();
+        setCountries(countryOptions);
+
+        // Set initial selected country
+        if (country) {
+            const initialCountry = countryOptions.find(c => c.value === country);
+            setSelectedCountry(initialCountry);
+        } else {
+            // Set India as default if no country is set
+            const defaultCountry = GeoService.getDefaultCountryOption();
+            setSelectedCountry(defaultCountry);
+            setCountry(defaultCountry.value);
+        }
+    }, [country]);
+
+    useEffect(() => {
+        if (selectedCountry) {
+            // Load states for selected country using GeoService
+            const stateOptions = GeoService.getStatesForSelect(selectedCountry.isoCode);
+            setStates(stateOptions);
+
+            // Set initial selected state
+            if (state && stateOptions.find(s => s.value === state)) {
+                setSelectedState(stateOptions.find(s => s.value === state));
+            } else {
+                setSelectedState(null);
+                setState(''); // reset
+            }
+        } else {
+            setStates([]);
+            setSelectedState(null);
+            setState('');
+        }
+        // Reset city and district when country changes
+        setCities([]);
+        setSelectedCity(null);
+        setCity('');
+        setDistricts([]);
+        setSelectedDistrict(null);
+        setDistrict('');
+    }, [selectedCountry, state, setState, setCity, setDistrict]);
+
+    useEffect(() => {
+        if (selectedState && selectedCountry) {
+            // Load cities for selected state using GeoService
+            const cityOptions = GeoService.getCitiesForSelect(
+                selectedCountry.isoCode, 
+                selectedState.value
+            );
+            setCities(cityOptions);
+
+            // Set initial selected city
+            if (city && cityOptions.find(c => c.value === city)) {
+                setSelectedCity(cityOptions.find(c => c.value === city));
+            } else {
+                setSelectedCity(null);
+                setCity('');
+            }
+
+            // Load districts using GeoService
+            const districtOptions = GeoService.getDistrictsForSelect(
+                selectedCountry.isoCode,
+                selectedState.value
+            );
+            setDistricts(districtOptions);
+
+            // Set initial selected district
+            if (district && districtOptions.find(d => d.value === district)) {
+                setSelectedDistrict(districtOptions.find(d => d.value === district));
+            } else {
+                setSelectedDistrict(null);
+                setDistrict('');
+            }
+        } else {
+            setCities([]);
+            setSelectedCity(null);
+            setCity('');
+            setDistricts([]);
+            setSelectedDistrict(null);
+            setDistrict('');
+        }
+    }, [selectedState, city, district, setCity, setDistrict, selectedCountry]);
 
     return (
         <div className='container-scroller'>
@@ -159,12 +259,15 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                                                     <div className="form-group row">
                                                         <label className="col-sm-12 col-form-label">City</label>
                                                         <div className="col-sm-12">
-                                                            <InputField
-                                                                value={city}
-                                                                maxLength={50}
-                                                                pattern="^[a-zA-Z ]{2,}$"
-                                                                title="City should have at least 2 letters and only alphabets"
-                                                                onChange={(e) => setCity(e.target.value.replace(/[^a-zA-Z ]/g, ''))}
+                                                            <SelectField
+                                                                value={selectedCity}
+                                                                onChange={(option) => {
+                                                                    setSelectedCity(option);
+                                                                    setCity(option ? option.value : '');
+                                                                }}
+                                                                options={cities}
+                                                                placeholder="Select City"
+                                                                isDisabled={!selectedState}
                                                                 required
                                                             />
                                                         </div>
@@ -176,12 +279,27 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                                                     <div className="form-group row">
                                                         <label className="col-sm-12 col-form-label">District</label>
                                                         <div className="col-sm-12">
-                                                            <InputField
-                                                                value={district}
-                                                                maxLength={50}
-                                                                onChange={(e) => setDistrict(e.target.value.replace(/[^a-zA-Z ]/g, ''))}
-                                                                required
-                                                            />
+                                                            {selectedCountry && selectedCountry.isoCode === 'IN' ? (
+                                                                <Select
+                                                                    value={selectedDistrict}
+                                                                    onChange={(option) => {
+                                                                        setSelectedDistrict(option);
+                                                                        setDistrict(option ? option.value : '');
+                                                                    }}
+                                                                    options={districts}
+                                                                    placeholder="Select District"
+                                                                    isClearable
+                                                                    isDisabled={!selectedState}
+                                                                    required
+                                                                />
+                                                            ) : (
+                                                                <InputField
+                                                                    value={district}
+                                                                    maxLength={50}
+                                                                    onChange={(e) => setDistrict(e.target.value.replace(/[^a-zA-Z ]/g, ''))}
+                                                                    required
+                                                                />
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -191,10 +309,16 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                                                     <div className="form-group row">
                                                         <label className="col-sm-12 col-form-label">State</label>
                                                         <div className="col-sm-12">
-                                                            <InputField
-                                                                value={state}
-                                                                maxLength={50}
-                                                                onChange={(e) => setState(e.target.value.replace(/[^a-zA-Z ]/g, ''))}
+                                                            <Select
+                                                                value={selectedState}
+                                                                onChange={(option) => {
+                                                                    setSelectedState(option);
+                                                                    setState(option ? option.value : '');
+                                                                }}
+                                                                options={states}
+                                                                placeholder="Select State"
+                                                                isClearable
+                                                                isDisabled={!selectedCountry}
                                                                 required
                                                             />
                                                         </div>
@@ -206,10 +330,15 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                                                     <div className="form-group row">
                                                         <label className="col-sm-12 col-form-label">Country</label>
                                                         <div className="col-sm-12">
-                                                            <InputField
-                                                                value={country}
-                                                                maxLength={50}
-                                                                onChange={(e) => setCountry(e.target.value.replace(/[^a-zA-Z ]/g, ''))}
+                                                            <Select
+                                                                value={selectedCountry}
+                                                                onChange={(option) => {
+                                                                    setSelectedCountry(option);
+                                                                    setCountry(option ? option.value : '');
+                                                                }}
+                                                                options={countries}
+                                                                placeholder="Select Country"
+                                                                isClearable
                                                                 required
                                                             />
                                                         </div>
