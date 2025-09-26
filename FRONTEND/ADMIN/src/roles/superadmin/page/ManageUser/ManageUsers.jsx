@@ -32,6 +32,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
   const [assignDistricts, setAssignDistricts] = useState([]);
   const [assignSelectedCountry, setAssignSelectedCountry] = useState(null);
   const [assignSelectedState, setAssignSelectedState] = useState(null);
+  const [assignSelectedDistrict, setAssignSelectedDistrict] = useState(null);
 
   useEffect(() => {
     // Load countries for add user using GeoService (India will be first)
@@ -42,6 +43,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
     // Set India as default country
     const defaultCountry = GeoService.getDefaultCountryOption();
     setSelectedCountry(defaultCountry);
+    setAssignSelectedCountry(defaultCountry);
     setCountry(defaultCountry.value);
     
     // Test districts library
@@ -125,6 +127,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
     }
     // Reset district
     setAssignDistricts([]);
+    setAssignSelectedDistrict(null);
   }, [assignSelectedCountry]);
 
   useEffect(() => {
@@ -135,8 +138,10 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
         assignSelectedState.value
       );
       setAssignDistricts(districtOptions);
+      setAssignSelectedDistrict(null);
     } else {
       setAssignDistricts([]);
+      setAssignSelectedDistrict(null);
     }
   }, [assignSelectedState, assignSelectedCountry]);
 
@@ -182,6 +187,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
     modalAddStyle,
   } = useManageUsers(userInfo);
 
+  console.log(assignModalOpen,'new assign')
   return (
     <div className='container-scroller'>
       <Header userInfo={userInfo} handleLogout={handleLogout} />
@@ -551,32 +557,10 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
 
             {/* Assign/Reassign Modal for Sellers */}
             {assignModalOpen && selectedSeller && (
-              <div
-                className="modal"
-                style={{
-                  display: 'block',
-                  backgroundColor: 'rgba(0,0,0,0.5)',
-                  pointerEvents: 'auto',
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  height: '100vh',
-                  width: '100vw',
-                }}
-                onClick={closeAssignSellerModal}
-              >
+              <div className="modalStyle" style={modalAddStyle} onClick={closeAssignSellerModal}>
                 <div
-                  className="modal-content"
-                  style={{
-                    backgroundColor: '#fff',
-                    padding: '14px',
-                    maxWidth: '520px',
-                    margin: '100px auto',
-                    position: 'relative',
-                    borderRadius: '10px',
-                    boxShadow: '0 6px 16px rgba(0,0,0,0.2)',
-                    fontSize: '13px',
-                  }}
+                  className="modalContentStyle p-3"
+                  style={{ maxWidth: '520px', width: '95%' }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <h5 className="text-center mb-3" style={{ fontWeight: '600' }}>
@@ -602,6 +586,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                         placeholder="Select State"
                         isDisabled={!assignSelectedCountry}
                         required={assignMode === 'assign'}
+                        dropdownWidth="350px"
                       />
                     </div>
 
@@ -618,6 +603,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                         placeholder="Select District"
                         isDisabled={!assignSelectedState}
                         required={assignMode === 'assign'}
+                        dropdownWidth="350px"
                       />
                     </div>
 
@@ -632,6 +618,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                           { value: 'false', label: 'Inactive' }
                         ]}
                         placeholder="Select Status"
+                        dropdownWidth="350px"
                       />
                     </div>
 
