@@ -38,27 +38,6 @@ const Dashboard = ({ userInfo, handleLogout }) => {
         loadData();
     }, [userInfo]); // Add userInfo as a dependency to re-run if it changes
 
-    // Fetch data on component mount
-    // useEffect(() => {
-    //     const loadData = async () => {
-    //         try {
-    //             setLoading(true);
-    //             const response = await fetch('http://192.168.1.30:5001/api/admin/analytics');
-    //             const result = await response.json();
-    //             if (result.status === 'Success') {
-    //                 setAnalyticsData(result.data);
-    //             } else {
-    //                 setError('Failed to fetch analytics data');
-    //             }
-    //         } catch (err) {
-    //             setError('Error fetching data: ' + err.message);
-    //         } finally {
-    //             setLoading(false);
-    //         }
-    //     };
-    //     loadData();
-    // }, []);
-
     // Stats cards based on API data
     const stats = analyticsData
         ? [
@@ -248,7 +227,7 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                                         className="font-weight-normal"
                                         style={{ fontSize: '1.4rem', color: '#555' }}
                                     >
-                                        Welcome, <span style={{ color: '#6C63FF' }}>Super Admin</span>
+                                        Welcome, <span style={{ color: '#6C63FF' }}>{userInfo?.email}</span>
                                     </h4>
                                 </div>
                                 <button
