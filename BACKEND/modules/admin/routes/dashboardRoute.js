@@ -147,5 +147,7 @@ router.get('/services/by-district', verifyToken, Controller.GetServicesByDistric
 
 // Analytics API
 router.get('/analytics',  Controller.GetAnalytics);
+// Analytics by district
+router.get('/analytics/by-district',  Controller.GetAnalyticsByDistrict);
 
 module.exports = router;

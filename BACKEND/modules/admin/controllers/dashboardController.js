@@ -2887,14 +2887,179 @@ const GetAnalytics = async (req, res) => {
     }
 };
 
+// Get Analytics by District
+const GetAnalyticsByDistrict = async (req, res) => {
+  try {
+    const { district } = req.query || {};
+    if (!district || String(district).trim() === '') {
+      return res.status(400).json({ status: 'Failed', message: 'district is required' });
+    }
+
+    const db = await database.connectToDatabase();
+    const paymentsCollection = db.collection('payments');
+    const ordersCollection = db.collection('orders');
+    const usersCollection = db.collection('users');
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+
+    const districtRegex = new RegExp(`^${String(district).trim()}$`, 'i');
+
+    // Helpers for payments with district filter (join to orders)
+    const countPaymentsByDistrict = async (filter = {}) => {
+      const result = await paymentsCollection.aggregate([
+        { $lookup: { from: 'orders', localField: 'orderId', foreignField: '_id', as: 'order' } },
+        { $addFields: { order: { $arrayElemAt: ['$order', 0] } } },
+        { $match: { 'order.deliveryAddress.district': districtRegex, ...filter } },
+        { $count: 'count' }
+      ]).toArray();
+      return result[0]?.count || 0;
+    };
+
+    const groupPaymentsTimelineByDistrict = async (dateFilter, groupId, labelField) => {
+      const result = await paymentsCollection.aggregate([
+        { $lookup: { from: 'orders', localField: 'orderId', foreignField: '_id', as: 'order' } },
+        { $addFields: { order: { $arrayElemAt: ['$order', 0] } } },
+        { $match: { 'order.deliveryAddress.district': districtRegex, createdAt: dateFilter } },
+        { $group: { _id: groupId, total: { $sum: 1 }, successful: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'Completed'] }, 1, 0] } } } },
+        { $project: { [labelField]: '$_id', total: 1, successful: 1, _id: 0 } },
+        { $sort: { [labelField]: 1 } }
+      ]).toArray();
+      return result;
+    };
+
+    const buildFixedBuckets = (range, results, labelKey = 'label') => {
+      const buckets = [];
+      for (let i = range.start; i <= range.end; i++) {
+        const match = results.find(r => r[labelKey] === i);
+        buckets.push({ [labelKey]: i, total: match ? match.total : 0, successful: match ? match.successful : 0 });
+      }
+      return buckets;
+    };
+
+    const groupRevenueTimeline = async (collection, filter, groupId, labelField) => {
+      const result = await collection.aggregate([
+        { $match: { ...filter, paymentStatus: 'Completed' } },
+        { $addFields: { amount: { $ifNull: ['$totalPrice', '$grandTotal'] } } },
+        { $group: { _id: groupId, revenue: { $sum: '$amount' } } },
+        { $project: { [labelField]: '$_id', revenue: 1, _id: 0 } },
+        { $sort: { [labelField]: 1 } }
+      ]).toArray();
+      return result;
+    };
+
+    // Build fixed buckets for revenue (fill missing labels with 0 revenue)
+    const buildRevenueBuckets = (range, results, labelKey = 'label') => {
+      const buckets = [];
+      for (let i = range.start; i <= range.end; i++) {
+        const match = results.find(r => r[labelKey] === i);
+        buckets.push({ [labelKey]: i, revenue: match ? match.revenue : 0 });
+      }
+      return buckets;
+    };
+
+    // Summary counts
+    const [
+      paymentsTotal, paymentsSuccess, paymentsPending,
+      ordersTotal, ordersSuccess, ordersPending,
+      usersTotal, adminsCount, techniciansCount, endUsersCount, sellersCount
+    ] = await Promise.all([
+      countPaymentsByDistrict({}),
+      countPaymentsByDistrict({ paymentStatus: 'Completed' }),
+      countPaymentsByDistrict({ paymentStatus: 'Pending' }),
+      ordersCollection.countDocuments({ 'deliveryAddress.district': districtRegex }),
+      ordersCollection.countDocuments({ 'deliveryAddress.district': districtRegex, paymentStatus: 'Completed' }),
+      ordersCollection.countDocuments({ 'deliveryAddress.district': districtRegex, paymentStatus: 'Pending' }),
+      usersCollection.countDocuments({ district: districtRegex }),
+      usersCollection.countDocuments({ district: districtRegex, role_id: 1 }),
+      usersCollection.countDocuments({ district: districtRegex, role_id: 2 }),
+      usersCollection.countDocuments({ district: districtRegex, role_id: 3 }),
+      usersCollection.countDocuments({ district: districtRegex, role_id: 4 })
+    ]);
+
+    // Timelines
+    const paymentsTodayRaw = await groupPaymentsTimelineByDistrict({ $gte: startOfToday }, { $hour: '$createdAt' }, 'hour');
+    const paymentsWeekRaw = await groupPaymentsTimelineByDistrict({ $gte: sevenDaysAgo }, { $dayOfWeek: '$createdAt' }, 'day');
+    const paymentsMonthRaw = await groupPaymentsTimelineByDistrict({ $gte: oneMonthAgo }, { $dayOfMonth: '$createdAt' }, 'day');
+    const paymentsYearRaw = await groupPaymentsTimelineByDistrict({ $gte: oneYearAgo }, { $month: '$createdAt' }, 'month');
+
+    const paymentsTimeline = {
+      today: buildFixedBuckets({ start: 0, end: 23 }, paymentsTodayRaw, 'hour'),
+      week: buildFixedBuckets({ start: 1, end: 7 }, paymentsWeekRaw, 'day'),
+      month: buildFixedBuckets({ start: 1, end: 31 }, paymentsMonthRaw, 'day'),
+      year: buildFixedBuckets({ start: 1, end: 12 }, paymentsYearRaw, 'month')
+    };
+
+    const orderFilterBase = { 'deliveryAddress.district': districtRegex };
+
+    const groupTimeline = async (collection, filter, groupId, labelField) => {
+      const result = await collection.aggregate([
+        { $match: filter },
+        { $group: { _id: groupId, total: { $sum: 1 }, successful: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'Completed'] }, 1, 0] } } } },
+        { $project: { [labelField]: '$_id', total: 1, successful: 1, _id: 0 } },
+        { $sort: { [labelField]: 1 } }
+      ]).toArray();
+      return result;
+    };
+
+    const ordersTodayRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: startOfToday } }, { $hour: '$createdAt' }, 'hour');
+    const ordersWeekRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: sevenDaysAgo } }, { $dayOfWeek: '$createdAt' }, 'day');
+    const ordersMonthRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: oneMonthAgo } }, { $dayOfMonth: '$createdAt' }, 'day');
+    const ordersYearRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: oneYearAgo } }, { $month: '$createdAt' }, 'month');
+
+    const ordersTimeline = {
+      today: buildFixedBuckets({ start: 0, end: 23 }, ordersTodayRaw, 'hour'),
+      week: buildFixedBuckets({ start: 1, end: 7 }, ordersWeekRaw, 'day'),
+      month: buildFixedBuckets({ start: 1, end: 31 }, ordersMonthRaw, 'day'),
+      year: buildFixedBuckets({ start: 1, end: 12 }, ordersYearRaw, 'month')
+    };
+
+    const revenueTodayRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: startOfToday } }, { $hour: '$createdAt' }, 'hour');
+    const revenueWeekRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: sevenDaysAgo } }, { $dayOfWeek: '$createdAt' }, 'day');
+    const revenueMonthRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: oneMonthAgo } }, { $dayOfMonth: '$createdAt' }, 'day');
+    const revenueYearRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: oneYearAgo } }, { $month: '$createdAt' }, 'month');
+
+    const revenueTimeline = {
+      today: buildRevenueBuckets({ start: 0, end: 23 }, revenueTodayRaw, 'hour'),
+      week: buildRevenueBuckets({ start: 1, end: 7 }, revenueWeekRaw, 'day'),
+      month: buildRevenueBuckets({ start: 1, end: 31 }, revenueMonthRaw, 'day'),
+      year: buildRevenueBuckets({ start: 1, end: 12 }, revenueYearRaw, 'month')
+    };
+
+    const totalRevenueResult = await ordersCollection.aggregate([
+      { $match: { ...orderFilterBase, paymentStatus: 'Completed' } },
+      { $addFields: { amount: { $ifNull: ['$totalPrice', '$grandTotal'] } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]).toArray();
+    const totalRevenue = totalRevenueResult[0]?.total || 0;
+
+    const payload = {
+      payments: { total: paymentsTotal, successful: paymentsSuccess, pending: paymentsPending, timeline: paymentsTimeline },
+      orders: { total: ordersTotal, successful: ordersSuccess, pending: ordersPending, timeline: ordersTimeline },
+      revenue: { total: totalRevenue, timeline: revenueTimeline },
+      users: { total: usersTotal, admin: adminsCount, technician: techniciansCount, end_user: endUsersCount, seller: sellersCount }
+    };
+
+    return res.status(200).json({ status: 'Success', data: payload });
+  } catch (error) {
+    console.error('Error in GetAnalyticsByDistrict:', error);
+    return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+  }
+};
 
 
+
+// Export controllers
 module.exports = {
     getModules, authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
     UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders, AddUserRoles, FetchUserRoles, UpdateUserRoles,
     AddUsers, FetchUsers, FetchSellers, FetchOrdersByDistrict, FetchTechniciansByDistrict, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
     FetchSelectServiceTask, AssignService, ReAssignService, assignPermissions, fetchPermissionsByRole,
     GetUsersByDistrict, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
-    AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchOrdersByUserId, GetAnalytics
+    AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchOrdersByUserId, GetAnalytics,
+    GetAnalyticsByDistrict
     // UpdateOrdersStatus,
 };
