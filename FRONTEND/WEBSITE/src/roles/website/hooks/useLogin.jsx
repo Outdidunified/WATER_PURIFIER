@@ -1,239 +1,33 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Swal from 'sweetalert2';
-const useLogin = (handleLogin) => {
+import { Country, State, City } from "country-state-city";
+// use the named helper from the package
+import { getDistricts } from "india-state-district";
 
+const useLogin = (handleLogin) => {
     const [step, setStep] = useState("login"); // login, otp, register
     const [phone, setPhone] = useState("");
     const [otp, setOtp] = useState("");
-    const [name, setName] = useState("");
-    const [emailID, setEmailID] = useState("");
-    const [city, setCity] = useState("Bangalore");
+    const [name, setName] = useState(""); 
     const [password, setPassword] = useState("");
+    const [emailID, setEmailID] = useState("");
+    const [city, setCity] = useState("");
+    const [district, setDistrict] = useState("");
+    const [state, setState] = useState("");
+    const [pincode, setPincode] = useState("");
+    const [country, setCountry] = useState("IN"); // ISO code
+    const [addressLine1, setAddressLine1] = useState("");
+    const [addressLine2, setAddressLine2] = useState("");
+
     const [loading, setLoading] = useState(false);
     const [loadingVotp, setLoadingVotp] = useState(false);
     const [loadingReg, setLoadingReg] = useState(false);
-    const [loginType, setLoginType] = useState("email"); // "phone" or "email"
+    const [loginType, setLoginType] = useState("email");
 
-    const validateEmail = (email) =>
-        /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email);
-
-    // const validateEmail = (email) =>
-    //     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
-    const handleEmailLogin = async () => {
-        if (!validateEmail(emailID)) {
-            Swal.fire('Error', 'Enter a valid Gmail address (e.g. user@gmail.com).', 'error');
-            return;
-        }
-
-        if (!/^[0-9]{4}$/.test(password)) {
-            Swal.fire('Error', 'Password must be a 4-digit number.', 'error');
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const res = await fetch("/api/api/website/auth/email", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: emailID, password: parseInt(password),role_id:3 }),
-            });
-
-            const data = await res.json();
-
-            if (res.status === 200 && data.status.toLowerCase() === "success") {
-                Swal.fire("Success", data.message || "Login successful.", "success");
-                // setTimeout(() => window.location.href = "/", 2000);
-                handleLogin(data);
-
-                // setTimeout(() => {
-                //     handleLogin(data); // this will redirect
-                // }, 1000);
-
-                setName('');
-                setEmailID('');
-                setCity('');
-                setPassword('');
-                setPhone('');
-            } else {
-                Swal.fire("Error", data.message || "Login failed.", "error");
-            }
-        } catch (err) {
-            Swal.fire("Error", "Server error. Please try again.", "error");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleSendOtp = async () => {
-        if (!/^[1-9][0-9]{9}$/.test(phone)) {
-            Swal.fire('Error', 'Enter a valid 10-digit phone number.', 'error');
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const res = await fetch("/api/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                Swal.fire('Success', data.message || 'OTP sent to your phone.', 'success');
-                setStep("otp");
-                setName('');
-                setEmailID('');
-                setCity('');
-                setPassword('');
-                setPhone('');
-            } else {
-                Swal.fire('Error', data.message || 'Login failed.', 'error');
-            }
-        } catch (err) {
-            Swal.fire('Error', 'Server error. Please try again.', 'error');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // const handleVerifyOtp = async () => {
-    //     setLoadingVotp(true);
-    //     try {
-    //         const res = await fetch("/api/api/website/auth/verify-otp", {
-    //             method: "POST",
-    //             headers: { "Content-Type": "application/json" },
-    //             body: JSON.stringify({ email: emailID, otp })
-    //         });
-    //         const data = await res.json(); // Fix this line
-    //         if (res.status === 200 && data.status?.toLowerCase() === 'success') {
-    //             handleLogin(data);
-    //             Swal.fire('Success', data.message || 'OTP verified. Redirecting...', 'success');
-    //             setTimeout(() => window.location.href = "/", 2000);
-    //             setName('');
-    //             setEmailID('');
-    //             setCity('');
-    //             setPassword('');
-    //             setPhone('');
-    //         } else {
-    //             Swal.fire('Error', data.message || 'Invalid OTP.', 'error');
-    //         }            
-    //     } catch (err) {
-    //         Swal.fire('Error', 'Verification failed.', 'error');
-    //     } finally {
-    //         setLoadingVotp(false);
-    //     }
-    // };
-
-    const handleVerifyOtp = async () => {
-  setLoadingVotp(true);
-  try {
-    const res = await fetch("/api/api/website/auth/verify-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: emailID,
-        otp,
-        role_id: 3  // Ensure you pass the correct role_id (3 = EndUser)
-      })
-    });
-
-    const responseData = await res.json();
-
-    if (res.status === 200 && responseData.error === false) {
-      const user = {
-        user_id: responseData.data.user_id,
-        email: responseData.data.email,
-        role_id: responseData.data.role_id,
-        is_subscribed: responseData.data.is_subscribed
-      };
-
-      const loginPayload = {
-        user,
-        token: responseData.token
-      };
-
-      handleLogin(loginPayload);
-
-      Swal.fire('Success', responseData.message || 'OTP verified. Redirecting...', 'success');
-
-      setName('');
-      setEmailID('');
-      setCity('');
-      setPassword('');
-      setPhone('');
-    } else {
-      Swal.fire('Error', responseData.message || 'Invalid OTP.', 'error');
-    }
-  } catch (err) {
-    Swal.fire('Error', 'Verification failed.', 'error');
-  } finally {
-    setLoadingVotp(false);
-  }
-};
-
-
-    const handleRegister = async () => {
-        if (!name.trim()) {
-            Swal.fire('Error', 'Name is required.', 'error');
-            return;
-        }
-
-        if (!/^[1-9][0-9]{9}$/.test(phone)) {
-            Swal.fire('Error', 'Enter a valid 10-digit phone number.', 'error');
-            return;
-        }
-
-        if (!validateEmail(emailID)) {
-            Swal.fire('Error', 'Enter a valid Gmail address (e.g. user@gmail.com).', 'error');
-            return;
-        }
-
-        if (!city.trim()) {
-            Swal.fire('Error', 'City is required.', 'error');
-            return;
-        }
-
-        if (!/^[0-9]{4}$/.test(password)) {
-            Swal.fire('Error', 'Password must be a 4-digit number.', 'error');
-            return;
-        }
-
-        setLoadingReg(true);
-        try {
-            const res = await fetch("/api/api/website/auth/register", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name,
-                    phone: parseInt(phone),
-                    email: emailID,
-                    city,
-                    password: parseInt(password)
-                }),
-            });
-
-            const data = await res.json();
-
-            if (res.ok && data.error === false) {
-                Swal.fire('Success', data.message || 'Registered successfully. OTP sent.', 'success');
-                setStep("otp");
-
-                // Clear fields
-                setName('');
-                // setEmailID('');
-                setCity('');
-                setPassword('');
-                setPhone('');
-            } else {
-                Swal.fire('Error', data.message || 'Registration failed.', 'error');
-            }
-        } catch (err) {
-            Swal.fire('Error', 'Server error during registration.', 'error');
-        } finally {
-            setLoadingReg(false);
-        }
-    };
+    const [countryList, setCountryList] = useState([]);
+    const [stateList, setStateList] = useState([]);
+    const [cityList, setCityList] = useState([]);
+    const [districtList, setDistrictList] = useState([]);
 
     const commonInputStyle = {
         padding: '12px',
@@ -243,9 +37,204 @@ const useLogin = (handleLogin) => {
         border: '1px solid #ccc',
         borderRadius: '8px'
     };
+
+    // Load countries once
+    useEffect(() => {
+        setCountryList(Country.getAllCountries() || []);
+    }, []);
+
+    // Load states when country changes
+    useEffect(() => {
+        if (country) {
+            setStateList(State.getStatesOfCountry(country) || []);
+        } else {
+            setStateList([]);
+        }
+        // reset dependent selects
+        setState("");
+        setCity("");
+        setCityList([]);
+        setDistrictList([]);
+        setDistrict("");
+    }, [country]);
+
+    // When state changes: load cities (country-state-city) and districts (india-state-district)
+    useEffect(() => {
+        if (!state) {
+            setCityList([]);
+            setDistrictList([]);
+            setCity("");
+            setDistrict("");
+            return;
+        }
+
+        // cities from country-state-city
+        const cities = City.getCitiesOfState(country, state) || [];
+        setCityList(cities);
+
+        // districts using india-state-district helper
+        try {
+            const rawDistricts = getDistricts(state); // expect state isoCode like "TN", "KA", "MH"
+            // normalize result: package might return array of strings OR array of {name, code}
+            let normalized = [];
+            if (Array.isArray(rawDistricts)) {
+                if (rawDistricts.length === 0) normalized = [];
+                else if (typeof rawDistricts[0] === "string") normalized = rawDistricts;
+                else normalized = rawDistricts.map((d) => d.name || d);
+            }
+            setDistrictList(normalized);
+        } catch (err) {
+            // safe fallback - empty list
+            console.error("getDistricts error:", err);
+            setDistrictList([]);
+        }
+
+        // reset lower-level selections
+        setCity("");
+        setDistrict("");
+    }, [state, country]);
+
+    const validateEmail = (email) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[cC][oO][mM]$/.test(email);
+
+    const handleEmailLogin = async () => {
+        if (!validateEmail(emailID)) {
+            Swal.fire('Error', 'Enter a valid Gmail address', 'error');
+            return;
+        }
+        if (!/^[0-9]{4}$/.test(password)) {
+            Swal.fire('Error', 'Password must be 4 digits', 'error');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const res = await fetch("/api/website/auth/email", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: emailID, password: parseInt(password), role_id: 3 }),
+            });
+            const data = await res.json();
+
+            if (res.status === 200 && data.status.toLowerCase() === "success") {
+                Swal.fire("Success", data.message, "success");
+                handleLogin(data);
+                resetFields();
+            } else {
+                Swal.fire("Error", data.message || "Login failed", "error");
+            }
+        } catch (err) {
+            Swal.fire("Error", "Server error", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSendOtp = async () => {
+        if (!/^[6-9][0-9]{9}$/.test(phone)) {
+            Swal.fire('Error', 'Enter a valid 10-digit phone number', 'error');
+            return;
+        }
+        setLoading(true);
+        try {
+            const res = await fetch("/api/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                Swal.fire('Success', data.message || 'OTP sent', 'success');
+                setStep("otp");
+            } else {
+                Swal.fire('Error', data.message || 'Login failed', 'error');
+            }
+        } catch (err) {
+            Swal.fire('Error', 'Server error', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        setLoadingVotp(true);
+        try {
+            const res = await fetch("/api/website/auth/verify-otp", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: emailID, otp, role_id: 3 })
+            });
+            const data = await res.json();
+            if (res.ok && !data.error) {
+                handleLogin({ user: data.data, token: data.token });
+                Swal.fire('Success', data.message || 'OTP verified', 'success');
+                resetFields();
+            } else {
+                Swal.fire('Error', data.message || 'Invalid OTP', 'error');
+            }
+        } catch {
+            Swal.fire('Error', 'Verification failed', 'error');
+        } finally {
+            setLoadingVotp(false);
+        }
+    };
+
+    const handleRegister = async () => {
+        if (!name || !phone || !emailID || !city || !/^[0-9]{4}$/.test(password)) {
+            Swal.fire('Error', 'Please fill all required fields', 'error');
+            return;
+        }
+        setLoadingReg(true);
+        try {
+            const res = await fetch("/api/website/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    role_id: 3,
+                    name, phone: parseInt(phone), email: emailID, city,
+                    password: parseInt(password), createdby: emailID,
+                    addressline1: addressLine1, addressline2: addressLine2,
+                    district, state, pincode, country
+                }),
+            });
+            const data = await res.json();
+            if (res.ok && !data.error) {
+                Swal.fire('Success', data.message || 'Registered successfully', 'success');
+                setStep("login");   // go back to login screen
+                // setStep("otp");
+                resetFields();
+            } else {
+                Swal.fire('Error', data.message || 'Registration failed', 'error');
+            }
+        } catch {
+            Swal.fire('Error', 'Server error', 'error');
+        } finally {
+            setLoadingReg(false);
+        }
+    };
+
+    const resetFields = () => {
+        setName('');
+        setPhone('');
+        setEmailID('');
+        setCity('');
+        setDistrict('');
+        setState('');
+        setCountry('IN');
+        setAddressLine1('');
+        setAddressLine2('');
+        setPincode('');
+        setPassword('');
+    };
+
     return {
-        step, setStep, phone, setPhone, otp, setOtp, name, setName, emailID, setEmailID, city, setCity, password, setPassword, loading,
-        loadingVotp, loadingReg, loginType, setLoginType, handleEmailLogin, handleSendOtp, handleVerifyOtp, handleRegister, commonInputStyle,
+        step, setStep, phone, setPhone, otp, setOtp, name, setName, password, setPassword, emailID, setEmailID, city, setCity,
+        district, setDistrict, state, setState, pincode, setPincode, country, setCountry,
+        addressLine1, setAddressLine1, addressLine2, setAddressLine2,
+        loading, loadingVotp, loadingReg, loginType, setLoginType,
+        countryList, stateList, cityList, districtList,
+        handleEmailLogin, handleSendOtp, handleVerifyOtp, handleRegister,
+        commonInputStyle
     };
 };
+
 export default useLogin;

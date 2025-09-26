@@ -15,7 +15,7 @@ const Footer = ({ }) => {
                         </a>
                         <div className="footer-contact pt-3">
                             <p>Outdid Unified Pvt Ltd</p>
-                            <p>No.57, 17th Cross, 7th Main road, BTM 2nd Stage, Bangalore-560076.</p>
+                            <p>2nd Floor, Indian Water Works Association, 10(P), 7th Main Road, BTM Layout, 2nd Stage, MICO HBCS(1st Stage), Bangalore-560076.</p>
                             <p className="mt-3"><strong>Phone:</strong> <span>+91 80959 45298</span> <strong> Email:</strong> <span>info@outdidunified.com</span></p>
                         </div>
                         <div className="social-links d-flex mt-4">

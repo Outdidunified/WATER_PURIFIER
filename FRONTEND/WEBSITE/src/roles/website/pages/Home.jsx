@@ -4,8 +4,29 @@ import Footer from '../components/Footer';
 import Swal from 'sweetalert2';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Country, State, City } from "country-state-city";
+import { getDistricts } from "india-state-district";
 
 const Home = ({ userInfo, token, handleLogout }) => {
+    const [hoveredQR, setHoveredQR] = useState(null);
+
+    const baseStyle = {
+        width: "150px",
+        borderRadius: "12px",
+        boxShadow: "0px 5px 15px rgba(0,0,0,0.15)",
+        transition: "all 0.3s ease",
+    };
+
+    const hoverStyle = {
+        boxShadow: "0px 0px 10px 4px #0d83fd",
+        transform: "scale(1.05)",
+    };
+
+    const getStyle = (key) => ({
+        ...baseStyle,
+        ...(hoveredQR === key ? hoverStyle : {}),
+    });
+
     const navigate = useNavigate();
 
     const [products, setProducts] = useState([]);
@@ -23,7 +44,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const response = await axios.get('/api/api/website/products/productswithplan');
+                const response = await axios.get('/api/website/products/productswithplan');
                 const productArray = response.data?.data || [];
                 const filteredProducts = productArray.filter(
                     (product) =>
@@ -42,6 +63,24 @@ const Home = ({ userInfo, token, handleLogout }) => {
         };
         fetchProducts();
     }, []);
+
+    const [name, setName] = useState("");
+    const [phone, setPhone] = useState("");
+    const [emailID, setEmailID] = useState("");
+    const [street, setStreet] = useState("");
+    const [landmark, setLandmark] = useState("");
+    const [pincode, setPincode] = useState("");
+    const [city, setCity] = useState("");
+    const [district, setDistrict] = useState("");
+    const [state, setState] = useState("");
+    const [country, setCountry] = useState("IN");
+
+    const [countryList, setCountryList] = useState([]);
+    const [stateList, setStateList] = useState([]);
+    const [districtList, setDistrictList] = useState([]);
+    const [cityList, setCityList] = useState([]);
+
+    const [subLoading, setSubLoading] = useState(false);
 
     {/* Sub model */ }
     const [showModal, setShowModal] = useState(false);
@@ -65,15 +104,61 @@ const Home = ({ userInfo, token, handleLogout }) => {
         }
     };
 
-    const [name, setName] = useState("");
-    const [phone, setPhone] = useState("");
-    const [emailID, setEmailID] = useState("");
-    const [addressLine1, setAddressLine1] = useState("");
-    const [addressLine2, setAddressLine2] = useState("");
-    const [city, setCity] = useState("Bangalore");
-    const [pincode, setPincode] = useState("");
+    // Load countries once
+    useEffect(() => {
+        setCountryList(Country.getAllCountries() || []);
+    }, []);
 
-    const [subLoading, setSubLoading] = useState(false);
+    // Load states when country changes
+    useEffect(() => {
+        if (country) {
+            setStateList(State.getStatesOfCountry(country) || []);
+        } else {
+            setStateList([]);
+        }
+        // reset dependent selects
+        setState("");
+        setCity("");
+        setCityList([]);
+        setDistrictList([]);
+        setDistrict("");
+    }, [country]);
+
+    // When state changes: load cities (country-state-city) and districts (india-state-district)
+    useEffect(() => {
+        if (!state) {
+            setCityList([]);
+            setDistrictList([]);
+            setCity("");
+            setDistrict("");
+            return;
+        }
+
+        // cities from country-state-city
+        const cities = City.getCitiesOfState(country, state) || [];
+        setCityList(cities);
+
+        // districts using india-state-district helper
+        try {
+            const rawDistricts = getDistricts(state); // expect state isoCode like "TN", "KA", "MH"
+            // normalize result: package might return array of strings OR array of {name, code}
+            let normalized = [];
+            if (Array.isArray(rawDistricts)) {
+                if (rawDistricts.length === 0) normalized = [];
+                else if (typeof rawDistricts[0] === "string") normalized = rawDistricts;
+                else normalized = rawDistricts.map((d) => d.name || d);
+            }
+            setDistrictList(normalized);
+        } catch (err) {
+            // safe fallback - empty list
+            console.error("getDistricts error:", err);
+            setDistrictList([]);
+        }
+
+        // reset lower-level selections
+        setCity("");
+        setDistrict("");
+    }, [state, country]);
 
     const RAZORPAY_KEY = "rzp_test_oHoZ3Q1fF6pYEI";
 
@@ -145,11 +230,13 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 wp_device_id: selectedProduct.wp_device_id,
                 deliveryAddress: {
                     name,
-                    phone: phone.trim(), // as string
-                    addressLine1,
-                    addressLine2,
-                    pincode: pincode.trim(), // if string else parseInt
+                    street,
+                    landmark,
+                    district,
                     city,
+                    state,
+                    phone: phone.trim(),
+                    pincode: pincode.trim(),
                     email: emailID,
                 }
             };
@@ -157,7 +244,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
             const token = sessionStorage.getItem("WebToken");
 
             // Call order place API
-            const res = await fetch("/api/api/website/orders/orderplace", {
+            const res = await fetch("/api/website/orders/orderplace", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -182,7 +269,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 name: "Subscription Payment",
                 description: `Subscription for ${durationDays} days`,
                 handler: async (response) => {
-                    const verifyRes = await fetch("/api/api/website/orders/orderverify", {
+                    const verifyRes = await fetch("/api/website/orders/orderverify", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
@@ -202,14 +289,9 @@ const Home = ({ userInfo, token, handleLogout }) => {
                             showConfirmButton: false
                         }).then(() => {
                             setShowModal(false);
-                            setName("");
-                            setPhone("");
-                            setAddressLine1("");
-                            setAddressLine2("");
-                            setPincode("");
-                            setEmailID("");
-                            setCity("");
-                            window.location.href = "/";
+                            setName(""), setPhone(""), setEmailID(""), setStreet(""), setLandmark(""),
+                                setPincode(""), setCity(""), setDistrict(""), setState(""),
+                                window.location.href = "/";
                         });
                     } else {
                         Swal.fire("Error", "Verification failed", "error");
@@ -217,7 +299,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 },
                 modal: {
                     ondismiss: async () => {
-                        await fetch("/api/api/website/orders/ordercancel", {
+                        await fetch("/api/website/orders/ordercancel", {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
@@ -319,7 +401,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
         }
 
         try {
-            const response = await fetch("/api/api/website/contact/submitcontact", {
+            const response = await fetch("/api/website/contact/submitcontact", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, email, subject, message }),
@@ -378,7 +460,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
         try {
             const response = await fetch(
-                "/api/api/website/callRequest",
+                "/api/website/callRequest",
                 {
                     method: "POST",
                     headers: {
@@ -772,13 +854,12 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                 >
                                                                     Subscribe Now
                                                                 </button>
-                                                                <button
+                                                                {/* <button
                                                                     className="btn btn-primary me-0 me-sm-2 mx-1"
                                                                     onClick={() => navigate(`/product-list`)}
                                                                 >
                                                                     Know More
-                                                                </button>
-
+                                                                </button> */}
                                                             </div>
                                                         </>
                                                     );
@@ -869,7 +950,9 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             <h5 className="modal-title">Submit Your Details</h5>
                                             <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
                                         </div>
-                                        <div className="modal-body">
+                                        <div className="modal-body" style={{
+                                            height: "500px", overflowY: "auto", paddingRight: "10px"
+                                        }}>
                                             <form onSubmit={handleSubmit}>
                                                 <div className="mb-3">
                                                     <label>Name</label>
@@ -912,72 +995,56 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                     />
                                                 </div>
                                                 <div className="mb-3">
-                                                    <label>Delivery Address Line 1</label>
-                                                    <input
-                                                        type="text"
-                                                        className="form-control"
-                                                        required
-                                                        value={addressLine1}
-                                                        onChange={(e) => setAddressLine1(e.target.value)}
-                                                    />
+                                                    <label>Street Address</label>
+                                                    <input type="text" className="form-control" required value={street} onChange={e => setStreet(e.target.value)} />
                                                 </div>
 
                                                 <div className="mb-3">
-                                                    <label>Delivery Address Line 2</label>
-                                                    <input
-                                                        type="text"
-                                                        className="form-control"
-                                                        value={addressLine2}
-                                                        onChange={(e) => setAddressLine2(e.target.value)}
-                                                    />
+                                                    <label>Landmark</label>
+                                                    <input type="text" className="form-control" value={landmark} onChange={e => setLandmark(e.target.value)} />
+                                                </div>
+
+                                                <div className="mb-3">
+                                                    <label>Country</label>
+                                                    <select className="form-control" value={country} onChange={e => setCountry(e.target.value)}>
+                                                        {countryList.map(c => <option key={c.isoCode} value={c.isoCode}>{c.name}</option>)}
+                                                    </select>
+                                                </div>
+
+                                                <div className="mb-3">
+                                                    <label>State</label>
+                                                    <select className="form-control" value={state} onChange={e => setState(e.target.value)}>
+                                                        {stateList.map(s => <option key={s.isoCode} value={s.isoCode}>{s.name}</option>)}
+                                                    </select>
+                                                </div>
+
+                                                <div className="mb-3">
+                                                    <label>District</label>
+                                                    <select className="form-control" value={district} onChange={e => setDistrict(e.target.value)}>
+                                                        {districtList.map(d => <option key={d} value={d}>{d}</option>)}
+                                                    </select>
+                                                </div>
+
+                                                <div className="mb-3">
+                                                    <label>City</label>
+                                                    <select className="form-control" value={city} onChange={e => setCity(e.target.value)}>
+                                                        {cityList.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                                    </select>
                                                 </div>
 
                                                 <div className="mb-3">
                                                     <label>Pin Code</label>
-                                                    <input
-                                                        type="text"
-                                                        className="form-control"
-                                                        required
-                                                        minLength={6}
-                                                        maxLength={6}
-                                                        value={pincode}
-                                                        onChange={(e) => {
-                                                            let input = e.target.value.replace(/\D/g, '');
-                                                            // Ensure first digit is not 0
-                                                            if (input.length > 0 && input[0] === '0') {
-                                                                input = input.substring(1);
-                                                            }
-                                                            if (input.length <= 6) setPincode(input);
-                                                        }}
-                                                    />
+                                                    <input type="text" className="form-control" value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, ''))} maxLength={6} required />
                                                 </div>
-                                                <div className="mb-3">
-                                                    <label>City</label>
-                                                    <select
-                                                        className="form-control"
-                                                        value={city}
-                                                        onChange={(e) => setCity(e.target.value)}
-                                                    >
-                                                        {indianCities.map((city) => (
-                                                            <option key={city} value={city}>
-                                                                {city}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </div>
+
                                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
 
                                                     <p>
                                                         <i className="bi bi-check2-circle" style={{ color: '#0d83fd' }}></i> Lifetime Free Maintenance<br />
-                                                        <i className="bi bi-check2-circle" style={{ color: '#0d83fd' }}></i> 7 Day Free Trial<br />
                                                         <i className="bi bi-check2-circle" style={{ color: '#0d83fd' }}></i> 48 Hours Installation
                                                     </p>
 
                                                     <button type="submit" className="btn btn-primary mb-2"> {subLoading ? "Processing..." : "Subscribe Now"}</button>
-
-                                                    {/* <p style={{ fontSize: '0.9rem', color: '#666' }}>
-                                                        By creating an account on <strong>ionHive</strong>, you agree to our <a href="#">Terms of Use</a>
-                                                    </p> */}
                                                 </div>
                                             </form>
                                         </div>
@@ -1406,10 +1473,11 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                     {/* <!-- Section Title --> */}
                     <div className="container section-title" data-aos="fade-up">
-                        <h2>The ionHive App: Behold The Future of Water Purification</h2>
-                        <p>Track your water consumption, generate your personalised water quality report,
-                            and monitor your filter health using our innovative app. Recharging your device and
-                            raising service requests has never been easier.</p>
+                        <h2>The ionHive Experience: Simple, Smart & Seamless</h2>
+                        <p>
+                            Get started with ionHive in just a few easy steps. Buy your purifier, install our app,
+                            and enjoy 24/7 access to live water quality, order history, payments, and more — all from your phone.
+                        </p>
                         <h3 style={{ paddingTop: '20px' }}>How it works</h3>
                     </div>
                     {/* <!-- End Section Title --> */}
@@ -1424,7 +1492,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                     <div className="d-flex align-items-center justify-content-end gap-4">
                                         <div className="feature-content">
                                             <h3>Step 1:</h3>
-                                            <p>Choose the product that suits you the best</p>
+                                            <p>Purchase your ionHive Water Purifier from our website</p>
                                         </div>
                                         <div className="feature-icon flex-shrink-0">
                                             <i className="bi bi-laptop"></i>
@@ -1437,7 +1505,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                     <div className="d-flex align-items-center justify-content-end gap-4">
                                         <div className="feature-content">
                                             <h3>Step 2:</h3>
-                                            <p>Book the Perfect Plan for You</p>
+                                            <p>Download the ionHive App from Google Play / App Store</p>
                                         </div>
                                         <div className="feature-icon flex-shrink-0">
                                             <i className="bi bi-calendar-check"></i>
@@ -1450,7 +1518,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                     <div className="d-flex align-items-center justify-content-end gap-4">
                                         <div className="feature-content">
                                             <h3>Step 3:</h3>
-                                            <p>Submit your details</p>
+                                            <p>Login & connect your purifier to the app</p>
                                         </div>
                                         <div className="feature-icon flex-shrink-0">
                                             <i className="bi bi-file-earmark-text"></i>
@@ -1465,6 +1533,37 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                 <div className="phone-mockup text-center">
                                     <img src="assets/img/phone-app-screen.webp" alt="Phone Mockup" className="img-fluid" />
                                 </div>
+                                {/* <div className="container text-center" style={{ marginTop: "20px" }}>
+                                    <div className="row justify-content-center">
+
+                                        <div className="col-md-6 col-12 mb-4">
+                                            <div className="phone-mockup text-center">
+                                                <img
+                                                    src="assets/img/water_playStore.png"
+                                                    alt="Google Play QR"
+                                                    style={getStyle('play')}
+                                                    onMouseEnter={() => setHoveredQR('play')}
+                                                    onMouseLeave={() => setHoveredQR(null)}
+                                                />
+                                                <p style={{ marginTop: "10px" }}>Google Play Store Scan to Download</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="col-md-6 col-12 mb-4">
+                                            <div className="phone-mockup text-center">
+                                                <img
+                                                    src="assets/img/water_appStore.png"
+                                                    alt="App Store QR"
+                                                    style={getStyle('app')}
+                                                    onMouseEnter={() => setHoveredQR('app')}
+                                                    onMouseLeave={() => setHoveredQR(null)}
+                                                />
+                                                <p style={{ marginTop: "10px" }}>App Store Scan to Download</p>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div> */}
                             </div>
                             {/* <!-- End Phone Mockup --> */}
 
@@ -1477,7 +1576,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                         </div>
                                         <div className="feature-content">
                                             <h3>Step 4:</h3>
-                                            <p>Make the Payment</p>
+                                            <p>Access live purifier data & water quality</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1490,7 +1589,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                         </div>
                                         <div className="feature-content">
                                             <h3>Step 5:</h3>
-                                            <p>Get ionHive Installed in 48 hours!</p>
+                                            <p>Track order history & payments anytime</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1503,25 +1602,53 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                         </div>
                                         <div className="feature-content">
                                             <h3>Step 6:</h3>
-                                            <p>Connect your device to ionHive app</p>
+                                            <p>Enjoy smart, hassle-free water purification!</p>
                                         </div>
                                     </div>
                                 </div>
                                 {/* <!-- End .feature-item --> */}
-
                             </div>
+
+                            <div className="container text-center" style={{ marginTop: "20px" }}>
+                                <div
+                                    className="d-flex justify-content-center align-items-center"
+                                    style={{ gap: "40px" }} // Adjust this value to control space
+                                >
+                                    {/* Play Store QR */}
+                                    <div className="phone-mockup text-center">
+                                        <img
+                                            src="assets/img/water_playStore.png"
+                                            alt="Google Play QR"
+                                            style={getStyle("play")}
+                                            onMouseEnter={() => setHoveredQR("play")}
+                                            onMouseLeave={() => setHoveredQR(null)}
+                                        />
+                                        <p style={{ marginTop: "10px" }}>Google Play Store Scan to Download</p>
+                                    </div>
+
+                                    {/* App Store QR */}
+                                    <div className="phone-mockup text-center">
+                                        <img
+                                            src="assets/img/water_appStore.png"
+                                            alt="App Store QR"
+                                            style={getStyle("app")}
+                                            onMouseEnter={() => setHoveredQR("app")}
+                                            onMouseLeave={() => setHoveredQR(null)}
+                                        />
+                                        <p style={{ marginTop: "10px" }}>App Store Scan to Download</p>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
-
                     </div>
-
                 </section>
                 {/* <!-- /Features 2 Section --> */}
 
+
                 {/* <!-- Call To Action Section --> */}
                 <section id="call-to-action" className="call-to-action section">
-
                     <div className="container" data-aos="fade-up" data-aos-delay="100">
-
                         <div className="row content justify-content-center align-items-center position-relative">
                             <div className="col-lg-8 mx-auto text-center">
                                 <h2 className="display-4 mb-4">Start Your 7-Day Risk-Free Trial</h2>
@@ -1533,8 +1660,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 <form onSubmit={handleSubmitCallRequest} method="post" className="php-email-form" data-aos="fade-up" data-aos-delay="200">
                                                     <div className="row gy-4">
                                                         <div className="col-md-6">
-                                                            <input
-                                                                type="text"
+                                                            <input type="text"
                                                                 name="name"
                                                                 className="form-control"
                                                                 placeholder="Enter Your Name"
