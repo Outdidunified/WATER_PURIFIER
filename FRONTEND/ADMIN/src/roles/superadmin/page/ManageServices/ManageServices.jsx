@@ -166,7 +166,7 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                                 }}>
                                   {item.task_description || '-'}
                                 </td>
-                                <td>{item.wp_device_id || '-'}</td>
+                                <td>{item.device_id || item.wp_device_id ||'-'}</td>
                                 <td>{item.assigned_technician_id || '-'}</td>
                                 <td>{item.assigned_date ? new Date(item.assigned_date).toLocaleDateString() : '-'}</td>
                                 <td>

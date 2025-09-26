@@ -2396,11 +2396,13 @@ const GetServicesByDistrict = async (req, res) => {
       {
         $lookup: {
           from: "orders",
-          localField: "wp_device_id",
+          localField: "device_id",
           foreignField: "wp_device_id",
           as: "order"
         }
       },
+
+      // Flatten order array
       {
         $addFields: {
           order: { $arrayElemAt: ["$order", 0] }
@@ -2412,10 +2414,12 @@ const GetServicesByDistrict = async (req, res) => {
         { $match: { "order.deliveryAddress.district": new RegExp(String(district).trim(), "i") } }
       ] : []),
 
-      // Project to flatten
+      // Replace device_id with wp_device_id and remove order field
       {
         $project: {
-          order: 0
+          wp_device_id: "$device_id", // rename
+          device_id: 0,               // remove original
+          order: 0                    // remove order
         }
       }
     ];
@@ -2430,6 +2434,7 @@ const GetServicesByDistrict = async (req, res) => {
     return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
   }
 };
+
 
 
 
