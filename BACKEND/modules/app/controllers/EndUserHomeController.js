@@ -34,24 +34,32 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
       });
     }
 
-    const order = await ordersCollection.findOne({
-      _id: new ObjectId(user.active_order_id),
-    });
+    // Fetch all orders for this user
+    const orders = await ordersCollection.find({ user_id: parseInt(user_id) })
+                                         .sort({ createdAt: -1 })
+                                         .toArray();
 
-    if (!order) {
-      return res.status(404).json({ error: true, message: 'Active order not found' });
+    // Optional: if no orders, you can return a message
+    if (!orders.length) {
+      return res.status(200).json({
+        error: false,
+        message: 'No orders found for this user',
+        data: []
+      });
     }
 
     return res.status(200).json({
       error: false,
-      message: 'Active subscription fetched successfully',
-      data: { subscription: order }
+      message: `Found ${orders.length} order(s) for user`,
+      data: orders
     });
+
   } catch (error) {
     console.error('Error in getActiveSubscriptionDetails:', error);
     return res.status(500).json({ error: true, message: 'Server error' });
   }
 };
+
 
 exports.getLatestFeatureValues = async (req, res) => {
   const { wp_device_id, user_id } = req.body;
