@@ -2732,247 +2732,144 @@ const GetAnalytics = async (req, res) => {
 
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
-        // Helpers
-        const countPayments = (filter) => paymentsCollection.countDocuments(filter);
-        const countOrders = (filter) => ordersCollection.countDocuments(filter);
+        // ---------------- Helpers ----------------
+        const countDocuments = (collection, filter) => collection.countDocuments(filter);
 
-        // Payments summary
-        const [
-            paymentsTotal,
-            paymentsSuccess,
-            paymentsPending,
-            paymentsTodayTotal,
-            paymentsTodaySuccess,
-            paymentsWeekTotal,
-            paymentsWeekSuccess,
-            paymentsMonthTotal,
-            paymentsMonthSuccess,
-            paymentsYearTotal,
-            paymentsYearSuccess
-        ] = await Promise.all([
-            countPayments({}),
-            countPayments({ paymentStatus: 'Completed' }),
-            countPayments({ paymentStatus: 'Pending' }),
-            countPayments({ createdAt: { $gte: startOfToday } }),
-            countPayments({ paymentStatus: 'Completed', createdAt: { $gte: startOfToday } }),
-            countPayments({ createdAt: { $gte: sevenDaysAgo } }),
-            countPayments({ paymentStatus: 'Completed', createdAt: { $gte: sevenDaysAgo } }),
-            countPayments({ createdAt: { $gte: oneMonthAgo } }),
-            countPayments({ paymentStatus: 'Completed', createdAt: { $gte: oneMonthAgo } }),
-            countPayments({ createdAt: { $gte: oneYearAgo } }),
-            countPayments({ paymentStatus: 'Completed', createdAt: { $gte: oneYearAgo } }),
-        ]);
-
-        // Orders summary (using paymentStatus on orders)
-        const [
-            ordersTotal,
-            ordersSuccess,
-            ordersPending,
-            ordersTodayTotal,
-            ordersTodaySuccess,
-            ordersWeekTotal,
-            ordersWeekSuccess,
-            ordersMonthTotal,
-            ordersMonthSuccess,
-            ordersYearTotal,
-            ordersYearSuccess
-        ] = await Promise.all([
-            countOrders({}),
-            countOrders({ paymentStatus: 'Completed' }),
-            countOrders({ paymentStatus: 'Pending' }),
-            countOrders({ createdAt: { $gte: startOfToday } }),
-            countOrders({ paymentStatus: 'Completed', createdAt: { $gte: startOfToday } }),
-            countOrders({ createdAt: { $gte: sevenDaysAgo } }),
-            countOrders({ paymentStatus: 'Completed', createdAt: { $gte: sevenDaysAgo } }),
-            countOrders({ createdAt: { $gte: oneMonthAgo } }),
-            countOrders({ paymentStatus: 'Completed', createdAt: { $gte: oneMonthAgo } }),
-            countOrders({ createdAt: { $gte: oneYearAgo } }),
-            countOrders({ paymentStatus: 'Completed', createdAt: { $gte: oneYearAgo } })
-        ]);
-
-        // Users summary
-        const [
-            totalUsers,
-            sellersCount,
-            endUsersCount,
-            techniciansCount
-        ] = await Promise.all([
-            usersCollection.countDocuments({}),
-            usersCollection.countDocuments({ role_id: 4 }),
-            usersCollection.countDocuments({ role_id: 3 }),
-            usersCollection.countDocuments({ role_id: 2 })
-        ]);
-
-        // Revenue (prefer payments collection, fallback to orders if zero)
-        const getRevenueFromPayments = async (filter) => {
-            const result = await paymentsCollection.aggregate([
-                { $match: { ...filter, paymentStatus: 'Completed' } },
-                { $group: { _id: null, total: { $sum: '$totalPrice' } } }
+        const groupTimeline = async (collection, filter, groupId, labelField) => {
+            const result = await collection.aggregate([
+                { $match: filter },
+                {
+                    $group: {
+                        _id: groupId,
+                        total: { $sum: 1 },
+                        successful: {
+                            $sum: { $cond: [{ $eq: ["$paymentStatus", "Completed"] }, 1, 0] }
+                        }
+                    }
+                },
+                { $project: { [labelField]: "$_id", total: 1, successful: 1, _id: 0 } },
+                { $sort: { [labelField]: 1 } }
             ]).toArray();
-            return result.length > 0 ? result[0].total : 0;
-        };
-        const getRevenueFromOrders = async (filter) => {
-            const result = await ordersCollection.aggregate([
-                { $match: { ...filter, paymentStatus: 'Completed' } },
-                { $addFields: { amount: { $ifNull: ['$totalPrice', '$grandTotal'] } } },
-                { $group: { _id: null, total: { $sum: '$amount' } } }
-            ]).toArray();
-            return result.length > 0 ? result[0].total : 0;
-        };
-        const revenueTotalPayments = await getRevenueFromPayments({});
-        const revenueDailyPayments = await getRevenueFromPayments({ createdAt: { $gte: oneDayAgo } });
-        const revenueWeeklyPayments = await getRevenueFromPayments({ createdAt: { $gte: sevenDaysAgo } });
-        const revenueMonthlyPayments = await getRevenueFromPayments({ createdAt: { $gte: oneMonthAgo } });
-        const revenueYearlyPayments = await getRevenueFromPayments({ createdAt: { $gte: oneYearAgo } });
-
-        const [
-            revenueTotalOrders,
-            revenueDailyOrders,
-            revenueWeeklyOrders,
-            revenueMonthlyOrders,
-            revenueYearlyOrders
-        ] = await Promise.all([
-            getRevenueFromOrders({}),
-            getRevenueFromOrders({ createdAt: { $gte: oneDayAgo } }),
-            getRevenueFromOrders({ createdAt: { $gte: sevenDaysAgo } }),
-            getRevenueFromOrders({ createdAt: { $gte: oneMonthAgo } }),
-            getRevenueFromOrders({ createdAt: { $gte: oneYearAgo } })
-        ]);
-
-        const revenue = {
-            total: revenueTotalPayments || revenueTotalOrders,
-            daily: revenueDailyPayments || revenueDailyOrders,
-            weekly: revenueWeeklyPayments || revenueWeeklyOrders,
-            monthly: revenueMonthlyPayments || revenueMonthlyOrders,
-            yearly: revenueYearlyPayments || revenueYearlyOrders
+            return result;
         };
 
-        // Optional custom date range via query: ?from=YYYY-MM-DD&to=YYYY-MM-DD (inclusive)
-        const { from: fromStr, to: toStr } = req.query || {};
-        let customRange = null;
-        if (fromStr && toStr) {
-            const start = new Date(fromStr);
-            const end = new Date(toStr);
-            if (isNaN(start) || isNaN(end)) {
-                return res.status(400).json({ status: 'Failed', message: 'Invalid from/to date. Use ISO format (YYYY-MM-DD).' });
+        const buildFixedBuckets = (range, results, labelKey = "label") => {
+            const buckets = [];
+            for (let i = range.start; i <= range.end; i++) {
+                const match = results.find(r => r[labelKey] === i);
+                buckets.push({
+                    [labelKey]: i,
+                    total: match ? match.total : 0,
+                    successful: match ? match.successful : 0
+                });
             }
-            end.setHours(23, 59, 59, 999);
-
-            const rangeFilter = { createdAt: { $gte: start, $lte: end } };
-
-            const [
-                paymentsRangeTotal,
-                paymentsRangeSuccess,
-                paymentsRangePending,
-                ordersRangeTotal,
-                ordersRangeSuccess,
-                ordersRangePending,
-                revenueRangePayments,
-                revenueRangeOrders
-            ] = await Promise.all([
-                countPayments(rangeFilter),
-                countPayments({ paymentStatus: 'Completed', ...rangeFilter }),
-                countPayments({ paymentStatus: 'Pending', ...rangeFilter }),
-                countOrders(rangeFilter),
-                countOrders({ paymentStatus: 'Completed', ...rangeFilter }),
-                countOrders({ paymentStatus: 'Pending', ...rangeFilter }),
-                getRevenueFromPayments(rangeFilter),
-                getRevenueFromOrders(rangeFilter)
-            ]);
-
-            const usersDateFilter = {
-                $or: [
-                    { createdAt: { $gte: start, $lte: end } },
-                    { createddate: { $gte: start, $lte: end } }
-                ]
-            };
-            const [
-                usersRangeTotal,
-                usersRangeSellers,
-                usersRangeEndUsers,
-                usersRangeTechnicians
-            ] = await Promise.all([
-                usersCollection.countDocuments(usersDateFilter),
-                usersCollection.countDocuments({ role_id: 4, ...usersDateFilter }),
-                usersCollection.countDocuments({ role_id: 3, ...usersDateFilter }),
-                usersCollection.countDocuments({ role_id: 2, ...usersDateFilter })
-            ]);
-
-            customRange = {
-                from: start,
-                to: end,
-                payments: {
-                    total: paymentsRangeTotal,
-                    successful: paymentsRangeSuccess,
-                    pending: paymentsRangePending
-                },
-                orders: {
-                    total: ordersRangeTotal,
-                    successful: ordersRangeSuccess,
-                    pending: ordersRangePending
-                },
-                users: {
-                    total: usersRangeTotal,
-                    sellers_role_4: usersRangeSellers,
-                    end_users_role_3: usersRangeEndUsers,
-                    technicians_role_2: usersRangeTechnicians
-                },
-                revenue: revenueRangePayments || revenueRangeOrders
-            };
-        }
-
-        const payload = {
-            payments: {
-                total: paymentsTotal,
-                successful: paymentsSuccess,
-                pending: paymentsPending,
-                by_period: {
-                    today: { total: paymentsTodayTotal, successful: paymentsTodaySuccess },
-                    weekly: { total: paymentsWeekTotal, successful: paymentsWeekSuccess },
-                    monthly: { total: paymentsMonthTotal, successful: paymentsMonthSuccess },
-                    yearly: { total: paymentsYearTotal, successful: paymentsYearSuccess }
-                }
-            },
-            orders: {
-                total: ordersTotal,
-                successful: ordersSuccess,
-                pending: ordersPending,
-                by_period: {
-                    today: { total: ordersTodayTotal, successful: ordersTodaySuccess },
-                    weekly: { total: ordersWeekTotal, successful: ordersWeekSuccess },
-                    monthly: { total: ordersMonthTotal, successful: ordersMonthSuccess },
-                    yearly: { total: ordersYearTotal, successful: ordersYearSuccess }
-                }
-            },
-            users: {
-                total: totalUsers,
-                sellers_role_4: sellersCount,
-                end_users_role_3: endUsersCount,
-                technicians_role_2: techniciansCount
-            },
-            revenue
+            return buckets;
         };
-        if (customRange) payload.custom_range = customRange;
 
-        return res.status(200).json({
-            status: 'Success',
-            data: payload
-        });
+        const groupRevenueTimeline = async (collection, filter, groupId, labelField) => {
+            const result = await collection.aggregate([
+                { $match: { ...filter, paymentStatus: "Completed" } },
+                { $addFields: { amount: { $ifNull: ["$totalPrice", "$grandTotal"] } } },
+                { $group: { _id: groupId, revenue: { $sum: "$amount" } } },
+                { $project: { [labelField]: "$_id", revenue: 1, _id: 0 } },
+                { $sort: { [labelField]: 1 } }
+            ]).toArray();
+            return result;
+        };
+
+        const buildRevenueBuckets = (range, results, labelKey = "label") => {
+            const buckets = [];
+            for (let i = range.start; i <= range.end; i++) {
+                const match = results.find(r => r[labelKey] === i);
+                buckets.push({
+                    [labelKey]: i,
+                    revenue: match ? match.revenue : 0
+                });
+            }
+            return buckets;
+        };
+
+        // ---------------- Payments / Orders / Revenue Summary ----------------
+        const [
+            paymentsTotal, paymentsSuccess, paymentsPending,
+            ordersTotal, ordersSuccess, ordersPending
+        ] = await Promise.all([
+            countDocuments(paymentsCollection, {}),
+            countDocuments(paymentsCollection, { paymentStatus: 'Completed' }),
+            countDocuments(paymentsCollection, { paymentStatus: 'Pending' }),
+            countDocuments(ordersCollection, {}),
+            countDocuments(ordersCollection, { paymentStatus: 'Completed' }),
+            countDocuments(ordersCollection, { paymentStatus: 'Pending' }),
+        ]);
+
+        // ---------------- Timelines ----------------
+        // Payments timelines
+        const paymentsTodayRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: startOfToday } }, { $hour: "$createdAt" }, "hour");
+        const paymentsWeekRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: sevenDaysAgo } }, { $dayOfWeek: "$createdAt" }, "day");
+        const paymentsMonthRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: oneMonthAgo } }, { $dayOfMonth: "$createdAt" }, "day");
+        const paymentsYearRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: oneYearAgo } }, { $month: "$createdAt" }, "month");
+
+        const paymentsTimeline = {
+            today: buildFixedBuckets({ start: 0, end: 23 }, paymentsTodayRaw, "hour"),
+            week: buildFixedBuckets({ start: 1, end: 7 }, paymentsWeekRaw, "day"),
+            month: buildFixedBuckets({ start: 1, end: 31 }, paymentsMonthRaw, "day"),
+            year: buildFixedBuckets({ start: 1, end: 12 }, paymentsYearRaw, "month")
+        };
+
+        // Orders timelines
+        const ordersTodayRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: startOfToday } }, { $hour: "$createdAt" }, "hour");
+        const ordersWeekRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: sevenDaysAgo } }, { $dayOfWeek: "$createdAt" }, "day");
+        const ordersMonthRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: oneMonthAgo } }, { $dayOfMonth: "$createdAt" }, "day");
+        const ordersYearRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: oneYearAgo } }, { $month: "$createdAt" }, "month");
+
+        const ordersTimeline = {
+            today: buildFixedBuckets({ start: 0, end: 23 }, ordersTodayRaw, "hour"),
+            week: buildFixedBuckets({ start: 1, end: 7 }, ordersWeekRaw, "day"),
+            month: buildFixedBuckets({ start: 1, end: 31 }, ordersMonthRaw, "day"),
+            year: buildFixedBuckets({ start: 1, end: 12 }, ordersYearRaw, "month")
+        };
+
+        // Revenue timelines (using orders collection)
+        const revenueTodayRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: startOfToday } }, { $hour: "$createdAt" }, "hour");
+        const revenueWeekRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: sevenDaysAgo } }, { $dayOfWeek: "$createdAt" }, "day");
+        const revenueMonthRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: oneMonthAgo } }, { $dayOfMonth: "$createdAt" }, "day");
+        const revenueYearRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: oneYearAgo } }, { $month: "$createdAt" }, "month");
+
+        const revenueTimeline = {
+            today: buildRevenueBuckets({ start: 0, end: 23 }, revenueTodayRaw, "hour"),
+            week: buildRevenueBuckets({ start: 1, end: 7 }, revenueWeekRaw, "day"),
+            month: buildRevenueBuckets({ start: 1, end: 31 }, revenueMonthRaw, "day"),
+            year: buildRevenueBuckets({ start: 1, end: 12 }, revenueYearRaw, "month")
+        };
+
+        // ---------------- Revenue totals ----------------
+        const totalRevenueResult = await ordersCollection.aggregate([
+            { $match: { paymentStatus: "Completed" } },
+            { $addFields: { amount: { $ifNull: ["$totalPrice", "$grandTotal"] } } },
+            { $group: { _id: null, total: { $sum: "$amount" } } }
+        ]).toArray();
+        const totalRevenue = totalRevenueResult.length > 0 ? totalRevenueResult[0].total : 0;
+
+        // ---------------- Payload ----------------
+        const payload = {
+            payments: { total: paymentsTotal, successful: paymentsSuccess, pending: paymentsPending, timeline: paymentsTimeline },
+            orders: { total: ordersTotal, successful: ordersSuccess, pending: ordersPending, timeline: ordersTimeline },
+            revenue: { total: totalRevenue, timeline: revenueTimeline }
+        };
+
+        return res.status(200).json({ status: "Success", data: payload });
 
     } catch (error) {
         console.error("Error in GetAnalytics:", error);
-        logger?.error?.(error);
-        return res.status(500).json({
-            status: 'Failed',
-            message: 'Internal Server Error'
-        });
+        return res.status(500).json({ status: "Failed", message: "Internal Server Error" });
     }
 };
+
+
 
 module.exports = {
     getModules, authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
