@@ -166,6 +166,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
     closeAddModal,
     handleAddUserSubmit,
     handleViewUser,
+    handleEditUser,
     // seller assignment
     assignModalOpen,
     assignMode,
@@ -556,13 +557,22 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                                   )}
                                 </td>
                                 <td>
-                                  <button
-                                    type="button"
-                                    className="btn btn-outline-success btn-icon-text"
-                                    onClick={() => handleViewUser(dataItem)}
-                                  >
-                                    <i className="mdi mdi-eye"></i>View
-                                  </button>
+                                  <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline-success btn-icon-text"
+                                      onClick={() => handleViewUser(dataItem)}
+                                    >
+                                      <i className="mdi mdi-eye"></i>View
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline-primary btn-icon-text"
+                                      onClick={() => handleEditUser(dataItem)}
+                                    >
+                                      <i className="mdi mdi-pencil"></i>Edit
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             ))

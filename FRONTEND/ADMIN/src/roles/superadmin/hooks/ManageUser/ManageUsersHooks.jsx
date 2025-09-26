@@ -137,6 +137,10 @@ const useManageUsers = (userInfo) => {
     navigate('/superadmin/ViewManageUser', { state: { dataItem } });
   };
 
+  const handleEditUser = (dataItem) => {
+    navigate('/superadmin/EditManageUsers', { state: { dataItem } });
+  };
+
   const handleAddUserSubmit = async (e) => {
     e.preventDefault();
 
@@ -268,6 +272,7 @@ const useManageUsers = (userInfo) => {
     error: tableError,
     handleSearchInputChange,
     handleViewUser,
+    handleEditUser,
 
     // add user modal
     openAddModal,

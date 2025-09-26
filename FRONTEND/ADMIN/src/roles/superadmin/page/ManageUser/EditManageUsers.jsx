@@ -9,6 +9,7 @@ import useEditManageUsers from '../../hooks/ManageUser/EditManageUsersHooks';
 
 import { Country, State, City } from 'country-state-city';
 import { getDistricts } from 'india-state-district';
+import Select from 'react-select';
 import SelectField from '../../../../utils/SelectField';
 import { GeoService } from '../../../../services/GeoService';
 
