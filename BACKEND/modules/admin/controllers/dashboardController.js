@@ -2796,7 +2796,8 @@ const GetAnalytics = async (req, res) => {
         // ---------------- Payments / Orders / Revenue Summary ----------------
         const [
             paymentsTotal, paymentsSuccess, paymentsPending,
-            ordersTotal, ordersSuccess, ordersPending
+            ordersTotal, ordersSuccess, ordersPending,
+            usersTotal, adminsCount, techniciansCount, endUsersCount, sellersCount
         ] = await Promise.all([
             countDocuments(paymentsCollection, {}),
             countDocuments(paymentsCollection, { paymentStatus: 'Completed' }),
@@ -2804,6 +2805,11 @@ const GetAnalytics = async (req, res) => {
             countDocuments(ordersCollection, {}),
             countDocuments(ordersCollection, { paymentStatus: 'Completed' }),
             countDocuments(ordersCollection, { paymentStatus: 'Pending' }),
+            countDocuments(usersCollection, {}),
+            countDocuments(usersCollection, { role_id: 1 }), // Admin
+            countDocuments(usersCollection, { role_id: 2 }), // Technician
+            countDocuments(usersCollection, { role_id: 3 }), // End User
+            countDocuments(usersCollection, { role_id: 4 }), // Seller
         ]);
 
         // ---------------- Timelines ----------------
@@ -2858,7 +2864,14 @@ const GetAnalytics = async (req, res) => {
         const payload = {
             payments: { total: paymentsTotal, successful: paymentsSuccess, pending: paymentsPending, timeline: paymentsTimeline },
             orders: { total: ordersTotal, successful: ordersSuccess, pending: ordersPending, timeline: ordersTimeline },
-            revenue: { total: totalRevenue, timeline: revenueTimeline }
+            revenue: { total: totalRevenue, timeline: revenueTimeline },
+            users: {
+                total: usersTotal,
+                admin: adminsCount,
+                technician: techniciansCount,
+                end_user: endUsersCount,
+                seller: sellersCount
+            }
         };
 
         return res.status(200).json({ status: "Success", data: payload });
