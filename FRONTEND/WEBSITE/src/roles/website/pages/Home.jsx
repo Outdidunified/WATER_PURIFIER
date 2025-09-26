@@ -1014,13 +1014,17 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 <div className="mb-3">
                                                     <label>State</label>
                                                     <select className="form-control" value={state} onChange={e => setState(e.target.value)}>
-                                                        {stateList.map(s => <option key={s.isoCode} value={s.isoCode}>{s.name}</option>)}
+                                                        <option >Select State</option>
+                                                        {stateList.map(s =>
+                                                            <option key={s.isoCode} value={s.isoCode}>{s.name}</option>
+                                                        )}
                                                     </select>
                                                 </div>
 
                                                 <div className="mb-3">
                                                     <label>District</label>
                                                     <select className="form-control" value={district} onChange={e => setDistrict(e.target.value)}>
+                                                        <option >Select District</option>
                                                         {districtList.map(d => <option key={d} value={d}>{d}</option>)}
                                                     </select>
                                                 </div>
@@ -1028,6 +1032,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 <div className="mb-3">
                                                     <label>City</label>
                                                     <select className="form-control" value={city} onChange={e => setCity(e.target.value)}>
+                                                        <option >Select City</option>
                                                         {cityList.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                                                     </select>
                                                 </div>
