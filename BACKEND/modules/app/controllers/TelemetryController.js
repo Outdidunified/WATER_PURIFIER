@@ -485,7 +485,7 @@ const getLatestSingleTelemetry = async (req, res) => {
             status: 'Success',
             message: `Latest telemetry and water usage data for device ${deviceId} fetched successfully`,
             data: {
-                telemetry: latestTelemetryRecord,
+                ...latestTelemetryRecord,       // <-- flatten telemetry fields
                 waterUsage: { daily, weekly, monthly, yearly }
             },
             deviceId,
