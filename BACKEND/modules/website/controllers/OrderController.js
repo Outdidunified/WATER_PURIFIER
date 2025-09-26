@@ -4,6 +4,7 @@ const { connectToDatabase } = require('../../../config/db');
 const { ObjectId } = require('mongodb');
 const { sendSubscriptionConfirmationEmail } = require('../controllers/Email');
 const { validateDeliveryAddress, normalizeDeliveryAddress } = require('../models/DeliveryAddress');
+const { autoAssignInstallation } = require('../../admin/services/autoAssignmentService');
 
 
 function generateOrderId() {
@@ -250,6 +251,9 @@ exports.verifyRazorpayPayment = async (req, res) => {
                 }
             }
         );
+
+        // Auto assign installation
+        await autoAssignInstallation(order);
 
         //  Update Payment
         await db.collection('payments').updateOne(

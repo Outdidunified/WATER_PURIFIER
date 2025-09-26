@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const { connectToDatabase } = require('../../../config/db');
 const { ObjectId } = require('mongodb');
+const { autoAssignService } = require('../../admin/services/autoAssignmentService');
 
 exports.fetchUserDetails = async (req, res) => { 
   const { user_id, email, role_id } = req.body;
@@ -268,6 +269,9 @@ exports.fetchUserDetails = async (req, res) => {
 
     // ✅ Step 4: Insert into collection
     await serviceRecordsCollection.insertOne(newServiceRecord);
+
+    // Auto assign service
+    await autoAssignService(newTaskId);
 
     return res.status(200).json({
       error: false,

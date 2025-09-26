@@ -9,6 +9,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const logger = require('./middlewares/requestLogger');
 const { connectToDatabase } = require('./config/db');
+const cron = require('node-cron');
+const { autoAssignPendingTasks } = require('./modules/admin/services/autoAssignmentService');
 
 // Import Routes
 const adminRoutes = require('./routes/adminRoutes');
@@ -73,6 +75,12 @@ connectToDatabase()
             const logMessage = `HTTP Server listening on port ${HTTP_PORT}`;
             console.log(logMessage);
             logger.info(logMessage);
+        });
+
+        // Schedule auto-assignment of pending tasks every 5 minutes
+        cron.schedule('*/5 * * * *', () => {
+            console.log('Running auto-assign pending tasks...');
+            autoAssignPendingTasks();
         });
     })
     .catch(err => {
