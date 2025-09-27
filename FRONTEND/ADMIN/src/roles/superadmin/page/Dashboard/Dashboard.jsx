@@ -49,7 +49,11 @@ const Dashboard = ({ userInfo, handleLogout }) => {
             { icon: 'fas fa-store', label: 'Total Sellers', value: analyticsData.users.seller },
             { icon: 'fas fa-user', label: 'Total End Users', value: analyticsData.users.end_user },
             { icon: 'fas fa-tools', label: 'Total Technicians', value: analyticsData.users.technician },
-            { icon: 'fas fa-rupee-sign', label: 'Total Revenue (INR)', value: `₹${analyticsData.revenue.total.toFixed(2)}` },
+            {
+                icon: 'fas fa-rupee-sign',
+                label: 'Total Revenue (INR)',
+                value: `₹${analyticsData.revenue.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            }
         ]
         : [];
 
