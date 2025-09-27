@@ -8,6 +8,8 @@ const useViewManageUser = () => {
 
   const [user, setUser] = useState({});
   const [orders, setOrders] = useState([]);
+  const [endUserDevices, setEndUserDevices] = useState([]);
+  const [subscriptionDetails, setSubscriptionDetails] = useState(null);
   const [technicianTasks, setTechnicianTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -32,19 +34,51 @@ const useViewManageUser = () => {
 
     setLoading(true);
     setError(null);
+    setOrders([]);
+    setEndUserDevices([]);
+    setSubscriptionDetails(null);
+    setTechnicianTasks([]);
 
     try {
       if (userData.role_id === 3) { // EndUser
-        // Fetch orders for enduser
-        const ordersResponse = await axiosInstance.post('/api/admin/FetchOrdersByUserId', {
-          user_id: userData.user_id
-        });
+        const [ordersResponse, devicesResponse, subscriptionResponse] = await Promise.all([
+          axiosInstance.post('/api/admin/FetchOrdersByUserId', {
+            user_id: userData.user_id
+          }),
+          axiosInstance.post('/api/admin/FetchEndUserDevices', {
+            user_id: userData.user_id
+          }),
+          axiosInstance.post('/api/app/enduserhome/getActiveSubscriptionDetails', {
+            user_id: userData.user_id,
+            email: userData.email,
+            role_id: userData.role_id
+          })
+        ]);
 
         if (ordersResponse.status === 200 && ordersResponse.data.status === 'Success') {
-          setOrders(ordersResponse.data.data || []);
+          const normalizedOrders = (ordersResponse.data.data || []).map((order) => ({
+            ...order,
+            planStartDate: order.planStartDate || order.createdAt || null,
+          }));
+
+          setOrders(normalizedOrders);
         } else {
           console.error('Failed to fetch orders:', ordersResponse.data.message);
           setOrders([]);
+        }
+
+        if (devicesResponse.status === 200 && devicesResponse.data.status === 'Success') {
+          setEndUserDevices(devicesResponse.data.data || []);
+        } else {
+          console.error('Failed to fetch devices:', devicesResponse.data.message);
+          setEndUserDevices([]);
+        }
+
+        if (subscriptionResponse.status === 200 && !subscriptionResponse.data.error) {
+          setSubscriptionDetails(subscriptionResponse.data.data?.subscription || null);
+        } else {
+          console.error('Failed to fetch subscription details:', subscriptionResponse.data.message);
+          setSubscriptionDetails(null);
         }
       } else if (userData.role_id === 2) { // Technician
         // Fetch technician tasks/devices
@@ -80,6 +114,8 @@ const useViewManageUser = () => {
     user,
     setUser,
     orders,
+    endUserDevices,
+    subscriptionDetails,
     technicianTasks,
     loading,
     error,

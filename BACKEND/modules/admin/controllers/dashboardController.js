@@ -2685,6 +2685,254 @@ const DeactivateSellerAssignment = async (req, res) => {
         return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
     }
 };
+
+const FetchEndUserDevices = async (req, res) => {
+    try {
+        const { user_id } = req.body || {};
+
+        if (!user_id) {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'user_id is required'
+            });
+        }
+
+        const userIdInt = parseInt(user_id, 10);
+        if (Number.isNaN(userIdInt)) {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Invalid user_id format'
+            });
+        }
+
+        const db = await database.connectToDatabase();
+        const usersCollection = db.collection('users');
+        const deviceDetailsCollection = db.collection('device_details');
+        const ordersCollection = db.collection('orders');
+
+        const user = await usersCollection.findOne({ user_id: userIdInt, role_id: 3 });
+        if (!user) {
+            return res.status(404).json({
+                status: 'Failed',
+                message: 'End-user not found or does not have role_id 3'
+            });
+        }
+
+        const assignedDevices = Array.isArray(user.assigned_device_ids)
+            ? user.assigned_device_ids
+            : user.assigned_device_id
+            ? [user.assigned_device_id]
+            : [];
+
+        if (!assignedDevices.length) {
+            return res.status(200).json({
+                status: 'Success',
+                message: 'No devices assigned to this user',
+                data: []
+            });
+        }
+
+        const devices = await deviceDetailsCollection.aggregate([
+            {
+                $match: {
+                    wp_device_id: { $in: assignedDevices }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'product_models',
+                    localField: 'model_id',
+                    foreignField: 'model_id',
+                    as: 'model'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$model',
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    wp_device_id: 1,
+                    model_id: 1,
+                    model_name: {
+                        $ifNull: ['$model.model_name', '$model_name']
+                    },
+                    status: 1,
+                    assigned_date: '$model_assigned_date'
+                }
+            }
+        ]).toArray();
+
+        if (!devices.length) {
+            return res.status(200).json({
+                status: 'Success',
+                message: 'No devices found for this user',
+                data: []
+            });
+        }
+
+        const normalizeId = (value) => String(value || '').toUpperCase();
+
+        const latestOrders = await ordersCollection.aggregate([
+            {
+                $match: {
+                    user_id: userIdInt,
+                    wp_device_id: { $in: assignedDevices }
+                }
+            },
+            { $sort: { createdAt: -1 } },
+            {
+                $group: {
+                    _id: '$wp_device_id',
+                    order: { $first: '$$ROOT' }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'payments',
+                    let: { razorpayOrderId: '$order.razorpayOrderId' },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: { $eq: ['$razorpayOrderId', '$$razorpayOrderId'] }
+                            }
+                        },
+                        { $sort: { createdAt: -1 } },
+                        { $limit: 1 }
+                    ],
+                    as: 'payment'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'payments',
+                    let: { wpDeviceId: '$order.wp_device_id' },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ['$wp_device_id', '$$wpDeviceId'] },
+                                        { $eq: ['$user_id', userIdInt] }
+                                    ]
+                                }
+                            }
+                        },
+                        { $sort: { subscribedAt: -1 } },
+                        { $limit: 1 }
+                    ],
+                    as: 'latestDevicePayment'
+                }
+            },
+            {
+                $addFields: {
+                    payment: { $arrayElemAt: ['$payment', 0] },
+                    latestDevicePayment: { $arrayElemAt: ['$latestDevicePayment', 0] }
+                }
+            }
+        ]).toArray();
+
+        const toISOStringSafe = (value) => {
+            if (!value) return null;
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? null : date.toISOString();
+        };
+
+        const now = new Date();
+        const orderMap = new Map();
+
+        latestOrders.forEach((entry) => {
+            const { _id, order, payment, latestDevicePayment } = entry || {};
+            if (!_id || !order) return;
+
+            const subscriptionExpiryRaw =
+                latestDevicePayment?.subscriptionExpiryDate ||
+                payment?.subscriptionExpiryDate ||
+                order.subscriptionExpiryDate ||
+                null;
+
+            const subscriptionStartedRaw =
+                latestDevicePayment?.subscribedAt ||
+                payment?.subscribedAt ||
+                order.subscribedAt ||
+                order.planStartDate ||
+                order.createdAt ||
+                null;
+
+            let subscriptionStatus = order.orderStatus || 'Pending';
+            if (subscriptionExpiryRaw) {
+                const expiryDate = new Date(subscriptionExpiryRaw);
+                if (!Number.isNaN(expiryDate.getTime())) {
+                    subscriptionStatus = expiryDate < now ? 'Expired' : 'Active';
+                }
+            } else if (order.paymentStatus === 'Completed') {
+                subscriptionStatus = 'Active';
+            } else if (order.paymentStatus === 'Pending') {
+                subscriptionStatus = 'Pending';
+            }
+
+            orderMap.set(normalizeId(_id), {
+                order,
+                payment: payment || latestDevicePayment,
+                subscriptionExpiryRaw,
+                subscriptionStartedRaw,
+                subscriptionStatus
+            });
+        });
+
+        const devicesWithOrderDetails = devices.map((device) => {
+            const orderInfo = orderMap.get(normalizeId(device.wp_device_id));
+
+            if (!orderInfo) {
+                return {
+                    ...device,
+                    orderStatus: 'Not Subscribed',
+                    subscriptionStatus: 'Not Subscribed',
+                    paymentStatus: null,
+                    createdAt: null,
+                    subscriptionStartedAt: null,
+                    subscriptionExpiryDate: null,
+                    planLabel: null,
+                    planDuration: null,
+                    razorpayOrderId: null
+                };
+            }
+
+            const { order, payment, subscriptionExpiryRaw, subscriptionStartedRaw, subscriptionStatus } = orderInfo;
+            const subscriptionStartedAt = toISOStringSafe(subscriptionStartedRaw);
+            const subscriptionExpiryDate = toISOStringSafe(subscriptionExpiryRaw);
+
+            return {
+                ...device,
+                orderStatus: order.orderStatus || subscriptionStatus,
+                subscriptionStatus,
+                paymentStatus: payment?.paymentStatus || order.paymentStatus || null,
+                createdAt: subscriptionStartedAt,
+                subscriptionStartedAt,
+                subscriptionExpiryDate,
+                planLabel: order.selectedPlan?.label || payment?.planLabel || null,
+                planDuration: order.selectedDuration?.duration_time_limit || payment?.duration_time_limit || null,
+                razorpayOrderId: payment?.razorpayOrderId || order.razorpayOrderId || null
+            };
+        });
+
+        return res.status(200).json({
+            status: 'Success',
+            message: `Found ${devicesWithOrderDetails.length} device(s) for user ${user.name}`,
+            data: devicesWithOrderDetails
+        });
+    } catch (error) {
+        console.error('Error in FetchEndUserDevices:', error);
+        logger?.error?.(error);
+        return res.status(500).json({
+            status: 'Failed',
+            message: 'Internal Server Error'
+        });
+    }
+};
 const FetchOrdersByUserId = async (req, res) => {
     try {
         const { user_id } = req.body;
@@ -3227,7 +3475,7 @@ module.exports = {
     AddUsers, FetchUsers, FetchSellers, FetchOrdersByDistrict, FetchTechniciansByDistrict, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
     FetchSelectServiceTask, AssignService, ReAssignService, assignPermissions, fetchPermissionsByRole,
     GetUsersByDistrict, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
-    AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchOrdersByUserId, FetchTechnicianTasksByUserId, GetAnalytics,
+    AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchEndUserDevices, FetchOrdersByUserId, FetchTechnicianTasksByUserId, GetAnalytics,
     GetAnalyticsByDistrict
     // UpdateOrdersStatus,
 };

@@ -77,6 +77,8 @@ router.post('/FetchOrders', verifyToken, Controller.FetchOrders);
 router.post('/FetchOrdersByDistrict', verifyToken, Controller.FetchOrdersByDistrict);
 // Route to FetchOrdersByUserId
 router.post('/FetchOrdersByUserId',  Controller.FetchOrdersByUserId);
+// Route to FetchEndUserDevices
+router.post('/FetchEndUserDevices', verifyToken, Controller.FetchEndUserDevices);
 // Route to FetchTechnicianTasksByUserId
 router.post('/FetchTechnicianTasksByUserId', Controller.FetchTechnicianTasksByUserId);
 
