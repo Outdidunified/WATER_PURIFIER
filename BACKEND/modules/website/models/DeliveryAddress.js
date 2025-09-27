@@ -1,5 +1,5 @@
 // DeliveryAddress model and validation utilities (no Mongoose)
-// Provides: validateDeliveryAddress(address), normalizeDeliveryAddress(address)
+// Provides: validateDeliveryAddress(address), normalizeDeliveryAddress(address), normalizeState(state)
 
 /**
  * @typedef {Object} DeliveryAddress
@@ -11,7 +11,7 @@
  * @property {string} district
  * @property {string} state
  * @property {string} pincode      // 6 digits (India)
- * @property {string} email      
+ * @property {string} email
  */
 
 /** Trim string fields safely */
@@ -19,8 +19,55 @@ function trimVal(v) {
   return typeof v === 'string' ? v.trim() : v;
 }
 
+/** Normalize state name to full form */
+const stateCorrections = {
+  'ka': 'Karnataka',
+  'karanataka': 'Karnataka', // typo correction
+  'karnatka': 'Karnataka',   // another typo
+  'tn': 'Tamil Nadu',
+  'mh': 'Maharashtra',
+  'gj': 'Gujarat',
+  'rj': 'Rajasthan',
+  'up': 'Uttar Pradesh',
+  'mp': 'Madhya Pradesh',
+  'wb': 'West Bengal',
+  'ap': 'Andhra Pradesh',
+  'ts': 'Telangana',
+  'kl': 'Kerala',
+  'or': 'Odisha',
+  'pb': 'Punjab',
+  'hr': 'Haryana',
+  'jk': 'Jammu and Kashmir',
+  'uk': 'Uttarakhand',
+  'hp': 'Himachal Pradesh',
+  'ch': 'Chandigarh',
+  'dl': 'Delhi',
+  'goa': 'Goa',
+  'dd': 'Daman and Diu',
+  'dn': 'Dadra and Nagar Haveli',
+  'py': 'Puducherry',
+  'la': 'Lakshadweep',
+  'an': 'Andaman and Nicobar Islands',
+  'sk': 'Sikkim',
+  'ar': 'Arunachal Pradesh',
+  'ml': 'Meghalaya',
+  'nl': 'Nagaland',
+  'tr': 'Tripura',
+  'mz': 'Mizoram',
+  'mn': 'Manipur',
+  'as': 'Assam',
+  'jh': 'Jharkhand',
+  'cg': 'Chhattisgarh',
+  // Add more as needed
+};
+
+function normalizeState(state) {
+  if (!state || typeof state !== 'string') return '';
+  return stateCorrections[state.toLowerCase()] || state;
+}
+
 /**
- * Normalize address by trimming fields
+ * Normalize address by trimming fields and standardizing state
  * @param {Partial<DeliveryAddress>} address
  * @returns {DeliveryAddress}
  */
@@ -32,7 +79,7 @@ function normalizeDeliveryAddress(address = {}) {
     landmark: trimVal(address.landmark || ''),
     city: trimVal(address.city || ''),
     district: trimVal(address.district || ''),
-    state: trimVal(address.state || ''),
+    state: trimVal(normalizeState(address.state) || ''),
     pincode: trimVal(address.pincode || ''),
     email: trimVal(address.email || ''),
   };
@@ -77,4 +124,5 @@ function validateDeliveryAddress(address) {
 module.exports = {
   validateDeliveryAddress,
   normalizeDeliveryAddress,
+  normalizeState,
 };

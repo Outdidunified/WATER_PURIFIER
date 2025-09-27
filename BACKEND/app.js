@@ -10,7 +10,7 @@ const helmet = require('helmet');
 const logger = require('./middlewares/requestLogger');
 const { connectToDatabase } = require('./config/db');
 const cron = require('node-cron');
-const { autoAssignPendingTasks } = require('./modules/admin/services/autoAssignmentService');
+const { autoAssignPendingTasks, autoAssignPendingInstallations } = require('./modules/admin/services/autoAssignmentService');
 
 // Import Routes
 const adminRoutes = require('./routes/adminRoutes');
@@ -70,12 +70,20 @@ const HTTP_PORT = process.env.HTTP_PORT || 6767;
 
 // Start Server with Database Connection
 connectToDatabase()
-    .then(() => {
+    .then(async () => {
         httpServer.listen(HTTP_PORT, () => {
             const logMessage = `HTTP Server listening on port ${HTTP_PORT}`;
             console.log(logMessage);
             logger.info(logMessage);
         });
+
+        // Run auto-assign pending tasks once on startup
+        console.log('Running initial auto-assign pending tasks on startup...');
+        await autoAssignPendingTasks();
+
+        // Run auto-assign pending installations once on startup
+        console.log('Running initial auto-assign pending installations on startup...');
+        await autoAssignPendingInstallations();
 
         // Schedule auto-assignment of pending tasks every 30 seconds
         cron.schedule('*/30 * * * * *', () => {

@@ -1,5 +1,5 @@
 const { connectToDatabase } = require('../../../config/db');
-const { normalizeDeliveryAddress } = require('../../../modules/website/models/DeliveryAddress');
+const { normalizeDeliveryAddress, normalizeState } = require('../../../modules/website/models/DeliveryAddress');
 const nodemailer = require('nodemailer');
 
 // Email transporter setup
@@ -108,13 +108,30 @@ async function findBestTechnician(normalizedAddress) {
 
     const { state, district, city } = normalizedAddress;
 
-    // Find technicians matching both state and district exactly
-    const technicians = await usersCollection.find({
+    // Find all technicians (we'll filter by normalized state)
+    const allTechnicians = await usersCollection.find({
         role_id: 2,
-        status: true,
-        state: new RegExp(`^${state}$`, 'i'),
-        district: new RegExp(`^${district}$`, 'i')
+        status: true
     }).toArray();
+
+    // First, try to filter by state and district match
+    let technicians = allTechnicians.filter(tech => {
+        const normalizedTechState = normalizeState(tech.state);
+        const techDistrict = (tech.district || '').toLowerCase().trim();
+        const targetDistrict = district.toLowerCase().trim();
+        return normalizedTechState.toLowerCase() === state.toLowerCase() && techDistrict === targetDistrict;
+    });
+
+    console.log(`Found ${technicians.length} technicians for state: ${state}, district: ${district}`);
+
+    // If no district match, fall back to state-only match
+    if (technicians.length === 0) {
+        technicians = allTechnicians.filter(tech => {
+            const normalizedTechState = normalizeState(tech.state);
+            return normalizedTechState.toLowerCase() === state.toLowerCase();
+        });
+        console.log(`Fallback: Found ${technicians.length} technicians for state: ${state} (ignoring district)`);
+    }
 
     if (technicians.length === 0) return null;
 
@@ -127,8 +144,10 @@ async function findBestTechnician(normalizedAddress) {
         return { ...tech, pendingTasks };
     }));
 
-    // Filter those with fewer than 10 pending tasks
-    const availableTechs = techWithWorkload.filter(t => t.pendingTasks < 10);
+    // Filter those with fewer than 20 pending tasks
+    const availableTechs = techWithWorkload.filter(t => t.pendingTasks < 20);
+
+    console.log(`Available technicians after workload filter: ${availableTechs.length}`);
 
     if (availableTechs.length === 0) return null;
 
@@ -166,13 +185,6 @@ async function autoAssignInstallation(order) {
             return;
         }
 
-        // Find best technician
-        const technician = await findBestTechnician(normalizedAddress);
-        if (!technician) {
-            console.log('No available technician for installation');
-            return;
-        }
-
         // Fetch user info
         const orderUser = await usersCollection.findOne({ user_id: order.user_id });
         if (!orderUser) {
@@ -180,27 +192,23 @@ async function autoAssignInstallation(order) {
             return;
         }
 
-        // Generate task ID and OTP
+        // Generate task ID
         const lastTask = await serviceRecords.find().sort({ task_id: -1 }).limit(1).toArray();
         const nextTaskId = lastTask.length > 0 ? lastTask[0].task_id + 1 : 1;
-        const otp = Math.floor(100000 + Math.random() * 900000);
         const now = new Date();
 
-        // Prepare new task
+        // Prepare new task (unassigned initially)
         const newTask = {
             task_id: nextTaskId,
-            task_status: "Pending",
+            task_status: "Unassigned",
             task_type: 1, // Installation
             task_description: "Ordered a new device",
-            assigned_technician_id: technician.technician_id,
-            assigned_date: now,
+            assigned_technician_id: null,
             task_created_by_user_id: order.user_id,
             task_created_by_user_email: orderUser.email,
             wp_device_id: order.wp_device_id,
-            otp: otp,
             created_date: now,
             created_by: 'system',
-            assigned_by: 'system',
             address: normalizedAddress,
             product: {
                 model_name: order.modelName,
@@ -217,29 +225,83 @@ async function autoAssignInstallation(order) {
         // Insert task
         await serviceRecords.insertOne(newTask);
 
-        // Update technician details
-        await technicianDetailsCollection.updateOne(
-            { user_id: technician.user_id, role_id: technician.role_id, technician_id: technician.technician_id },
-            {
-                $set: {
-                    user_id: technician.user_id,
-                    role_id: technician.role_id,
-                    email: technician.email,
-                    technician_id: technician.technician_id,
-                    status: true
+        // Find best technician
+        const technician = await findBestTechnician(normalizedAddress);
+        if (technician) {
+            const otp = Math.floor(100000 + Math.random() * 900000);
+
+            // Assign the task
+            await serviceRecords.updateOne(
+                { task_id: nextTaskId },
+                {
+                    $set: {
+                        task_status: "Pending",
+                        assigned_technician_id: technician.technician_id,
+                        assigned_date: now,
+                        otp: otp,
+                        assigned_by: 'system'
+                    }
+                }
+            );
+
+            // Update technician details
+            await technicianDetailsCollection.updateOne(
+                { user_id: technician.user_id, role_id: technician.role_id, technician_id: technician.technician_id },
+                {
+                    $set: {
+                        user_id: technician.user_id,
+                        role_id: technician.role_id,
+                        email: technician.email,
+                        technician_id: technician.technician_id,
+                        status: true
+                    },
+                    $inc: { total_assigned_services: 1 }
                 },
-                $inc: { total_assigned_services: 1 }
-            },
-            { upsert: true }
-        );
+                { upsert: true }
+            );
 
-        // Send OTP email
-        await sendAssignInstallationEmail(orderUser.email, otp);
+            // Send OTP email
+            await sendAssignInstallationEmail(orderUser.email, otp);
 
-        console.log(`Installation auto-assigned to technician ${technician.technician_id}`);
+            console.log(`Installation auto-assigned to technician ${technician.technician_id}`);
+        } else {
+            console.log(`No available technician for installation, task created as unassigned`);
+        }
 
     } catch (err) {
         console.error("Error in autoAssignInstallation:", err);
+    }
+}
+
+// Auto assign all pending installations (for confirmed orders without tasks)
+async function autoAssignPendingInstallations() {
+    try {
+        const db = await connectToDatabase();
+        const ordersCollection = db.collection("orders");
+        const serviceRecords = db.collection("service_records");
+
+        // Find all confirmed and paid orders
+        const confirmedOrders = await ordersCollection.find({
+            orderStatus: 'Confirmed',
+            paymentStatus: 'Completed'
+        }).toArray();
+
+        for (const order of confirmedOrders) {
+            // Check if task already exists
+            const existingTask = await serviceRecords.findOne({
+                wp_device_id: order.wp_device_id,
+                task_type: 1
+            });
+            if (!existingTask) {
+                console.log(`Assigning pending installation for order ${order.customOrderId}`);
+                await autoAssignInstallation(order);
+            }
+        }
+
+        console.log('Finished auto-assigning pending installations');
+
+    } catch (err) {
+        console.error("Error in autoAssignPendingInstallations:", err);
     }
 }
 
@@ -346,6 +408,8 @@ async function autoAssignPendingTasks() {
         const pendingTasks = await serviceRecords.find({
             assigned_technician_id: null
         }).toArray();
+
+        console.log(`Found ${pendingTasks.length} pending tasks`);
 
         for (const task of pendingTasks) {
             let normalizedAddress = null;
@@ -474,5 +538,6 @@ async function autoAssignPendingTasks() {
 module.exports = {
     autoAssignInstallation,
     autoAssignService,
-    autoAssignPendingTasks
+    autoAssignPendingTasks,
+    autoAssignPendingInstallations
 };

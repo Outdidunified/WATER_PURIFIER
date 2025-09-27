@@ -2424,6 +2424,7 @@ const GetInstallationsByDistrict = async (req, res) => {
           }
         }
       },
+      // Only include orders that have installation records
       {
         $project: { user: 0 }
       }
@@ -2463,8 +2464,8 @@ const GetServicesByDistrict = async (req, res) => {
       {
         $lookup: {
           from: "orders",
-          localField: "device_id",
-          foreignField: "wp_device_id",
+          localField: "device_id" || "wp_device_id",
+          foreignField: "wp_device_id" || "device_id",
           as: "order"
         }
       },
