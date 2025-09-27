@@ -422,6 +422,7 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     onChange={handleChange}
                                                     required
                                                 >
+                                                    <option >Select State</option>
                                                     {stateList.map((s) => (
                                                         <option key={s.isoCode} value={s.isoCode}>
                                                             {s.name}
@@ -438,6 +439,7 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     onChange={handleChange}
                                                     required
                                                 >
+                                                    <option >Select District</option>
                                                     {districtList.map((d) => (
                                                         <option key={d} value={d}>
                                                             {d}
@@ -454,6 +456,7 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     onChange={handleChange}
                                                     required
                                                 >
+                                                    <option >Select City</option>
                                                     {cityList.map((c) => (
                                                         <option key={c.name} value={c.name}>
                                                             {c.name}
