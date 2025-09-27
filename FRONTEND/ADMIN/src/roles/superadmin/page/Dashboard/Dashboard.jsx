@@ -205,216 +205,279 @@ const Dashboard = ({ userInfo, handleLogout }) => {
 
     const { payments: paymentsChartData, revenue: revenueChartData, users: usersChartData } = getChartData();
 
-    if (loading) {
-        return <div style={{ textAlign: 'center', fontSize: '1.2rem', color: '#555' }}>Loading...</div>;
-    }
-
     if (error) {
         return <div style={{ textAlign: 'center', fontSize: '1.2rem', color: '#FF6F61' }}>{error}</div>;
     }
 
     return (
-        <>
+        <div className="container-scroller">
             <Header userInfo={userInfo} handleLogout={handleLogout} />
-            <div className="container-fluid page-body-wrapper" style={{ backgroundColor: '#f9fafc', perspective: '1000px' }}>
+            <div
+                className="container-fluid page-body-wrapper"
+                style={{ backgroundColor: '#f9fafc', perspective: '1000px' }}
+            >
                 <Sidebar />
                 <div className="main-panel">
                     <div className="content-wrapper">
-                        <div className="row mb-4">
-                            <div className="col-md-12 d-flex justify-content-between align-items-center admin-header">
-                                <div>
-                                    <h4
-                                        className="font-weight-normal"
-                                        style={{ fontSize: '1.4rem', color: '#555' }}
-                                    >
-                                        Welcome, <span style={{ color: '#6C63FF' }}>{userInfo?.email}</span>
-                                    </h4>
+                        {loading ? (
+                            // ----------- LOADING SPINNER -----------
+                            <div className="d-flex justify-content-center align-items-center" style={{ height: "70vh" }}>
+                                <div className="spinner-border text-primary" role="status" style={{ width: "3rem", height: "3rem" }}>
                                 </div>
-                                <button
-                                    className="btn btn-primary"
-                                    style={{
-                                        padding: '8px 16px',
-                                        transform: 'translateZ(0)',
-                                        transition: 'transform 0.2s ease-in-out',
-                                    }}
-                                    onClick={() => window.location.reload()}
-                                    onMouseEnter={e => (e.currentTarget.style.transform = 'translateZ(10px) scale(1.05)')}
-                                    onMouseLeave={e => (e.currentTarget.style.transform = 'translateZ(0) scale(1)')}
-                                >
-                                    <i className="fa fa-sync"></i> Reload Data
-                                </button>
                             </div>
-                        </div>
-
-                        {/* Stats Cards and Users Pie Chart in One Row */}
-                        <div className="row mb-4">
-                            {/* Stats Cards */}
-                            <div className="col-md-6">
-                                <div className="row">
-                                    {stats.map(({ icon, label, value }, idx) => (
-                                        <div
-                                            key={idx}
-                                            className={idx === stats.length - 1 ? "col-md-12 mb-3" : "col-md-6 mb-3"}
-                                            style={{ minWidth: idx === stats.length - 1 ? '100%' : '150px' }}
-                                        >
-                                            <div
-                                                className="stat-card"
-                                                style={{
-                                                    backgroundColor: '#fff',
-                                                    borderRadius: '10px',
-                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    padding: idx === stats.length - 1 ? '15px 24px' : '12px 18px',
-                                                    cursor: 'default',
-                                                    transition: 'transform 0.3s ease-in-out',
-                                                    transformStyle: 'preserve-3d',
-                                                }}
-                                                onMouseEnter={e => (e.currentTarget.style.transform = 'translateZ(20px) rotateX(5deg) rotateY(5deg)')}
-                                                onMouseLeave={e => (e.currentTarget.style.transform = 'translateZ(0) rotateX(0) rotateY(0)')}
+                        ) : (
+                            // ----------- DASHBOARD CONTENT -----------
+                            <>
+                                {/* Header Row */}
+                                <div className="row mb-4">
+                                    <div className="col-md-12 d-flex justify-content-between align-items-center admin-header">
+                                        <div>
+                                            <h4
+                                                className="font-weight-normal"
+                                                style={{ fontSize: '1.4rem', color: '#555' }}
                                             >
-                                                <i
-                                                    className={icon}
+                                                Welcome,&nbsp;
+                                                <span style={{ color: '#6C63FF' }}>{userInfo?.email}</span>
+                                            </h4>
+                                        </div>
+                                        <button
+                                            className="btn btn-primary"
+                                            style={{
+                                                padding: '8px 16px',
+                                                transform: 'translateZ(0)',
+                                                transition: 'transform 0.2s ease-in-out',
+                                            }}
+                                            onClick={() => window.location.reload()}
+                                            onMouseEnter={(e) =>
+                                                (e.currentTarget.style.transform =
+                                                    'translateZ(10px) scale(1.05)')
+                                            }
+                                            onMouseLeave={(e) =>
+                                                (e.currentTarget.style.transform = 'translateZ(0) scale(1)')
+                                            }
+                                        >
+                                            <i className="fa fa-sync"></i> Reload Data
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Stats Cards & Users Pie Chart */}
+                                <div className="row mb-4">
+                                    {/* Stats Cards */}
+                                    <div className="col-md-6">
+                                        <div className="row">
+                                            {stats.map(({ icon, label, value }, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className={
+                                                        idx === stats.length - 1
+                                                            ? 'col-md-12 mb-3'
+                                                            : 'col-md-6 mb-3'
+                                                    }
                                                     style={{
-                                                        fontSize: idx === stats.length - 1 ? '20px' : '18px',
-                                                        color: '#007BFF',
-                                                        marginRight: idx === stats.length - 1 ? '15px' : '10px',
-                                                        minWidth: idx === stats.length - 1 ? '24px' : '20px',
-                                                        textAlign: 'center',
-                                                        transform: 'translateZ(10px)',
+                                                        minWidth: idx === stats.length - 1 ? '100%' : '150px',
                                                     }}
-                                                />
-                                                <div>
-                                                    <div style={{
-                                                        fontSize: idx === stats.length - 1 ? '14px' : '13px',
-                                                        fontWeight: '600',
-                                                        color: '#555'
-                                                    }}>
-                                                        {label}
-                                                    </div>
-                                                    <div style={{
-                                                        fontSize: idx === stats.length - 1 ? '18px' : '17px',
-                                                        fontWeight: '700',
-                                                        color: '#222',
-                                                        transform: 'translateZ(10px)'
-                                                    }}>
-                                                        {value}
+                                                >
+                                                    <div
+                                                        className="stat-card"
+                                                        style={{
+                                                            backgroundColor: '#fff',
+                                                            borderRadius: '10px',
+                                                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            padding:
+                                                                idx === stats.length - 1 ? '15px 24px' : '12px 18px',
+                                                            cursor: 'default',
+                                                            transition: 'transform 0.3s ease-in-out',
+                                                            transformStyle: 'preserve-3d',
+                                                        }}
+                                                        onMouseEnter={(e) =>
+                                                            (e.currentTarget.style.transform =
+                                                                'translateZ(20px) rotateX(5deg) rotateY(5deg)')
+                                                        }
+                                                        onMouseLeave={(e) =>
+                                                            (e.currentTarget.style.transform =
+                                                                'translateZ(0) rotateX(0) rotateY(0)')
+                                                        }
+                                                    >
+                                                        <i
+                                                            className={icon}
+                                                            style={{
+                                                                fontSize: idx === stats.length - 1 ? '20px' : '18px',
+                                                                color: '#007BFF',
+                                                                marginRight: idx === stats.length - 1 ? '15px' : '10px',
+                                                                minWidth: idx === stats.length - 1 ? '24px' : '20px',
+                                                                textAlign: 'center',
+                                                                transform: 'translateZ(10px)',
+                                                            }}
+                                                        />
+                                                        <div>
+                                                            <div
+                                                                style={{
+                                                                    fontSize: idx === stats.length - 1 ? '14px' : '13px',
+                                                                    fontWeight: '600',
+                                                                    color: '#555',
+                                                                }}
+                                                            >
+                                                                {label}
+                                                            </div>
+                                                            <div
+                                                                style={{
+                                                                    fontSize: idx === stats.length - 1 ? '18px' : '17px',
+                                                                    fontWeight: '700',
+                                                                    color: '#222',
+                                                                    transform: 'translateZ(10px)',
+                                                                }}
+                                                            >
+                                                                {value}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
+                                            ))}
                                         </div>
+                                    </div>
+
+                                    {/* Users Pie Chart */}
+                                    <div className="col-md-6">
+                                        <div
+                                            style={{
+                                                backgroundColor: 'white',
+                                                borderRadius: '16px',
+                                                padding: '20px',
+                                                boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
+                                                transition: 'transform 0.3s ease-in-out',
+                                                transformStyle: 'preserve-3d',
+                                                height: '100%',
+                                            }}
+                                            onMouseEnter={(e) =>
+                                                (e.currentTarget.style.transform =
+                                                    'translateZ(30px) rotateX(3deg)')
+                                            }
+                                            onMouseLeave={(e) =>
+                                                (e.currentTarget.style.transform =
+                                                    'translateZ(0) rotateX(0)')
+                                            }
+                                        >
+                                            <Chart
+                                                options={usersChartData.options}
+                                                series={usersChartData.series}
+                                                type="pie"
+                                                height={350}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Timeframe Toggle Buttons */}
+                                <div
+                                    className="row mb-4"
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        gap: '10px',
+                                        paddingTop: '30px',
+                                        alignItems: 'center',
+                                    }}
+                                >
+                                    {['daily', 'week', 'month', 'year'].map((tf) => (
+                                        <button
+                                            key={tf}
+                                            className={`btn ${timeframe === tf ? 'btn-primary' : 'btn-outline-primary'
+                                                }`}
+                                            style={{
+                                                padding: '8px 20px',
+                                                borderRadius: '8px',
+                                                transform: timeframe === tf ? 'translateZ(10px)' : 'translateZ(0)',
+                                                transition:
+                                                    'transform 0.2s ease-in-out, background-color 0.2s',
+                                                boxShadow:
+                                                    timeframe === tf ? '0 4px 12px rgba(0,123,255,0.3)' : 'none',
+                                            }}
+                                            onClick={() => setTimeframe(tf)}
+                                            onMouseEnter={(e) =>
+                                                (e.currentTarget.style.transform =
+                                                    'translateZ(15px) scale(1.05)')
+                                            }
+                                            onMouseLeave={(e) =>
+                                                (e.currentTarget.style.transform =
+                                                    timeframe === tf ? 'translateZ(10px)' : 'translateZ(0)')
+                                            }
+                                        >
+                                            {tf.charAt(0).toUpperCase() + tf.slice(1)}
+                                        </button>
                                     ))}
                                 </div>
-                            </div>
-                            {/* Users Pie Chart */}
-                            <div className="col-md-6">
-                                <div
-                                    style={{
-                                        backgroundColor: 'white',
-                                        borderRadius: '16px',
-                                        padding: '20px',
-                                        boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
-                                        transition: 'transform 0.3s ease-in-out',
-                                        transformStyle: 'preserve-3d',
-                                        height: '100%',
-                                    }}
-                                    onMouseEnter={e => (e.currentTarget.style.transform = 'translateZ(30px) rotateX(3deg)')}
-                                    onMouseLeave={e => (e.currentTarget.style.transform = 'translateZ(0) rotateX(0)')}
-                                >
-                                    <Chart
-                                        options={usersChartData.options}
-                                        series={usersChartData.series}
-                                        type="pie"
-                                        height={350}
-                                    />
-                                </div>
-                            </div>
-                        </div>
 
-                        {/* Timeframe Toggle Buttons */}
-                        <div
-                            className="row mb-4"
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'center',
-                                gap: '10px',
-                                paddingTop: '30px',
-                                alignItems: 'center',
-                            }}
-                        >
-                            {['daily', 'week', 'month', 'year'].map((tf) => (
-                                <button
-                                    key={tf}
-                                    className={`btn ${timeframe === tf ? 'btn-primary' : 'btn-outline-primary'}`}
-                                    style={{
-                                        padding: '8px 20px',
-                                        borderRadius: '8px',
-                                        transform: timeframe === tf ? 'translateZ(10px)' : 'translateZ(0)',
-                                        transition: 'transform 0.2s ease-in-out, background-color 0.2s',
-                                        boxShadow: timeframe === tf ? '0 4px 12px rgba(0,123,255,0.3)' : 'none',
-                                    }}
-                                    onClick={() => setTimeframe(tf)}
-                                    onMouseEnter={e => (e.currentTarget.style.transform = 'translateZ(15px) scale(1.05)')}
-                                    onMouseLeave={e => (e.currentTarget.style.transform = timeframe === tf ? 'translateZ(10px)' : 'translateZ(0)')}
-                                >
-                                    {tf.charAt(0).toUpperCase() + tf.slice(1)}
-                                </button>
-                            ))}
-                        </div>
+                                {/* Payments & Revenue Charts */}
+                                <div className="row mt-5">
+                                    <div className="col-md-6">
+                                        <div
+                                            style={{
+                                                backgroundColor: 'white',
+                                                borderRadius: '16px',
+                                                padding: '20px',
+                                                boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
+                                                transition: 'transform 0.3s ease-in-out',
+                                                transformStyle: 'preserve-3d',
+                                                height: '100%',
+                                            }}
+                                            onMouseEnter={(e) =>
+                                                (e.currentTarget.style.transform =
+                                                    'translateZ(30px) rotateX(3deg)')
+                                            }
+                                            onMouseLeave={(e) =>
+                                                (e.currentTarget.style.transform =
+                                                    'translateZ(0) rotateX(0)')
+                                            }
+                                        >
+                                            <Chart
+                                                options={paymentsChartData.options}
+                                                series={paymentsChartData.series}
+                                                type="bar"
+                                                height={350}
+                                            />
+                                        </div>
+                                    </div>
 
-                        {/* Side-by-Side Charts (Payments and Revenue) */}
-                        <div className="row mt-5">
-                            <div className="col-md-6">
-                                <div
-                                    style={{
-                                        backgroundColor: 'white',
-                                        borderRadius: '16px',
-                                        padding: '20px',
-                                        boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
-                                        transition: 'transform 0.3s ease-in-out',
-                                        transformStyle: 'preserve-3d',
-                                        height: '100%',
-                                    }}
-                                    onMouseEnter={e => (e.currentTarget.style.transform = 'translateZ(30px) rotateX(3deg)')}
-                                    onMouseLeave={e => (e.currentTarget.style.transform = 'translateZ(0) rotateX(0)')}
-                                >
-                                    <Chart
-                                        options={paymentsChartData.options}
-                                        series={paymentsChartData.series}
-                                        type="bar"
-                                        height={350}
-                                    />
+                                    <div className="col-md-6">
+                                        <div
+                                            style={{
+                                                backgroundColor: 'white',
+                                                borderRadius: '16px',
+                                                padding: '20px',
+                                                boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
+                                                transition: 'transform 0.3s ease-in-out',
+                                                transformStyle: 'preserve-3d',
+                                                height: '100%',
+                                            }}
+                                            onMouseEnter={(e) =>
+                                                (e.currentTarget.style.transform =
+                                                    'translateZ(30px) rotateX(3deg)')
+                                            }
+                                            onMouseLeave={(e) =>
+                                                (e.currentTarget.style.transform =
+                                                    'translateZ(0) rotateX(0)')
+                                            }
+                                        >
+                                            <Chart
+                                                options={revenueChartData.options}
+                                                series={revenueChartData.series}
+                                                type="line"
+                                                height={350}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="col-md-6">
-                                <div
-                                    style={{
-                                        backgroundColor: 'white',
-                                        borderRadius: '16px',
-                                        padding: '20px',
-                                        boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
-                                        transition: 'transform 0.3s ease-in-out',
-                                        transformStyle: 'preserve-3d',
-                                        height: '100%',
-                                    }}
-                                    onMouseEnter={e => (e.currentTarget.style.transform = 'translateZ(30px) rotateX(3deg)')}
-                                    onMouseLeave={e => (e.currentTarget.style.transform = 'translateZ(0) rotateX(0)')}
-                                >
-                                    <Chart
-                                        options={revenueChartData.options}
-                                        series={revenueChartData.series}
-                                        type="line"
-                                        height={350}
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                            </>
+                        )}
                     </div>
 
                     <Footer />
                 </div>
             </div>
-        </>
+        </div>
     );
 };
 

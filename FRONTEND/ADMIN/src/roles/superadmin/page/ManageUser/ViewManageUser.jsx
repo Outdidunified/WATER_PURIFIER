@@ -54,165 +54,75 @@ const ViewManageUser = ({ userInfo, handleLogout }) => {
             </div>
 
             {/* ================= User Details ================= */}
-            <div className="row">
-              <div className="col-lg-12 grid-margin stretch-card">
-                <div className="card">
-                  <div className="card-body">
-                    <h4 className="card-title text-center pb-3">
-                      User Details
-                    </h4>
-                    <hr />
+            {/* ================= User Details ================= */}
+<div className="row">
+  <div className="col-lg-12 grid-margin stretch-card">
+    <div className="card">
+      <div className="card-body">
+        <h4 className="card-title text-center pb-3">User Details</h4>
+        <hr />
 
-                    {/* Basic Info */}
-                    <div className="row col-12 viewDataCss mb-3">
-                      <div className="col-md-4">
-                        <strong>User Name:</strong> {user?.name || "-"}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>Email:</strong> {user?.email || "-"}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>Phone:</strong> {user?.phone || "-"}
-                      </div>
-                    </div>
+        {/* Basic Info */}
+        <div className="row viewDataCss mb-3">
+          <div className="col-md-4"><strong>User Name:</strong> {user?.name || "-"}</div>
+          <div className="col-md-4"><strong>Email:</strong> {user?.email || "-"}</div>
+          <div className="col-md-4"><strong>Phone:</strong> {user?.phone || "-"}</div>
+        </div>
 
-                    <div className="row col-12 viewDataCss mb-3">
-                      <div className="col-md-4">
-                        <strong>Password:</strong> {user?.password || "-"}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>Role:</strong> {user?.role_name || "-"}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>User ID:</strong> {user?.user_id || "-"}
-                      </div>
-                    </div>
+        <div className="row viewDataCss mb-3">
+          <div className="col-md-4"><strong>Password:</strong> {user?.password || "-"}</div>
+          <div className="col-md-4"><strong>Role:</strong> {user?.role_name || "-"}</div>
+          <div className="col-md-4"><strong>User ID:</strong> {user?.user_id || "-"}</div>
+        </div>
 
-                    {/* Address Info */}
-                    <div className="row col-12 viewDataCss mb-3">
-                      <div className="col-md-4">
-                        <strong>Address Line 1:</strong>{" "}
-                        {user?.addressline1 || "-"}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>Address Line 2:</strong>{" "}
-                        {user?.addressline2 || "-"}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>City:</strong> {user?.city || "-"}
-                      </div>
-                    </div>
+        {/* Address Info */}
+        <div className="row viewDataCss mb-3">
+          <div className="col-md-4"><strong>Address Line 1:</strong> {user?.addressline1 || "-"}</div>
+          <div className="col-md-4"><strong>Address Line 2:</strong> {user?.addressline2 || "-"}</div>
+          <div className="col-md-4"><strong>City:</strong> {user?.city || "-"}</div>
+        </div>
 
-                    <div className="row col-12 viewDataCss mb-3">
-                      <div className="col-md-4">
-                        <strong>District:</strong> {user?.district || "-"}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>State:</strong> {user?.state || "-"}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>Country:</strong> {user?.country || "-"}
-                      </div>
-                    </div>
+        <div className="row viewDataCss mb-3">
+          <div className="col-md-4"><strong>District:</strong> {user?.district || "-"}</div>
+          <div className="col-md-4"><strong>State:</strong> {user?.state || "-"}</div>
+          <div className="col-md-4"><strong>Country:</strong> {user?.country || "-"}</div>
+        </div>
 
-                    <div className="row col-12 viewDataCss mb-3">
-                      <div className="col-md-4">
-                        <strong>Pincode:</strong> {user?.pincode || "-"}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>Assigned Device IDs:</strong>{" "}
-                        {user?.assigned_device_ids?.join(", ") ||
-                          user?.assigned_device_id ||
-                          "-"}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>Security Deposit:</strong> ₹
-                        {user?.security_deposit || 0}
-                      </div>
-                    </div>
+        <div className="row viewDataCss mb-3">
+          <div className="col-md-4"><strong>Pincode:</strong> {user?.pincode || "-"}</div>
+          <div className="col-md-4"><strong>Security Deposit:</strong> ₹{user?.security_deposit || 0}</div>
+          <div className="col-md-4"><strong>Status:</strong>{" "}
+            {user?.status ? <span className="text-success">Active</span> : <span className="text-danger">DeActive</span>}
+          </div>
+        </div>
 
-                    {/* Status & Creator Info */}
-                    <div className="row col-12 viewDataCss mb-3">
-                      <div className="col-md-4">
-                        <strong>Status:</strong>{" "}
-                        {user?.status ? (
-                          <span className="text-success">Active</span>
-                        ) : (
-                          <span className="text-danger">DeActive</span>
-                        )}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>Created By:</strong> {user?.createdby || "-"}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>Modified By:</strong> {user?.modifiedby || "-"}
-                      </div>
-                    </div>
+        {/* Creator & Modifier */}
+        <div className="row viewDataCss mb-3">
+          <div className="col-md-4"><strong>Created By:</strong> {user?.createdby || "-"}</div>
+          <div className="col-md-4"><strong>Modified By:</strong> {user?.modifiedby || "-"}</div>
+          <div className="col-md-4"><strong>Created Date:</strong> {user?.createdDate ? formatTimestamp(user.createdDate) : "-"}</div>
+        </div>
 
-                    {/* Timestamps */}
-                    <div className="row col-12 viewDataCss mb-3">
-                      <div className="col-md-4">
-                        <strong>Created Date:</strong>{" "}
-                        {user?.createdDate
-                          ? formatTimestamp(user.createdDate)
-                          : "-"}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>Modified Date:</strong>{" "}
-                        {user?.modifiedDate
-                          ? formatTimestamp(user.modifiedDate)
-                          : "-"}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>OTP Generated At:</strong>{" "}
-                        {user?.otpGeneratedAt
-                          ? formatTimestamp(user.otpGeneratedAt)
-                          : "-"}
-                      </div>
-                    </div>
+       
+        {/* End-User Extra Fields */}
+        {user?.role_id === 3 && (
+          <div className="row viewDataCss mb-3">
+            <div className="col-md-4"><strong>Is Subscribed:</strong> {user?.is_subscribed ? "Yes" : "No"}</div>
+            <div className="col-md-4"><strong>Active Plan:</strong> {user?.active_label || "-"}</div>
+            <div className="col-md-4"><strong>Active Plan ID:</strong> {user?.active_plan_id || "-"}</div>
+          </div>
+        )}
 
-                    <div className="row col-12 viewDataCss mb-3">
-                      <div className="col-md-4">
-                        <strong>OTP Expires:</strong>{" "}
-                        {user?.otpExpires
-                          ? formatTimestamp(user.otpExpires)
-                          : "-"}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>Subscribed At:</strong>{" "}
-                        {user?.subscribed_at
-                          ? formatTimestamp(user.subscribed_at)
-                          : "-"}
-                      </div>
-                      <div className="col-md-4">
-                        <strong>Subscription Expiry Date:</strong>{" "}
-                        {user?.subscription_expiry_date
-                          ? formatTimestamp(user.subscription_expiry_date)
-                          : "-"}
-                      </div>
-                    </div>
+         <div className="row viewDataCss mb-3">
+          <div className="col-md-4"><strong>Modified Date:</strong> {user?.modifiedDate ? formatTimestamp(user.modifiedDate) : "-"}</div>
+        </div>
 
-                    {/* End-User Extra Fields */}
-                    {user?.role_id === 3 && (
-                      <div className="row col-12 viewDataCss mb-3">
-                        <div className="col-md-4">
-                          <strong>Is Subscribed:</strong>{" "}
-                          {user?.is_subscribed ? "Yes" : "No"}
-                        </div>
-                        <div className="col-md-4">
-                          <strong>Active Plan:</strong>{" "}
-                          {user?.active_label || "-"}
-                        </div>
-                        <div className="col-md-4">
-                          <strong>Active Plan ID:</strong>{" "}
-                          {user?.active_plan_id || "-"}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
 
             {/* ================= End-User Role (role_id === 3) ================= */}
             {user?.role_id === 3 && (
