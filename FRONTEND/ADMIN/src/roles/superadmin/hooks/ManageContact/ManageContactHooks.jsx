@@ -12,7 +12,7 @@ const useManageContact = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axiosInstance.post('http://192.168.1.222:5001/api/admin/FetchContact');
+      const response = await axiosInstance.post('/api/admin/FetchContact');
       if (response.status === 200 && response.data.status === 'Success') {
         const data = response.data.data || [];
         setContacts(data);

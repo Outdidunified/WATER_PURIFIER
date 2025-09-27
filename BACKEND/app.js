@@ -77,8 +77,8 @@ connectToDatabase()
             logger.info(logMessage);
         });
 
-        // Schedule auto-assignment of pending tasks every 5 minutes
-        cron.schedule('*/5 * * * *', () => {
+        // Schedule auto-assignment of pending tasks every 30 seconds
+        cron.schedule('*/30 * * * * *', () => {
             console.log('Running auto-assign pending tasks...');
             autoAssignPendingTasks();
         });

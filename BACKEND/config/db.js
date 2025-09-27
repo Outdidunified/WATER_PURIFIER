@@ -4,7 +4,6 @@ const url = 'mongodb+srv://outdid:outdid@cluster0.t16a63a.mongodb.net/';
 const dbName = 'waterpurifier'; //For Testing
 
 let client;
-let db;
 
 //database connection
 async function connectToDatabase() {
@@ -13,7 +12,6 @@ async function connectToDatabase() {
         try {
             await client.connect();
             console.log('Connected to the database');
-            db = client.db(dbName);
 
             // Handle process termination
             process.on("SIGINT", async () => {
@@ -27,15 +25,15 @@ async function connectToDatabase() {
         }
     }
 
-    return db;
+    return client.db(dbName);
 }
 
 // Function to get the database instance
 function getDB() {
-    if (!db) {
+    if (!client) {
         throw new Error('Database not connected. Call connectToDatabase first.');
     }
-    return db;
+    return client.db(dbName);
 }
 
 module.exports = { connectToDatabase, getDB };
