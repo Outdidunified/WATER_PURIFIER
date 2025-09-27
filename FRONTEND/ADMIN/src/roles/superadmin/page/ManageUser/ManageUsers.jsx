@@ -279,17 +279,18 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
               <div className="form-field">
                 <label>Role</label>
                 <SelectField
-                  value={
-                    roles.find((r) => r.role_id === role)
-                      ? { value: role, label: roles.find((r) => r.role_id === role).role_name }
-                      : null
-                  }
-                  onChange={(option) => setRole(option ? option.value : '')}
-                  options={userInfo?.role_id === 4 ? roles.filter(r => r.role_id === 2 || r.role_id === 3).map((r) => ({ value: r.role_id, label: r.role_name })) : roles.map((r) => ({ value: r.role_id, label: r.role_name }))}
-                  placeholder="Select Role"
-                  required
-    dropdownWidth="350px" // fixed dropdown width
-                />
+                 value={
+                  roles.find((r) => r.role_id === 2)
+                    ? { value: 2, label: roles.find((r) => r.role_id === 2).role_name }
+                    : null
+                }
+                onChange={(option) => setRole(option ? option.value : '')}
+                options={roles
+                  .filter(r => r.role_id === 2)
+                  .map(r => ({ value: r.role_id, label: r.role_name }))}
+                placeholder="Select Role"
+                required
+              />
               </div>
 
               {/* Email */}
