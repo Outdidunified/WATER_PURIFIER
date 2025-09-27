@@ -8,7 +8,7 @@ import useViewManageUser from '../../hooks/ManageUser/ViewManageUsersHooks';
 
 const ViewManageUser = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
-  const { user, handleBack, handleEditUser } = useViewManageUser();
+  const { user, orders, technicianTasks, loading, error, handleBack, handleEditUser } = useViewManageUser();
 
   return (
     <div className="container-scroller">
@@ -117,6 +117,153 @@ const ViewManageUser = ({ userInfo, handleLogout }) => {
                 </div>
               </div>
             </div>
+
+           {/* Additional Data Sections based on Role */}
+           {user?.role_id === 3 && (
+             <div className="row">
+               <div className="col-lg-12 grid-margin stretch-card">
+                 <div className="card">
+                   <div className="card-body">
+                     <h4 className="card-title">Order Details & Payment History</h4>
+                     <hr />
+
+                     {loading ? (
+                       <div className="text-center py-4">
+                         <div className="spinner-border text-primary" role="status">
+                           <span className="sr-only">Loading...</span>
+                         </div>
+                         <p className="mt-2">Loading order details...</p>
+                       </div>
+                     ) : error ? (
+                       <div className="alert alert-danger">
+                         <strong>Error:</strong> {error}
+                       </div>
+                     ) : orders.length === 0 ? (
+                       <div className="text-center py-4">
+                         <p className="text-muted">No orders found for this user.</p>
+                       </div>
+                     ) : (
+                       <div className="table-responsive">
+                         <table className="table table-striped">
+                           <thead>
+                             <tr>
+                               <th>Order ID</th>
+                               <th>Order Date</th>
+                               <th>Device ID</th>
+                               <th>Amount</th>
+                               <th>Payment Status</th>
+                               <th>Order Status</th>
+                             </tr>
+                           </thead>
+                           <tbody>
+                             {orders.map((order, index) => (
+                               <tr key={index}>
+                                 <td>{order.customOrderId || 'N/A'}</td>
+                                 <td>{order.createdAt ? formatTimestamp(order.createdAt) : 'N/A'}</td>
+                                 <td>{order.wp_device_id || 'N/A'}</td>
+                                 <td>₹{order.grandTotal || 0}</td>
+                                 <td>
+                                   <span className={`badge ${order.paymentStatus === 'Completed' ? 'badge-success' : 'badge-warning'}`}>
+                                     {order.paymentStatus || 'N/A'}
+                                   </span>
+                                 </td>
+                                 <td>
+                                   <span className={`badge ${order.orderStatus === 'Delivered' ? 'badge-success' : order.orderStatus === 'Confirmed' ? 'badge-info' : 'badge-secondary'}`}>
+                                     {order.orderStatus || 'N/A'}
+                                   </span>
+                                 </td>
+                               </tr>
+                             ))}
+                           </tbody>
+                         </table>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               </div>
+             </div>
+           )}
+
+           {user?.role_id === 2 && (
+             <div className="row">
+               <div className="col-lg-12 grid-margin stretch-card">
+                 <div className="card">
+                   <div className="card-body">
+                     <h4 className="card-title">Working Devices & Task History</h4>
+                     <hr />
+
+                     {loading ? (
+                       <div className="text-center py-4">
+                         <div className="spinner-border text-primary" role="status">
+                           <span className="sr-only">Loading...</span>
+                         </div>
+                         <p className="mt-2">Loading technician tasks...</p>
+                       </div>
+                     ) : error ? (
+                       <div className="alert alert-danger">
+                         <strong>Error:</strong> {error}
+                       </div>
+                     ) : technicianTasks.length === 0 ? (
+                       <div className="text-center py-4">
+                         <p className="text-muted">No tasks found for this technician.</p>
+                       </div>
+                     ) : (
+                       <div className="table-responsive">
+                         <table className="table table-striped">
+                           <thead>
+                             <tr>
+                               <th>Task ID</th>
+                               <th>Task Type</th>
+                               <th>Device ID</th>
+                               <th>Customer Details</th>
+                               <th>Task Status</th>
+                               <th>Assigned Date</th>
+                               <th>Completed Date</th>
+                             </tr>
+                           </thead>
+                           <tbody>
+                             {technicianTasks.map((task, index) => (
+                               <tr key={index}>
+                                 <td>{task.task_id || 'N/A'}</td>
+                                 <td>
+                                   <span className={`badge ${task.task_type === 1 ? 'badge-primary' : 'badge-info'}`}>
+                                     {task.task_type === 1 ? 'Installation' : 'Service'}
+                                   </span>
+                                 </td>
+                                 <td>{task.wp_device_id || task.device_id || 'N/A'}</td>
+                                 <td>
+                                   {task.order_details ? (
+                                     <div>
+                                       <div><strong>{task.order_details.user_name}</strong></div>
+                                       <div className="small text-muted">{task.order_details.user_email}</div>
+                                       <div className="small text-muted">{task.order_details.user_phone}</div>
+                                     </div>
+                                   ) : (
+                                     'N/A'
+                                   )}
+                                 </td>
+                                 <td>
+                                   <span className={`badge ${
+                                     task.task_status === 'Completed' ? 'badge-success' :
+                                     task.task_status === 'In Progress' ? 'badge-warning' :
+                                     task.task_status === 'Pending' ? 'badge-secondary' : 'badge-light'
+                                   }`}>
+                                     {task.task_status || 'N/A'}
+                                   </span>
+                                 </td>
+                                 <td>{task.assigned_date ? formatTimestamp(task.assigned_date) : 'N/A'}</td>
+                                 <td>{task.completed_date ? formatTimestamp(task.completed_date) : 'N/A'}</td>
+                               </tr>
+                             ))}
+                           </tbody>
+                         </table>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               </div>
+             </div>
+           )}
 
           </div>
           <Footer />

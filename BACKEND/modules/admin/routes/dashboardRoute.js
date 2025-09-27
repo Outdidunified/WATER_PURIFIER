@@ -77,8 +77,10 @@ router.post('/FetchOrders', verifyToken, Controller.FetchOrders);
 router.post('/FetchOrdersByDistrict', verifyToken, Controller.FetchOrdersByDistrict);
 // Route to FetchOrdersByUserId
 router.post('/FetchOrdersByUserId',  Controller.FetchOrdersByUserId);
+// Route to FetchTechnicianTasksByUserId
+router.post('/FetchTechnicianTasksByUserId', Controller.FetchTechnicianTasksByUserId);
 
-// Route to UpdateOrdersStatus 
+// Route to UpdateOrdersStatus
 // router.post('/UpdateOrdersStatus', verifyToken, Controller.UpdateOrdersStatus);
 
 // 8.Manage Roles

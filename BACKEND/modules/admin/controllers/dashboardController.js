@@ -3124,6 +3124,100 @@ const GetAnalyticsByDistrict = async (req, res) => {
   }
 };
 
+const FetchTechnicianTasksByUserId = async (req, res) => {
+  const { user_id, email } = req.body;
+
+  // Basic validation
+  if (!user_id || !email) {
+    return res.status(400).json({
+      status: 'Failed',
+      message: 'user_id and email are required'
+    });
+  }
+
+  try {
+    const db = await database.connectToDatabase();
+    const technicianCollection = db.collection('technician_details');
+    const serviceRecordsCollection = db.collection('service_records');
+    const ordersCollection = db.collection('orders');
+
+    // Step 1: Find technician by user_id and email
+    const technician = await technicianCollection.findOne({
+      user_id: Number(user_id), // ✅ fixed
+      email: String(email).trim().toLowerCase(), // normalize
+    });
+
+    if (!technician) {
+      return res.status(404).json({
+        status: 'Failed',
+        message: 'Technician not found for given user_id and email'
+      });
+    }
+
+    if (!technician.technician_id) {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Technician record is missing technician_id'
+      });
+    }
+
+    const assignedTechnicianId = technician.technician_id;
+
+    // Step 2: Fetch tasks assigned to this technician
+    const tasks = await serviceRecordsCollection
+      .find({ assigned_technician_id: assignedTechnicianId })
+      .toArray();
+
+    if (!tasks || tasks.length === 0) {
+      return res.status(404).json({
+        status: 'Failed',
+        message: 'No tasks found for this technician'
+      });
+    }
+
+    // Step 3: Enrich tasks with order details
+    for (const task of tasks) {
+      if (task.order_id) {
+        const order = await ordersCollection.findOne({
+          _id: new ObjectId(task.order_id)
+        });
+
+        if (order) {
+          task.order_details = {
+            customOrderId: order.customOrderId,
+            createdAt: order.createdAt,
+            wp_device_id: order.wp_device_id,
+            grandTotal: order.grandTotal,
+            payment_status: order.payment_status,
+            order_status: order.order_status,
+            customer_name: order.customer_name,
+            customer_email: order.customer_email,
+            customer_phone: order.customer_phone
+          };
+        }
+      }
+    }
+
+    // Step 4: Return response
+    return res.status(200).json({
+      status: 'Success',
+      technician: {
+        technician_id: technician.technician_id,
+        user_id: technician.user_id,
+        email: technician.email,
+        role_id: technician.role_id,
+        status: technician.status
+      },
+      data: tasks
+    });
+  } catch (error) {
+    console.error('Error in FetchTechnicianTasksByUserId:', error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error'
+    });
+  }
+};
 
 
 // Export controllers
@@ -3133,7 +3227,7 @@ module.exports = {
     AddUsers, FetchUsers, FetchSellers, FetchOrdersByDistrict, FetchTechniciansByDistrict, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
     FetchSelectServiceTask, AssignService, ReAssignService, assignPermissions, fetchPermissionsByRole,
     GetUsersByDistrict, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
-    AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchOrdersByUserId, GetAnalytics,
+    AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchOrdersByUserId, FetchTechnicianTasksByUserId, GetAnalytics,
     GetAnalyticsByDistrict
     // UpdateOrdersStatus,
 };
