@@ -30,7 +30,7 @@ const useManageUsers = (userInfo) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
-  const [role, setRole] = useState(3); // Default to EndUser
+  const [role, setRole] = useState(userInfo?.role_id === 4 ? 2 : 3); // Default to Technician if seller, else EndUser
   const [address, setAddress] = useState('');
   const [addressline1, setAddressline1] = useState('');
   const [addressline2, setAddressline2] = useState('');
@@ -254,7 +254,7 @@ const useManageUsers = (userInfo) => {
     setEmail('');
     setPassword('');
     setPhone('');
-    setRole(3);
+    setRole(userInfo?.role_id === 4 ? 2 : 3);
     setAddress('');
     setAddressline1('');
     setAddressline2('');

@@ -285,7 +285,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                       : null
                   }
                   onChange={(option) => setRole(option ? option.value : '')}
-                  options={roles.map((r) => ({ value: r.role_id, label: r.role_name }))}
+                  options={userInfo?.role_id === 4 ? roles.filter(r => r.role_id === 2 || r.role_id === 3).map((r) => ({ value: r.role_id, label: r.role_name })) : roles.map((r) => ({ value: r.role_id, label: r.role_name }))}
                   placeholder="Select Role"
                   required
     dropdownWidth="350px" // fixed dropdown width
@@ -489,15 +489,15 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                             <th>User Name</th>
                             <th>Email ID</th>
                             <th>Status</th>
-                            <th>Assign</th>
+                            {userInfo?.role_id !== 4 && <th>Assign</th>}
                             <th>Option</th>
                           </tr>
                         </thead>
                         <tbody style={{ textAlign: 'center' }}>
                           {isLoading ? (
-                            <tr><td colSpan={7}>Loading...</td></tr>
+                            <tr><td colSpan={userInfo?.role_id === 4 ? 6 : 7}>Loading...</td></tr>
                           ) : error ? (
-                            <tr><td colSpan={7}>Error: {error}</td></tr>
+                            <tr><td colSpan={userInfo?.role_id === 4 ? 6 : 7}>Error: {error}</td></tr>
                           ) : posts.length > 0 ? (
                             posts.map((dataItem, index) => (
                               <tr key={index}>
@@ -506,7 +506,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                                 <td>{dataItem.name || '-'}</td>
                                 <td>{dataItem.email || '-'}</td>
                                 <td>{dataItem.status ? <span className="text-success">Active</span> : <span className="text-danger">DeActive</span>}</td>
-                                <td>
+                                {userInfo?.role_id !== 4 && <td>
                                   {dataItem.role_id === 4 && (
                                     <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
                                       {dataItem.assigned_status ? (
@@ -528,7 +528,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                                       )}
                                     </div>
                                   )}
-                                </td>
+                                </td>}
                                 <td>
                                   <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
                                     <button
@@ -544,7 +544,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                               </tr>
                             ))
                           ) : (
-                            <tr><td colSpan={7}>No users found</td></tr>
+                            <tr><td colSpan={userInfo?.role_id === 4 ? 6 : 7}>No users found</td></tr>
                           )}
                         </tbody>
                       </table>

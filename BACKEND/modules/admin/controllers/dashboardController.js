@@ -2312,20 +2312,19 @@ const FetchTechniciansByDistrict = async (req, res) => {
     }
 };
 
-// 4) GET: Users by district (optional role_id filter)
+// 4) GET: Users by district (only role_id 2 and 3)
 const GetUsersByDistrict = async (req, res) => {
     try {
-        const { district, role_id } = req.query || {};
+        const { district } = req.query || {};
         if (!district || String(district).trim() === '') {
             return res.status(400).json({ status: 'Failed', message: 'district is required' });
         }
         const db = await database.connectToDatabase();
         const usersCollection = db.collection('users');
-        const query = { district: new RegExp(`^${String(district).trim()}$`, 'i') };
-        if (role_id !== undefined) {
-            const r = Number(role_id);
-            if (!Number.isNaN(r)) query.role_id = r;
-        }
+        const query = {
+            district: new RegExp(`^${String(district).trim()}$`, 'i'),
+            role_id: { $in: [2, 3] }
+        };
         const users = await usersCollection.find(query).toArray();
         return res.status(200).json({ status: 'Success', data: users });
     } catch (error) {
