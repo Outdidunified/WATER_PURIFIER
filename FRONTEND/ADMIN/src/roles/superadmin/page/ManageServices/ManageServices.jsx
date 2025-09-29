@@ -5,6 +5,7 @@ import Sidebar from '../../components/Sidebar';
 import Footer from '../../components/Footer';
 import { useNavigate } from 'react-router-dom';
 import InputField from '../../../../utils/InputField';
+import { showErrorAlert } from '../../../../utils/alert';
 import useManageServices from '../../hooks/ManageServices/ManageServicesHooks';
 const ManageServices = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
@@ -50,6 +51,23 @@ const ManageServices = ({ userInfo, handleLogout }) => {
     e.preventDefault();
     if (!assignedTechnicianId || !selectedInstallation) return;
 
+    const sellerDistrict = userInfo?.district?.trim().toLowerCase();
+    const chosenTechnician = technicians.find(
+      (tech) => tech.technician_id === assignedTechnicianId
+    );
+    const technicianDistrict = chosenTechnician?.district?.trim().toLowerCase();
+    const installationDistrict = selectedInstallation?.district?.trim().toLowerCase();
+
+    if (sellerDistrict && technicianDistrict && sellerDistrict !== technicianDistrict) {
+      showErrorAlert('You can only assign technicians from your district.');
+      return;
+    }
+
+    if (installationDistrict && technicianDistrict && installationDistrict !== technicianDistrict) {
+      showErrorAlert('Technician district must match the service district.');
+      return;
+    }
+
     setAssignLoading(true);
 
     if (assignMode === 'reassign') {
@@ -62,6 +80,7 @@ const ManageServices = ({ userInfo, handleLogout }) => {
         task_id: selectedInstallation.task_id,
         assigned_technician_id: assignedTechnicianId,
         task_created_by_user_email: selectedInstallation.task_created_by_user_email || '',
+        district: installationDistrict || sellerDistrict || '',
       });
     }
 

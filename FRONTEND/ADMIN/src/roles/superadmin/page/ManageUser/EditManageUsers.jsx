@@ -314,9 +314,9 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                     <InputField
                       value={pincode}
                       maxLength={6}
-                      pattern="\d{6}"
+                      pattern="^\\d{6}$"
                       title="Pincode must be exactly 6 digits"
-                      onChange={(e) => setPincode(e.target.value.replace(/[^0-9]/g, ''))}
+                      onChange={(e) => setPincode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
                       required
                       style={inputStyle}
                     />

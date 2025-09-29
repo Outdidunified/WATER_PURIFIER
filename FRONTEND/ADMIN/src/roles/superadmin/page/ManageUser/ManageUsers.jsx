@@ -445,7 +445,13 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                 <InputField
                   placeholder="Pincode"
                   value={pincode}
-                  onChange={(e) => setPincode(e.target.value)}
+                  maxLength={6}
+                  pattern="^\\d{6}$"
+                  title="Pincode must be exactly 6 digits"
+                  onChange={(e) => {
+                    const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                    setPincode(numericValue.slice(0, 6));
+                  }}
                 />
               </div>
             </div>

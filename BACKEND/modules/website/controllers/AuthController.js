@@ -15,7 +15,20 @@ const generateNumericPassword = () => Math.floor(1000 + Math.random() * 9000).to
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 //register
 exports.register = async (req, res) => {
-  const { name, email, phone, password, city, createdby } = req.body;
+  const {
+    name,
+    email,
+    phone,
+    password,
+    city,
+    district,
+    state,
+    country,
+    addressline1,
+    addressline2,
+    pincode,
+    createdby
+  } = req.body;
 
   if (!name || !password || !city || (!email && !phone)) {
     return res.status(400).json({
@@ -67,6 +80,12 @@ exports.register = async (req, res) => {
       phone,
       password,
       city,
+      district,
+      state,
+      country,
+      addressline1,
+      addressline2,
+      pincode,
       otp,
       otpExpires,
       otpGeneratedAt,
@@ -104,6 +123,12 @@ exports.register = async (req, res) => {
         email,
         phone,
         city,
+        district,
+        state,
+        country,
+        addressline1,
+        addressline2,
+        pincode,
         createdby,
         createdDate,
         status: true,
