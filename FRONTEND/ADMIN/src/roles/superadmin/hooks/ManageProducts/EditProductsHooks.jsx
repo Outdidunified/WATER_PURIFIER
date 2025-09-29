@@ -1,4 +1,3 @@
-//EditProductsHooks
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axiosInstance from '../../../../utils/utils';
@@ -54,22 +53,26 @@ const useEditProducts = (userInfo) => {
       setStatus(statusValue);
 
       const parsedPlans = productData.plans?.length > 0
-        ? productData.plans.map((p, i) => ({ ...p, plans_id: i + 1 }))
+        ? productData.plans.map((p, i) => ({
+            ...p,
+            plans_id: i + 1,
+            label: p.label?.toLowerCase() || ''
+          }))
         : [{ plans_id: 1, label: '', capacity: '', price: '' }];
       setPlans(parsedPlans);
 
       const parsedDurations = productData.duration?.length > 0
         ? productData.duration.map((d, i) => ({
-          ...d,
-          duration_id: i + 1
-        }))
+            ...d,
+            duration_id: i + 1
+          }))
         : [{
-          duration_id: 1,
-          duration_time_limit: '',
-          gst: '',
-          discount: '',
-          security_deposit: ''
-        }];
+            duration_id: 1,
+            duration_time_limit: '',
+            gst: '',
+            discount: '',
+            security_deposit: ''
+          }];
       setDurations(parsedDurations);
 
       const subImgs = [
@@ -205,23 +208,20 @@ const useEditProducts = (userInfo) => {
   };
 
   const handlePlanChange = (index, field, value) => {
-  if (field === 'price') {
-    // Allow only empty string or positive numbers (integers or decimals)
-    if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+    if (field === 'price') {
+      if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
+        const updated = plans.map((plan, i) =>
+          i === index ? { ...plan, [field]: value } : plan
+        );
+        setPlans(updated);
+      }
+    } else {
       const updated = plans.map((plan, i) =>
         i === index ? { ...plan, [field]: value } : plan
       );
       setPlans(updated);
     }
-    // Ignore invalid input (e.g. negative sign or letters)
-  } else {
-    const updated = plans.map((plan, i) =>
-      i === index ? { ...plan, [field]: value } : plan
-    );
-    setPlans(updated);
-  }
-};
-
+  };
 
   const addDuration = () => {
     setDurations([...durations, {
@@ -234,24 +234,20 @@ const useEditProducts = (userInfo) => {
   };
 
   const handleDurationChange = (index, field, value) => {
-  // For numeric fields, prevent negative values
-  if (['gst', 'discount', 'security_deposit'].includes(field)) {
-    // Allow empty string so user can clear the input
-    if (value === '' || (/^\d*\.?\d*$/.test(value) && Number(value) >= 0)) {
+    if (['gst', 'discount', 'security_deposit'].includes(field)) {
+      if (value === '' || (/^\d*\.?\d*$/.test(value) && Number(value) >= 0)) {
+        const updated = durations.map((duration, i) =>
+          i === index ? { ...duration, [field]: value } : duration
+        );
+        setDurations(updated);
+      }
+    } else {
       const updated = durations.map((duration, i) =>
         i === index ? { ...duration, [field]: value } : duration
       );
       setDurations(updated);
     }
-    // Ignore invalid input (negative or non-numeric)
-  } else {
-    // For other fields, just update normally
-    const updated = durations.map((duration, i) =>
-      i === index ? { ...duration, [field]: value } : duration
-    );
-    setDurations(updated);
-  }
-};
+  };
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
@@ -302,16 +298,13 @@ const useEditProducts = (userInfo) => {
     formData.append('status', status === 'true');
 
     subImages.forEach((img, i) => {
-      if (img) {
-        formData.append(`sub_img_${i + 1}`, img);
-      }
+      if (img) formData.append(`sub_img_${i + 1}`, img);
     });
 
     formData.append('plans', JSON.stringify(plans.map(plan => ({
       ...plan,
       price: Number(plan.price)
     }))));
-
     formData.append('duration', JSON.stringify(durations.map(dur => ({
       ...dur,
       duration_time_limit: dur.duration_time_limit.toLowerCase(),
@@ -368,7 +361,7 @@ const useEditProducts = (userInfo) => {
     removePlan,
     status,
     setStatus,
-    isModified, // Add this for button
+    isModified,
   };
 };
 

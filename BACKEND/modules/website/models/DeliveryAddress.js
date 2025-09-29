@@ -47,6 +47,7 @@ const stateCorrections = {
   'dn': 'Dadra and Nagar Haveli',
   'py': 'Puducherry',
   'la': 'Lakshadweep',
+  'ld': 'Lakshadweep',
   'an': 'Andaman and Nicobar Islands',
   'sk': 'Sikkim',
   'ar': 'Arunachal Pradesh',
@@ -70,6 +71,11 @@ function normalizeState(state) {
 const districtCorrections = {
   'parvathipuram manyam': 'Parvathipuram Manyam',
   'parvathipuram manyam district': 'Parvathipuram Manyam',
+  'south west delhi': 'South West Delhi',
+  'southwest delhi': 'South West Delhi',
+  'south-west delhi': 'South West Delhi',
+  'lakshadweep': 'Lakshadweep',
+  'kargil': 'Kargil',
 };
 
 function normalizeDistrict(district) {

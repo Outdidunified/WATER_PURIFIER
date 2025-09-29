@@ -135,7 +135,7 @@ const ViewManageUser = ({ userInfo, handleLogout }) => {
                   <div className="col-lg-12 grid-margin stretch-card">
                     <div className="card">
                       <div className="card-body">
-                        <h4 className="card-title">Assigned Devices</h4>
+                        <h4 className="card-title">Devices</h4>
                         <hr />
 
                         {loading ? (

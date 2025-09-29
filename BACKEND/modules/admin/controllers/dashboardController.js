@@ -1831,13 +1831,22 @@ const ReAssignInstallation = async (req, res) => {
             });
         }
 
+        // Guard: only allow reassignment if task_status is 'pending'
+        if (existingTask.task_status !== 'pending') {
+            return res.status(400).json({
+                status: 'Failed',
+                message: `Cannot reassign installation: task status is '${existingTask.task_status}'. Only pending tasks can be reassigned.`,
+            });
+        }
+
         // Guard: block reassignment if related order not paid
         const ordersCollection = db.collection("orders");
         const relatedOrder = await ordersCollection.findOne({ wp_device_id: existingTask.wp_device_id || existingTask.device_id });
+
         if (!relatedOrder || relatedOrder.paymentStatus !== 'Completed') {
             return res.status(400).json({
                 status: 'Failed',
-                message: 'Cannot reassign installation: related order is not paid'
+                message: 'Cannot reassign installation: related order is not paid',
             });
         }
 
@@ -1849,7 +1858,8 @@ const ReAssignInstallation = async (req, res) => {
                 $set: {
                     assigned_technician_id: technician_id,
                     modified_by,
-                    modified_date: now
+                    modified_date: now,
+                    pending_reason: null
                 }
             }
         );
@@ -1874,6 +1884,7 @@ const ReAssignInstallation = async (req, res) => {
         });
     }
 };
+
 
 // FetchSelectInstallationTask
 const FetchSelectInstallationTask = async (req, res) => {

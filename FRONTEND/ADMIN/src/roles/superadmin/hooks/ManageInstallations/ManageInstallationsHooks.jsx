@@ -6,6 +6,7 @@ const useManageInstallation = (userInfo) => {
   const [installationTasks, setInstallationTasks] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [enrichedTaskList, setEnrichedTaskList] = useState([]);
   const [displayTasks, setDisplayTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -59,35 +60,84 @@ const useManageInstallation = (userInfo) => {
       setOrders(ords);
       setInstallationTasks(tasks); // ✅ Fixed: set installationTasks from tasks
 
-      const allServiceRecords = filteredTechnicians.flatMap(tech =>
-        (tech.service_records || []).map(record => ({
-          ...record,
-          technician_name: tech.name,
-          technician_id: tech.technician_id,
-          technician_user_id: tech.user_id,
-          technician_role_id: tech.role_id,
-        }))
-      );
+      const technicianMap = filteredTechnicians.reduce((acc, tech) => {
+        if (tech.service_records && tech.service_records.length > 0) {
+          tech.service_records.forEach((record) => {
+            if (record.technician_device_map_id) {
+              acc[record.technician_device_map_id] = {
+                technician_name: tech.name,
+                technician_email: tech.email,
+                technician_id: tech.technician_id,
+                technician_user_id: tech.user_id,
+                technician_role_id: tech.role_id,
+              };
+            }
+          });
+        }
+        return acc;
+      }, {});
 
-      const enrichedTasks = ords.map(order => {
-        const assignedTechnician = allServiceRecords.find(
-          rec => rec.wp_device_id === order.wp_device_id
-        ) || null;
-
+      const enrichedTasks = ords.map((order) => {
         const matchingTask = tasks.find(
-          task => task.wp_device_id === order.wp_device_id
+          (task) => task.wp_device_id === order.wp_device_id
         );
+
+        const serviceRecords =
+          matchingTask?.service_records?.length
+            ? matchingTask.service_records
+            : order.service_records || [];
+
+        const primaryRecord = serviceRecords?.[0];
+
+        const technicianFromMap = primaryRecord?.technician_device_map_id
+          ? technicianMap[primaryRecord.technician_device_map_id]
+          : null;
+
+        const fallbackTechnician =
+          !technicianFromMap && primaryRecord?.assigned_technician_id
+            ? filteredTechnicians.find(
+                (tech) => tech.technician_id === primaryRecord.assigned_technician_id
+              )
+            : null;
+
+        const normalizedTechnician =
+          technicianFromMap ||
+          (fallbackTechnician
+            ? {
+                technician_name: fallbackTechnician.name,
+                technician_email: fallbackTechnician.email,
+                technician_id: fallbackTechnician.technician_id,
+                technician_user_id: fallbackTechnician.user_id,
+                technician_role_id: fallbackTechnician.role_id,
+                technician_phone:
+                  fallbackTechnician.phone || fallbackTechnician.mobile || '',
+              }
+            : null);
 
         return {
           ...order,
-          task_id: matchingTask?.service_records?.[0]?.task_id || null, // ✅ Add task_id for reassignment
-          assignedTechnician,
-          assigned_technician_id: order.service_records?.[0]?.assigned_technician_id || null,
+          task_status: matchingTask?.task_status || order.task_status ||  primaryRecord?.task_status || '',
+          pending_reason:
+            matchingTask?.pending_reason ||
+            primaryRecord?.pending_reason ||
+            primaryRecord?.pending_reason_text ||
+            '',
+          service_records: serviceRecords,
+          task_id: primaryRecord?.task_id || null,
+          task_assigned_date: primaryRecord?.assigned_date || null,
+          task_released_date: primaryRecord?.released_date || null,
+          task_assigned_by: primaryRecord?.assigned_by || '',
+          task_released_by: primaryRecord?.released_by || '',
+          task_completed_date: primaryRecord?.completed_at || null,
+          task_completion_notes: primaryRecord?.remarks || '',
+          assignedTechnician: normalizedTechnician,
+          assigned_technician_id: primaryRecord?.assigned_technician_id || null,
           order_user_id: order.user_id || '',
           customOrderId: order.customOrderId || '',
         };
       });
 
+      setEnrichedTaskList(enrichedTasks);
       setDisplayTasks(enrichedTasks);
     } catch (err) {
       showErrorAlert('Failed to fetch installation data');
@@ -106,12 +156,38 @@ const useManageInstallation = (userInfo) => {
     const value = e.target.value.toLowerCase();
     setSearchTerm(value);
 
-    const filteredEnriched = orders.filter(order =>
-      order.wp_device_id?.toLowerCase().includes(value) ||
-      order.customOrderId?.toLowerCase().includes(value) ||
-      order.user_id?.toString().includes(value) ||
-      order.deliveryAddress?.name?.toLowerCase().includes(value)
-    );
+    if (!value) {
+      setDisplayTasks(enrichedTaskList);
+      return;
+    }
+
+    const filteredEnriched = enrichedTaskList.filter((task) => {
+      const deviceId = task.wp_device_id?.toLowerCase() || '';
+      const orderId = task.customOrderId?.toLowerCase() || '';
+      const userId = task.user_id?.toString() || task.order_user_id?.toString() || '';
+      const technicianName =
+        task.assignedTechnician?.technician_name?.toLowerCase() ||
+        task.assignedTechnician?.name?.toLowerCase() ||
+        '';
+      const technicianId =
+        task.assignedTechnician?.technician_id?.toLowerCase() ||
+        task.assigned_technician_id?.toLowerCase() ||
+        '';
+      const customerName = task.deliveryAddress?.name?.toLowerCase() || '';
+      const taskStatus = task.task_status?.toLowerCase() || '';
+      const pendingReason = task.pending_reason?.toLowerCase() || '';
+
+      return (
+        deviceId.includes(value) ||
+        orderId.includes(value) ||
+        userId.includes(value) ||
+        technicianName.includes(value) ||
+        technicianId.includes(value) ||
+        customerName.includes(value) ||
+        taskStatus.includes(value) ||
+        pendingReason.includes(value)
+      );
+    });
 
     setDisplayTasks(filteredEnriched);
   };
