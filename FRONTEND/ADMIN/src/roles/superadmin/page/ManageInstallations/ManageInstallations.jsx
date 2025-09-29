@@ -45,39 +45,54 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
     setAssignLoading(false);
   };
 
- const handleAssignSubmit = async (e) => {
-  e.preventDefault();
-  if (!assignedTechnicianId || !selectedInstallation) return;
+  const handleAssignSubmit = async (e) => {
+    e.preventDefault();
+    if (!assignedTechnicianId || !selectedInstallation) return;
 
-  setAssignLoading(true);
+    setAssignLoading(true);
 
-  if (assignMode === 'reassign') {
-    await reassignInstallation({
-      task_id: selectedInstallation.task_id,
-      technician_id: assignedTechnicianId,
-    });
-  } else {
-    // 🔧 Find technician by assignedTechnicianId
     const selectedTechnician = technicians.find(
       (tech) => tech.technician_id === assignedTechnicianId
     );
 
-    const payload = {
-      technician_role_id: selectedTechnician?.role_id || '',
-      technician_user_id: selectedTechnician?.user_id || '',
-      technician_id: assignedTechnicianId,
-      order_user_id: selectedInstallation.order_user_id || '',
-      customOrderId: selectedInstallation.customOrderId || '',
-      wp_device_id: selectedInstallation.wp_device_id || '',
-      assigned_by: userInfo?.email || '',
-    };
+    const installationDistrict =
+      selectedInstallation?.deliveryAddress?.district || selectedInstallation?.district || '';
 
-    console.log('Assign Payload:', payload); // ✅ Debug payload
-    await assignInstallation(payload);
-  }
+    if (!selectedTechnician || !installationDistrict) {
+      showErrorAlert('District information is missing. Please try again.');
+      setAssignLoading(false);
+      return;
+    }
 
-  closeAssignModal();
-};
+    if (selectedTechnician.district && selectedTechnician.district !== installationDistrict) {
+      showErrorAlert('Selected technician does not belong to this district.');
+      setAssignLoading(false);
+      return;
+    }
+
+    if (assignMode === 'reassign') {
+      await reassignInstallation({
+        task_id: selectedInstallation.task_id,
+        technician_id: assignedTechnicianId,
+      });
+    } else {
+      const payload = {
+        technician_role_id: selectedTechnician?.role_id || '',
+        technician_user_id: selectedTechnician?.user_id || '',
+        technician_id: assignedTechnicianId,
+        order_user_id: selectedInstallation.order_user_id || '',
+        customOrderId: selectedInstallation.customOrderId || '',
+        wp_device_id: selectedInstallation.wp_device_id || '',
+        assigned_by: userInfo?.email || '',
+        district: installationDistrict,
+      };
+
+      console.log('Assign Payload:', payload); // ✅ Debug payload
+      await assignInstallation(payload);
+    }
+
+    closeAssignModal();
+  };
 
 
 

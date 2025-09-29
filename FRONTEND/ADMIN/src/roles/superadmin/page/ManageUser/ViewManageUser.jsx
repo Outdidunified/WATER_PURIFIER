@@ -115,6 +115,9 @@ const ViewManageUser = ({ userInfo, handleLogout }) => {
 
          <div className="row viewDataCss mb-3">
           <div className="col-md-4"><strong>Modified Date:</strong> {user?.modifiedDate ? formatTimestamp(user.modifiedDate) : "-"}</div>
+          {user?.role_id === 2 && (
+            <div className="col-md-4"><strong>Employee ID:</strong> {user?.technician_id || "-"}</div>
+          )}
         </div>
 
       </div>

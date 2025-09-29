@@ -34,11 +34,18 @@ const fetchTechnicians = async () => {
         fetchServiceTasks(),
       ]);
 
-      setTechnicians(techs);
+      const isSeller = Number(userInfo?.role_id) === 4;
+      const sellerDistrict = userInfo?.district?.trim().toLowerCase();
+
+      const filteredTechnicians = isSeller && sellerDistrict
+        ? techs.filter((tech) => tech?.district?.trim().toLowerCase() === sellerDistrict)
+        : techs;
+
+      setTechnicians(filteredTechnicians);
       setServiceTasks(tasks);
 
       const enriched = tasks.map(task => {
-        const assignedTechnician = techs.find(
+        const assignedTechnician = filteredTechnicians.find(
           tech => tech.technician_id === task.assigned_technician_id
         );
 
@@ -80,6 +87,7 @@ const fetchTechnicians = async () => {
     task_id,
     assigned_technician_id,
     task_created_by_user_email,
+    district,
   }) => {
     try {
       const payload = {
@@ -87,6 +95,7 @@ const fetchTechnicians = async () => {
         assigned_technician_id,
         task_created_by_user_email,
         assigned_by: userInfo?.email || '',
+        district: district || userInfo?.district || '',
       };
 
       await axiosInstance.post('/api/admin/AssignService', payload);

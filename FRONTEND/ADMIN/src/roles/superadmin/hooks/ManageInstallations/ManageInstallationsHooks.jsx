@@ -39,17 +39,27 @@ const useManageInstallation = (userInfo) => {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
+      const isSeller = Number(userInfo?.role_id) === 4;
+      const sellerDistrict = isSeller ? userInfo?.district || '' : '';
+
       const [techs, ords, tasks] = await Promise.all([
         fetchTechnicians(),
         fetchOrders(),
         fetchInstallationTasks(),
       ]);
 
-      setTechnicians(techs);
+      const filteredTechnicians = sellerDistrict
+        ? techs.filter((tech) => {
+            const techDistrict = (tech?.district || tech?.assigned_district || '').toLowerCase();
+            return techDistrict ? techDistrict === sellerDistrict.toLowerCase() : false;
+          })
+        : techs;
+
+      setTechnicians(filteredTechnicians);
       setOrders(ords);
       setInstallationTasks(tasks); // ✅ Fixed: set installationTasks from tasks
 
-      const allServiceRecords = techs.flatMap(tech =>
+      const allServiceRecords = filteredTechnicians.flatMap(tech =>
         (tech.service_records || []).map(record => ({
           ...record,
           technician_name: tech.name,

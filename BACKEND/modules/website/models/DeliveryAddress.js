@@ -63,7 +63,30 @@ const stateCorrections = {
 
 function normalizeState(state) {
   if (!state || typeof state !== 'string') return '';
-  return stateCorrections[state.toLowerCase()] || state;
+  const normalizedKey = state.toLowerCase().trim();
+  return stateCorrections[normalizedKey] || state.trim();
+}
+
+const districtCorrections = {
+  'parvathipuram manyam': 'Parvathipuram Manyam',
+  'parvathipuram manyam district': 'Parvathipuram Manyam',
+};
+
+function normalizeDistrict(district) {
+  if (!district || typeof district !== 'string') return '';
+  const cleaned = district
+    .toLowerCase()
+    .replace(/\bdistrict\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const corrected = districtCorrections[cleaned] || cleaned;
+
+  return corrected
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 /**
@@ -78,7 +101,7 @@ function normalizeDeliveryAddress(address = {}) {
     street: trimVal(address.street || ''),
     landmark: trimVal(address.landmark || ''),
     city: trimVal(address.city || ''),
-    district: trimVal(address.district || ''),
+    district: normalizeDistrict(address.district),
     state: trimVal(normalizeState(address.state) || ''),
     pincode: trimVal(address.pincode || ''),
     email: trimVal(address.email || ''),
