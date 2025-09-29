@@ -28,7 +28,16 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
 
 
   const handleViewInstallation = (installation) => {
-    navigate('/superadmin/ViewInstallations', { state: { dataItem: [installation] } });
+    navigate('/superadmin/ViewInstallations', {
+      state: {
+        dataItem: [
+          {
+            ...installation,
+            technicianDetails: installation.assignedTechnician || null,
+          },
+        ],
+      },
+    });
   };
 
   const handleAssignClick = (installation, mode = 'assign') => {
@@ -185,12 +194,14 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
             <td>{item.deliveryAddress?.name || '-'}</td>
             <td>{item.email || '-'}</td>
             <td>
-                {technicians.find((tech) => tech.technician_id === item.assigned_technician_id)?.name || '-'}
+              {item.assignedTechnician?.technician_name ||
+                technicians.find((tech) => tech.technician_id === item.assigned_technician_id)?.name ||
+                '-'}
             </td>
-            <td>{item.assigned_technician_id || '-'}</td>
+            <td>{item.assignedTechnician?.technician_id || item.assigned_technician_id || '-'}</td>
             <td>
-              {item.service_records?.[0]?.assigned_date
-                ? new Date(item.service_records[0].assigned_date).toLocaleDateString()
+              {item.task_assigned_date
+                ? new Date(item.task_assigned_date).toLocaleDateString()
                 : '-'}
             </td>
             <td>

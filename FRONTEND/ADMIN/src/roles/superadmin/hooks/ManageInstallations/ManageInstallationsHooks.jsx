@@ -76,20 +76,56 @@ const useManageInstallation = (userInfo) => {
         return acc;
       }, {});
 
-      const enrichedTasks = ords.map(order => {
-        const technicianDetails = order.service_records?.length > 0
-          ? technicianMap[order.service_records[0]?.technician_device_map_id]
+      const enrichedTasks = ords.map((order) => {
+        const matchingTask = tasks.find(
+          (task) => task.wp_device_id === order.wp_device_id
+        );
+
+        const serviceRecords =
+          matchingTask?.service_records?.length
+            ? matchingTask.service_records
+            : order.service_records || [];
+
+        const primaryRecord = serviceRecords?.[0];
+
+        const technicianFromMap = primaryRecord?.technician_device_map_id
+          ? technicianMap[primaryRecord.technician_device_map_id]
           : null;
 
-        const matchingTask = tasks.find(
-          task => task.wp_device_id === order.wp_device_id
-        );
+        const fallbackTechnician =
+          !technicianFromMap && primaryRecord?.assigned_technician_id
+            ? filteredTechnicians.find(
+                (tech) => tech.technician_id === primaryRecord.assigned_technician_id
+              )
+            : null;
+
+        const normalizedTechnician =
+          technicianFromMap ||
+          (fallbackTechnician
+            ? {
+                technician_name: fallbackTechnician.name,
+                technician_email: fallbackTechnician.email,
+                technician_id: fallbackTechnician.technician_id,
+                technician_user_id: fallbackTechnician.user_id,
+                technician_role_id: fallbackTechnician.role_id,
+                technician_phone:
+                  fallbackTechnician.phone || fallbackTechnician.mobile || '',
+              }
+            : null);
 
         return {
           ...order,
-          task_id: matchingTask?.service_records?.[0]?.task_id || null, // ✅ Add task_id for reassignment
-          assignedTechnician: technicianDetails,
-          assigned_technician_id: order.service_records?.[0]?.assigned_technician_id || null,
+          task_status: matchingTask?.task_status || order.task_status || '',
+          service_records: serviceRecords,
+          task_id: primaryRecord?.task_id || null,
+          task_assigned_date: primaryRecord?.assigned_date || null,
+          task_released_date: primaryRecord?.released_date || null,
+          task_assigned_by: primaryRecord?.assigned_by || '',
+          task_released_by: primaryRecord?.released_by || '',
+          task_completed_date: primaryRecord?.completed_at || null,
+          task_completion_notes: primaryRecord?.remarks || '',
+          assignedTechnician: normalizedTechnician,
+          assigned_technician_id: primaryRecord?.assigned_technician_id || null,
           order_user_id: order.user_id || '',
           customOrderId: order.customOrderId || '',
         };

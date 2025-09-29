@@ -1276,42 +1276,6 @@ const AddUsers = async (req, res) => {
                 });
             }
 
-            if (role_id === 4) {
-                const normalizedDistrict = String(district || '').trim().toLowerCase();
-                const normalizedState = String(state || '').trim().toLowerCase();
-
-                if (!normalizedDistrict) {
-                    return res.status(400).json({
-                        status: 'Failed',
-                        message: 'District is required for seller registration'
-                    });
-                }
-
-                if (!normalizedState) {
-                    return res.status(400).json({
-                        status: 'Failed',
-                        message: 'State is required for seller registration'
-                    });
-                }
-
-                const districtRegex = new RegExp(`^${normalizedDistrict.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-                const stateRegex = new RegExp(`^${normalizedState.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-
-                const existingSeller = await collection.findOne({
-                    role_id: 4,
-                    status: true,
-                    district: { $regex: districtRegex },
-                    state: { $regex: stateRegex }
-                });
-
-                if (existingSeller) {
-                    return res.status(409).json({
-                        status: 'Failed',
-                        message: `An active seller already exists for district "${district}" in state "${state}". Deactivate the current seller before creating a new one.`
-                    });
-                }
-            }
-
             const now = new Date();
 
             const newUser = {
@@ -2575,21 +2539,6 @@ const AssignSeller = async (req, res) => {
         const statusStr = String(assign_status).trim().toLowerCase();
         const statusBool = assign_status === true || assign_status === 1 || statusStr === '1' || statusStr === 'true';
 
-        const conflictMatch = await usersCollection.findOne({
-            user_id: { $ne: userIdInt },
-            role_id: 4,
-            assigned_status: true,
-            assigned_state: new RegExp(`^${incomingState.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
-            assigned_district: new RegExp(`^${incomingDistrict.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
-        });
-
-        if (conflictMatch) {
-            return res.status(409).json({
-                status: 'Failed',
-                message: `Seller ${conflictMatch.user_id} is already active for district "${assign_district}" in state "${assign_state}". Deactivate or reassign before assigning another seller.`,
-            });
-        }
-
         // If seller already has an assignment, only allow when state & district match (case-insensitive)
         if (existingState && existingDistrict) {
             const sameState = existingState.toLowerCase() === incomingState.toLowerCase();
@@ -3464,4 +3413,69 @@ const FetchTechnicianTasksByUserId = async (req, res) => {
 
     // Step 2: Fetch tasks assigned to this technician
     const tasks = await serviceRecordsCollection
-      .find({ assigned_technician
+      .find({ assigned_technician_id: assignedTechnicianId })
+      .toArray();
+
+    if (!tasks || tasks.length === 0) {
+      return res.status(404).json({
+        status: 'Failed',
+        message: 'No tasks found for this technician'
+      });
+    }
+
+    // Step 3: Enrich tasks with order details
+    for (const task of tasks) {
+      if (task.order_id) {
+        const order = await ordersCollection.findOne({
+          _id: new ObjectId(task.order_id)
+        });
+
+        if (order) {
+          task.order_details = {
+            customOrderId: order.customOrderId,
+            createdAt: order.createdAt,
+            wp_device_id: order.wp_device_id,
+            grandTotal: order.grandTotal,
+            payment_status: order.payment_status,
+            order_status: order.order_status,
+            customer_name: order.customer_name,
+            customer_email: order.customer_email,
+            customer_phone: order.customer_phone
+          };
+        }
+      }
+    }
+
+    // Step 4: Return response
+    return res.status(200).json({
+      status: 'Success',
+      technician: {
+        technician_id: technician.technician_id,
+        user_id: technician.user_id,
+        email: technician.email,
+        role_id: technician.role_id,
+        status: technician.status
+      },
+      data: tasks
+    });
+  } catch (error) {
+    console.error('Error in FetchTechnicianTasksByUserId:', error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error'
+    });
+  }
+};
+
+
+// Export controllers
+module.exports = {
+    getModules, authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
+    UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders, AddUserRoles, FetchUserRoles, UpdateUserRoles,
+    AddUsers, FetchUsers, FetchSellers, FetchOrdersByDistrict, FetchTechniciansByDistrict, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
+    FetchSelectServiceTask, AssignService, ReAssignService, assignPermissions, fetchPermissionsByRole,
+    GetUsersByDistrict, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
+    AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchEndUserDevices, FetchOrdersByUserId, FetchTechnicianTasksByUserId, GetAnalytics,
+    GetAnalyticsByDistrict
+    // UpdateOrdersStatus,
+};
