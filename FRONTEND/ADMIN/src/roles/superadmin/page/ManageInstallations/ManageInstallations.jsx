@@ -17,6 +17,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
     reassignInstallation,
     handleSearchChange,
     assignInstallation, installationTasks,
+
   } = useManageInstallation(userInfo);
   // Modal state
   const [assignModalOpen, setAssignModalOpen] = useState(false);
@@ -154,11 +155,12 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                               <th>Sl.No</th>
         <th>Order ID</th>
         <th>Model</th>
-        <th>Total</th>
         <th>Device ID</th>
-        <th>User Name</th>
-        <th>Email ID</th>
+        <th>Customer Name</th>
+        <th>Email</th>
+        <th>Technician Name</th>
         <th>Technician ID</th>
+        <th>Assigned Date</th>
         <th>Assign</th>
         <th>Actions</th>
                           </tr>
@@ -166,11 +168,11 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                         <tbody style={{ textAlign: 'center' }}>
                           {isLoading ? (
                             <tr>
-                              <td colSpan="9">Loading...</td>
+                              <td colSpan="10">Loading...</td>
                             </tr>
                           ) : error ? (
                             <tr>
-                              <td colSpan="9">Error: {error}</td>
+                              <td colSpan="10">Error: {error}</td>
                             </tr>
                           ) : installationTasks.length > 0 ? (
                             installationTasks.map((item, index) => (
@@ -179,36 +181,38 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
             <td>{index + 1}</td>
             <td>{item.customOrderId || '-'}</td>
             <td >{item.modelName || '-'}</td>
-            <td>₹{item.grandTotal || 0}</td>
             <td>{item.wp_device_id || '-'}</td>
             <td>{item.deliveryAddress?.name || '-'}</td>
             <td>{item.email || '-'}</td>
-            <td>{item.service_records && item.service_records.length > 0
-      ? item.service_records[0].assigned_technician_id
-      : '-'}</td>                                <td>
-                                  <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
-                                    <button
-                                      type="button"
-                                      className="btn btn-primary"
-                                      onClick={() => handleAssignClick(item, 'assign')}
-                                      disabled={!!item.assigned_technician_id}
-                                    >
-                                      Assign
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="btn btn-warning"
-                                      onClick={() => handleAssignClick(item, 'reassign')}
-                                      disabled={!item.assigned_technician_id}
-                                    >
-                                      Reassign
-                                    </button>
-                                  </div>
-                                </td>
-
-
-
-
+            <td>
+                {technicians.find((tech) => tech.technician_id === item.assigned_technician_id)?.name || '-'}
+            </td>
+            <td>{item.assigned_technician_id || '-'}</td>
+            <td>
+              {item.service_records?.[0]?.assigned_date
+                ? new Date(item.service_records[0].assigned_date).toLocaleDateString()
+                : '-'}
+            </td>
+            <td>
+              <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => handleAssignClick(item, 'assign')}
+                  disabled={!!item.assigned_technician_id}
+                >
+                  Assign
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-warning"
+                  onClick={() => handleAssignClick(item, 'reassign')}
+                  disabled={!item.assigned_technician_id}
+                >
+                  Reassign
+                </button>
+              </div>
+            </td>
                                 <td>
                                   <button
                                     type="button"
@@ -222,7 +226,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                             ))
                           ) : (
                             <tr>
-                              <td colSpan="9">No installation records found.</td>
+                              <td colSpan="10">No installation records found.</td>
                             </tr>
                           )}
                         </tbody>

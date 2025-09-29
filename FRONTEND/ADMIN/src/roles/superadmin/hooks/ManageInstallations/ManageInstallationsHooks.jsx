@@ -59,20 +59,27 @@ const useManageInstallation = (userInfo) => {
       setOrders(ords);
       setInstallationTasks(tasks); // ✅ Fixed: set installationTasks from tasks
 
-      const allServiceRecords = filteredTechnicians.flatMap(tech =>
-        (tech.service_records || []).map(record => ({
-          ...record,
-          technician_name: tech.name,
-          technician_id: tech.technician_id,
-          technician_user_id: tech.user_id,
-          technician_role_id: tech.role_id,
-        }))
-      );
+      const technicianMap = filteredTechnicians.reduce((acc, tech) => {
+        if (tech.service_records && tech.service_records.length > 0) {
+          tech.service_records.forEach((record) => {
+            if (record.technician_device_map_id) {
+              acc[record.technician_device_map_id] = {
+                technician_name: tech.name,
+                technician_email: tech.email,
+                technician_id: tech.technician_id,
+                technician_user_id: tech.user_id,
+                technician_role_id: tech.role_id,
+              };
+            }
+          });
+        }
+        return acc;
+      }, {});
 
       const enrichedTasks = ords.map(order => {
-        const assignedTechnician = allServiceRecords.find(
-          rec => rec.wp_device_id === order.wp_device_id
-        ) || null;
+        const technicianDetails = order.service_records?.length > 0
+          ? technicianMap[order.service_records[0]?.technician_device_map_id]
+          : null;
 
         const matchingTask = tasks.find(
           task => task.wp_device_id === order.wp_device_id
@@ -81,7 +88,7 @@ const useManageInstallation = (userInfo) => {
         return {
           ...order,
           task_id: matchingTask?.service_records?.[0]?.task_id || null, // ✅ Add task_id for reassignment
-          assignedTechnician,
+          assignedTechnician: technicianDetails,
           assigned_technician_id: order.service_records?.[0]?.assigned_technician_id || null,
           order_user_id: order.user_id || '',
           customOrderId: order.customOrderId || '',

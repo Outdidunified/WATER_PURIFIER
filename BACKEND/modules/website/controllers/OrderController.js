@@ -239,6 +239,8 @@ exports.verifyRazorpayPayment = async (req, res) => {
         }
 
         //  Update Order
+        const orderUpdatedAt = new Date();
+
         await db.collection('orders').updateOne(
             { _id: order._id },
             {
@@ -246,14 +248,23 @@ exports.verifyRazorpayPayment = async (req, res) => {
                     paymentStatus: 'Completed',
                     orderStatus: 'Confirmed',
                     razorpayPaymentId: razorpay_payment_id,
-                    updatedAt: new Date(),
+                    updatedAt: orderUpdatedAt,
                     subscriptionExpiryDate: userNewExpiry
                 }
             }
         );
 
+        const updatedOrder = {
+            ...order,
+            paymentStatus: 'Completed',
+            orderStatus: 'Confirmed',
+            razorpayPaymentId: razorpay_payment_id,
+            updatedAt: orderUpdatedAt,
+            subscriptionExpiryDate: userNewExpiry
+        };
+
         // Auto assign installation
-        await autoAssignInstallation(order);
+        await autoAssignInstallation(updatedOrder);
 
         //  Update Payment
         await db.collection('payments').updateOne(
