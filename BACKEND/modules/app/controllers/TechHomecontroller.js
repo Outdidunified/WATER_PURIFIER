@@ -255,6 +255,123 @@ exports.updateTaskDetails = async (req, res) => {
 
 
   
+ exports.acceptDeclineTask = async (req, res) => {
+  const { user_id, email, role_id, technician_id, task_id, action, decline_reason, estimated_start, estimated_end } = req.body;
+
+  // Basic validation
+  if (!user_id || !email || !role_id || !technician_id || !task_id || !action) {
+    return res.status(400).json({
+      error: true,
+      message: 'user_id, email, role_id, technician_id, task_id, and action are required'
+    });
+  }
+
+  // Check if role_id is technician role (2)
+  if (parseInt(role_id) !== 2) {
+    return res.status(403).json({ error: true, message: 'Access denied: not a technician' });
+  }
+
+  // Validate action
+  if (!['accept', 'decline'].includes(action.toLowerCase())) {
+    return res.status(400).json({
+      error: true,
+      message: 'action must be either "accept" or "decline"'
+    });
+  }
+
+  // If declining, decline_reason is required
+  if (action.toLowerCase() === 'decline' && (!decline_reason || decline_reason.trim() === '')) {
+    return res.status(400).json({
+      error: true,
+      message: 'decline_reason is required when declining a task'
+    });
+  }
+
+  // If accepting, estimated_start and estimated_end are required
+  if (action.toLowerCase() === 'accept' && (!estimated_start || !estimated_end)) {
+    return res.status(400).json({
+      error: true,
+      message: 'estimated_start and estimated_end are required when accepting a task'
+    });
+  }
+
+  try {
+    const db = await connectToDatabase();
+    const serviceRecordsCollection = db.collection('service_records');
+
+    // Find the task assigned to this technician
+    const task = await serviceRecordsCollection.findOne({
+      task_id: parseInt(task_id),
+      assigned_technician_id: technician_id.trim(),
+      task_status: { $in: ['Assigned', 'Pending'] } // allow both Assigned and Pending
+    });
+
+    if (!task) {
+      return res.status(404).json({
+        error: true,
+        message: 'No assigned task found or task is not in "Assigned" status'
+      });
+    }
+
+    // Prepare update data
+    let updateData = {
+      modified_by: technician_id,
+      modified_date: new Date().toISOString()
+    };
+
+    if (action.toLowerCase() === 'accept') {
+      updateData.task_status = 'In Progress'; // Change to in-progress after accept
+      updateData.pending_reason = null;
+      updateData.estimated_start = new Date(estimated_start);
+      updateData.estimated_end = new Date(estimated_end);
+    } else if (action.toLowerCase() === 'decline') {
+      updateData.task_status = 'Pending';
+      updateData.pending_reason = decline_reason.trim();
+    }
+
+    // Update the task in DB
+    const result = await serviceRecordsCollection.updateOne(
+      { task_id: parseInt(task_id), assigned_technician_id: technician_id.trim() },
+      { $set: updateData }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(400).json({
+        error: true,
+        message: 'Failed to update task status'
+      });
+    }
+
+    const actionMessage = action.toLowerCase() === 'accept'
+      ? 'Task accepted successfully'
+      : 'Task declined successfully';
+
+    return res.status(200).json({
+      error: false,
+      message: actionMessage,
+      data: {
+        task_id: parseInt(task_id),
+        new_status: updateData.task_status,
+        action: action.toLowerCase(),
+        ...(action.toLowerCase() === 'decline' && { decline_reason: decline_reason.trim() }),
+        ...(action.toLowerCase() === 'accept' && { 
+          estimated_start: updateData.estimated_start,
+          estimated_end: updateData.estimated_end
+        })
+      }
+    });
+
+  } catch (error) {
+    console.error('Error processing task accept/decline:', error);
+    return res.status(500).json({
+      error: true,
+      message: 'Server error while processing task action'
+    });
+  }
+};
+
+
+
   exports.getAllAssignedTaskDetails = async (req, res) => {
     const { user_id, email, role_id, assigned_technician_id } = req.body;
   

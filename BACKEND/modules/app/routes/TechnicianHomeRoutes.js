@@ -5,7 +5,7 @@ const authMiddleware=require('../../../middlewares/authMiddleware')
 const upload = require('../middlewares/multer');
 
 // Define routes for settings
-router.post('/getassignedtaskdetails', authMiddleware, techhome.getAssignedTaskDetails); // ✅ FIXED: Use the correct controller function name
+router.post('/getassignedtaskdetails', techhome.getAssignedTaskDetails); // ✅ FIXED: Use the correct controller function name
 router.post(
     '/updateTaskDetails', 
     authMiddleware, 
@@ -15,7 +15,8 @@ router.post(
     ]), 
     techhome.updateTaskDetails
 );
-router.post('/getAllAssignedTaskDetails', authMiddleware, techhome.getAllAssignedTaskDetails);
+router.post('/getAllAssignedTaskDetails', techhome.getAllAssignedTaskDetails);
+router.post('/acceptDeclineTask', techhome.acceptDeclineTask);
 
 
 
