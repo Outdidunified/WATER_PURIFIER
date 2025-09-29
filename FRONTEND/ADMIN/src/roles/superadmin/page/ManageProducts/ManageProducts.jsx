@@ -35,7 +35,7 @@ const ManageProducts = ({ userInfo, handleLogout }) => {
                             <div className="col-md-12 grid-margin">
                                 <div className="row">
                                     <div className="col-12 col-xl-6 mb-4 mb-xl-0">
-                                        <h3 className="font-weight-bold">Manage Products</h3>
+                                        <h3 className="font-weight-bold">Manage Models</h3>
                                     </div>
                                     <div className="col-12 col-xl-6">
                                         <div className="justify-content-end d-flex">
@@ -45,7 +45,7 @@ const ManageProducts = ({ userInfo, handleLogout }) => {
                                                 onClick={handleAddProduct}
                                                 style={{ marginBottom: '10px', marginRight: '10px' }}
                                             >
-                                                Create
+                                                Create Model
                                             </button>
                                         </div>
                                     </div>
@@ -64,7 +64,7 @@ const ManageProducts = ({ userInfo, handleLogout }) => {
                                                 <div className="row">
                                                     <div className="col-4 col-xl-8">
                                                         <h4 className="card-title" style={{ paddingTop: '10px' }}>
-                                                            List of Products
+                                                            List of Models
                                                         </h4>
                                                     </div>
                                                     <div className="col-8 col-xl-4">

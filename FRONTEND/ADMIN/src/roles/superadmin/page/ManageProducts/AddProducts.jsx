@@ -172,7 +172,7 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
 
                  {/* Plans Section */}
 {/* Plans Section */}
-<div className="mb-4">
+{/* <div className="mb-4">
   <h5 className="card-title">Plans</h5>
   {plans.map((plan, index) => (
     <div className="row mb-3" key={index}>
@@ -245,7 +245,114 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
   >
     Add Plan
   </button>
+</div> */}
+
+{/* Plans Section */}
+<div className="mb-4">
+  <h5 className="card-title">Plans</h5>
+  {plans.map((plan, index) => {
+    const allOptions = ["solo", "couple", "family", "unlimited"];
+    const usedOptions = plans.map((p) => p.label);
+    const availableOptions = allOptions.filter(
+      (opt) => opt === plan.label || !usedOptions.includes(opt)
+    );
+
+    return (
+      <div className="row mb-3" key={index}>
+        {/* Plan Type Dropdown */}
+        <div className="col-md-4">
+          <select
+            className="form-control"
+            value={plan.label}
+            onChange={(e) => {
+              handlePlanChange(index, "label", e.target.value);
+
+              // Reset capacity if switching to unlimited
+              if (e.target.value === "unlimited") {
+                handlePlanChange(index, "capacity", "");
+              }
+            }}
+            required
+          >
+            <option value="">Select Plan</option>
+            {availableOptions.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt.charAt(0).toUpperCase() + opt.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Capacity - Hide if Unlimited */}
+        {plan.label !== "unlimited" && (
+          <div className="col-md-4">
+            <InputField
+              placeholder="Capacity"
+              value={plan.capacity}
+              onChange={(e) => handlePlanChange(index, "capacity", e.target.value)}
+              required
+              maxLength={15}
+            />
+          </div>
+        )}
+
+        {/* Price */}
+        <div className="col-md-3">
+          <InputField
+            type="text"
+            placeholder="Price"
+            value={plan.price || ""}
+            maxLength={10}
+            title="Enter a valid price (up to 2 decimal places)."
+            onChange={(e) => {
+              let val = e.target.value.replace(/[^0-9.]/g, "");
+
+              // Prevent multiple decimal points
+              const dotCount = (val.match(/\./g) || []).length;
+              if (dotCount > 1) return;
+
+              // Limit to 2 decimal places
+              if (val.includes(".")) {
+                const [intPart, decimalPart] = val.split(".");
+                if (decimalPart.length > 2) return;
+              }
+
+              // Prevent leading zeros
+              val = val.replace(/^0+(\d)/, "$1");
+
+              handlePlanChange(index, "price", val);
+            }}
+            required
+          />
+        </div>
+
+        {/* Remove Button */}
+        {index !== 0 && (
+          <div className="col-md-1 d-flex align-items-center">
+            <button
+              type="button"
+              className="btn btn-outline-danger btn-sm"
+              onClick={() => removePlan(index)}
+            >
+              Remove
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  })}
+
+  {/* Add Plan Button */}
+  <button
+    type="button"
+    className="btn btn-outline-primary btn-sm"
+    onClick={addPlan}
+    disabled={plans.length >= 4} // prevent adding more than 4 (since only 4 unique options exist)
+  >
+    Add Plan
+  </button>
 </div>
+
 
 {/* Durations Section */}
 <div className="mb-4">

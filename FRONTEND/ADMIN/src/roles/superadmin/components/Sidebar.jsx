@@ -28,7 +28,14 @@ const Sidebar = ({ userInfo, permissions: propsPermissions }) => {
             </Link>
           </li>
         )}
-
+        {canView('manage_products') && (
+          <li className={['/superadmin/ManageProducts','/superadmin/ViewProducts','/superadmin/EditProducts','/superadmin/AddProducts'].includes(location.pathname) ? 'nav-item active' : 'nav-item'}>
+            <Link className="nav-link" to="/superadmin/ManageProducts">
+              <i className="icon-head menu-icon mdi mdi-credit-card-multiple"></i>
+              <span className="menu-title">Manage Models</span>
+            </Link>
+          </li>
+        )}
         {canView('manage_devices') && (
           <li className={['/superadmin/ManageDevice','/superadmin/ViewManageDevice','/superadmin/EditManageDevice'].includes(location.pathname) ? 'nav-item active' : 'nav-item'}>
             <Link className="nav-link" to="/superadmin/ManageDevice">
@@ -65,14 +72,7 @@ const Sidebar = ({ userInfo, permissions: propsPermissions }) => {
           </li>
         )}
 
-        {canView('manage_products') && (
-          <li className={['/superadmin/ManageProducts','/superadmin/ViewProducts','/superadmin/EditProducts','/superadmin/AddProducts'].includes(location.pathname) ? 'nav-item active' : 'nav-item'}>
-            <Link className="nav-link" to="/superadmin/ManageProducts">
-              <i className="icon-head menu-icon mdi mdi-credit-card-multiple"></i>
-              <span className="menu-title">Manage Products</span>
-            </Link>
-          </li>
-        )}
+        
 
         {(canView('manage_installations') || canView('manage_services')) && (
           <li className={['/superadmin/ManageInstallations','/superadmin/ViewInstallations','/superadmin/ManageServices','/superadmin/ViewServices'].includes(location.pathname) ? 'nav-item active' : 'nav-item'}>
