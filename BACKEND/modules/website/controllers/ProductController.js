@@ -63,28 +63,25 @@ exports.getAllProductsWithPlans = async (req, res) => {
 
     const usedDeviceIds = new Set(allCompletedOrders.map(order => order.wp_device_id));
 
-    // 2. Get all product models with status = true and wp_device_quantity > 0
+    // 2. Get all product models with status = true (remove wp_device_quantity filter)
     const allProducts = await db.collection('product_models').find({
-      status: true,
-      wp_device_quantity: { $gt: 0 }
+      status: true
     }).toArray();
 
     const availableProducts = [];
 
     for (const product of allProducts) {
-      // 3. Check if there is at least one unused and active device for the product
+      // 3. Find an unused and active device if available
       const availableDevice = await db.collection('device_details').findOne({
         model_id: product.model_id,
         status: true,
         wp_device_id: { $nin: Array.from(usedDeviceIds) }
       });
 
-      if (availableDevice) {
-        availableProducts.push({
-          ...product,
-          wp_device_id: availableDevice.wp_device_id
-        });
-      }
+      availableProducts.push({
+        ...product,
+        wp_device_id: availableDevice ? availableDevice.wp_device_id : null
+      });
     }
 
     return res.status(200).json({
@@ -103,6 +100,7 @@ exports.getAllProductsWithPlans = async (req, res) => {
     });
   }
 };
+
 
 
 
