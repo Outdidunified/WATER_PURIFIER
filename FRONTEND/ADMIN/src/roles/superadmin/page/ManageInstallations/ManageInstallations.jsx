@@ -170,6 +170,8 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
         <th>Technician Name</th>
         <th>Technician ID</th>
         <th>Assigned Date</th>
+        <th>Task Status</th>
+        <th>Pending Reason</th>
         <th>Assign</th>
         <th>Actions</th>
                           </tr>
@@ -186,7 +188,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                           ) : installationTasks.length > 0 ? (
                             installationTasks.map((item, index) => (
                              
- <tr key={item._id || index}>
+   <tr key={item._id || index}>
             <td>{index + 1}</td>
             <td>{item.customOrderId || '-'}</td>
             <td >{item.modelName || '-'}</td>
@@ -204,6 +206,8 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                 ? new Date(item.task_assigned_date).toLocaleDateString()
                 : '-'}
             </td>
+            <td >{item.task_status || '-'}</td>
+            <td>{item.pending_reason || '-'}</td>
             <td>
               <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
                 <button

@@ -6,6 +6,7 @@ const useManageInstallation = (userInfo) => {
   const [installationTasks, setInstallationTasks] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [enrichedTaskList, setEnrichedTaskList] = useState([]);
   const [displayTasks, setDisplayTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -115,7 +116,12 @@ const useManageInstallation = (userInfo) => {
 
         return {
           ...order,
-          task_status: matchingTask?.task_status || order.task_status || '',
+          task_status: matchingTask?.task_status || order.task_status ||  primaryRecord?.task_status || '',
+          pending_reason:
+            matchingTask?.pending_reason ||
+            primaryRecord?.pending_reason ||
+            primaryRecord?.pending_reason_text ||
+            '',
           service_records: serviceRecords,
           task_id: primaryRecord?.task_id || null,
           task_assigned_date: primaryRecord?.assigned_date || null,
@@ -131,6 +137,7 @@ const useManageInstallation = (userInfo) => {
         };
       });
 
+      setEnrichedTaskList(enrichedTasks);
       setDisplayTasks(enrichedTasks);
     } catch (err) {
       showErrorAlert('Failed to fetch installation data');
@@ -149,12 +156,38 @@ const useManageInstallation = (userInfo) => {
     const value = e.target.value.toLowerCase();
     setSearchTerm(value);
 
-    const filteredEnriched = orders.filter(order =>
-      order.wp_device_id?.toLowerCase().includes(value) ||
-      order.customOrderId?.toLowerCase().includes(value) ||
-      order.user_id?.toString().includes(value) ||
-      order.deliveryAddress?.name?.toLowerCase().includes(value)
-    );
+    if (!value) {
+      setDisplayTasks(enrichedTaskList);
+      return;
+    }
+
+    const filteredEnriched = enrichedTaskList.filter((task) => {
+      const deviceId = task.wp_device_id?.toLowerCase() || '';
+      const orderId = task.customOrderId?.toLowerCase() || '';
+      const userId = task.user_id?.toString() || task.order_user_id?.toString() || '';
+      const technicianName =
+        task.assignedTechnician?.technician_name?.toLowerCase() ||
+        task.assignedTechnician?.name?.toLowerCase() ||
+        '';
+      const technicianId =
+        task.assignedTechnician?.technician_id?.toLowerCase() ||
+        task.assigned_technician_id?.toLowerCase() ||
+        '';
+      const customerName = task.deliveryAddress?.name?.toLowerCase() || '';
+      const taskStatus = task.task_status?.toLowerCase() || '';
+      const pendingReason = task.pending_reason?.toLowerCase() || '';
+
+      return (
+        deviceId.includes(value) ||
+        orderId.includes(value) ||
+        userId.includes(value) ||
+        technicianName.includes(value) ||
+        technicianId.includes(value) ||
+        customerName.includes(value) ||
+        taskStatus.includes(value) ||
+        pendingReason.includes(value)
+      );
+    });
 
     setDisplayTasks(filteredEnriched);
   };
