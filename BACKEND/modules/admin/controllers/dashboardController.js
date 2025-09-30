@@ -2204,6 +2204,12 @@ const ReAssignService = async (req, res) => {
                 message: `Task with task_id ${task_id} not found.`,
             });
         }
+        if (existingTask.task_status !== 'Pending' || existingTask.task_status !== 'pending') {
+            return res.status(400).json({
+                status: 'Failed',
+                message: `Cannot reassign service: task status is '${existingTask.task_status}'. Only pending tasks can be reassigned.`,
+            });
+        }
 
         // Guard: block reassignment if related order not paid
         const ordersCollection = db.collection("orders");
@@ -2223,7 +2229,8 @@ const ReAssignService = async (req, res) => {
                 $set: {
                     assigned_technician_id: technician_id,
                     modified_by,
-                    modified_date: now
+                    modified_date: now,
+                    pending_reason: null
                 }
             }
         );

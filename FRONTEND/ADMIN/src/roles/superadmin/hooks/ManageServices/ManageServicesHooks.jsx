@@ -119,7 +119,7 @@ const fetchTechnicians = async () => {
         modified_by: userInfo?.email || '',
       };
 
-      await axiosInstance.post('/api/admin/ReAssignInstallation', payload);
+      await axiosInstance.post('/api/admin/ReAssignService', payload);
       showSuccessAlert('Service task reassigned successfully');
       await fetchData();
     } catch (err) {

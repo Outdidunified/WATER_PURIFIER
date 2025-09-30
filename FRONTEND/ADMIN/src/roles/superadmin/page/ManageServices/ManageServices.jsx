@@ -20,6 +20,41 @@ const ManageServices = ({ userInfo, handleLogout }) => {
     assignServiceTask,
   } = useManageServices(userInfo);
 
+  const resolveTechnicianName = (task) => {
+    return (
+      task.assignedTechnician?.technician_name ||
+      task.assignedTechnician?.name ||
+      task.assigned_technician_name ||
+      technicians.find((tech) => tech.technician_id === task.assigned_technician_id)?.name ||
+      '-'
+    );
+  };
+
+  const resolveTechnicianId = (task) => {
+    return (
+      task.assignedTechnician?.technician_id ||
+      task.assigned_technician_id ||
+      '-'
+    );
+  };
+
+  const resolvePendingReason = (task) => {
+    return (
+      task.pending_reason ||
+      task.pendingReason ||
+      task.pendingReasonText ||
+      task.pending_reason_text ||
+      '-'
+    );
+  };
+
+  const resolveAssignedDate = (task) => {
+    const dateValue = task.assigned_date || task.task_assigned_date || task.assignedDate;
+    if (!dateValue) return '-';
+    const parsedDate = new Date(dateValue);
+    return Number.isNaN(parsedDate.getTime()) ? '-' : parsedDate.toLocaleString();
+  };
+
   // Modal state
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [selectedInstallation, setSelectedInstallation] = useState(null);
@@ -29,7 +64,21 @@ const ManageServices = ({ userInfo, handleLogout }) => {
 
 
   const handleViewInstallation = (installation) => {
-    navigate('/superadmin/viewServices', { state: { dataItem: [installation] } });
+    const technicianDetails =
+      installation.assignedTechnician ||
+      technicians.find((tech) => tech.technician_id === installation.assigned_technician_id) ||
+      null;
+
+    navigate('/superadmin/viewServices', {
+      state: {
+        dataItem: [
+          {
+            ...installation,
+            assignedTechnician: technicianDetails,
+          },
+        ],
+      },
+    });
   };
 
   const handleAssignClick = (installation, mode = 'assign') => {
@@ -146,9 +195,10 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                             <th>Status</th>
                             <th>Task Type</th>
                             <th>Email ID</th>
-                            <th>Description</th>
-                            <th>Device ID</th>
+                            <th>Technician Name</th>
                             <th>Technician ID</th>
+                            <th>Pending Reason</th>
+                            <th>Device ID</th>
                             <th>Assigned Date</th>
                             <th>Assign</th>
                             <th>Actions</th>
@@ -177,17 +227,11 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                                   }[item.task_type] || 'Other'}
                                 </td>
                                 <td>{item.task_created_by_user_email || '-'}</td>
-                                <td style={{
-                                  whiteSpace: 'pre-wrap',
-                                  wordBreak: 'break-word',
-                                  maxWidth: '300px',
-                                  textAlign: 'center'
-                                }}>
-                                  {item.task_description || '-'}
-                                </td>
-                                <td>{item.device_id || item.wp_device_id ||'-'}</td>
-                                <td>{item.assigned_technician_id || '-'}</td>
-                                <td>{item.assigned_date ? new Date(item.assigned_date).toLocaleDateString() : '-'}</td>
+                                <td>{resolveTechnicianName(item)}</td>
+                                <td>{resolveTechnicianId(item)}</td>
+                                <td>{resolvePendingReason(item)}</td>
+                                <td>{item.device_id || item.wp_device_id || '-'}</td>
+                                <td>{resolveAssignedDate(item)}</td>
                                 <td>
                                   <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
                                     <button

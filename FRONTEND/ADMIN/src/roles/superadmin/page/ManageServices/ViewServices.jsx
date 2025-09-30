@@ -8,6 +8,48 @@ const ViewServices = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
   const installationTasks = useViewServices();
 
+  const resolveTechnicianName = (task) => {
+    return (
+      task.assignedTechnician?.technician_name ||
+      task.assignedTechnician?.name ||
+      task.assigned_technician_name ||
+      '-'
+    );
+  };
+
+  const resolveTechnicianId = (task) => {
+    return task.assignedTechnician?.technician_id || task.assigned_technician_id || '-';
+  };
+
+  const resolvePendingReason = (task) => {
+    return task.pending_reason || task.pendingReason || '-';
+  };
+
+  const resolveAssignedDate = (task) => {
+    const dateValue = task.assigned_date || task.task_assigned_date || task.assignedDate;
+    if (!dateValue) return '-';
+    const parsedDate = new Date(dateValue);
+    return Number.isNaN(parsedDate.getTime()) ? '-' : parsedDate.toLocaleString();
+  };
+
+  const resolveDeviceId = (task) => {
+    return task.device_id || task.wp_device_id || '-';
+  };
+
+  const resolveCreatedDate = (task) => {
+    const dateValue = task.created_date || task.createdDate;
+    if (!dateValue) return '-';
+    const parsedDate = new Date(dateValue);
+    return Number.isNaN(parsedDate.getTime()) ? '-' : parsedDate.toLocaleString();
+  };
+
+  const resolveModifiedDate = (task) => {
+    const dateValue = task.modified_date || task.modifiedDate;
+    if (!dateValue) return '-';
+    const parsedDate = new Date(dateValue);
+    return Number.isNaN(parsedDate.getTime()) ? '-' : parsedDate.toLocaleString();
+  };
+
   const handleBack = () => {
     navigate('/superadmin/ManageServices');
   };
@@ -61,45 +103,53 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                           </span>
                         </div>
                         <div className="col-md-4">
-                          <strong>Description:</strong>{' '}
-                          <span>{task.task_description || '-'}</span>
                         </div>
                       </div>
 
                       <div className="row viewDataCss mt-2">
                         <div className="col-md-4">
-                          <strong>Technician ID:</strong>{' '}
-                          <span>{task.assigned_technician_id || '-'}</span>
+                          <strong>Technician Name:</strong>{' '}
+                          <span>{resolveTechnicianName(task)}</span>
                         </div>
                         <div className="col-md-4">
+                          <strong>Technician ID:</strong>{' '}
+                          <span>{resolveTechnicianId(task)}</span>
+                        </div>
+                        <div className="col-md-4">
+                          <strong>Pending Reason:</strong>{' '}
+                          <span>{resolvePendingReason(task)}</span>
+                        </div>
+                      </div>
+
+                      <div className="row viewDataCss mt-2">
+                        <div className="col-md-4">
                           <strong>Assigned Date:</strong>{' '}
-                          <span>{new Date(task.assigned_date).toLocaleString() || '-'}</span>
+                          <span>{resolveAssignedDate(task)}</span>
                         </div>
                         <div className="col-md-4">
                           <strong>Created By:</strong>{' '}
                           <span>{task.task_created_by_user_email || '-'}</span>
                         </div>
+                        <div className="col-md-4">
+                          <strong>Device ID:</strong> <span>{resolveDeviceId(task)}</span>
+                        </div>
                       </div>
 
                       <div className="row viewDataCss mt-2">
-                        <div className="col-md-4">
-                          <strong>Device ID:</strong> <span>{task.wp_device_id || '-'}</span>
-                        </div>
                         <div className="col-md-4">
                           <strong>OTP:</strong> <span>{task.otp || '-'}</span>
                         </div>
                         <div className="col-md-4">
                           <strong>Created Date:</strong>{' '}
-                          <span>{new Date(task.created_date).toLocaleString() || '-'}</span>
+                          <span>{resolveCreatedDate(task)}</span>
+                        </div>
+                        <div className="col-md-4">
+                          <strong>Modified Date:</strong>{' '}
+                          <span>{resolveModifiedDate(task)}</span>
                         </div>
                       </div>
 
                       <div className="row viewDataCss mt-2">
-                        
-                        <div className="col-md-4">
-                          <strong>Modified Date:</strong>{' '}
-                          <span>{new Date(task.modified_date).toLocaleString() || '-'}</span>
-                        </div>
                         <div className="col-md-4">
                           <strong>Modified By:</strong> <span>{task.modified_by || '-'}</span>
                         </div>
