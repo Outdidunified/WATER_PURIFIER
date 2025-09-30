@@ -3296,6 +3296,30 @@ const GetAnalytics = async (req, res) => {
             return buckets;
         };
 
+        // ---------------- New Helper for Top Items per Timeframe ----------------
+        const getTopItems = async (collection, filter, groupByField, labelField = 'name', limit = 5) => {
+            const result = await collection.aggregate([
+                { $match: { ...filter, paymentStatus: "Completed" } },
+                {
+                    $group: {
+                        _id: `$${groupByField}`,
+                        devicesSold: { $sum: { $ifNull: ["$quantity", 1] } }
+                    }
+                },
+                { $match: { _id: { $ne: null, $ne: "Unknown", $exists: true } } }, // Exclude null, "Unknown", or missing names
+                { $sort: { devicesSold: -1 } },
+                { $limit: limit },
+                {
+                    $project: {
+                        [labelField]: "$_id",
+                        devicesSold: 1,
+                        _id: 0
+                    }
+                }
+            ]).toArray();
+            return result;
+        };
+
         // ---------------- Payments / Orders / Revenue Summary ----------------
         const [
             paymentsTotal, paymentsSuccess, paymentsPending,
@@ -3312,7 +3336,7 @@ const GetAnalytics = async (req, res) => {
             countDocuments(usersCollection, { role_id: 1 }), // Admin
             countDocuments(usersCollection, { role_id: 2 }), // Technician
             countDocuments(usersCollection, { role_id: 3 }), // End User
-            countDocuments(usersCollection, { role_id: 4 }), // Seller
+            countDocuments(usersCollection, { role_id: 4 }) // Seller
         ]);
 
         // ---------------- Timelines ----------------
@@ -3363,6 +3387,20 @@ const GetAnalytics = async (req, res) => {
         ]).toArray();
         const totalRevenue = totalRevenueResult.length > 0 ? totalRevenueResult[0].total : 0;
 
+        // ---------------- Top Districts per Timeframe ----------------
+        const topDistrictsOverall = await getTopItems(ordersCollection, {}, "deliveryAddress.district", "districtName");
+        const topDistrictsToday = await getTopItems(ordersCollection, { createdAt: { $gte: startOfToday } }, "deliveryAddress.district", "districtName");
+        const topDistrictsWeek = await getTopItems(ordersCollection, { createdAt: { $gte: sevenDaysAgo } }, "deliveryAddress.district", "districtName");
+        const topDistrictsMonth = await getTopItems(ordersCollection, { createdAt: { $gte: oneMonthAgo } }, "deliveryAddress.district", "districtName");
+        const topDistrictsYear = await getTopItems(ordersCollection, { createdAt: { $gte: oneYearAgo } }, "deliveryAddress.district", "districtName");
+
+        // ---------------- Top Models per Timeframe ----------------
+        const topModelsOverall = await getTopItems(ordersCollection, {}, "modelName", "modelName");
+        const topModelsToday = await getTopItems(ordersCollection, { createdAt: { $gte: startOfToday } }, "modelName", "modelName");
+        const topModelsWeek = await getTopItems(ordersCollection, { createdAt: { $gte: sevenDaysAgo } }, "modelName", "modelName");
+        const topModelsMonth = await getTopItems(ordersCollection, { createdAt: { $gte: oneMonthAgo } }, "modelName", "modelName");
+        const topModelsYear = await getTopItems(ordersCollection, { createdAt: { $gte: oneYearAgo } }, "modelName", "modelName");
+
         // ---------------- Payload ----------------
         const payload = {
             payments: { total: paymentsTotal, successful: paymentsSuccess, pending: paymentsPending, timeline: paymentsTimeline },
@@ -3374,8 +3412,23 @@ const GetAnalytics = async (req, res) => {
                 technician: techniciansCount,
                 end_user: endUsersCount,
                 seller: sellersCount
+            },
+            topDistricts: {
+                overall: topDistrictsOverall,
+                today: topDistrictsToday,
+                week: topDistrictsWeek,
+                month: topDistrictsMonth,
+                year: topDistrictsYear
+            },
+            topModels: {
+                overall: topModelsOverall,
+                today: topModelsToday,
+                week: topModelsWeek,
+                month: topModelsMonth,
+                year: topModelsYear
             }
         };
+
 
         return res.status(200).json({ status: "Success", data: payload });
 
@@ -3384,7 +3437,6 @@ const GetAnalytics = async (req, res) => {
         return res.status(500).json({ status: "Failed", message: "Internal Server Error" });
     }
 };
-
 // Get Analytics by District
 const GetAnalyticsByDistrict = async (req, res) => {
   try {
@@ -3533,12 +3585,33 @@ const GetAnalyticsByDistrict = async (req, res) => {
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]).toArray();
     const totalRevenue = totalRevenueResult[0]?.total || 0;
+    const topModels = await ordersCollection.aggregate([
+                { $match: { paymentStatus: "Completed", "deliveryAddress.district": districtRegex } },
+                {
+                    $group: {
+                    _id: "$productModel", // adjust if stored as productName or product.model
+                    totalRevenue: { $sum: { $ifNull: ["$totalPrice", "$grandTotal"] } },
+                    orderCount: { $sum: 1 }
+                    }
+                },
+                { $sort: { totalRevenue: -1 } },
+                { $limit: 5 },
+                {
+                    $project: {
+                    _id: 0,
+                    model: "$_id",
+                    totalRevenue: 1,
+                    orderCount: 1
+                    }
+                }
+                ]).toArray();
 
     const payload = {
       payments: { total: paymentsTotal, successful: paymentsSuccess, pending: paymentsPending, timeline: paymentsTimeline },
       orders: { total: ordersTotal, successful: ordersSuccess, pending: ordersPending, timeline: ordersTimeline },
       revenue: { total: totalRevenue, timeline: revenueTimeline },
-      users: { total: usersTotal, admin: adminsCount, technician: techniciansCount, end_user: endUsersCount, seller: sellersCount }
+      users: { total: usersTotal, admin: adminsCount, technician: techniciansCount, end_user: endUsersCount, seller: sellersCount },
+      topModels: topModels
     };
 
     return res.status(200).json({ status: 'Success', data: payload });
