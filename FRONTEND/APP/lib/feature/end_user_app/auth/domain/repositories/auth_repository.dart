@@ -1,5 +1,5 @@
-import 'package:aquapulse_app/feature/end_user_app/auth/data/api.dart'; // Api data
-import 'package:aquapulse_app/feature/end_user_app/auth/domain/models/auth_model.dart'; // Models
+import 'package:ionhive_water_purifier/feature/end_user_app/auth/data/api.dart'; // Api data
+import 'package:ionhive_water_purifier/feature/end_user_app/auth/domain/models/auth_model.dart'; // Models
 
 class AppUserAuthRepository {
   final AppUserAuthAPICalls _api = AppUserAuthAPICalls();

@@ -56,7 +56,7 @@ class AboutAppPage extends StatelessWidget {
               children: [
                 // App Description
                 Text(
-                  'Aqua Water Purifier App',
+                  'IonHive Water Purifier App',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: theme.colorScheme.secondary,
@@ -64,7 +64,7 @@ class AboutAppPage extends StatelessWidget {
                 ),
                 SizedBox(height: screenHeight * 0.01),
                 Text(
-                  'The Aqua Water Purifier App empowers you to ensure clean and safe drinking water with ease. Key features include:\n'
+                  'The IonHive Water Purifier App empowers you to ensure clean and safe drinking water with ease. Key features include:\n'
                   '• Secure Login: Access the app using your username and password.\n'
                   '• Home Dashboard: View subscription details, modify plans, and monitor device status (TDS, UV, etc.) with indicators (Normal, Good, Bad).\n'
                   '• Analytics: Track usage (Daily, Monthly, Yearly) and environmental impact, including Plastic Bottles Saved and Carbon Footprint Reduction.\n'

@@ -50,13 +50,13 @@ class DeviceData extends Equatable {
   final String timestamp;
   final String topicType;
   final int totalWaterLimit;
-  final int totalWaterUsed;
+  final double totalWaterUsed;
   final String valveStatus;
 
   // For backward compatibility
   bool get bluetooth => status != "OFFLINE";
   bool get wifi => status != "OFFLINE";
-  double get litresDispensed => totalWaterUsed.toDouble();
+  double get litresDispensed => totalWaterUsed;
   int get tdsLevel => tdsOut;
   double get tankLevelValue => tankLevel == "FULL"
       ? 100.0
@@ -67,7 +67,7 @@ class DeviceData extends Equatable {
   String get filterStatus => errorCode == "NoError" ? "Good" : "Check";
   bool get uvStatus => errorCode == "NoError";
   String get faultedReason => errorCode == "NoError" ? "None" : errorCode;
-  int get waterConsumed => totalWaterUsed;
+  double get waterConsumed => totalWaterUsed;
 
   const DeviceData({
     required this.id,
@@ -108,7 +108,7 @@ class DeviceData extends Equatable {
       timestamp: json['timestamp'] as String? ?? '',
       topicType: json['topicType'] as String? ?? '',
       totalWaterLimit: json['totalWaterLimit'] as int? ?? 0,
-      totalWaterUsed: json['totalWaterUsed'] as int? ?? 0,
+      totalWaterUsed: (json['totalWaterUsed'] as num?)?.toDouble() ?? 0.0,
       valveStatus: json['valveStatus'] as String? ?? 'CLOSED',
     );
   }

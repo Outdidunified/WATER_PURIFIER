@@ -1,9 +1,9 @@
-import 'package:aquapulse_app/utils/widgets/button/custom_button.dart';
-import 'package:aquapulse_app/utils/widgets/input_field/email_inputfield.dart';
+import 'package:ionhive_water_purifier/utils/widgets/button/custom_button.dart';
+import 'package:ionhive_water_purifier/utils/widgets/input_field/email_inputfield.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:aquapulse_app/feature/end_user_app/auth/presentation/controllers/auth_controller.dart';
-// import 'package:aquapulse_app/feature/end_user_app/landing_page.dart'
+import 'package:ionhive_water_purifier/feature/end_user_app/auth/presentation/controllers/auth_controller.dart';
+// import 'package:ionhive_water_purifier/feature/end_user_app/landing_page.dart'
 //     show AppUserLandingPage;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -86,7 +86,7 @@ class AppUserLoginPage extends StatelessWidget {
               end: Alignment.bottomRight,
             ).createShader(bounds),
             child: Text(
-              "AQUA",
+              "IONHIVE",
               style: theme.textTheme.headlineLarge?.copyWith(
                 color: theme.primaryColor,
                 fontSize: 30,
@@ -223,7 +223,7 @@ class AppUserLoginPage extends StatelessWidget {
                     child: GestureDetector(
                       onTap: () async {
                         final url = Uri.parse(
-                            "https://aquapulse_app.in/terms-and-service");
+                            "https://ionhive_water_purifier.in/terms-and-service");
                         if (await canLaunchUrl(url)) {
                           await launchUrl(url,
                               mode: LaunchMode.externalApplication);
@@ -243,7 +243,7 @@ class AppUserLoginPage extends StatelessWidget {
                     child: GestureDetector(
                       onTap: () async {
                         final url = Uri.parse(
-                            "https://aquapulse_app.in/privacy-policy");
+                            "https://ionhive_water_purifier.in/privacy-policy");
                         if (await canLaunchUrl(url)) {
                           await launchUrl(url,
                               mode: LaunchMode.externalApplication);
@@ -309,14 +309,14 @@ class AppUserLoginPage extends StatelessWidget {
                     child: GestureDetector(
                       onTap: () async {
                         final url = Uri.parse(
-                            "https://aquapulse_app.in/terms-and-service");
+                            "https://ionhive_water_purifier.in/terms-and-service");
                         if (await canLaunchUrl(url)) {
                           await launchUrl(url,
                               mode: LaunchMode.externalApplication);
                         }
                       },
                       child: Text(
-                        "aquapulse.com",
+                        "ionhive.com",
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.primaryColor,
                           fontWeight: FontWeight.w600,

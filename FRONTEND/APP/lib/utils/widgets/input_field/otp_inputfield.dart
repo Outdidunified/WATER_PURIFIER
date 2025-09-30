@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:aquapulse_app/feature/end_user_app/auth/presentation/controllers/auth_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/auth/presentation/controllers/auth_controller.dart';
 import 'package:pinput/pinput.dart';
 
 class OtpInputPage extends StatefulWidget {

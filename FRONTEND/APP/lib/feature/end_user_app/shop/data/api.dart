@@ -1,5 +1,5 @@
-import 'package:aquapulse_app/core/services/base_api_service.dart';
-import 'package:aquapulse_app/feature/end_user_app/shop/data/urls.dart';
+import 'package:ionhive_water_purifier/core/services/base_api_service.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/shop/data/urls.dart';
 
 class ProductApi extends BaseApiService {
   Future<Map<String, dynamic>> fetchProductsWithPlan() async {

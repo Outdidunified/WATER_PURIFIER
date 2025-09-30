@@ -1,7 +1,8 @@
-import 'package:aquapulse_app/core/controllers/session_controller.dart';
-import 'package:aquapulse_app/core/services/base_api_service.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/data/urls.dart';
+import 'package:ionhive_water_purifier/core/controllers/session_controller.dart';
+import 'package:ionhive_water_purifier/core/services/base_api_service.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/data/urls.dart';
 import 'package:get/get.dart';
+import 'package:ionhive_water_purifier/core/core.dart';
 
 class SettingsApi extends BaseApiService {
   final SessionController _sessionController = Get.find<SessionController>();
@@ -55,7 +56,13 @@ class SettingsApi extends BaseApiService {
     required String email,
     required String name,
     required int phone,
+    required String addressline1,
+    required String addressline2,
     required String city,
+    required String district,
+    required String state,
+    required String country,
+    required String pincode,
   }) async {
     return makeRequest<Map<String, dynamic>>(
       url: SettingsUrl.UpdateUserDetails.url,
@@ -66,7 +73,13 @@ class SettingsApi extends BaseApiService {
         'role_id': 3,
         'name': name,
         'phone': phone,
+        'addressline1': addressline1,
+        'addressline2': addressline2,
         'city': city,
+        'district': district,
+        'state': state,
+        'country': country,
+        'pincode': pincode,
       },
       responseParser: (data) => data as Map<String, dynamic>,
     );
@@ -102,6 +115,18 @@ class SettingsApi extends BaseApiService {
         'user_id': userId,
         'message': message,
       },
+      responseParser: (data) => data as Map<String, dynamic>,
+    );
+  }
+
+  Future<Map<String, dynamic>> fetchActiveSubscriptions() async {
+    final userId = _sessionController.userId.value;
+    final email = _sessionController.emailId.value;
+
+    return makeRequest<Map<String, dynamic>>(
+      url: '${Core.baseUrl}/api/app/enduserhome/getActiveSubscriptionDetails',
+      method: 'POST',
+      body: {'user_id': userId, "email": email, "role_id": 3},
       responseParser: (data) => data as Map<String, dynamic>,
     );
   }

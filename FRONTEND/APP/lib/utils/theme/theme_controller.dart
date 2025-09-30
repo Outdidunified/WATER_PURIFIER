@@ -1,4 +1,4 @@
-import 'package:aquapulse_app/utils/theme/themes.dart';
+import 'package:ionhive_water_purifier/utils/theme/themes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';

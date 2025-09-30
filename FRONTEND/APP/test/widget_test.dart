@@ -1,10 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:aquapulse_app/main.dart';
+import 'package:ionhive_water_purifier/main.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const aquapulse_app());
+    await tester.pumpWidget(const AquaPulseApp()); // ✅ Correct root widget
   });
 }

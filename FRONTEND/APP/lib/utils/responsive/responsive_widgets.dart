@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:aquapulse_app/utils/responsive/responsive_utils.dart';
+import 'package:ionhive_water_purifier/utils/responsive/responsive_utils.dart';
 
 /// A responsive text widget that scales based on screen size
 class ResponsiveText extends StatelessWidget {

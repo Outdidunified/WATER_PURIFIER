@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:aquapulse_app/core/controllers/session_controller.dart'; // Session Controller
-import 'package:aquapulse_app/feature/end_user_app/auth/domain/repositories/auth_repository.dart'; // Auth Repository
-import 'package:aquapulse_app/feature/end_user_app/auth/presentation/pages/otp_page.dart'; // OTP Page
-import 'package:aquapulse_app/feature/end_user_app/landing_page.dart'; // Laning pages
-import 'package:aquapulse_app/utils/widgets/snackbar/custom_snackbar.dart'; // Custom Snackbar
+import 'package:ionhive_water_purifier/core/controllers/session_controller.dart'; // Session Controller
+import 'package:ionhive_water_purifier/feature/end_user_app/auth/domain/repositories/auth_repository.dart'; // Auth Repository
+import 'package:ionhive_water_purifier/feature/end_user_app/auth/presentation/pages/otp_page.dart'; // OTP Page
+import 'package:ionhive_water_purifier/feature/end_user_app/landing_page.dart'; // Laning pages
+import 'package:ionhive_water_purifier/utils/widgets/snackbar/custom_snackbar.dart'; // Custom Snackbar
 
 class AppUserAuthController extends GetxController {
   final AppUserAuthRepository _authRepository = AppUserAuthRepository();

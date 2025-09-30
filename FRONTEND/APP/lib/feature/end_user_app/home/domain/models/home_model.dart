@@ -111,7 +111,7 @@ class Subscription extends Equatable {
           SelectedPlan.fromJson(json['selectedPlan'] as Map<String, dynamic>),
       selectedDuration: SelectedDuration.fromJson(
           json['selectedDuration'] as Map<String, dynamic>),
-      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      price: (json['grandTotal'] as num?)?.toDouble() ?? 0.0,
       deliveryAddress: DeliveryAddress.fromJson(
           json['deliveryAddress'] as Map<String, dynamic>),
       paymentStatus: json['paymentStatus'] as String? ?? 'unknown',
@@ -135,7 +135,7 @@ class Subscription extends Equatable {
       'wp_device_id': wpDeviceId,
       'selectedPlan': selectedPlan.toJson(),
       'selectedDuration': selectedDuration.toJson(),
-      'price': price,
+      'grandTotal': price,
       'deliveryAddress': deliveryAddress.toJson(),
       'paymentStatus': paymentStatus,
       'orderStatus': orderStatus,
@@ -257,28 +257,37 @@ class SelectedDuration extends Equatable {
 class DeliveryAddress extends Equatable {
   final String name;
   final String phone;
-  final String addressLine1;
+  final String street;
+  final String landmark;
   final String city;
+  final String district;
   final String state;
   final String pincode;
+  final String email;
 
   const DeliveryAddress({
     required this.name,
     required this.phone,
-    required this.addressLine1,
+    required this.street,
+    required this.landmark,
     required this.city,
+    required this.district,
     required this.state,
     required this.pincode,
+    required this.email,
   });
 
   factory DeliveryAddress.fromJson(Map<String, dynamic> json) {
     return DeliveryAddress(
       name: json['name'] as String? ?? '',
       phone: json['phone'] as String? ?? '',
-      addressLine1: json['addressLine1'] as String? ?? '',
+      street: json['street'] as String? ?? '',
+      landmark: json['landmark'] as String? ?? '',
       city: json['city'] as String? ?? '',
+      district: json['district'] as String? ?? '',
       state: json['state'] as String? ?? '',
       pincode: json['pincode'] as String? ?? '',
+      email: json['email'] as String? ?? '',
     );
   }
 
@@ -286,10 +295,13 @@ class DeliveryAddress extends Equatable {
     return {
       'name': name,
       'phone': phone,
-      'addressLine1': addressLine1,
+      'street': street,
+      'landmark': landmark,
       'city': city,
+      'district': district,
       'state': state,
       'pincode': pincode,
+      'email': email,
     };
   }
 
@@ -297,9 +309,61 @@ class DeliveryAddress extends Equatable {
   List<Object?> get props => [
         name,
         phone,
-        addressLine1,
+        street,
+        landmark,
         city,
+        district,
         state,
         pincode,
+        email,
       ];
+}
+
+// Alias for backward compatibility
+typedef Order = Subscription;
+
+// Response for fetching orders (multiple subscriptions)
+class OrdersResponse extends Equatable {
+  final bool error;
+  final String message;
+  final List<Order> data;
+
+  const OrdersResponse({
+    required this.error,
+    required this.message,
+    required this.data,
+  });
+
+  factory OrdersResponse.fromJson(Map<String, dynamic> json) {
+    List<Order> data = [];
+    if (json['data'] != null) {
+      final dataJson = json['data'];
+      if (dataJson is List<dynamic>) {
+        data = dataJson.map((item) => Order.fromJson(item as Map<String, dynamic>)).toList();
+      } else if (dataJson is Map<String, dynamic>) {
+        // Handle case where data is a Map with subscription: null or a single subscription
+        final subscription = dataJson['subscription'];
+        if (subscription != null && subscription is Map<String, dynamic>) {
+          data = [Order.fromJson(subscription)];
+        }
+        // If subscription is null, data remains empty
+      }
+    }
+    return OrdersResponse(
+      error: json['error'] as bool? ?? true,
+      message: json['message'] as String? ?? 'Unknown error',
+      data: data,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'error': error,
+      'message': message,
+      'data': data.map((item) => item.toJson()).toList(),
+    };
+  }
+
+  @override
+  List<Object?> get props => [error, message, data];
 }

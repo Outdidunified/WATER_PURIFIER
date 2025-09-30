@@ -1,11 +1,11 @@
 import 'dart:convert';
 
-import 'package:aquapulse_app/core/controllers/session_controller.dart';
-import 'package:aquapulse_app/core/core.dart';
-import 'package:aquapulse_app/utils/widgets/webview_screen.dart';
-import 'package:aquapulse_app/feature/end_user_app/shop/domain/models/product_model.dart';
-import 'package:aquapulse_app/feature/end_user_app/shop/presentation/controllers/shop_controller.dart';
-import 'package:aquapulse_app/utils/widgets/button/custom_button.dart';
+import 'package:ionhive_water_purifier/core/controllers/session_controller.dart';
+import 'package:ionhive_water_purifier/core/core.dart';
+import 'package:ionhive_water_purifier/utils/widgets/webview_screen.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/shop/domain/models/product_model.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/shop/presentation/controllers/shop_controller.dart';
+import 'package:ionhive_water_purifier/utils/widgets/button/custom_button.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -30,13 +30,15 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
-    _pageController.addListener(() {
-      setState(() {
-        _currentPage = _pageController.page?.round() ?? 0;
-        debugPrint('Current page: $_currentPage');
+
+    _pageController = PageController()
+      ..addListener(() {
+        setState(() {
+          _currentPage = _pageController.page?.round() ?? 0;
+          debugPrint('Current page: $_currentPage');
+        });
       });
-    });
+
     final sessionController = Get.find<SessionController>();
     final token = sessionController.token.value;
     final userId = sessionController.userId.value;
@@ -88,7 +90,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 
-    // Collect all image URLs, keep empty ones as null placeholders
+    // Collect all image URLs, null for empty slots
     final images = [
       widget.product.mainImg.isNotEmpty ? widget.product.mainImg : null,
       widget.product.subImg1.isNotEmpty ? widget.product.subImg1 : null,
@@ -97,9 +99,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       widget.product.subImg4.isNotEmpty ? widget.product.subImg4 : null,
     ];
 
-    // Log valid images
     final validImages =
-        images.where((img) => img != null).cast<String>().toList();
+    images.where((img) => img != null).cast<String>().toList();
     debugPrint(
         'Valid images for PageView: $validImages (${validImages.length})');
 
@@ -120,7 +121,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       itemBuilder: (context, index) {
                         final image = images[index];
                         if (image == null) {
-                          debugPrint('Empty image slot at index $index');
                           return Container(
                             color: Colors.grey.shade200,
                             child: const Center(
@@ -133,42 +133,36 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                           );
                         }
                         final imageUrl = '${Core.baseUrl}/upload/img/$image';
-                        debugPrint('$imageUrl [$index]');
                         return SizedBox(
                           width: screenWidth,
                           height: screenHeight * 0.5,
                           child: CachedNetworkImage(
                             imageUrl: imageUrl,
                             fit: BoxFit.contain,
-                            placeholder: (context, url) => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                            errorWidget: (context, url, error) {
-                              debugPrint('Image load error: $image - $error');
-                              return Container(
-                                color: Colors.grey.shade200,
-                                child: Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.broken_image,
-                                        size: 50,
+                            placeholder: (context, url) =>
+                            const Center(child: CircularProgressIndicator()),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey.shade200,
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.broken_image,
+                                      size: 50,
+                                      color: Colors.grey,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Image not found',
+                                      style: theme.textTheme.bodySmall?.copyWith(
                                         color: Colors.grey,
                                       ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Image not found',
-                                        style:
-                                            theme.textTheme.bodySmall?.copyWith(
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              );
-                            },
+                              ),
+                            ),
                           ),
                         );
                       },
@@ -185,7 +179,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         ),
                       ),
                     ),
-                    // Top Bar (Back Button and Title)
                     Positioned(
                       top: 33,
                       left: 16,
@@ -228,7 +221,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         ],
                       ),
                     ),
-                    // Page Indicator and Arrows
                     if (images.length > 1)
                       Positioned(
                         bottom: 8,
@@ -236,7 +228,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         right: 0,
                         child: Column(
                           children: [
-                            // Page Indicator
                             SmoothPageIndicator(
                               controller: _pageController,
                               count: images.length,
@@ -250,11 +241,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            // Arrows
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                // Left Arrow
                                 Padding(
                                   padding: const EdgeInsets.only(left: 16),
                                   child: Opacity(
@@ -262,12 +251,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                     child: GestureDetector(
                                       onTap: _currentPage > 0
                                           ? () {
-                                              _pageController.previousPage(
-                                                duration: const Duration(
-                                                    milliseconds: 300),
-                                                curve: Curves.easeInOut,
-                                              );
-                                            }
+                                        _pageController.previousPage(
+                                          duration:
+                                          const Duration(milliseconds: 300),
+                                          curve: Curves.easeInOut,
+                                        );
+                                      }
                                           : null,
                                       child: Container(
                                         padding: const EdgeInsets.all(8),
@@ -284,7 +273,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                     ),
                                   ),
                                 ),
-                                // Right Arrow
                                 Padding(
                                   padding: const EdgeInsets.only(right: 16),
                                   child: Opacity(
@@ -294,12 +282,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                     child: GestureDetector(
                                       onTap: _currentPage < images.length - 1
                                           ? () {
-                                              _pageController.nextPage(
-                                                duration: const Duration(
-                                                    milliseconds: 300),
-                                                curve: Curves.easeInOut,
-                                              );
-                                            }
+                                        _pageController.nextPage(
+                                          duration:
+                                          const Duration(milliseconds: 300),
+                                          curve: Curves.easeInOut,
+                                        );
+                                      }
                                           : null,
                                       child: Container(
                                         padding: const EdgeInsets.all(8),
@@ -380,14 +368,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             ),
             Theme(
               data: Theme.of(context).copyWith(
-                tabBarTheme: const TabBarTheme(
+                tabBarTheme: const TabBarThemeData(
                   dividerColor: Colors.transparent,
                 ),
               ),
               child: TabBar(
                 labelColor: theme.colorScheme.primary,
                 unselectedLabelColor:
-                    theme.colorScheme.onSurface.withOpacity(0.6),
+                theme.colorScheme.onSurface.withOpacity(0.6),
                 indicatorColor: theme.colorScheme.primary,
                 indicatorWeight: 3,
                 tabs: const [
@@ -478,11 +466,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                               padding: const EdgeInsets.all(16),
                               child: Row(
                                 mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                MainAxisAlignment.spaceBetween,
                                 children: [
                                   Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         plan.label,
@@ -496,7 +484,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                       Text(
                                         'Capacity: ${plan.capacity}',
                                         style:
-                                            theme.textTheme.bodySmall?.copyWith(
+                                        theme.textTheme.bodySmall?.copyWith(
                                           color: Colors.black,
                                         ),
                                       ),
@@ -507,7 +495,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                         ? '₹${plan.price}'
                                         : 'N/A',
                                     style:
-                                        theme.textTheme.titleMedium?.copyWith(
+                                    theme.textTheme.titleMedium?.copyWith(
                                       fontWeight: FontWeight.bold,
                                       color: Colors.green,
                                     ),
@@ -552,19 +540,19 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                   const SizedBox(height: 12),
                                   Row(
                                     mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                    MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         'GST: ${duration.gst}%',
                                         style:
-                                            theme.textTheme.bodySmall?.copyWith(
+                                        theme.textTheme.bodySmall?.copyWith(
                                           color: Colors.black,
                                         ),
                                       ),
                                       Text(
                                         'Discount: ${duration.discount}%',
                                         style:
-                                            theme.textTheme.bodySmall?.copyWith(
+                                        theme.textTheme.bodySmall?.copyWith(
                                           color: Colors.black,
                                         ),
                                       ),
@@ -573,12 +561,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                   const SizedBox(height: 8),
                                   Row(
                                     mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                    MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         'Security Deposit: ₹${duration.securityDeposit}',
                                         style:
-                                            theme.textTheme.bodySmall?.copyWith(
+                                        theme.textTheme.bodySmall?.copyWith(
                                           color: Colors.black,
                                         ),
                                       ),
@@ -605,7 +593,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: Obx(() {
                 final controller = Get.find<ShopController>();
                 return CustomButton(
@@ -614,7 +603,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   onPressed: () {
                     FocusScope.of(context).unfocus();
                     Get.to(
-                      () => WebViewScreen(
+                          () => WebViewScreen(
                         controller: _webViewController,
                       ),
                       transition: Transition.rightToLeft,

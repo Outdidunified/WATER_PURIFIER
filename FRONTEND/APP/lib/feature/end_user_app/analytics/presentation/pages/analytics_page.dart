@@ -1,9 +1,14 @@
-import 'package:aquapulse_app/feature/end_user_app/analytics/domain/models/analytics_model.dart';
-import 'package:aquapulse_app/feature/end_user_app/analytics/presentation/controllers/analytics_controller.dart';
-import 'package:aquapulse_app/utils/widgets/error/error_display_widget.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/analytics/domain/models/telemetry_model.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/analytics/presentation/controllers/telemetry_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/analytics/presentation/controllers/active_subscription_controller.dart';
+import 'package:ionhive_water_purifier/core/controllers/session_controller.dart';
+import 'package:ionhive_water_purifier/utils/widgets/error/error_display_widget.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 
 class AnalyticsPage extends StatefulWidget {
@@ -14,14 +19,23 @@ class AnalyticsPage extends StatefulWidget {
 }
 
 class _AnalyticsPageState extends State<AnalyticsPage> {
-  final AnalyticsController controller =
-      Get.put(AnalyticsController(), permanent: true);
+  final TelemetryController telemetryController =
+      Get.put(TelemetryController(), permanent: true);
+  final ActiveSubscriptionController activeSubscriptionController =
+      Get.put(ActiveSubscriptionController(), permanent: true);
+  final SessionController sessionController = Get.find<SessionController>();
+
+  String? selectedDeviceId;
+  String selectedPeriod = 'weekly'; // Default to weekly
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      controller.fetchAnalytics();
+      activeSubscriptionController.fetchActiveSubscriptions(
+        sessionController.userId.value,
+        sessionController.emailId.value,
+      );
     });
   }
 
@@ -34,32 +48,72 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return SafeArea(
       child: Scaffold(
         body: Obx(() {
-          if (controller.isLoading.value) {
+          // First check if subscriptions are loading
+          if (activeSubscriptionController.isLoading.value) {
             return _buildShimmerLoading(theme, screenWidth, screenHeight);
           }
 
-          if (controller.errorMessage.value.isNotEmpty &&
-              controller.errorMessage.value !=
+          if (activeSubscriptionController.errorMessage.isNotEmpty) {
+            return Center(
+              child: ErrorDisplayWidget(
+                errorMessage: activeSubscriptionController.errorMessage.value,
+                onRetry: () {
+                  activeSubscriptionController.fetchActiveSubscriptions(
+                    sessionController.userId.value,
+                    sessionController.emailId.value,
+                  );
+                },
+              ),
+            );
+          }
+
+          final subscriptions = activeSubscriptionController.subscriptions;
+          if (subscriptions.isEmpty) {
+            return Center(
+              child: DisplayWidget(
+                errorMessage: "No analytics data available yet",
+                assetPath: 'assets/icons/analysis_not_found.png',
+              ),
+            );
+          }
+
+          // Get unique device ids
+          final deviceIds = subscriptions.map((sub) => sub.wpDeviceId).where((id) => id.isNotEmpty).toSet().toList();
+
+          if (deviceIds.isEmpty) {
+            return Center(
+              child: DisplayWidget(
+                errorMessage: "No device IDs found.",
+                assetPath: 'assets/icons/analysis_not_found.png',
+              ),
+            );
+          }
+
+          // Set default selected device if not set
+          if (selectedDeviceId == null) {
+            selectedDeviceId = deviceIds.first;
+            telemetryController.fetchTelemetry(selectedDeviceId!);
+          }
+
+          // Now check telemetry loading
+          if (telemetryController.isLoading.value) {
+            return _buildShimmerLoading(theme, screenWidth, screenHeight);
+          }
+
+          if (telemetryController.errorMessage.value.isNotEmpty &&
+              telemetryController.errorMessage.value !=
                   '🔍 Resource not found. The requested information is unavailable.') {
             return Center(
                 child: ErrorDisplayWidget(
-              errorMessage: controller.errorMessage.value,
+              errorMessage: telemetryController.errorMessage.value,
               onRetry: () {
-                controller.fetchAnalytics();
+                telemetryController.fetchTelemetry(selectedDeviceId!);
               },
             ));
           }
-          final analyticsData = controller.analyticsResponse.value;
-          if (analyticsData == null ||
-              analyticsData.error ||
-              analyticsData.data == null) {
-            return Center(
-                child: DisplayWidget(
-              errorMessage: "No analytics data available.",
-              assetPath:
-                  'assets/icons/analysis_not_found.png', // Optional: Use a custom icon if available
-            ));
-          }
+
+          final telemetryData = telemetryController.telemetryResponse.value;
+
           return SingleChildScrollView(
             padding: EdgeInsets.all(screenWidth * 0.05),
             child: Column(
@@ -114,7 +168,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                       ),
                       SizedBox(height: screenHeight * 0.01),
                       Text(
-                        'Track your water consumption, bottles saved, and environmental impact over time.',
+                        'Track your water consumption for device $selectedDeviceId.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: Colors.white70,
                           height: 1.3,
@@ -122,6 +176,56 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         ),
                       ),
                     ],
+                  ),
+                ),
+                // Device Selection Dropdown
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04, vertical: screenWidth * 0.02),
+                  margin: EdgeInsets.only(bottom: screenHeight * 0.02),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: DropdownButton<String>(
+                    value: selectedDeviceId,
+                    isExpanded: true,
+                    hint: Text('Select Device'),
+                    dropdownColor: Colors.white,
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: screenWidth * 0.04,
+                    ),
+                    items: deviceIds.map((deviceId) {
+                      return DropdownMenuItem<String>(
+                        value: deviceId,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(vertical: screenHeight * 0.01),
+                          child: Text(
+                            'Device: $deviceId',
+                            style: TextStyle(
+                              color: Colors.black87,
+                              fontSize: screenWidth * 0.04,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          selectedDeviceId = value;
+                        });
+                        telemetryController.fetchTelemetry(value);
+                      }
+                    },
                   ),
                 ),
                 Padding(
@@ -135,41 +239,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     ),
                   ),
                 ),
-                _buildDashboardHeader(
-                    theme, analyticsData.data!, screenWidth, screenHeight),
+                _buildTelemetryDashboardHeader(
+                    theme, telemetryData, screenWidth, screenHeight),
                 SizedBox(height: screenHeight * 0.04),
-                _buildChartCard(
-                  title: "📅 Daily Usage",
-                  data: analyticsData.data!.daily,
-                  labelKey: "date",
-                  valueKey: "total",
-                  isBarChart: true,
-                  color: Colors.blue.shade600,
-                  screenWidth: screenWidth,
-                  screenHeight: screenHeight,
-                ),
-                SizedBox(height: screenHeight * 0.04),
-                _buildChartCard(
-                  title: "📈 Weekly Usage",
-                  data: analyticsData.data!.weekly,
-                  labelKey: "week",
-                  valueKey: "total",
-                  isBarChart: false,
-                  color: Colors.green.shade600,
-                  screenWidth: screenWidth,
-                  screenHeight: screenHeight,
-                ),
-                SizedBox(height: screenHeight * 0.04),
-                _buildChartCard(
-                  title: "📊 Monthly Usage",
-                  data: analyticsData.data!.monthly,
-                  labelKey: "month",
-                  valueKey: "total",
-                  isBarChart: true,
-                  color: Colors.orange.shade600,
-                  screenWidth: screenWidth,
-                  screenHeight: screenHeight,
-                ),
+                _buildPeriodChart(telemetryData, screenWidth, screenHeight),
               ],
             ),
           );
@@ -185,8 +258,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     return SingleChildScrollView(
       padding: EdgeInsets.all(screenWidth * 0.05),
       child: Shimmer.fromColors(
-        baseColor: Colors.grey.shade300,
-        highlightColor: Colors.grey.shade100,
+        baseColor: Colors.white,
+        highlightColor: Colors.grey.shade200,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -272,27 +345,34 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     );
   }
 
-  Widget _buildDashboardHeader(ThemeData theme, AnalyticsData analyticsData,
+  Widget _buildTelemetryDashboardHeader(ThemeData theme, TelemetryResponse? telemetryData,
       double screenWidth, double screenHeight) {
+    // If no telemetry data, return empty container or placeholder
+    if (telemetryData == null || telemetryData.status != 'Success' || telemetryData.data == null) {
+      return SizedBox.shrink(); // Hide the dashboard when no data
+    }
+
+    final data = telemetryData.data!;
     final summaries = [
       {
-        "title": "Water Used",
-        "value": "${analyticsData.totalWaterConsumed} L",
+        "title": "Total Water Used",
+        "value": "${data.totalWaterUsed.toStringAsFixed(2)} L",
         "icon": Icons.water_drop,
         "color": Colors.blue.shade50,
       },
       {
-        "title": "Bottles Saved",
-        "value": "${analyticsData.plasticBottlesSaved}",
-        "icon": Icons.local_drink,
+        "title": "TDS In/Out",
+        "value": "${data.tdsIn}/${data.tdsOut}",
+        "icon": Icons.science,
         "color": Colors.green.shade50,
       },
-      {
-        "title": "CO₂ Saved",
-        "value": "${analyticsData.carbonFootprintSavedKg} kg",
-        "icon": Icons.eco,
-        "color": Colors.brown.shade50,
-      },
+   {
+  "title": "Tank Level",
+  "value": data.tankLevel,
+  "icon": MdiIcons.barrel, // ✅ closest match to a water tank
+"color": Colors.orange.shade50,},
+
+
     ];
 
     // Build a single card widget
@@ -374,6 +454,238 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           // Second Row: 1 column spanning the width of the first row
           buildCard(summaries[2],
               screenWidth - (screenWidth * 0.06)), // Adjusted for padding
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPeriodChart(TelemetryResponse? telemetryData, double screenWidth, double screenHeight) {
+    // Handle case where no telemetry data is available
+    if (telemetryData == null || telemetryData.status != 'Success' || telemetryData.data == null) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        padding: EdgeInsets.all(screenWidth * 0.04),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '📊 Water Usage Chart',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: screenWidth * 0.045,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: screenHeight * 0.02),
+            SizedBox(
+              height: screenHeight * 0.3,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.bar_chart,
+                      size: screenWidth * 0.15,
+                      color: Colors.grey.shade400,
+                    ),
+                    SizedBox(height: screenHeight * 0.01),
+                    Text(
+                      'No telemetry data available for this device',
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.04,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    // Get data based on selected period
+    List<Map<String, dynamic>> data;
+    String title;
+    Color color;
+    bool isBarChart;
+
+    switch (selectedPeriod) {
+      case 'daily':
+        data = telemetryData.data!.waterUsage.daily.records
+            .map((record) => {'date': record.date, 'total': record.totalWaterUsed})
+            .toList();
+        title = "📅 Daily Usage";
+        color = Colors.blue.shade600;
+        isBarChart = true;
+        break;
+      case 'weekly':
+        data = telemetryData.data!.waterUsage.weekly.records
+            .map((record) => {'date': record.date, 'total': record.totalWaterUsed})
+            .toList();
+        title = "📈 Weekly Usage";
+        color = Colors.green.shade600;
+        isBarChart = true; // Changed to bar chart
+        break;
+      case 'monthly':
+        data = telemetryData.data!.waterUsage.monthly.records
+            .map((record) => {'date': record.date, 'total': record.totalWaterUsed})
+            .toList();
+        title = "📊 Monthly Usage";
+        color = Colors.orange.shade600;
+        isBarChart = true; // Changed to bar chart
+        break;
+      case 'yearly':
+        data = telemetryData.data!.waterUsage.yearly.records
+            .map((record) => {'date': record.date, 'total': record.totalWaterUsed})
+            .toList();
+        title = "📈 Yearly Usage";
+        color = Colors.purple.shade600;
+        isBarChart = true; // Changed to bar chart
+        break;
+      default:
+        data = [];
+        title = "Usage Data";
+        color = Colors.blue.shade600;
+        isBarChart = true;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      padding: EdgeInsets.all(screenWidth * 0.04),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: screenWidth * 0.045,
+                  color: Colors.black87,
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.02),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+             boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 2,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: DropdownButton<String>(
+                  value: selectedPeriod,
+                  isDense: true,
+                  underline: SizedBox(),
+                  dropdownColor: Colors.white,
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontSize: screenWidth * 0.035,
+                  ),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'daily',
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.005),
+                        child: Text(
+                          'Daily',
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: screenWidth * 0.035,
+                          ),
+                        ),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 'weekly',
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.005),
+                        child: Text(
+                          'Weekly',
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: screenWidth * 0.035,
+                          ),
+                        ),
+                      ),
+                    ),
+                         DropdownMenuItem(
+                      value: 'monthly',
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.005),
+                        child: Text(
+                          'Monthly',
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: screenWidth * 0.035,
+                          ),
+                        ),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 'yearly',
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.005),
+                        child: Text(
+                          'Yearly',
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: screenWidth * 0.035,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        selectedPeriod = value;
+                      });
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: screenHeight * 0.02),
+          if (data.isEmpty)
+            SizedBox(
+              height: screenHeight * 0.3,
+              child: Center(
+                child: Text(
+                  'No ${selectedPeriod} data available for this device',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.04,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: screenHeight * 0.3,
+              child: isBarChart
+                  ? _buildBarChart(data, "date", "total", color, screenWidth)
+                  : _buildLineChart(data, "date", "total", color, screenWidth),
+            ),
         ],
       ),
     );
@@ -461,17 +773,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         barGroups: data.asMap().entries.map((entry) {
           final index = entry.key;
           final item = entry.value;
-          double value;
-
-          if (item is DailyData) {
-            value = item.total.toDouble();
-          } else if (item is WeeklyData) {
-            value = item.total.toDouble();
-          } else if (item is MonthlyData) {
-            value = item.total.toDouble();
-          } else {
-            value = 0;
-          }
+          double value = (item[valueKey] as num?)?.toDouble() ?? 0.0;
 
           return BarChartGroupData(
             x: index,
@@ -496,16 +798,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               getTitlesWidget: (value, _) {
                 int index = value.toInt();
                 if (index < data.length) {
-                  String label;
-                  if (data[index] is DailyData) {
-                    label = (data[index] as DailyData).date.split('/')[0];
-                  } else if (data[index] is WeeklyData) {
-                    label = (data[index] as WeeklyData).week.split('-W')[1];
-                  } else if (data[index] is MonthlyData) {
-                    label = (data[index] as MonthlyData).month.split('/')[0];
-                  } else {
-                    label = '';
-                  }
+                  final item = data[index];
+                  String label = (item[labelKey] as String?)?.split('-')[2] ?? '';
                   return Text(
                     label,
                     style: TextStyle(fontSize: screenWidth * 0.025),
@@ -556,17 +850,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             spots: data.asMap().entries.map((entry) {
               int index = entry.key;
               final item = entry.value;
-              double value;
-
-              if (item is DailyData) {
-                value = item.total.toDouble();
-              } else if (item is WeeklyData) {
-                value = item.total.toDouble();
-              } else if (item is MonthlyData) {
-                value = item.total.toDouble();
-              } else {
-                value = 0;
-              }
+              double value = (item[valueKey] as num?)?.toDouble() ?? 0.0;
 
               return FlSpot(index.toDouble(), value);
             }).toList(),
@@ -580,16 +864,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               getTitlesWidget: (value, _) {
                 int index = value.toInt();
                 if (index < data.length) {
-                  String label;
-                  if (data[index] is DailyData) {
-                    label = (data[index] as DailyData).date.split('/')[0];
-                  } else if (data[index] is WeeklyData) {
-                    label = (data[index] as WeeklyData).week.split('-W')[1];
-                  } else if (data[index] is MonthlyData) {
-                    label = (data[index] as MonthlyData).month.split('/')[0];
-                  } else {
-                    label = '';
-                  }
+                  final item = data[index];
+                  String label = (item[labelKey] as String?)?.split('-')[2] ?? '';
                   return Text(
                     label,
                     style: TextStyle(fontSize: screenWidth * 0.025),

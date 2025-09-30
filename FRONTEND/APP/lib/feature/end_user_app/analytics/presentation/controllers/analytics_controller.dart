@@ -1,6 +1,6 @@
-import 'package:aquapulse_app/feature/end_user_app/analytics/domain/repositories/analytics_repository.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/analytics/domain/repositories/analytics_repository.dart';
 import 'package:get/get.dart';
-import 'package:aquapulse_app/feature/end_user_app/analytics/domain/models/analytics_model.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/analytics/domain/models/analytics_model.dart';
 
 class AnalyticsController extends GetxController {
   final AnalyticsRepository _repository = AnalyticsRepository();

@@ -1,8 +1,7 @@
 import 'dart:math';
 
-import 'package:aquapulse_app/feature/end_user_app/auth/presentation/pages/login_page.dart';
-import 'package:aquapulse_app/feature/service_installation_app/auth/presentation/pages/login_page.dart';
-import 'package:aquapulse_app/utils/theme/theme_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/auth/presentation/pages/login_page.dart';
+import 'package:ionhive_water_purifier/utils/theme/theme_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -38,7 +37,6 @@ class _GetStartedPageState extends State<GetStartedPage>
       vsync: this,
     );
 
-    // Use forward/reverse pattern for smoother animation
     _animationController.forward();
     _animationController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
@@ -72,7 +70,7 @@ class _GetStartedPageState extends State<GetStartedPage>
     return Scaffold(
       body: Stack(
         children: [
-          // Background Gradient using theme colors
+          // Background Gradient
           AnimatedContainer(
             duration: const Duration(milliseconds: 500),
             decoration: BoxDecoration(
@@ -88,7 +86,7 @@ class _GetStartedPageState extends State<GetStartedPage>
             ),
           ),
 
-          // Animated background pattern with dots
+          // Animated dot background
           Opacity(
             opacity: 0.08,
             child: AnimatedBuilder(
@@ -147,45 +145,7 @@ class _GetStartedPageState extends State<GetStartedPage>
             ],
           ),
 
-          // App Logo (top center) with theme colors
-          // Positioned(
-          //   top: screenHeight * 0.05,
-          //   left: 0,
-          //   right: 0,
-          //   child: Center(
-          //     child: AnimatedBuilder(
-          //       animation: _animationController,
-          //       builder: (context, child) {
-          //         return Text.rich(
-          //           TextSpan(
-          //             children: "AQUA".split("").map((char) {
-          //               return TextSpan(
-          //                 text: char,
-          //                 style: GoogleFonts.poppins(
-          //                   fontSize: 28,
-          //                   fontWeight: FontWeight.w700,
-          //                   color: char == 'A' || char == 'P'
-          //                       ? theme.colorScheme.secondary
-          //                       : Colors.white,
-          //                   letterSpacing: 1.2,
-          //                   shadows: [
-          //                     Shadow(
-          //                       color: Colors.black.withOpacity(0.3),
-          //                       blurRadius: 8,
-          //                       offset: const Offset(1, 1),
-          //                     ),
-          //                   ],
-          //                 ),
-          //               );
-          //             }).toList(),
-          //           ),
-          //         );
-          //       },
-          //     ),
-          //   ),
-          // ),
-
-          // Page Indicator (custom) with theme colors
+          // Page Indicator
           Positioned(
             bottom: screenHeight * 0.15,
             left: 0,
@@ -208,36 +168,30 @@ class _GetStartedPageState extends State<GetStartedPage>
   }
 
   Widget _buildOnboardingPage(
-    BuildContext context,
-    String imagePath,
-    String title,
-    String description,
-    double screenHeight,
-    double screenWidth,
-    ThemeData theme,
-  ) {
+      BuildContext context,
+      String imagePath,
+      String title,
+      String description,
+      double screenHeight,
+      double screenWidth,
+      ThemeData theme,
+      ) {
     return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: screenWidth * 0.1,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Move image up slightly using Transform
           Transform.translate(
-            offset: const Offset(0, -40), // Negative Y offset moves it up
+            offset: const Offset(0, -40),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               height: screenHeight * 0.23,
               curve: Curves.easeInOut,
-              child: Image.asset(
-                imagePath,
-                fit: BoxFit.contain,
-              ),
+              child: Image.asset(imagePath, fit: BoxFit.contain),
             ),
           ),
 
-          // Title with enhanced animation
+          // Title
           AnimatedBuilder(
             animation: _animationController,
             builder: (context, child) {
@@ -246,46 +200,30 @@ class _GetStartedPageState extends State<GetStartedPage>
                   0,
                   sin(_animationController.value * 2 * 3.14159) * 3,
                 ),
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 500),
-                  opacity: 1,
-                  child: Text(
-                    title,
-                    style: GoogleFonts.poppins(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                      shadows: [
-                        Shadow(
-                          color: theme.colorScheme.secondary.withOpacity(0.5),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    textAlign: TextAlign.center,
+                child: Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        color: theme.colorScheme.secondary.withOpacity(0.5),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
+                  textAlign: TextAlign.center,
                 ),
               );
             },
           ),
           SizedBox(height: screenHeight * 0.02),
 
-          // Description with enhanced animation
+          // Description
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 500),
-            transitionBuilder: (Widget child, Animation<double> animation) {
-              return FadeTransition(
-                opacity: animation,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0.0, 0.2),
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: child,
-                ),
-              );
-            },
             child: Text(
               description,
               key: ValueKey<String>(description),
@@ -321,12 +259,12 @@ class _GetStartedPageState extends State<GetStartedPage>
             borderRadius: BorderRadius.circular(4),
             boxShadow: _currentPage == index
                 ? [
-                    BoxShadow(
-                      color: theme.colorScheme.secondary.withOpacity(0.5),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    )
-                  ]
+              BoxShadow(
+                color: theme.colorScheme.secondary.withOpacity(0.5),
+                blurRadius: 8,
+                spreadRadius: 1,
+              )
+            ]
                 : null,
           ),
           transform: Matrix4.identity()..scale(scale),
@@ -369,7 +307,6 @@ class _GetStartedPageState extends State<GetStartedPage>
       BuildContext context, double screenHeight, ThemeData theme) {
     return Column(
       children: [
-        // User Button
         ElevatedButton(
           onPressed: () {
             Get.offAll(() => AppUserLoginPage(userrole: 3),
@@ -388,38 +325,11 @@ class _GetStartedPageState extends State<GetStartedPage>
             shadowColor: Colors.black.withOpacity(0.3),
           ),
           child: Text(
-            "I'm a User",
+            "Get Started",
             style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: theme.colorScheme.primary,
-            ),
-          ),
-        ),
-        SizedBox(height: screenHeight * 0.015),
-
-        // Technician Button
-        OutlinedButton(
-          onPressed: () {
-            Get.offAll(() => TechnicianLoginPage(userrole: 2),
-                transition: Transition.rightToLeft,
-                duration: const Duration(milliseconds: 500));
-          },
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(color: Colors.white),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(50),
-            ),
-            padding: EdgeInsets.symmetric(vertical: screenHeight * 0.02),
-            minimumSize: Size(double.infinity, screenHeight * 0.065),
-          ),
-          child: Text(
-            "I'm a Technician",
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
             ),
           ),
         ),
@@ -431,28 +341,24 @@ class _GetStartedPageState extends State<GetStartedPage>
     double value = (position - pageIndex).abs();
     value = value.clamp(0.0, 1.0);
 
-    // Use theme colors for gradient
     final Color primaryColor = theme.colorScheme.primary;
     final Color backgroundColor = theme.colorScheme.background;
 
-    // Define a common color range for index 0 and 2
     final Color startColor = primaryColor;
     final Color midColor = Color.lerp(primaryColor, backgroundColor, 0.3)!;
     final Color endColor = Color.lerp(primaryColor, backgroundColor, 0.6)!;
 
     if (pageIndex == 0 || pageIndex == 2) {
-      // Use the same color range for index 0 and 2
       return Color.lerp(startColor, midColor, value)!;
     } else if (pageIndex == 1) {
       return Color.lerp(midColor, endColor, value)!;
     } else {
-      // Default fallback
       return backgroundColor;
     }
   }
 }
 
-// Custom painter for dot pattern background
+// Custom painter for dot background
 class DotPatternPainter extends CustomPainter {
   final double opacity;
   final Color color;
@@ -468,18 +374,13 @@ class DotPatternPainter extends CustomPainter {
       ..color = color.withOpacity(opacity * 0.3)
       ..style = PaintingStyle.fill;
 
-    final dotSize = 3.0;
-    final spacing = 20.0;
+    const dotSize = 3.0;
+    const spacing = 20.0;
 
     for (double x = 0; x < size.width; x += spacing) {
       for (double y = 0; y < size.height; y += spacing) {
-        // Create a staggered pattern
         if ((x / spacing).floor() % 2 == (y / spacing).floor() % 2) {
-          canvas.drawCircle(
-            Offset(x, y),
-            dotSize,
-            paint,
-          );
+          canvas.drawCircle(Offset(x, y), dotSize, paint);
         }
       }
     }

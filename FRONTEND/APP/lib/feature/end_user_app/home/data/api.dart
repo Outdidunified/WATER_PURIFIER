@@ -1,6 +1,6 @@
-import 'package:aquapulse_app/core/controllers/session_controller.dart';
-import 'package:aquapulse_app/core/services/base_api_service.dart';
-import 'package:aquapulse_app/feature/end_user_app/home/data/urls.dart';
+import 'package:ionhive_water_purifier/core/controllers/session_controller.dart';
+import 'package:ionhive_water_purifier/core/services/base_api_service.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/data/urls.dart';
 import 'package:get/get.dart';
 
 class SubscriptionApi extends BaseApiService {
@@ -29,6 +29,17 @@ class SubscriptionApi extends BaseApiService {
         'user_id': userId,
         'wp_device_id': wpDeviceId,
       },
+      responseParser: (data) => data as Map<String, dynamic>,
+    );
+  }
+
+  Future<Map<String, dynamic>> fetchTelemetryData({
+    required String wpDeviceId,
+  }) async {
+    final url = SubscriptionUrl.GetTelemetryData.url.replaceAll('{wp_device_id}', wpDeviceId);
+    return makeRequest<Map<String, dynamic>>(
+      url: url,
+      method: SubscriptionUrl.GetTelemetryData.method,
       responseParser: (data) => data as Map<String, dynamic>,
     );
   }

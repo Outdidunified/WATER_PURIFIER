@@ -1,20 +1,20 @@
 import 'dart:async';
-import 'package:aquapulse_app/feature/end_user_app/auth/presentation/pages/login_page.dart';
-import 'package:aquapulse_app/feature/end_user_app/landing_page_controller.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/presentation/pages/AboutAppPage/about_app_page.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/presentation/pages/ContactSupportPage/contact_support_page.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/presentation/pages/MyAccountPage/my_account_page.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/presentation/pages/NotificationsPage/notifications_page.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/presentation/pages/PaymentHistoryPage/payment_history_page.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/presentation/pages/PrivacyPage/privacy_page.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/presentation/pages/SubscriptionPlanPage/subscription_plan_page.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/presentation/controllers/settings_controller.dart';
-import 'package:aquapulse_app/feature/end_user_app/home/presentation/controllers/home_controller.dart'; // Contains SubscriptionController
-import 'package:aquapulse_app/core/controllers/session_controller.dart'; // For SessionController
+import 'package:ionhive_water_purifier/feature/end_user_app/auth/presentation/pages/login_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/landing_page_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/pages/AboutAppPage/about_app_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/pages/ContactSupportPage/contact_support_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/pages/MyAccountPage/my_account_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/pages/NotificationsPage/notifications_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/pages/PaymentHistoryPage/payment_history_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/pages/PrivacyPage/privacy_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/pages/SubscriptionPlanPage/subscription_plan_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/controllers/settings_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/presentation/controllers/home_controller.dart'; // Contains SubscriptionController
+import 'package:ionhive_water_purifier/core/controllers/session_controller.dart'; // For SessionController
 
-import 'package:aquapulse_app/utils/animation/animated_scale_button.dart';
-import 'package:aquapulse_app/utils/widgets/card/water_usage_card.dart';
-import 'package:aquapulse_app/utils/widgets/error/error_display_widget.dart';
+import 'package:ionhive_water_purifier/utils/animation/animated_scale_button.dart';
+import 'package:ionhive_water_purifier/utils/widgets/card/water_usage_card.dart';
+import 'package:ionhive_water_purifier/utils/widgets/error/error_display_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shimmer/shimmer.dart';
@@ -351,13 +351,13 @@ class _SettingsPageState extends State<SettingsPage> {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Obx(() {
         // Compute water usage and limit reactively inside Obx
-        int waterUsed = 0;
+        double waterUsed = 0.0;
         int waterLimit = 0;
         try {
           if (Get.isRegistered<SubscriptionController>()) {
             if (subscriptionController.deviceData.value != null) {
               waterUsed =
-                  subscriptionController.deviceData.value?.waterConsumed ?? 0;
+                  subscriptionController.deviceData.value?.waterConsumed ?? 0.0;
             }
             if (subscriptionController.activeSubscription.value != null) {
               final waterLimitStr = subscriptionController
@@ -1022,7 +1022,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            "Powered by Aqua",
+                            "Powered by IonHive",
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.primary,
                               fontWeight: FontWeight.bold,

@@ -1,10 +1,18 @@
-// Updated UserData model
 class UserData {
   final int? userId;
   final String? name;
   final String email;
   final int? phone;
+
+  // Address fields
+  final String? addressline1;
+  final String? addressline2;
   final String? city;
+  final String? district;
+  final String? state;
+  final String? country;
+  final String? pincode;
+
   final bool status;
   final bool isSubscribed;
   final DateTime createdDate;
@@ -15,7 +23,13 @@ class UserData {
     required this.name,
     required this.email,
     required this.phone,
-    required this.city,
+    this.addressline1,
+    this.addressline2,
+    this.city,
+    this.district,
+    this.state,
+    this.country,
+    this.pincode,
     required this.status,
     required this.isSubscribed,
     required this.createdDate,
@@ -28,13 +42,19 @@ class UserData {
       name: json['name'] as String?,
       email: json['email'] as String,
       phone: json['phone'] as int?,
+      addressline1: json['addressline1'] as String?,
+      addressline2: json['addressline2'] as String?,
       city: json['city'] as String?,
+      district: json['district'] as String?,
+      state: json['state'] as String?,
+      country: json['country'] as String?,
+      pincode: json['pincode'] as String?,
       status: json['status'] as bool,
       isSubscribed: json['is_subscribed'] as bool,
       createdDate: DateTime.parse(json['createdDate'] as String),
       modified_date: json['modifiedDate'] != null
           ? DateTime.parse(json['modifiedDate'] as String)
-          : null, // Map API's modifiedDate to modified_date
+          : null,
     );
   }
 
@@ -43,7 +63,13 @@ class UserData {
     String? name,
     String? email,
     int? phone,
+    String? addressline1,
+    String? addressline2,
     String? city,
+    String? district,
+    String? state,
+    String? country,
+    String? pincode,
     bool? status,
     bool? isSubscribed,
     DateTime? createdDate,
@@ -54,7 +80,13 @@ class UserData {
       name: name ?? this.name,
       email: email ?? this.email,
       phone: phone ?? this.phone,
+      addressline1: addressline1 ?? this.addressline1,
+      addressline2: addressline2 ?? this.addressline2,
       city: city ?? this.city,
+      district: district ?? this.district,
+      state: state ?? this.state,
+      country: country ?? this.country,
+      pincode: pincode ?? this.pincode,
       status: status ?? this.status,
       isSubscribed: isSubscribed ?? this.isSubscribed,
       createdDate: createdDate ?? this.createdDate,
@@ -62,6 +94,7 @@ class UserData {
     );
   }
 }
+
 
 // Updated UserDetailsModel
 class UserDetailsModel {

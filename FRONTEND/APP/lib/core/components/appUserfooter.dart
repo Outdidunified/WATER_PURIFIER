@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:aquapulse_app/utils/responsive/responsive.dart';
+import 'package:ionhive_water_purifier/utils/responsive/responsive.dart';
 
 class Footer extends StatelessWidget {
   final Function(int) onTabChanged;

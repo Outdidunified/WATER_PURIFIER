@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "34783787568",
+    "project_id": "outdid-vts",
+    "storage_bucket": "outdid-vts.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:34783787568:android:a09f9e24ad0618d6078bf5",
+        "android_client_info": {
+          "package_name": "com.anish.fcm_demo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAfv3GKwcIpVpJEeiffwJaKOEXwXqNLgS0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:34783787568:android:e233dc10f5d8de78078bf5",
+        "android_client_info": {
+          "package_name": "com.outdid.aquapulse_technician"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAfv3GKwcIpVpJEeiffwJaKOEXwXqNLgS0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

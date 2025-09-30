@@ -1,15 +1,15 @@
 // feature/end_user_app/landing_page.dart
-import 'package:aquapulse_app/feature/end_user_app/analytics/presentation/pages/analytics_page.dart';
-import 'package:aquapulse_app/feature/end_user_app/home/presentation/pages/home_page.dart';
-import 'package:aquapulse_app/feature/end_user_app/home/presentation/pages/subscription_prompt_page.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/presentation/pages/settings_page.dart';
-import 'package:aquapulse_app/feature/end_user_app/shop/presentation/pages/shop_page.dart';
-import 'package:aquapulse_app/utils/widgets/snackbar/custom_snackbar.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/analytics/presentation/pages/analytics_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/presentation/pages/home_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/presentation/pages/subscription_prompt_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/pages/settings_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/shop/presentation/pages/shop_page.dart';
+import 'package:ionhive_water_purifier/utils/widgets/snackbar/custom_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:aquapulse_app/core/components/appUserfooter.dart';
-import 'package:aquapulse_app/core/controllers/session_controller.dart';
-import 'package:aquapulse_app/feature/end_user_app/landing_page_controller.dart';
+import 'package:ionhive_water_purifier/core/components/appUserfooter.dart';
+import 'package:ionhive_water_purifier/core/controllers/session_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/landing_page_controller.dart';
 
 class AppUserLandingPage extends StatefulWidget {
   const AppUserLandingPage({super.key});

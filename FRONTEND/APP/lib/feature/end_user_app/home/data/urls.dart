@@ -1,5 +1,5 @@
-import 'package:aquapulse_app/core/core.dart';
-import 'package:aquapulse_app/core/services/endpoint.dart';
+import 'package:ionhive_water_purifier/core/core.dart';
+import 'package:ionhive_water_purifier/core/services/endpoint.dart';
 
 class SubscriptionUrl {
   static final Endpoint GetActiveSubscription = Endpoint(
@@ -10,5 +10,10 @@ class SubscriptionUrl {
   static final Endpoint GetLatestFeatureValues = Endpoint(
     url: '${Core.baseUrl}/api/app/enduserhome/getLatestFeatureValues',
     method: 'POST',
+  );
+
+  static final Endpoint GetTelemetryData = Endpoint(
+    url: '${Core.baseUrl}/api/app/telemetry/latest/{wp_device_id}',
+    method: 'GET',
   );
 }

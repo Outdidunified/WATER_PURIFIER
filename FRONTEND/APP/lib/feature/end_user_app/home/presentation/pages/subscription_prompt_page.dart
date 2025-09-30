@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'dart:math' as math;
-import 'package:aquapulse_app/feature/end_user_app/landing_page_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/landing_page_controller.dart';
 
 class SubscriptionPromptPage extends StatelessWidget {
   const SubscriptionPromptPage({super.key});
@@ -11,7 +11,7 @@ class SubscriptionPromptPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppUserLandingPageController controller =
-        Get.find<AppUserLandingPageController>();
+    Get.find<AppUserLandingPageController>();
 
     return Scaffold(
       body: Stack(
@@ -32,8 +32,8 @@ class SubscriptionPromptPage extends StatelessWidget {
           SafeArea(
             child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0, vertical: 40.0),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -42,13 +42,11 @@ class SubscriptionPromptPage extends StatelessWidget {
                       alignment: Alignment.center,
                       children: [
                         Container(
-                          height:
-                              180, // Increased height for larger wave effect
+                          height: 180,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                Colors.white.withOpacity(
-                                    0.3), // Slightly increased opacity
+                                Colors.white.withOpacity(0.3),
                                 Colors.white.withOpacity(0.15),
                               ],
                               begin: Alignment.topCenter,
@@ -128,6 +126,15 @@ class SubscriptionPromptPage extends StatelessWidget {
                       description: "Stay ahead with leak and overuse alerts.",
                       delay: 600,
                     ),
+                    // ✅ Added Free Filter Replacement as a Benefit (not premium feature)
+                    _buildBenefitTile(
+                      context,
+                      icon: Icons.filter_alt,
+                      title: "Free Filter Replacement",
+                      description:
+                      "Enjoy free filter replacement every 3 months to ensure clean water.",
+                      delay: 800,
+                    ),
                     const SizedBox(height: 40),
 
                     // Product Showcase Section
@@ -150,9 +157,18 @@ class SubscriptionPromptPage extends StatelessWidget {
                     _buildProductCard(
                       context,
                       imageUrl: "assets/Image/aquapulse_logo.png",
-                      title: "Smart Leak Detector",
-                      description: "Protect your home with smart detection.",
+                      title: "Free Service",
+                      description:
+                      "Every 3 months free maintenance check-up.",
                       delay: 400,
+                    ),
+                    _buildProductCard(
+                      context,
+                      imageUrl: "assets/Image/aquapulse_logo.png",
+                      title: "Priority Support",
+                      description:
+                      "Get 24/7 customer support with premium response time.",
+                      delay: 600,
                     ),
                     const SizedBox(height: 40),
 
@@ -161,13 +177,13 @@ class SubscriptionPromptPage extends StatelessWidget {
                       duration: const Duration(milliseconds: 800),
                       child: GestureDetector(
                         onTap: () {
-                          // Navigate to ShopPage by updating the page index
                           controller.changePage(2);
                         },
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 18),
+                              horizontal: 20,
+                              vertical: 12), // smaller button padding
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [
@@ -177,13 +193,14 @@ class SubscriptionPromptPage extends StatelessWidget {
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius:
+                            BorderRadius.circular(20), // smaller radius
                           ),
                           child: Center(
                             child: Text(
                               "Purchase Now!",
                               style: GoogleFonts.poppins(
-                                fontSize: 20,
+                                fontSize: 16, // smaller text
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
@@ -204,12 +221,12 @@ class SubscriptionPromptPage extends StatelessWidget {
   }
 
   Widget _buildBenefitTile(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String description,
-    required int delay,
-  }) {
+      BuildContext context, {
+        required IconData icon,
+        required String title,
+        required String description,
+        required int delay,
+      }) {
     return FadeInLeft(
       duration: const Duration(milliseconds: 600),
       delay: Duration(milliseconds: delay),
@@ -236,9 +253,9 @@ class SubscriptionPromptPage extends StatelessWidget {
                   end: Alignment.bottomRight,
                 ),
               ),
-              child: Icon(icon, color: Colors.white, size: 36),
+              child: Icon(icon, color: Colors.white, size: 28), // smaller icon
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,7 +263,7 @@ class SubscriptionPromptPage extends StatelessWidget {
                   Text(
                     title,
                     style: GoogleFonts.poppins(
-                      fontSize: 18,
+                      fontSize: 16, // smaller text
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
                     ),
@@ -255,7 +272,7 @@ class SubscriptionPromptPage extends StatelessWidget {
                   Text(
                     description,
                     style: GoogleFonts.poppins(
-                      fontSize: 14,
+                      fontSize: 12, // smaller text
                       color: Colors.white.withOpacity(0.8),
                     ),
                   ),
@@ -269,26 +286,26 @@ class SubscriptionPromptPage extends StatelessWidget {
   }
 
   Widget _buildProductCard(
-    BuildContext context, {
-    required String imageUrl,
-    required String title,
-    required String description,
-    required int delay,
-  }) {
+      BuildContext context, {
+        required String imageUrl,
+        required String title,
+        required String description,
+        required int delay,
+      }) {
     return FadeInRight(
       duration: const Duration(milliseconds: 600),
       delay: Duration(milliseconds: delay),
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 10),
+        margin: const EdgeInsets.symmetric(vertical: 8),
         child: Material(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          elevation: 8,
+          borderRadius: BorderRadius.circular(16), // smaller radius
+          elevation: 6, // smaller shadow
           child: InkWell(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 gradient: LinearGradient(
                   colors: [
                     Colors.white,
@@ -298,7 +315,7 @@ class SubscriptionPromptPage extends StatelessWidget {
                   end: Alignment.bottomRight,
                 ),
               ),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12), // smaller padding
               child: Row(
                 children: [
                   Container(
@@ -306,9 +323,9 @@ class SubscriptionPromptPage extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          spreadRadius: 2,
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 6,
+                          spreadRadius: 1,
                           offset: const Offset(0, 2),
                         ),
                       ],
@@ -316,20 +333,20 @@ class SubscriptionPromptPage extends StatelessWidget {
                     child: ClipOval(
                       child: Image.asset(
                         imageUrl,
-                        width: 90,
-                        height: 90,
+                        width: 60, // smaller image
+                        height: 60,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return const Icon(
                             Icons.broken_image,
-                            size: 90,
+                            size: 60,
                             color: Colors.grey,
                           );
                         },
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,16 +354,16 @@ class SubscriptionPromptPage extends StatelessWidget {
                         Text(
                           title,
                           style: GoogleFonts.poppins(
-                            fontSize: 20,
+                            fontSize: 16, // smaller text
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         Text(
                           description,
                           style: GoogleFonts.poppins(
-                            fontSize: 14,
+                            fontSize: 12, // smaller text
                             color: Colors.black54,
                           ),
                         ),
@@ -384,7 +401,6 @@ class _BubbleBackgroundState extends State<BubbleBackground>
       duration: const Duration(seconds: 10),
     )..repeat();
 
-    // Generate 15 bubbles with random properties
     for (int i = 0; i < 15; i++) {
       bubbles.add(Bubble(
         x: math.Random().nextDouble() * 400,
@@ -437,29 +453,22 @@ class BubblePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Sort bubbles by radius (largest to smallest) to create layering effect
     bubbles.sort((a, b) => b.radius.compareTo(a.radius));
 
     for (var bubble in bubbles) {
-      // Calculate opacity based on size (larger bubbles are more transparent)
-      double opacity =
-          0.1 + (bubble.radius / 30) * 0.2; // Ranges from 0.1 to 0.3
+      double opacity = 0.1 + (bubble.radius / 30) * 0.2;
       final paint = Paint()
         ..style = PaintingStyle.fill
         ..color = Colors.white.withOpacity(opacity.clamp(0.1, 0.3));
 
-      // Update bubble position (move upwards)
       bubble.y -= bubble.speed;
-      // Add a slight horizontal sway
       bubble.x += math.sin(bubble.y * 0.02) * 0.5;
 
-      // Reset bubble to the bottom if it goes off-screen
       if (bubble.y < -bubble.radius) {
         bubble.y = size.height + bubble.radius;
         bubble.x = math.Random().nextDouble() * size.width;
       }
 
-      // Draw the bubble
       canvas.drawCircle(
         Offset(bubble.x, bubble.y),
         bubble.radius,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:aquapulse_app/core/controllers/connectivity_controller.dart';
-import 'package:aquapulse_app/utils/widgets/snackbar/custom_snackbar.dart';
+import 'package:ionhive_water_purifier/core/controllers/connectivity_controller.dart';
+import 'package:ionhive_water_purifier/utils/widgets/snackbar/custom_snackbar.dart';
 
 class NoInternetScreen extends StatefulWidget {
   const NoInternetScreen({super.key});

@@ -1,5 +1,5 @@
-import 'package:aquapulse_app/core/services/base_api_service.dart';
-import 'package:aquapulse_app/feature/end_user_app/auth/data/urls.dart';
+import 'package:ionhive_water_purifier/core/services/base_api_service.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/auth/data/urls.dart';
 
 class AppUserAuthAPICalls extends BaseApiService {
   Future<Map<String, dynamic>> GetOTP(String email) async {

@@ -1,4 +1,4 @@
-# aquapulse_app
+# ionhive_water_purifier
 
 A new Flutter project.
 

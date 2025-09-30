@@ -1,8 +1,10 @@
-import 'package:aquapulse_app/feature/end_user_app/settings/data/api.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/domain/models/payment_history_model.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/domain/models/settings_model.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/domain/models/service_request_model.dart';
-import 'package:aquapulse_app/utils/widgets/snackbar/custom_snackbar.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/models/home_model.dart'
+as home_models;
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/data/api.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/domain/models/payment_history_model.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/domain/models/settings_model.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/domain/models/service_request_model.dart';
+import 'package:ionhive_water_purifier/utils/widgets/snackbar/custom_snackbar.dart';
 
 class RepositoryResponse<T> {
   final bool error;
@@ -11,6 +13,8 @@ class RepositoryResponse<T> {
 
   RepositoryResponse({required this.error, this.message, this.data});
 }
+
+
 
 class SettingsRepository {
   final SettingsApi _api = SettingsApi();
@@ -42,8 +46,8 @@ class SettingsRepository {
 
       if (success) {
         final paymentHistoryList =
-            paymentData.map((item) => PaymentHistory.fromJson(item)).toList();
-        // Sort by createdAt in descending order (most recent first)
+        paymentData.map((item) => PaymentHistory.fromJson(item)).toList();
+        // Sort by createdAt in descending order
         paymentHistoryList.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         return RepositoryResponse<List<PaymentHistory>>(
           error: false,
@@ -68,13 +72,18 @@ class SettingsRepository {
     }
   }
 
-// Updated _settingsRepository.updateUserDetails
   Future<RepositoryResponse<Map<String, dynamic>>> updateUserDetails({
     required int? userId,
     required String email,
     required String name,
     required int phone,
+    required String addressline1,
+    required String addressline2,
     required String city,
+    required String district,
+    required String state,
+    required String country,
+    required String pincode,
   }) async {
     try {
       final json = await _api.updateUserDetails(
@@ -82,8 +91,15 @@ class SettingsRepository {
         email: email,
         name: name,
         phone: phone,
+        addressline1: addressline1,
+        addressline2: addressline2,
         city: city,
+        district: district,
+        state: state,
+        country: country,
+        pincode: pincode,
       );
+
       final bool error = json['error'] as bool? ?? true;
       final String? message = json['message'] as String?;
       return RepositoryResponse<Map<String, dynamic>>(
@@ -92,7 +108,7 @@ class SettingsRepository {
             (error
                 ? 'Failed to update user details'
                 : 'User details updated successfully'),
-        data: json['data'] as Map<String, dynamic>?, // Return data for parsing
+        data: json['data'] as Map<String, dynamic>?,
       );
     } catch (e) {
       return RepositoryResponse<Map<String, dynamic>>(
@@ -186,6 +202,28 @@ class SettingsRepository {
       );
     } catch (e) {
       return RepositoryResponse<void>(
+        error: true,
+        message: 'Note: ${e.toString()}',
+        data: null,
+      );
+    }
+  }
+
+  Future<RepositoryResponse<List<home_models.Order>>>
+  fetchActiveSubscriptions() async {
+    try {
+      final json = await _api.fetchActiveSubscriptions();
+      final bool error = json['error'] as bool? ?? true;
+      final String message = json['message'] as String? ?? '';
+      final List<dynamic> data = json['data'] as List<dynamic>? ?? [];
+
+      return RepositoryResponse<List<home_models.Order>>(
+        error: error,
+        message: message,
+        data: error ? null : data.map((item) => home_models.Order.fromJson(item as Map<String, dynamic>)).toList(),
+      );
+    } catch (e) {
+      return RepositoryResponse<List<home_models.Order>>(
         error: true,
         message: 'Note: ${e.toString()}',
         data: null,

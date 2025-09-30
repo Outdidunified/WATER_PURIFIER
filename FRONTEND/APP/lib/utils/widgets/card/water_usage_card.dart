@@ -1,9 +1,9 @@
-import 'package:aquapulse_app/utils/animation/water_wave_painter.dart';
+import 'package:ionhive_water_purifier/utils/animation/water_wave_painter.dart';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
 class WaterUsageCard extends StatefulWidget {
-  final int waterUsed;
+  final double waterUsed;
   final int waterLimit;
   final double width;
 
@@ -127,7 +127,9 @@ class _WaterUsageCardState extends State<WaterUsageCard>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          "${widget.waterUsed}",
+                          widget.waterUsed < 1.0
+                              ? "${(widget.waterUsed * 1000).toStringAsFixed(1)}"
+                              : "${widget.waterUsed.toStringAsFixed(1)}",
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.primary,
@@ -142,7 +144,7 @@ class _WaterUsageCardState extends State<WaterUsageCard>
                           ),
                         ),
                         Text(
-                          "Ltrs",
+                          widget.waterUsed < 1.0 ? "ml" : "Ltrs",
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.8),
                             fontSize: screenWidth * 0.03,
@@ -168,7 +170,9 @@ class _WaterUsageCardState extends State<WaterUsageCard>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "You've used ${widget.waterUsed} liters out of your ${widget.waterLimit}-liter plan.",
+                      widget.waterUsed < 1.0
+                          ? "You've used ${(widget.waterUsed * 1000).toStringAsFixed(1)} ml out of your ${widget.waterLimit}-liter plan."
+                          : "You've used ${widget.waterUsed.toStringAsFixed(1)} liters out of your ${widget.waterLimit}-liter plan.",
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurface.withOpacity(0.6),
                         fontSize: screenWidth * 0.035,

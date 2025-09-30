@@ -7,6 +7,7 @@ class MessageModel {
   final bool showOptions;
   final bool showContactOptions;
   final bool showConfirmButtons;
+  final bool showDeviceSelection;
   final File? file;
 
   MessageModel({
@@ -16,6 +17,7 @@ class MessageModel {
     this.showOptions = false,
     this.showContactOptions = false,
     this.showConfirmButtons = false,
+    this.showDeviceSelection = false,
     this.file,
   });
 
@@ -27,6 +29,7 @@ class MessageModel {
         'showOptions': showOptions,
         'showContactOptions': showContactOptions,
         'showConfirmButtons': showConfirmButtons,
+        'showDeviceSelection': showDeviceSelection,
         'filePath': file?.path,
       };
 
@@ -38,6 +41,7 @@ class MessageModel {
         showOptions: json['showOptions'] as bool? ?? false,
         showContactOptions: json['showContactOptions'] as bool? ?? false,
         showConfirmButtons: json['showConfirmButtons'] as bool? ?? false,
+        showDeviceSelection: json['showDeviceSelection'] as bool? ?? false,
         file:
             json['filePath'] != null ? File(json['filePath'] as String) : null,
       );
@@ -50,6 +54,7 @@ class MessageModel {
     bool? showOptions,
     bool? showContactOptions,
     bool? showConfirmButtons,
+    bool? showDeviceSelection,
     File? file,
   }) {
     return MessageModel(
@@ -59,6 +64,7 @@ class MessageModel {
       showOptions: showOptions ?? this.showOptions,
       showContactOptions: showContactOptions ?? this.showContactOptions,
       showConfirmButtons: showConfirmButtons ?? this.showConfirmButtons,
+      showDeviceSelection: showDeviceSelection ?? this.showDeviceSelection,
       file: file ?? this.file,
     );
   }

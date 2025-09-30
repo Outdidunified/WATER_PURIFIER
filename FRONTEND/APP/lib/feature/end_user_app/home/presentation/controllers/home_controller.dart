@@ -1,40 +1,59 @@
-import 'package:aquapulse_app/feature/end_user_app/home/domain/repositories/home_repository.dart';
+import 'dart:async';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/repositories/home_repository.dart';
 import 'package:get/get.dart';
-import 'package:aquapulse_app/feature/end_user_app/home/domain/models/home_model.dart';
-import 'package:aquapulse_app/feature/end_user_app/home/domain/models/device_model.dart';
-import 'package:aquapulse_app/core/controllers/session_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/models/home_model.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/models/device_model.dart';
+import 'package:ionhive_water_purifier/core/controllers/session_controller.dart';
 
 class SubscriptionController extends GetxController {
   final SubscriptionRepository _repository = SubscriptionRepository();
 
-  Rx<Subscription?> activeSubscription = Rx<Subscription?>(null);
+  // List of all orders/subscriptions
+  RxList<Order> orders = <Order>[].obs;
+  // Currently selected/active subscription for display
+  Rx<Order?> activeSubscription = Rx<Order?>(null);
   Rx<DeviceData?> deviceData = Rx<DeviceData?>(null);
   RxBool isLoading = false.obs;
   RxString errorMessage = ''.obs;
 
+  Timer? _telemetryTimer;
+
   @override
   void onInit() {
     super.onInit();
-    fetchActiveSubscription();
-    fetchLatestFeatureValues();
+    fetchOrders();
+    fetchLatestFeatureValues(showLoading: true);
+    _startTelemetryPolling();
   }
 
-  Future<void> fetchActiveSubscription() async {
+  @override
+  void onClose() {
+    _telemetryTimer?.cancel();
+    super.onClose();
+  }
+
+  void _startTelemetryPolling() {
+    // Start polling every 5 seconds for telemetry data
+    _telemetryTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (activeSubscription.value != null) {
+        fetchLatestFeatureValues();
+      }
+    });
+  }
+
+  Future<void> fetchOrders() async {
     isLoading.value = true;
-    // Don't clear error message until we have a successful response
-    // This allows us to keep showing the error banner with cached data
 
     try {
-      final response = await _repository.getActiveSubscription();
+      final response = await _repository.getOrdersByUserId();
       final sessionController = Get.find<SessionController>();
 
       if (!response.error) {
-        // Clear error message on success
         errorMessage.value = '';
 
-        // Check if subscription data is null (user is not subscribed)
-        if (response.data == null || response.data?.subscription == null) {
-          // Update session controller to reflect user is not subscribed
+        if (response.data.isEmpty) {
+          // No orders found
+          orders.clear();
           activeSubscription.value = null;
           await sessionController.saveSession(
             userId: sessionController.userId.value,
@@ -46,8 +65,14 @@ class SubscriptionController extends GetxController {
             technicianId: sessionController.technicianId.value,
           );
         } else {
-          // User has an active subscription
-          activeSubscription.value = response.data?.subscription;
+          // Save orders list
+          orders.assignAll(response.data);
+
+          // Set active subscription to first order
+          activeSubscription.value = response.data.first;
+
+          // Pick first active order/device for subscription flag
+          final firstOrder = response.data.first;
           await sessionController.saveSession(
             userId: sessionController.userId.value,
             emailId: sessionController.emailId.value,
@@ -59,20 +84,33 @@ class SubscriptionController extends GetxController {
           );
         }
       } else {
-        // Error in response - set error message but don't clear existing data
         errorMessage.value = response.message;
-        // On error, don't change subscription status
       }
     } catch (e) {
-      // Set error message but don't clear existing data
       errorMessage.value = "Note: $e";
     } finally {
       isLoading.value = false;
     }
   }
 
-  Future<void> fetchLatestFeatureValues() async {
-    isLoading.value = true;
+  // Method to select a specific subscription
+  void selectSubscription(Order order) {
+    activeSubscription.value = order;
+    // Clear device data immediately when switching devices
+    deviceData.value = null;
+    // Fetch latest feature values for the selected device
+    fetchLatestFeatureValues(showLoading: true);
+  }
+
+  Future<void> fetchActiveSubscription() async {
+    // Alias for backward compatibility - just fetch orders
+    await fetchOrders();
+  }
+
+  Future<void> fetchLatestFeatureValues({bool showLoading = false}) async {
+    if (showLoading) {
+      isLoading.value = true;
+    }
     // Don't clear error message until we have a successful response
     // This allows us to keep showing the error banner with cached data
 
@@ -96,19 +134,16 @@ class SubscriptionController extends GetxController {
         return;
       }
 
-      final response = await _repository.getLatestFeatureValues(
-        userId: sessionController.userId.value,
+      final response = await _repository.getTelemetryData(
         wpDeviceId: deviceId,
       );
 
       if (!response.error) {
-        // Only update device data if we got new data
-        if (response.data != null) {
-          deviceData.value = response.data;
-          // Clear error message on success only if fetchActiveSubscription didn't set one
-          if (errorMessage.value.contains('feature values')) {
-            errorMessage.value = '';
-          }
+        // Update device data - set to null if no data available
+        deviceData.value = response.data;
+        // Clear error message on success only if fetchActiveSubscription didn't set one
+        if (errorMessage.value.contains('feature values')) {
+          errorMessage.value = '';
         }
       } else {
         // Set error message but don't clear existing data

@@ -1,14 +1,16 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:aquapulse_app/core/controllers/session_controller.dart';
-import 'package:aquapulse_app/feature/end_user_app/home/domain/models/device_model.dart';
-import 'package:aquapulse_app/feature/end_user_app/home/presentation/controllers/home_controller.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/domain/models/payment_history_model.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/domain/repositories/settings_repository.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/domain/models/settings_model.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/domain/models/message_model.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/presentation/pages/ContactSupportPage/ai_service.dart';
-import 'package:aquapulse_app/utils/widgets/snackbar/custom_snackbar.dart';
+import 'package:ionhive_water_purifier/core/controllers/session_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/models/device_model.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/models/home_model.dart' as home_models;
+import 'package:ionhive_water_purifier/feature/end_user_app/home/presentation/controllers/home_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/presentation/controllers/subscription_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/domain/models/payment_history_model.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/domain/repositories/settings_repository.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/domain/models/settings_model.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/domain/models/message_model.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/pages/ContactSupportPage/ai_service.dart';
+import 'package:ionhive_water_purifier/utils/widgets/snackbar/custom_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -27,6 +29,13 @@ class SettingsController extends GetxController {
   final editNameController = TextEditingController();
   final editPhoneController = TextEditingController();
   final editCityController = TextEditingController();
+  // New address controllers
+  final editAddressLine1Controller = TextEditingController();
+  final editAddressLine2Controller = TextEditingController();
+  final editDistrictController = TextEditingController();
+  final editStateController = TextEditingController();
+  final editCountryController = TextEditingController();
+  final editPincodeController = TextEditingController();
   final formKey = GlobalKey<FormState>();
   var isFormValid = false.obs;
   var isEditLoading = false.obs;
@@ -73,9 +82,11 @@ class SettingsController extends GetxController {
   var isCollectingServiceRequest = false.obs;
   var isSubmitting = false.obs;
   var isTyping = false.obs; // For typing indicator
-  var currentStep = Rx<String?>(null); // 'description', 'direction', 'confirm'
+  var currentStep = Rx<String?>(null); // 'device_selection', 'description', 'direction', 'confirm'
   var taskDescription = Rx<String?>(null);
   var direction = Rx<String?>(null);
+  var activeSubscriptions = RxList<home_models.Order>([]);
+  var selectedDeviceId = Rx<String?>(null);
 
   final SettingsRepository _settingsRepository;
   final AIService _aiService;
@@ -92,6 +103,7 @@ class SettingsController extends GetxController {
     fetchUserDetails();
     fetchPaymentHistory();
     getDeviceData();
+    fetchActiveSubscriptions();
   }
 
   // Get device data from the home controller
@@ -110,6 +122,23 @@ class SettingsController extends GetxController {
     }
   }
 
+  // Fetch active subscriptions for device selection
+  Future<void> fetchActiveSubscriptions() async {
+    try {
+      final response = await _settingsRepository.fetchActiveSubscriptions();
+      if (response.error == false && response.data != null) {
+        activeSubscriptions.assignAll(response.data!);
+        debugPrint('Fetched ${activeSubscriptions.length} active subscriptions');
+      } else {
+        debugPrint('Error fetching active subscriptions: ${response.message}');
+        activeSubscriptions.clear();
+      }
+    } catch (e) {
+      debugPrint('Error fetching active subscriptions: $e');
+      activeSubscriptions.clear();
+    }
+  }
+
   @override
   void onClose() {
     messageController.dispose();
@@ -125,6 +154,13 @@ class SettingsController extends GetxController {
     editNameController.text = userData.value?.data.name ?? '';
     editPhoneController.text = userData.value?.data.phone?.toString() ?? '';
     editCityController.text = userData.value?.data.city ?? '';
+    // initialize address fields
+    editAddressLine1Controller.text = userData.value?.data.addressline1 ?? '';
+    editAddressLine2Controller.text = userData.value?.data.addressline2 ?? '';
+    editDistrictController.text = userData.value?.data.district ?? '';
+    editStateController.text = userData.value?.data.state ?? '';
+    editCountryController.text = userData.value?.data.country ?? '';
+    editPincodeController.text = userData.value?.data.pincode ?? '';
     validateForm();
     _isFormInitialized = true;
   }
@@ -226,119 +262,94 @@ class SettingsController extends GetxController {
 
 // Updated updateUserDetails in SettingsController
   Future<void> updateUserDetails({
-    required int? userId,
-    required String email,
-    required String name,
-    required String phone,
-    required String city,
-  }) async {
-    try {
-      isEditLoading(true);
-      await Future.delayed(const Duration(seconds: 2));
+  required int? userId,
+  required String email,
+  required String name,
+  required String phone,
+  required String addressline1,
+  required String addressline2,
+  required String city,
+  required String district,
+  required String state,
+  required String country,
+  required String pincode,
+}) async {
+  try {
+    isEditLoading(true);
 
-      final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
-      final phoneInt = int.parse(cleanPhone);
+    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    final phoneInt = int.parse(cleanPhone);
 
-      // Get current user data for comparison
-      final currentData = userData.value?.data;
-      if (currentData != null &&
-          name == (currentData.name ?? '') &&
-          cleanPhone == (currentData.phone?.toString() ?? '') &&
-          city == (currentData.city ?? '')) {
-        CustomSnackbar.showInfo(message: 'No changes made to update.');
-        isEditLoading(false);
-        return;
-      }
-
-      final response = await _settingsRepository.updateUserDetails(
-        userId: userId,
-        email: email,
-        name: name,
-        phone: phoneInt,
-        city: city,
-      );
-
-      if (response.error == false) {
-        // Update userData with API response data
-        if (response.data != null) {
-          try {
-            // Ensure all required fields are present and properly typed
-            final Map<String, dynamic> safeData = {
-              'user_id':
-                  response.data?['user_id'] ?? userData.value?.data.userId,
-              'name': response.data?['name'] ?? name,
-              'email': userData.value?.data.email ??
-                  email, // Ensure email is present
-              'phone': response.data?['phone'] ?? phoneInt,
-              'city': response.data?['city'] ?? city,
-              'status': userData.value?.data.status ?? true,
-              'is_subscribed': userData.value?.data.isSubscribed ?? false,
-              'createdDate':
-                  userData.value?.data.createdDate.toIso8601String() ??
-                      DateTime.now().toIso8601String(),
-              'modifiedDate': response.data?['modifiedDate'] ??
-                  DateTime.now().toIso8601String(),
-            };
-
-            userData.value = UserDetailsModel.fromJson({
-              'error': false,
-              'message':
-                  response.message ?? 'User details updated successfully',
-              'data': safeData,
-            });
-
-            debugPrint('Updated user data: $safeData');
-          } catch (e) {
-            debugPrint('Error parsing response data: $e');
-            // Fallback if parsing fails
-            final updatedData = userData.value!.data.copyWith(
-              name: name,
-              phone: phoneInt,
-              city: city,
-              modified_date: DateTime.now(),
-            );
-            userData.value = userData.value!.copyWith(data: updatedData);
-          }
-        } else {
-          // Fallback if API doesn't return full data
-          final updatedData = userData.value!.data.copyWith(
-            name: name,
-            phone: phoneInt,
-            city: city,
-            modified_date: DateTime.now(),
-          );
-          userData.value = userData.value!.copyWith(data: updatedData);
-        }
-
-        final sessionController = Get.find<SessionController>();
-        await sessionController.saveSession(
-          userId: sessionController.userId.value,
-          emailId: sessionController.emailId.value,
-          token: sessionController.token.value,
-          userRole: sessionController.userRole.value,
-          username: name,
-          isSubscribed: sessionController.isSubscribed.value,
-          technicianId: sessionController.technicianId.value,
-        );
-
-        CustomSnackbar.showSuccess(
-            message: 'User details updated successfully');
-        debugPrint(
-            'Updated modified_date: ${userData.value?.data.modified_date}');
-
-        await Future.delayed(const Duration(seconds: 2));
-        Get.back();
-      } else {
-        CustomSnackbar.showError(
-            message: 'Issue while updating your account: ${response.message}');
-      }
-    } catch (e) {
-      CustomSnackbar.showError(message: e.toString());
-      // rethrow;
-    } finally {
+    // Check if any change
+    final currentData = userData.value?.data;
+    if (currentData != null &&
+        name == (currentData.name ?? '') &&
+        cleanPhone == (currentData.phone?.toString() ?? '') &&
+        city == (currentData.city ?? '') &&
+        addressline1 == (currentData.addressline1 ?? '') &&
+        addressline2 == (currentData.addressline2 ?? '') &&
+        district == (currentData.district ?? '') &&
+        state == (currentData.state ?? '') &&
+        country == (currentData.country ?? '') &&
+        pincode == (currentData.pincode ?? '')) {
+      CustomSnackbar.showInfo(message: 'No changes made to update.');
       isEditLoading(false);
+      return;
     }
+
+    final response = await _settingsRepository.updateUserDetails(
+      userId: userId,
+      email: email,
+      name: name,
+      phone: phoneInt,
+      addressline1: addressline1,
+      addressline2: addressline2,
+      city: city,
+      district: district,
+      state: state,
+      country: country,
+      pincode: pincode,
+    );
+
+    if (response.error == false && response.data != null) {
+      final Map<String, dynamic> safeData = {
+        'user_id': response.data?['user_id'] ?? userId,
+        'name': response.data?['name'] ?? name,
+        'email': response.data?['email'] ?? email,
+        'phone': response.data?['phone'] ?? phoneInt,
+        'addressline1': response.data?['addressline1'] ?? addressline1,
+        'addressline2': response.data?['addressline2'] ?? addressline2,
+        'city': response.data?['city'] ?? city,
+        'district': response.data?['district'] ?? district,
+        'state': response.data?['state'] ?? state,
+        'country': response.data?['country'] ?? country,
+        'pincode': response.data?['pincode'] ?? pincode,
+        'status': currentData?.status ?? true,
+        'is_subscribed': currentData?.isSubscribed ?? false,
+        'createdDate':
+            currentData?.createdDate.toIso8601String() ?? DateTime.now().toIso8601String(),
+        'modifiedDate': response.data?['modifiedDate'] ?? DateTime.now().toIso8601String(),
+      };
+
+      userData.value = UserDetailsModel.fromJson({
+        'error': false,
+        'message': response.message ?? 'User details updated successfully',
+        'data': safeData,
+      });
+
+      CustomSnackbar.showSuccess(message: 'User details updated successfully');
+      await Future.delayed(const Duration(seconds: 2));
+      Get.back();
+    } else {
+      CustomSnackbar.showError(
+          message: 'Issue while updating your account: ${response.message}');
+    }
+  } catch (e) {
+    CustomSnackbar.showError(message: e.toString());
+  } finally {
+    isEditLoading(false);
   }
+}
 
   Future<void> saveChanges() async {
     if (_saveDebounce?.isActive ?? false) return;
@@ -354,7 +365,13 @@ class SettingsController extends GetxController {
         email: userData.email,
         name: editNameController.text.trim(),
         phone: editPhoneController.text.trim(),
+        addressline1: editAddressLine1Controller.text.trim(),
+        addressline2: editAddressLine2Controller.text.trim(),
         city: editCityController.text.trim(),
+        district: editDistrictController.text.trim(),
+        state: editStateController.text.trim(),
+        country: editCountryController.text.trim(),
+        pincode: editPincodeController.text.trim(),
       );
     });
   }
@@ -526,6 +543,24 @@ class SettingsController extends GetxController {
 
   void handleRaiseTicket() {
     isCollectingServiceRequest.value = true;
+    currentStep.value = 'device_selection';
+    hasSubmitted.value = false; // Reset submission flag for new request
+    isSubmitting.value = false; // Reset submitting flag
+    selectedDeviceId.value = null; // Reset selected device
+    taskDescription.value = null; // Reset description
+    direction.value = null; // Reset direction
+    final botMessage = MessageModel(
+      text: 'Please select the device for which you need service.',
+      isBot: true,
+      timestamp: DateTime.now(),
+      showDeviceSelection: true,
+    );
+    messages.add(botMessage);
+    scrollToBottom();
+  }
+
+  void selectDevice(String deviceId) {
+    selectedDeviceId.value = deviceId;
     currentStep.value = 'description';
     final botMessage = MessageModel(
       text: 'Please provide a description of the issue.',
@@ -555,11 +590,9 @@ class SettingsController extends GetxController {
     scrollToBottom();
 
     try {
-      getDeviceData();
-
       final userId = _sessionController.userId.value;
       final userEmail = _sessionController.emailId.value;
-      final deviceId = DevucData.value?.deviceId ?? '';
+      final deviceId = selectedDeviceId.value ?? DevucData.value?.deviceId ?? '';
 
       String taskDesc = taskDescription.value ?? '';
       if (deviceId.isNotEmpty) {
@@ -611,6 +644,7 @@ class SettingsController extends GetxController {
       currentStep.value = null;
       taskDescription.value = null;
       direction.value = null;
+      selectedDeviceId.value = null;
     }
   }
 
@@ -634,6 +668,7 @@ class SettingsController extends GetxController {
     currentStep.value = null;
     taskDescription.value = null;
     direction.value = null;
+    selectedDeviceId.value = null;
   }
 
   Future<void> launchEmail() async {

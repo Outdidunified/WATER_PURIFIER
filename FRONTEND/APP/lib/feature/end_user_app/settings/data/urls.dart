@@ -1,5 +1,5 @@
-import 'package:aquapulse_app/core/core.dart';
-import 'package:aquapulse_app/core/services/endpoint.dart';
+import 'package:ionhive_water_purifier/core/core.dart';
+import 'package:ionhive_water_purifier/core/services/endpoint.dart';
 
 class SettingsUrl {
   static final Endpoint FetchUserDetails = Endpoint(

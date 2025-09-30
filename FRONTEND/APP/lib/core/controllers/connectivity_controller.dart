@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:aquapulse_app/utils/debug/build_guard.dart';
-// import 'package:aquapulse_app/utils/widgets/snackbar/custom_snackbar.dart';
+import 'package:ionhive_water_purifier/utils/debug/build_guard.dart';
+// import 'package:ionhive_water_purifier/utils/widgets/snackbar/custom_snackbar.dart';
 
 class ConnectivityController extends GetxController {
   final Connectivity _connectivity = Connectivity();

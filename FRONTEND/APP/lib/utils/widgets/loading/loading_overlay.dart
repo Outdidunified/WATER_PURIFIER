@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:aquapulse_app/utils/widgets/loading/loading_indicator.dart';
+import 'package:ionhive_water_purifier/utils/widgets/loading/loading_indicator.dart';
 
 class LoadingOverlay extends StatelessWidget {
   final bool isLoading;

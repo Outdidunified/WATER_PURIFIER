@@ -47,7 +47,7 @@ class PrivacyPage extends StatelessWidget {
                         theme: theme,
                         title: '1. App Usage:',
                         content:
-                            '• The Aqua Water Purifier App provides a platform to locate water purifier stations, schedule maintenance, and order purified water.\n'
+                            '• The IonHive Water Purifier App provides a platform to locate water purifier stations, schedule maintenance, and order purified water.\n'
                             '• Payment for services is facilitated through Razorpay, our integrated payment gateway.\n'
                             '• By using the App, users agree to comply with these terms and any local water purification regulations.',
                       ),
@@ -179,7 +179,7 @@ class PrivacyPage extends StatelessWidget {
                         title: '7. User Rights:',
                         content:
                             '• You have the right to access, update, or delete your account information.\n'
-                            '• For assistance, contact: support@aqua.com',
+                            '• For assistance, contact: support@IonHive.com',
                       ),
                       SizedBox(height: screenHeight * 0.02),
                       _buildSection(

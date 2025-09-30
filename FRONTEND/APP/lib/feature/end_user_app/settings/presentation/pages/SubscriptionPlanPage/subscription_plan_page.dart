@@ -1,9 +1,12 @@
-import 'package:aquapulse_app/feature/end_user_app/settings/presentation/controllers/settings_controller.dart';
-import 'package:aquapulse_app/utils/widgets/error/error_display_widget.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/controllers/settings_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/presentation/controllers/subscription_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/analytics/presentation/controllers/telemetry_controller.dart';
+import 'package:ionhive_water_purifier/utils/widgets/error/error_display_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:get/get.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 // Custom painter for dashed divider
 class DashedLinePainter extends CustomPainter {
@@ -206,7 +209,9 @@ class SubscriptionPlanPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Get.lazyPut(() => SubscriptionListController());
     final settingsController = Get.find<SettingsController>();
+    final subscriptionController = Get.find<SubscriptionListController>();
     final theme = Theme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -218,26 +223,20 @@ class SubscriptionPlanPage extends StatelessWidget {
         foregroundColor: theme.colorScheme.onPrimary,
       ),
       body: Obx(() {
-        if (settingsController.isLoading.value) {
+        if (subscriptionController.isLoading.value) {
           return _buildShimmerLoading(context);
-        } else if (settingsController.errorMessage.isNotEmpty) {
+        } else if (subscriptionController.errorMessage.isNotEmpty) {
           return Center(
             child: ErrorDisplayWidget(
-              errorMessage: settingsController.errorMessage.value,
+              errorMessage: subscriptionController.errorMessage.value,
               onRetry: () {
-                settingsController.fetchUserDetails();
+                subscriptionController.fetchOrders();
               },
             ),
           );
         }
 
-        final now = DateTime.now();
-        final activeSubscriptions = settingsController.paymentHistoryList
-            .where((payment) =>
-                payment.paymentStatus?.toLowerCase() == 'completed' &&
-                payment.subscriptionExpiryDate != null &&
-                payment.subscriptionExpiryDate!.isAfter(now))
-            .toList();
+        final activeSubscriptions = subscriptionController.orders;
 
         if (activeSubscriptions.isEmpty) {
           return Center(
@@ -248,7 +247,7 @@ class SubscriptionPlanPage extends StatelessWidget {
           );
         }
 
-        activeSubscriptions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        activeSubscriptions.sort((a, b) => DateTime.parse(b.createdAt).compareTo(DateTime.parse(a.createdAt)));
 
         if (settingsController.deliveryAddressVisibility.length !=
             activeSubscriptions.length) {
@@ -263,26 +262,7 @@ class SubscriptionPlanPage extends StatelessWidget {
           ),
           itemCount: activeSubscriptions.length,
           itemBuilder: (context, index) {
-            final subscription = activeSubscriptions[index];
-            final order = subscription.orders.isNotEmpty
-                ? subscription.orders.first
-                : null;
-
-            if (order == null) {
-              return Container(
-                padding: EdgeInsets.all(screenWidth * 0.04),
-                margin: EdgeInsets.only(bottom: screenHeight * 0.02),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: const Text(
-                  'No order details found for this subscription.',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-              );
-            }
+            final order = activeSubscriptions[index];
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,7 +350,7 @@ class SubscriptionPlanPage extends StatelessWidget {
                         ),
                         SizedBox(height: screenWidth * 0.01),
                         Text(
-                          'Total Price: ₹${subscription.totalPrice?.toStringAsFixed(2) ?? '0.00'}',
+                          'Total Price: ₹${order.price.toStringAsFixed(2)}',
                           style: TextStyle(
                             fontSize: screenWidth * 0.04,
                             fontWeight: FontWeight.w600,
@@ -381,7 +361,7 @@ class SubscriptionPlanPage extends StatelessWidget {
                         Row(
                           children: [
                             Text(
-                              'Expires On: ${subscription.subscriptionExpiryDate != null ? DateFormat('dd MMM yyyy').format(subscription.subscriptionExpiryDate!) : 'N/A'}',
+                              'Expires On: ${order.subscriptionExpiryDate.isNotEmpty ? DateFormat('dd MMM yyyy').format(DateTime.parse(order.subscriptionExpiryDate)) : 'N/A'}',
                               style: TextStyle(
                                 fontSize: screenWidth * 0.04,
                                 color: Colors.black54,
@@ -447,7 +427,7 @@ class SubscriptionPlanPage extends StatelessWidget {
                                   ),
                                   SizedBox(height: screenWidth * 0.01),
                                   Text(
-                                    '${order.deliveryAddress.addressLine1 ?? 'N/A'}, ${order.deliveryAddress.city ?? 'N/A'}, ${order.deliveryAddress.state ?? 'N/A'} - ${order.deliveryAddress.pincode ?? 'N/A'}',
+                                    '${order.deliveryAddress.street ?? 'N/A'}${order.deliveryAddress.landmark != null && order.deliveryAddress.landmark!.isNotEmpty ? ', ${order.deliveryAddress.landmark}' : ''}, ${order.deliveryAddress.city ?? 'N/A'}, ${order.deliveryAddress.state ?? 'N/A'} - ${order.deliveryAddress.pincode ?? 'N/A'}',
                                     style: TextStyle(
                                       fontSize: screenWidth * 0.035,
                                       color: Colors.black54,

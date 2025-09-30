@@ -1,6 +1,6 @@
-import 'package:aquapulse_app/feature/end_user_app/settings/domain/models/payment_history_model.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/presentation/controllers/settings_controller.dart';
-import 'package:aquapulse_app/utils/widgets/error/error_display_widget.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/domain/models/payment_history_model.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/controllers/settings_controller.dart';
+import 'package:ionhive_water_purifier/utils/widgets/error/error_display_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:get/get.dart';

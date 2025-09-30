@@ -1,5 +1,5 @@
-import 'package:aquapulse_app/feature/end_user_app/shop/data/api.dart';
-import 'package:aquapulse_app/feature/end_user_app/shop/domain/models/product_model.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/shop/data/api.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/shop/domain/models/product_model.dart';
 
 class ShopRepository {
   final ProductApi _api = ProductApi();

@@ -1,13 +1,13 @@
-import 'package:aquapulse_app/core/controllers/session_controller.dart';
-import 'package:aquapulse_app/feature/end_user_app/home/presentation/controllers/home_controller.dart';
-import 'package:aquapulse_app/utils/widgets/webview_screen.dart';
-import 'package:aquapulse_app/utils/widgets/card/water_usage_card.dart';
+import 'package:ionhive_water_purifier/core/controllers/session_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/presentation/controllers/home_controller.dart';
+import 'package:ionhive_water_purifier/utils/widgets/webview_screen.dart';
+import 'package:ionhive_water_purifier/utils/widgets/card/water_usage_card.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:aquapulse_app/feature/end_user_app/home/domain/models/home_model.dart';
-import 'package:aquapulse_app/feature/end_user_app/home/domain/models/device_model.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/models/home_model.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/models/device_model.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -52,7 +52,7 @@ class CustomAppBar extends StatelessWidget {
           ),
           SizedBox(width: 4), // Reduced spacing between logo and text
           Text(
-            "AquaPulse",
+            "IonHive",
             style: theme.textTheme.titleMedium?.copyWith(
               color: theme.colorScheme.primary,
               fontWeight: FontWeight.bold,
@@ -187,6 +187,9 @@ class _HomePageState extends State<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         ConnectionBanner(deviceData: deviceData),
+                        SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.02),
+                        DeviceSelector(),
                         SizedBox(
                             height: MediaQuery.of(context).size.height * 0.02),
                         PlanDetails(
@@ -450,6 +453,85 @@ class ConnectionBanner extends StatelessWidget {
   }
 }
 
+class DeviceSelector extends StatelessWidget {
+  const DeviceSelector({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final homeController = Get.find<SubscriptionController>();
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Obx(() {
+      final orders = homeController.orders;
+      final activeSubscription = homeController.activeSubscription.value;
+
+      if (orders.isEmpty || orders.length <= 1) {
+        return SizedBox.shrink(); // Don't show if only one or no devices
+      }
+
+      return Container(
+        padding: EdgeInsets.all(screenWidth * 0.03),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 3,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Select Device to View Details",
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            SizedBox(height: screenWidth * 0.02),
+            DropdownButtonFormField<Order>(
+              value: activeSubscription,
+              dropdownColor: Colors.white,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: screenWidth * 0.03,
+                  vertical: screenWidth * 0.02,
+                ),
+              ),
+              items: orders.map((order) {
+                return DropdownMenuItem<Order>(
+                  value: order,
+                  child: Text(
+                    "${order.modelName} (${order.wpDeviceId})",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: screenWidth * 0.035,
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (selectedOrder) {
+                if (selectedOrder != null) {
+                  homeController.selectSubscription(selectedOrder);
+                }
+              },
+            ),
+          ],
+        ),
+      );
+    });
+  }
+}
+
 class PlanDetails extends StatelessWidget {
   final Subscription? subscription;
   final DeviceData? deviceData;
@@ -463,16 +545,13 @@ class PlanDetails extends StatelessWidget {
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = screenWidth < 600;
 
-    final int waterUsed = deviceData?.waterConsumed ?? 90;
-    final String capacityStr = subscription?.selectedPlan.capacity ?? "117";
-    final int waterLimit =
-        int.tryParse(capacityStr.replaceAll(RegExp(r'[^0-9]'), '')) ?? 117;
-
+    final double waterUsed = deviceData?.waterConsumed ?? 0.0;
+    final int waterLimit = deviceData?.totalWaterLimit ?? 500;
+    final String capacityStr = "${waterLimit}L";
     final planName = subscription?.selectedPlan.label ?? "Silver";
     final model = subscription?.modelName ?? "Bolt";
-    final planAmount = subscription != null
-        ? "₹ ${subscription!.price.toStringAsFixed(0)}"
-        : "₹ 425";
+    final planAmount =
+    subscription != null ? "₹ ${subscription!.selectedPlan.price.toString()}" : "₹ 425";
     final planStart = subscription != null
         ? _formatDate(subscription!.createdAt)
         : "25/08/2022";
@@ -501,125 +580,144 @@ class PlanDetails extends StatelessWidget {
             padding: EdgeInsets.all(screenWidth * 0.04),
             child: isSmallScreen
                 ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(screenWidth * 0.03),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: EdgeInsets.all(screenWidth * 0.03),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildDetailRow(theme,
-                                label: "Plan Name",
-                                value: planName,
-                                screenWidth: screenWidth),
-                            SizedBox(height: screenHeight * 0.01),
-                            _buildDetailRow(theme,
-                                label: "Model",
-                                value: model,
-                                screenWidth: screenWidth),
-                            SizedBox(height: screenHeight * 0.01),
-                            _buildDetailRow(theme,
-                                label: "Water Limit",
-                                value: capacityStr,
-                                screenWidth: screenWidth),
-                            SizedBox(height: screenHeight * 0.01),
-                            _buildDetailRow(theme,
-                                label: "Plan Amount",
-                                value: planAmount,
-                                screenWidth: screenWidth),
-                            SizedBox(height: screenHeight * 0.01),
-                            _buildDetailRow(theme,
-                                label: "Plan Start",
-                                value: planStart,
-                                screenWidth: screenWidth),
-                          ],
-                        ),
+                      _buildDetailRow(
+                        theme,
+                        label: "Plan Name",
+                        value: planName,
+                        screenWidth: screenWidth,
                       ),
-                      SizedBox(height: screenHeight * 0.02),
-                      Center(
-                        child: WaterUsageCard(
-                          waterUsed: waterUsed,
-                          waterLimit: waterLimit,
-                          width: screenWidth *
-                              0.8, // Adjusted width for small screens
-                        ),
+                      SizedBox(height: screenHeight * 0.01),
+                      _buildDetailRow(
+                        theme,
+                        label: "Model",
+                        value: model,
+                        screenWidth: screenWidth,
                       ),
-                    ],
-                  )
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: EdgeInsets.all(screenWidth * 0.03),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildDetailRow(theme,
-                                  label: "Plan Name",
-                                  value: planName,
-                                  screenWidth: screenWidth),
-                              SizedBox(height: screenHeight * 0.01),
-                              _buildDetailRow(theme,
-                                  label: "Model",
-                                  value: model,
-                                  screenWidth: screenWidth),
-                              SizedBox(height: screenHeight * 0.01),
-                              _buildDetailRow(theme,
-                                  label: "Water Limit",
-                                  value: capacityStr,
-                                  screenWidth: screenWidth),
-                              SizedBox(height: screenHeight * 0.01),
-                              _buildDetailRow(theme,
-                                  label: "Plan Amount",
-                                  value: planAmount,
-                                  screenWidth: screenWidth),
-                              SizedBox(height: screenHeight * 0.01),
-                              _buildDetailRow(theme,
-                                  label: "Plan Start",
-                                  value: planStart,
-                                  screenWidth: screenWidth),
-                            ],
-                          ),
-                        ),
+                      SizedBox(height: screenHeight * 0.01),
+                      _buildDetailRow(
+                        theme,
+                        label: "Water Limit",
+                        value: capacityStr,
+                        screenWidth: screenWidth,
                       ),
-                      Padding(
-                        padding: EdgeInsets.only(left: screenWidth * 0.04),
-                        child: WaterUsageCard(
-                          waterUsed: waterUsed,
-                          waterLimit: waterLimit,
-                          width: screenWidth *
-                              0.3, // Adjusted width for larger screens
-                        ),
+                      SizedBox(height: screenHeight * 0.01),
+                      _buildDetailRow(
+                        theme,
+                        label: "Plan Amount",
+                        value: planAmount,
+                        screenWidth: screenWidth,
+                      ),
+                      SizedBox(height: screenHeight * 0.01),
+                      _buildDetailRow(
+                        theme,
+                        label: "Plan Start",
+                        value: planStart,
+                        screenWidth: screenWidth,
                       ),
                     ],
                   ),
+                ),
+                SizedBox(height: screenHeight * 0.02),
+                Center(
+                  child: WaterUsageCard(
+                    waterUsed: waterUsed,
+                    waterLimit: waterLimit,
+                    width: screenWidth * 0.9, // Adjusted width for small screens
+                  ),
+                ),
+              ],
+            )
+                : Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: EdgeInsets.all(screenWidth * 0.03),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDetailRow(
+                          theme,
+                          label: "Plan Name",
+                          value: planName,
+                          screenWidth: screenWidth,
+                        ),
+                        SizedBox(height: screenHeight * 0.01),
+                        _buildDetailRow(
+                          theme,
+                          label: "Model",
+                          value: model,
+                          screenWidth: screenWidth,
+                        ),
+                        SizedBox(height: screenHeight * 0.01),
+                        _buildDetailRow(
+                          theme,
+                          label: "Water Limit",
+                          value: capacityStr,
+                          screenWidth: screenWidth,
+                        ),
+                        SizedBox(height: screenHeight * 0.01),
+                        _buildDetailRow(
+                          theme,
+                          label: "Plan Amount",
+                          value: planAmount,
+                          screenWidth: screenWidth,
+                        ),
+                        SizedBox(height: screenHeight * 0.01),
+                        _buildDetailRow(
+                          theme,
+                          label: "Plan Start",
+                          value: planStart,
+                          screenWidth: screenWidth,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(left: screenWidth * 0.04),
+                  child: WaterUsageCard(
+                    waterUsed: waterUsed,
+                    waterLimit: waterLimit,
+                    width: screenWidth * 0.3, // Adjusted width for larger screens
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildDetailRow(ThemeData theme,
-      {required String label,
-      required String value,
-      required double screenWidth}) {
+  Widget _buildDetailRow(
+      ThemeData theme, {
+        required String label,
+        required String value,
+        required double screenWidth,
+      }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           "$label:",
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface
-                .withOpacity(0.5), // Neutral muted color
+            color: theme.colorScheme.onSurface.withOpacity(0.5), // Neutral muted color
             fontSize: screenWidth * 0.035,
           ),
         ),
@@ -684,13 +782,14 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
     final screenHeight = MediaQuery.of(context).size.height;
 
     final deviceId = widget.deviceData?.deviceId ?? "Unknown";
-    final litresDispensed = widget.deviceData?.totalWaterUsed.toDouble() ?? 0.0;
+    final litresDispensed = widget.deviceData?.totalWaterUsed ?? 0.0;
     final tdsIn = widget.deviceData?.tdsIn ?? 0;
     final tdsOut = widget.deviceData?.tdsOut ?? 0;
     final tankLevelStatus = widget.deviceData?.tankLevel ?? "EMPTY";
     final tankLevel = widget.deviceData?.tankLevelValue ?? 0.0;
     final pressure = widget.deviceData?.pressure ?? 0.0;
     final temperature = widget.deviceData?.temperature ?? 0.0;
+    final flowRate = widget.deviceData?.flowRate ?? 0.0;
 
     return Container(
       decoration: BoxDecoration(
@@ -715,7 +814,7 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
                     theme,
                     icon: Icons.device_hub,
                     label: "Device ID",
-                    value: deviceId,
+                    value: deviceId == "Unknown" ? "-" : deviceId,
                     screenWidth: screenWidth,
                     tooltip: "Unique identifier for the device",
                   ),
@@ -726,7 +825,9 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
                     theme,
                     icon: Icons.local_drink,
                     label: "Litres Dispensed",
-                    value: "${litresDispensed.toStringAsFixed(1)} L",
+                    value: litresDispensed == 0.0 ? "-" : litresDispensed < 1.0
+                        ? "${(litresDispensed * 1000).toStringAsFixed(1)} ml"
+                        : "${litresDispensed.toStringAsFixed(2)} L",
                     screenWidth: screenWidth,
                     tooltip: "Total water dispensed by the device",
                   ),
@@ -747,7 +848,7 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
                     theme,
                     icon: Icons.water_drop,
                     label: "TDS Level",
-                    value: "In: $tdsIn | Out: $tdsOut ppm",
+                    value: "In: ${tdsIn == 0 ? '-' : tdsIn} | Out: ${tdsOut == 0 ? '-' : tdsOut} ppm",
                     screenWidth: screenWidth,
                     statusColor: tdsOut < 50
                         ? Colors.blue
@@ -773,7 +874,7 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
                     theme,
                     icon: Icons.thermostat,
                     label: "Temperature",
-                    value: "${temperature.toStringAsFixed(1)}°C",
+                    value: temperature == 0.0 ? "-" : "${temperature.toStringAsFixed(1)}°C",
                     screenWidth: screenWidth,
                     statusColor:
                         temperature < 30 ? Colors.green : Colors.orange,
@@ -786,7 +887,7 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
                     theme,
                     icon: Icons.speed,
                     label: "Pressure",
-                    value: "${pressure.toStringAsFixed(1)} bar",
+                    value: pressure == 0.0 ? "-" : "${pressure.toStringAsFixed(1)} bar",
                     screenWidth: screenWidth,
                     statusColor: pressure > 1.0 ? Colors.green : Colors.orange,
                     tooltip: "Current water pressure",
@@ -809,7 +910,7 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
                     icon: Icons.storage,
                     label: "Tank Level",
                     value:
-                        "$tankLevelStatus (${tankLevel.toStringAsFixed(0)}%)",
+                        "$tankLevelStatus (${tankLevel == 0.0 ? '-' : tankLevel.toStringAsFixed(0)}%)",
                     screenWidth: screenWidth,
                     statusColor: tankLevelStatus == "FULL"
                         ? Colors.green
@@ -838,9 +939,9 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
                     icon: Icons.speed,
                     label: "Flow Rate",
                     value:
-                        "${widget.deviceData?.flowRate.toStringAsFixed(1) ?? '0.0'} L/min",
+                        flowRate == 0.0 ? "-" : "${flowRate.toStringAsFixed(1)} L/min",
                     screenWidth: screenWidth,
-                    statusColor: (widget.deviceData?.flowRate ?? 0.0) > 1.0
+                    statusColor: flowRate > 1.0
                         ? Colors.green
                         : Colors.orange,
                     tooltip: "Rate of water dispensing",
@@ -1014,7 +1115,7 @@ class _SmartFeatureSectionState extends State<SmartFeatureSection> {
         ),
         SizedBox(height: screenHeight * 0.01),
         SizedBox(
-          height: screenHeight * 0.14, // Slightly increased to avoid clipping
+          height: screenHeight * 0.12, // Reduced height for horizontal card layout
           child: Column(
             children: [
               Expanded(
@@ -1132,59 +1233,99 @@ class SmartFeatureCard extends StatelessWidget {
 
     return Card(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(
-          color: theme.colorScheme.primary.withOpacity(0.2),
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(16),
       ),
-      color: color.withOpacity(0.1),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: screenWidth * 0.015, // Further reduced from 0.02
-          vertical: screenWidth * 0.015,
+      elevation: 2,
+      shadowColor: color.withOpacity(0.2),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [
+              color.withOpacity(0.08),
+              color.withOpacity(0.04),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
         ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: color,
-              size: screenWidth * 0.05, // Further reduced from 0.06
-            ),
-            SizedBox(width: screenWidth * 0.015), // Further reduced from 0.02
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                      fontSize:
-                          screenWidth * 0.028, // Slightly reduced from 0.03
-                      overflow:
-                          TextOverflow.ellipsis, // Added to handle long text
-                    ),
-                    maxLines: 1,
+        child: Padding(
+          padding: EdgeInsets.all(screenWidth * 0.025),
+          child: Row(
+            children: [
+              // Circular icon container with gradient
+              Container(
+                width: screenWidth * 0.08,
+                height: screenWidth * 0.08,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      color.withOpacity(0.8),
+                      color.withOpacity(0.6),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  SizedBox(height: screenWidth * 0.005),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: color,
-                      fontSize:
-                          screenWidth * 0.022, // Slightly reduced from 0.025
-                      overflow:
-                          TextOverflow.ellipsis, // Added to handle long text
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withOpacity(0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
                     ),
-                    maxLines: 1,
-                  ),
-                ],
+                  ],
+                ),
+                child: Icon(
+                  icon,
+                  color: Colors.white,
+                  size: screenWidth * 0.04,
+                ),
               ),
-            ),
-          ],
+              SizedBox(width: screenWidth * 0.025),
+              // Title and subtitle column
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title
+                    Text(
+                      title,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface.withOpacity(0.9),
+                        fontSize: screenWidth * 0.032,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: screenWidth * 0.005),
+                    // Subtitle
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.02,
+                        vertical: screenWidth * 0.005,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        subtitle,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.w500,
+                          fontSize: screenWidth * 0.025,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

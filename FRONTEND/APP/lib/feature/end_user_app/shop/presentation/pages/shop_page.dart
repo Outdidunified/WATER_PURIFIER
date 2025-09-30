@@ -1,9 +1,9 @@
-import 'package:aquapulse_app/core/core.dart';
-import 'package:aquapulse_app/feature/end_user_app/settings/presentation/pages/ContactSupportPage/contact_support_page.dart';
-import 'package:aquapulse_app/feature/end_user_app/shop/domain/models/product_model.dart';
-import 'package:aquapulse_app/feature/end_user_app/shop/presentation/controllers/shop_controller.dart';
-import 'package:aquapulse_app/feature/end_user_app/shop/presentation/pages/product_detail_page.dart';
-import 'package:aquapulse_app/utils/widgets/error/error_display_widget.dart';
+import 'package:ionhive_water_purifier/core/core.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/pages/ContactSupportPage/contact_support_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/shop/domain/models/product_model.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/shop/presentation/controllers/shop_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/shop/presentation/pages/product_detail_page.dart';
+import 'package:ionhive_water_purifier/utils/widgets/error/error_display_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shimmer/shimmer.dart';
@@ -119,7 +119,7 @@ class ShopPage extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    "Welcome to AquaPulse!",
+                    "Welcome to IonHive!",
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: Colors.black.withOpacity(0.7),
                       fontSize: 12,

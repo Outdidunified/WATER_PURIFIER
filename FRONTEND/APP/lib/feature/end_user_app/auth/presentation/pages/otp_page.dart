@@ -1,10 +1,10 @@
-import 'package:aquapulse_app/feature/end_user_app/landing_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/landing_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import 'package:aquapulse_app/feature/end_user_app/auth/presentation/controllers/auth_controller.dart'; //Auth Controller
-import 'package:aquapulse_app/utils/widgets/button/custom_button.dart'; // Custom Button
-import 'package:aquapulse_app/utils/widgets/input_field/otp_inputfield.dart'; // OTP Input Field
+import 'package:ionhive_water_purifier/feature/end_user_app/auth/presentation/controllers/auth_controller.dart'; //Auth Controller
+import 'package:ionhive_water_purifier/utils/widgets/button/custom_button.dart'; // Custom Button
+import 'package:ionhive_water_purifier/utils/widgets/input_field/otp_inputfield.dart'; // OTP Input Field
 
 class OtpPage extends StatelessWidget {
   final String email;
@@ -111,7 +111,7 @@ class OtpPage extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 20.0),
                 child: Text(
-                  "Powered by\nAQUA Innovations",
+                  "Powered by\nIonHive Innovations",
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: Colors.grey.shade600,

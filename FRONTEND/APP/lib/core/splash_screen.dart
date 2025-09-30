@@ -1,15 +1,14 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:aquapulse_app/core/controllers/session_controller.dart';
-import 'package:aquapulse_app/feature/end_user_app/landing_page.dart';
-import 'package:aquapulse_app/feature/service_installation_app/landing_page.dart';
-import 'package:aquapulse_app/utils/debug/build_guard.dart';
+import 'package:ionhive_water_purifier/core/controllers/session_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/landing_page.dart';
+import 'package:ionhive_water_purifier/utils/debug/build_guard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:get/get.dart';
-import 'package:aquapulse_app/feature/GettingStarted%20page.dart';
-import 'package:aquapulse_app/utils/theme/theme_controller.dart';
+import 'package:ionhive_water_purifier/feature/GettingStarted%20page.dart';
+import 'package:ionhive_water_purifier/utils/theme/theme_controller.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -40,9 +39,7 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _textSlideAnimation;
   late Animation<double> _textOpacityAnimation;
 
-  // Water droplet positions
-
-  // For scattered droplets
+  // Water droplets
   final List<_ScatteredDroplet> _scatteredDroplets = [];
   final Random _random = Random();
 
@@ -74,7 +71,7 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // Water drop fall animation
+    // Drop animation
     _dropFallAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -127,9 +124,8 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // Start animations in sequence
+    // Start animations
     _logoAnimationController.forward();
-
     Future.delayed(const Duration(milliseconds: 800), () {
       _dropFallAnimationController.forward();
     });
@@ -142,20 +138,12 @@ class _SplashScreenState extends State<SplashScreen>
       }
     });
 
-    // Add listener to update the UI
-    _dropFallAnimation.addListener(() {
-      setState(() {});
-    });
-
-    _rippleScaleAnimation.addListener(() {
-      setState(() {});
-    });
+    _dropFallAnimation.addListener(() => setState(() {}));
+    _rippleScaleAnimation.addListener(() => setState(() {}));
   }
 
   void _generateScatteredDroplets() {
-    // Create 15-20 scattered droplets
     final count = 15 + _random.nextInt(6);
-
     for (int i = 0; i < count; i++) {
       final size = 4.0 + _random.nextDouble() * 8.0;
       final angle = _random.nextDouble() * 2 * pi;
@@ -181,7 +169,6 @@ class _SplashScreenState extends State<SplashScreen>
 
     for (final droplet in _scatteredDroplets) {
       final elapsedTime = currentTime - rippleStartTime - droplet.delay;
-
       if (elapsedTime > 0) {
         final progress = (elapsedTime / droplet.duration).clamp(0.0, 1.0);
         droplet.progress = progress;
@@ -190,46 +177,35 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _initializeWithDelay() {
-    // Delay to allow controllers to be registered
     Future.delayed(const Duration(seconds: 3), () {
       _tryInitializeController();
     });
   }
 
-  // Counter to limit retry attempts
   int _retryCount = 0;
   static const int _maxRetries = 10;
 
   void _tryInitializeController() {
     if (_isInitialized) return;
-
-    // Increment retry counter
     _retryCount++;
 
     try {
-      // Try to find the SessionController
       if (Get.isRegistered<SessionController>()) {
         _sessionController = Get.find<SessionController>();
         _setupNavigation();
         _isInitialized = true;
       } else if (_retryCount < _maxRetries) {
-        // If not found and we haven't exceeded max retries, try again after a delay
         Future.delayed(
             const Duration(milliseconds: 500), _tryInitializeController);
       } else {
-        // If we've exceeded max retries, navigate to GetStartedPage as fallback
-        debugPrint(
-            'Max retries exceeded, navigating to GetStartedPage as fallback');
         _navigateToFallback();
       }
     } catch (e) {
       debugPrint('Error initializing SessionController: $e');
       if (_retryCount < _maxRetries) {
-        // Try again after a delay if we haven't exceeded max retries
         Future.delayed(
             const Duration(milliseconds: 500), _tryInitializeController);
       } else {
-        // Navigate to fallback if max retries exceeded
         _navigateToFallback();
       }
     }
@@ -238,7 +214,6 @@ class _SplashScreenState extends State<SplashScreen>
   void _navigateToFallback() {
     if (!_hasNavigated) {
       _hasNavigated = true;
-      // Use a safe navigation approach
       BuildGuard.runSafely(() {
         Future.delayed(const Duration(seconds: 3), () {
           Get.offAll(() => GetStartedPage(),
@@ -259,28 +234,20 @@ class _SplashScreenState extends State<SplashScreen>
 
         if (isLoggedIn) {
           final role = _sessionController!.userRole.value;
-
           debugPrint("Login detected. Role ID: $role");
 
           if (role == 3) {
-            // User (End User App)
+            // ✅ End User
             Get.offAll(() => AppUserLandingPage(),
                 transition: Transition.fadeIn,
                 duration: const Duration(milliseconds: 600));
-          } else if (role == 2) {
-            // Technician (Technician App)
-            Get.offAll(
-                () => TechnicianLandingPage(), // <-- replace with actual page
-                transition: Transition.fadeIn,
-                duration: const Duration(milliseconds: 600));
           } else {
-            // Fallback or unknown role
+            // ❌ No technician app anymore → always fallback
             Get.offAll(() => GetStartedPage(),
                 transition: Transition.fadeIn,
                 duration: const Duration(milliseconds: 600));
           }
         } else {
-          // Not logged in
           debugPrint("Navigating to GetStartedPage");
           Get.offAll(() => GetStartedPage(),
               transition: Transition.fadeIn,
@@ -290,7 +257,7 @@ class _SplashScreenState extends State<SplashScreen>
     });
 
     Future.delayed(const Duration(seconds: 1), () {
-      _sessionController?.isLoggedIn.refresh(); // trigger the listener
+      _sessionController?.isLoggedIn.refresh();
     });
   }
 
@@ -320,26 +287,23 @@ class _SplashScreenState extends State<SplashScreen>
           _updateScatterDroplets();
           return Stack(
             children: [
-              // White background with blur effect during drop fall
+              // Background
               Opacity(
-                opacity:
-                    _dropFallAnimation.value * 0.3, // Subtle blur during fall
-                child: BlurHash(
-                  hash:
-                      "LEHV6nWB2yk8pyo0adR*.7kCMdnj", // Simple blur hash for white background
+                opacity: _dropFallAnimation.value * 0.3,
+                child: const BlurHash(
+                  hash: "LEHV6nWB2yk8pyo0adR*.7kCMdnj",
                   imageFit: BoxFit.cover,
-                  duration: const Duration(milliseconds: 500),
+                  duration: Duration(milliseconds: 500),
                 ),
               ),
-              Container(
-                color: theme.scaffoldBackgroundColor,
-              ),
-              // Water drop, scatter, and ripple animation
+              Container(color: theme.scaffoldBackgroundColor),
+
+              // Center animations
               Center(
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // Ripple effect
+                    // Ripple
                     if (_rippleAnimationController.value > 0)
                       Transform.scale(
                         scale: _rippleScaleAnimation.value,
@@ -348,9 +312,8 @@ class _SplashScreenState extends State<SplashScreen>
                           height: 80,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: theme.colorScheme.primary.withOpacity(
-                              _rippleOpacityAnimation.value,
-                            ),
+                            color: theme.colorScheme.primary
+                                .withOpacity(_rippleOpacityAnimation.value),
                           ),
                         ),
                       ),
@@ -358,7 +321,7 @@ class _SplashScreenState extends State<SplashScreen>
                     // Scattered droplets
                     ..._buildScatteredDroplets(theme),
 
-                    // Logo with scale and fade animation
+                    // Logo
                     Transform.scale(
                       scale: _logoScaleAnimation.value,
                       child: Opacity(
@@ -372,7 +335,7 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                     ),
 
-                    // Water drop falling animation
+                    // Falling drop
                     if (_dropFallAnimationController.value > 0 &&
                         _dropFallAnimationController.value < 1.0)
                       Positioned(
@@ -394,7 +357,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
 
-              // Text animation
+              // Title & subtitle
               Positioned(
                 bottom: size.height * 0.25,
                 left: 0,
@@ -406,7 +369,7 @@ class _SplashScreenState extends State<SplashScreen>
                     child: Column(
                       children: [
                         Text(
-                          "AQUAPULSE",
+                          "IONHIVE",
                           style: TextStyle(
                             fontSize: 36,
                             fontWeight: FontWeight.bold,
@@ -437,7 +400,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
 
-              // Loading indicator
+              // Loading
               Positioned(
                 bottom: size.height * 0.1,
                 left: 0,
@@ -452,33 +415,26 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   List<Widget> _buildScatteredDroplets(ThemeData theme) {
-    final List<Widget> droplets = [];
+    return _scatteredDroplets.map((droplet) {
+      if (droplet.progress <= 0) return const SizedBox.shrink();
+      final x = cos(droplet.angle) * droplet.distance * droplet.progress;
+      final y = sin(droplet.angle) * droplet.distance * droplet.progress;
 
-    for (final droplet in _scatteredDroplets) {
-      if (droplet.progress > 0) {
-        final x = cos(droplet.angle) * droplet.distance * droplet.progress;
-        final y = sin(droplet.angle) * droplet.distance * droplet.progress;
-
-        droplets.add(
-          Transform.translate(
-            offset: Offset(x, y),
-            child: Opacity(
-              opacity: (1 - droplet.progress) * 0.8,
-              child: Container(
-                width: droplet.size,
-                height: droplet.size,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  shape: BoxShape.circle,
-                ),
-              ),
+      return Transform.translate(
+        offset: Offset(x, y),
+        child: Opacity(
+          opacity: (1 - droplet.progress) * 0.8,
+          child: Container(
+            width: droplet.size,
+            height: droplet.size,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary,
+              shape: BoxShape.circle,
             ),
           ),
-        );
-      }
-    }
-
-    return droplets;
+        ),
+      );
+    }).toList();
   }
 
   Widget _buildLoadingIndicator(ThemeData theme, Size size) {
@@ -490,10 +446,9 @@ class _SplashScreenState extends State<SplashScreen>
             width: size.width * 0.5,
             height: 4,
             child: LinearProgressIndicator(
-              value: null, // Indeterminate progress
               backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
               valueColor:
-                  AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+              AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
             ),
           ),
           const SizedBox(height: 16),

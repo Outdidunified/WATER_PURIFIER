@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:aquapulse_app/utils/responsive/responsive_utils.dart';
+import 'package:ionhive_water_purifier/utils/responsive/responsive_utils.dart';
 
 /// A responsive screen wrapper that provides responsive sizing for any screen
 class ResponsiveScreen extends StatelessWidget {
