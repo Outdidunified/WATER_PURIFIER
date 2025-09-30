@@ -1987,8 +1987,90 @@ const FetchSelectServiceTask = async (req, res) => {
             },
             { $addFields: { order: { $arrayElemAt: ["$order", 0] } } },
             { $match: { "order.paymentStatus": "Completed" } },
+            { $addFields: { orderDelivery: "$order.deliveryAddress" } },
+            {
+                $addFields: {
+                    addressString: {
+                        $cond: [
+                            { $eq: [{ $type: "$address" }, "string"] },
+                            "$address",
+                            null
+                        ]
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    normalizedAddress: {
+                        $cond: [
+                            {
+                                $and: [
+                                    { $ne: [{ $type: "$address" }, "missing"] },
+                                    { $eq: [{ $type: "$address" }, "object"] }
+                                ]
+                            },
+                            "$address",
+                            "$orderDelivery"
+                        ]
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    address: { $ifNull: ["$normalizedAddress", "$address"] },
+                    city: {
+                        $ifNull: [
+                            "$city",
+                            { $ifNull: ["$normalizedAddress.city", "$orderDelivery.city"] }
+                        ]
+                    },
+                    district: {
+                        $ifNull: [
+                            "$district",
+                            { $ifNull: ["$normalizedAddress.district", "$orderDelivery.district"] }
+                        ]
+                    },
+                    state: {
+                        $ifNull: [
+                            "$state",
+                            { $ifNull: ["$normalizedAddress.state", "$orderDelivery.state"] }
+                        ]
+                    },
+                    country: {
+                        $ifNull: [
+                            "$country",
+                            { $ifNull: ["$normalizedAddress.country", "$orderDelivery.country"] }
+                        ]
+                    },
+                    pincode: {
+                        $ifNull: [
+                            "$pincode",
+                            { $ifNull: ["$normalizedAddress.pincode", "$orderDelivery.pincode"] }
+                        ]
+                    },
+                    addressline1: {
+                        $ifNull: [
+                            "$addressline1",
+                            { $ifNull: ["$normalizedAddress.addressline1", "$orderDelivery.addressline1"] }
+                        ]
+                    },
+                    addressline2: {
+                        $ifNull: [
+                            "$addressline2",
+                            { $ifNull: ["$normalizedAddress.addressline2", "$orderDelivery.addressline2"] }
+                        ]
+                    }
+                }
+            },
             { $addFields: { wp_device_id: "$device_id" } },
-            { $project: { device_id: 0, order: 0 } }
+            {
+                $project: {
+                    device_id: 0,
+                    order: 0,
+                    orderDelivery: 0,
+                    normalizedAddress: 0
+                }
+            }
         ]).toArray();
 
         return res.status(200).json({
@@ -2477,12 +2559,21 @@ const GetServicesByDistrict = async (req, res) => {
       // Filter service_records for task_type = 2 (Services)
       { $match: { task_type: 2 } },
 
-      // Lookup order to get district
+      // Resolve device id reference
+      {
+        $addFields: {
+          resolvedDeviceId: {
+            $ifNull: ["$wp_device_id", "$device_id"]
+          }
+        }
+      },
+
+      // Lookup order to get delivery address and payment info
       {
         $lookup: {
           from: "orders",
-          localField: "device_id" || "wp_device_id",
-          foreignField: "wp_device_id" || "device_id",
+          localField: "resolvedDeviceId",
+          foreignField: "wp_device_id",
           as: "order"
         }
       },
@@ -2494,24 +2585,91 @@ const GetServicesByDistrict = async (req, res) => {
         }
       },
 
-      // Filter by district if provided
-      ...(district && String(district).trim() !== '' ? [
-        { $match: { "order.deliveryAddress.district": new RegExp(String(district).trim(), "i") } }
-      ] : []),
-
-      // Only include paid (and optionally confirmed) orders
-      { $match: { "order.paymentStatus": "Completed" } },
-
-      // Replace device_id with wp_device_id and remove order field
+      // Extract delivery address for convenience
       {
         $addFields: {
-          wp_device_id: "$device_id"
+          orderDelivery: "$order.deliveryAddress"
+        }
+      },
+
+      // Filter by district if provided
+      ...(district && String(district).trim() !== ''
+        ? [
+            {
+              $match: {
+                $expr: {
+                  $regexMatch: {
+                    input: { $ifNull: ["$orderDelivery.district", ""] },
+                    regex: new RegExp(String(district).trim(), "i")
+                  }
+                }
+              }
+            }
+          ]
+        : []),
+
+      // Only include paid orders
+      { $match: { "order.paymentStatus": "Completed" } },
+
+      // Normalize address fields combining service record address and order delivery address
+      {
+        $addFields: {
+          addressObject: {
+            $cond: [
+              {
+                $and: [
+                  { $ne: [{ $type: "$address" }, "missing"] },
+                  { $eq: [{ $type: "$address" }, "object"] }
+                ]
+              },
+              "$address",
+              "$orderDelivery"
+            ]
+          }
         }
       },
       {
+        $addFields: {
+          address: { $ifNull: ["$addressObject", "$address"] },
+          city: {
+            $ifNull: ["$city", { $ifNull: ["$addressObject.city", "$orderDelivery.city"] }]
+          },
+          district: {
+            $ifNull: ["$district", { $ifNull: ["$addressObject.district", "$orderDelivery.district"] }]
+          },
+          state: {
+            $ifNull: ["$state", { $ifNull: ["$addressObject.state", "$orderDelivery.state"] }]
+          },
+          country: {
+            $ifNull: ["$country", { $ifNull: ["$addressObject.country", "$orderDelivery.country"] }]
+          },
+          pincode: {
+            $ifNull: ["$pincode", { $ifNull: ["$addressObject.pincode", "$orderDelivery.pincode"] }]
+          },
+          addressline1: {
+            $ifNull: ["$addressline1", { $ifNull: ["$addressObject.addressline1", "$orderDelivery.addressline1"] }]
+          },
+          addressline2: {
+            $ifNull: ["$addressline2", { $ifNull: ["$addressObject.addressline2", "$orderDelivery.addressline2"] }]
+          }
+        }
+      },
+
+      // Ensure wp_device_id field always present
+      {
+        $addFields: {
+          wp_device_id: { $ifNull: ["$wp_device_id", "$resolvedDeviceId"] }
+        }
+      },
+
+      // Clean up helper fields
+      {
         $project: {
           device_id: 0,
-          order: 0
+          order: 0,
+          orderDelivery: 0,
+          addressObject: 0,
+          resolvedDeviceId: 0
         }
       }
     ];

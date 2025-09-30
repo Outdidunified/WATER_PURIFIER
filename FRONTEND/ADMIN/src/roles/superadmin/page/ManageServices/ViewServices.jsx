@@ -8,47 +8,71 @@ const ViewServices = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
   const installationTasks = useViewServices();
 
-  const resolveTechnicianName = (task) => {
-    return (
-      task.assignedTechnician?.technician_name ||
-      task.assignedTechnician?.name ||
-      task.assigned_technician_name ||
-      '-'
-    );
+  const formatDateTime = (value) => {
+    if (!value) return '-';
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? '-' : parsed.toLocaleString();
   };
 
-  const resolveTechnicianId = (task) => {
-    return task.assignedTechnician?.technician_id || task.assigned_technician_id || '-';
-  };
+  const resolveTechnicianName = (task) => (
+    task.assignedTechnician?.technician_name ||
+    task.assignedTechnician?.name ||
+    task.assigned_technician_name ||
+    task.technician_name ||
+    '-'
+  );
 
-  const resolvePendingReason = (task) => {
-    return task.pending_reason || task.pendingReason || '-';
-  };
+  const resolveTechnicianId = (task) => (
+    task.assignedTechnician?.technician_id ||
+    task.assigned_technician_id ||
+    task.technician_id ||
+    '-'
+  );
 
-  const resolveAssignedDate = (task) => {
-    const dateValue = task.assigned_date || task.task_assigned_date || task.assignedDate;
-    if (!dateValue) return '-';
-    const parsedDate = new Date(dateValue);
-    return Number.isNaN(parsedDate.getTime()) ? '-' : parsedDate.toLocaleString();
-  };
+  const resolveTechnicianEmail = (task) => (
+    task.assignedTechnician?.technician_email ||
+    task.assignedTechnician?.email ||
+    task.assigned_technician_email ||
+    task.technician_email ||
+    '-'
+  );
 
-  const resolveDeviceId = (task) => {
-    return task.device_id || task.wp_device_id || '-';
-  };
+  const resolveTechnicianPhone = (task) => (
+    task.assignedTechnician?.technician_phone ||
+    task.assignedTechnician?.phone ||
+    task.assignedTechnician?.mobile ||
+    task.assignedTechnician?.contact_number ||
+    task.assignedTechnician?.contactNumber ||
+    task.technician_phone ||
+    task.technician_mobile ||
+    '-'
+  );
 
-  const resolveCreatedDate = (task) => {
-    const dateValue = task.created_date || task.createdDate;
-    if (!dateValue) return '-';
-    const parsedDate = new Date(dateValue);
-    return Number.isNaN(parsedDate.getTime()) ? '-' : parsedDate.toLocaleString();
-  };
+  const resolveAssignedBy = (task) => (
+    task.task_assigned_by ||
+    task.assigned_by ||
+    task.assignedTechnician?.assigned_by ||
+    '-'
+  );
 
-  const resolveModifiedDate = (task) => {
-    const dateValue = task.modified_date || task.modifiedDate;
-    if (!dateValue) return '-';
-    const parsedDate = new Date(dateValue);
-    return Number.isNaN(parsedDate.getTime()) ? '-' : parsedDate.toLocaleString();
-  };
+  const resolvePendingReason = (task) => (
+    task.pending_reason ||
+    task.pendingReason ||
+    task.pending_reason_text ||
+    task.pendingReasonText ||
+    '-'
+  );
+
+  const resolveAssignedDate = (task) =>
+    formatDateTime(task.assigned_date || task.task_assigned_date || task.assignedDate);
+
+  const resolveDeviceId = (task) => task.device_id || task.wp_device_id || '-';
+
+  const resolveCreatedDate = (task) =>
+    formatDateTime(task.created_date || task.createdDate || task.created_at || task.createdAt);
+
+  const resolveModifiedDate = (task) =>
+    formatDateTime(task.modified_date || task.modifiedDate || task.modified_at || task.modifiedAt);
 
   const handleBack = () => {
     navigate('/superadmin/ManageServices');
@@ -103,42 +127,65 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                           </span>
                         </div>
                         <div className="col-md-4">
-                        </div>
-                      </div>
-
-                      <div className="row viewDataCss mt-2">
-                        <div className="col-md-4">
-                          <strong>Technician Name:</strong>{' '}
-                          <span>{resolveTechnicianName(task)}</span>
-                        </div>
-                        <div className="col-md-4">
-                          <strong>Technician ID:</strong>{' '}
-                          <span>{resolveTechnicianId(task)}</span>
-                        </div>
-                        <div className="col-md-4">
                           <strong>Pending Reason:</strong>{' '}
                           <span>{resolvePendingReason(task)}</span>
                         </div>
                       </div>
 
+                      <div className="row viewDataCss mt-4">
+                        <div className="col-12">
+                          <h5 className="font-weight-bold" style={{ color: '#007bff' }}>
+                            Technician Details
+                          </h5>
+                          <hr />
+                        </div>
+                        <div className="col-md-4">
+                          <strong>Name:</strong> <span>{resolveTechnicianName(task)}</span>
+                        </div>
+                        <div className="col-md-4">
+                          <strong>Technician ID:</strong> <span>{resolveTechnicianId(task)}</span>
+                        </div>
+                        <div className="col-md-4">
+                          <strong>Email:</strong>{' '}
+                          <span>{resolveTechnicianEmail(task)}</span>
+                        </div>
+                      </div>
+
                       <div className="row viewDataCss mt-2">
+                        <div className="col-md-4">
+                          <strong>Phone:</strong>{' '}
+                          <span>{resolveTechnicianPhone(task)}</span>
+                        </div>
                         <div className="col-md-4">
                           <strong>Assigned Date:</strong>{' '}
                           <span>{resolveAssignedDate(task)}</span>
+                        </div>
+                        <div className="col-md-4">
+                          <strong>Assigned By:</strong>{' '}
+                          <span>{resolveAssignedBy(task)}</span>
+                        </div>
+                      </div>
+
+                      <div className="row viewDataCss mt-4">
+                        <div className="col-12">
+                          <h5 className="font-weight-bold" style={{ color: '#007bff' }}>
+                            Task Details
+                          </h5>
+                          <hr />
+                        </div>
+                        <div className="col-md-4">
+                          <strong>Device ID:</strong> <span>{resolveDeviceId(task)}</span>
                         </div>
                         <div className="col-md-4">
                           <strong>Created By:</strong>{' '}
                           <span>{task.task_created_by_user_email || '-'}</span>
                         </div>
                         <div className="col-md-4">
-                          <strong>Device ID:</strong> <span>{resolveDeviceId(task)}</span>
+                          <strong>OTP:</strong> <span>{task.otp || '-'}</span>
                         </div>
                       </div>
 
                       <div className="row viewDataCss mt-2">
-                        <div className="col-md-4">
-                          <strong>OTP:</strong> <span>{task.otp || '-'}</span>
-                        </div>
                         <div className="col-md-4">
                           <strong>Created Date:</strong>{' '}
                           <span>{resolveCreatedDate(task)}</span>
@@ -147,9 +194,35 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                           <strong>Modified Date:</strong>{' '}
                           <span>{resolveModifiedDate(task)}</span>
                         </div>
+                        <div className="col-md-4">
+                          <strong>Modified By:</strong> <span>{task.modified_by || '-'}</span>
+                        </div>
+                      </div>
+                      <div className="row viewDataCss mt-2">
+                         <div className="col-md-4">
+                          <strong>City:</strong>{' '}
+                          <span>{task.city || '-'}</span>
+                        </div>
+                        <div className="col-md-4">
+                          <strong>District:</strong>{' '}
+                          <span>{task.district || '-'}</span>
+                        </div>
+                        <div className="col-md-4">
+                          <strong>State:</strong>{' '}
+                          <span>{task.state || '-'}</span>
+                        </div>
+
                       </div>
 
                       <div className="row viewDataCss mt-2">
+                        <div className="col-md-4">
+                          <strong>Pincode:</strong>{' '}
+                          <span>{task.pincode || '-'}</span>
+                        </div>
+                        <div className="col-md-4">
+                          <strong>Modified Date:</strong>{' '}
+                          <span>{resolveModifiedDate(task)}</span>
+                        </div>
                         <div className="col-md-4">
                           <strong>Modified By:</strong> <span>{task.modified_by || '-'}</span>
                         </div>
