@@ -112,7 +112,8 @@ const useManageDevice = (userInfo) => {
     setStationData({
       wp_device_id: '',
       model_id: '',
-      model_name: ''
+      model_name: '',
+      connectivity: ''
     });
   };
 

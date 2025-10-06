@@ -20,6 +20,7 @@ const useEditProducts = (userInfo) => {
   const [mainImage, setMainImage] = useState(null);
   const [subImages, setSubImages] = useState([null, null, null, null]);
   const [wpDeviceQuantity, setWpDeviceQuantity] = useState(0);
+  const [connectivity, setConnectivity] = useState([]);
   const [plans, setPlans] = useState([{ plans_id: 1, label: '', capacity: '', price: '' }]);
   const [durations, setDurations] = useState([
     { duration_id: 1, duration_time_limit: '', gst: '', discount: '', security_deposit: '' },
@@ -45,6 +46,13 @@ const useEditProducts = (userInfo) => {
       setProductDetails(productData.product_details || '');
       setProductSpecifications(productData.product_specifications || '');
       setWpDeviceQuantity(productData.wp_device_quantity || 0);
+      
+      // Parse connectivity - could be string "Wifi, Bluetooth" or array
+      const connectivityData = productData.connectivity || '';
+      const connectivityArray = typeof connectivityData === 'string' 
+        ? connectivityData.split(',').map(s => s.trim()).filter(Boolean)
+        : Array.isArray(connectivityData) ? connectivityData : [];
+      setConnectivity(connectivityArray);
 
       const statusValue =
         productData.status === 1 || productData.status === '1' || productData.status === true
@@ -90,6 +98,7 @@ const useEditProducts = (userInfo) => {
         productDetails: productData.product_details || '',
         productSpecifications: productData.product_specifications || '',
         wpDeviceQuantity: productData.wp_device_quantity || 0,
+        connectivity: connectivityArray,
         mainImage: productData.main_img || null,
         subImages: subImgs,
         plans: parsedPlans.map(p => ({
@@ -116,6 +125,7 @@ const useEditProducts = (userInfo) => {
       productDetails,
       productSpecifications,
       wpDeviceQuantity,
+      connectivity,
       mainImage,
       subImages,
       plans: plans.map(p => ({
@@ -259,6 +269,12 @@ const useEditProducts = (userInfo) => {
       return;
     }
 
+    if (connectivity.length === 0) {
+      showErrorAlert("Missing Data", "Please select at least one connectivity option.");
+      setLoading(false);
+      return;
+    }
+
     if (plans.length === 0 || durations.length === 0) {
       showErrorAlert("Missing Data", "Please add at least one plan and one duration.");
       setLoading(false);
@@ -292,6 +308,7 @@ const useEditProducts = (userInfo) => {
     formData.append('product_details', productDetails);
     formData.append('product_specifications', productSpecifications);
     formData.append('wp_device_quantity', wpDeviceQuantity);
+    formData.append('connectivity', connectivity.join(', '));
     formData.append('main_img', mainImage);
     formData.append('createdby', userInfo.email);
     formData.append('modifiedby', userInfo.email);
@@ -348,6 +365,8 @@ const useEditProducts = (userInfo) => {
     addSubImage,
     removeSubImage,
     handleSubImageChange,
+    connectivity,
+    setConnectivity,
     plans,
     addPlan,
     handlePlanChange,

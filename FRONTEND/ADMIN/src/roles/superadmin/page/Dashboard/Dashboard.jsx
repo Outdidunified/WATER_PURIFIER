@@ -68,6 +68,8 @@ const Dashboard = ({ userInfo, handleLogout }) => {
             topModels: { options: {}, series: [] }
         };
 
+        const isSeller = Number(userInfo?.role_id) === 4;
+
         const months = [
             'January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'
@@ -78,8 +80,6 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                 labels: Array.from({ length: 30 }, (_, i) => `${i + 1}`),
                 paymentsData: analyticsData.payments.timeline.month.slice(0, 30),
                 revenueData: analyticsData.revenue.timeline.month.slice(0, 30),
-                districtsData: analyticsData.topDistricts.today,
-                modelsData: analyticsData.topModels.today,
                 paymentsTitle: 'Successful Payments in September 2025 (Daily)',
                 revenueTitle: 'Revenue in September 2025 (Daily)',
                 districtsTitle: 'Top Districts Today',
@@ -99,8 +99,6 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                     { revenue: analyticsData.revenue.timeline.month.slice(14, 21).reduce((sum, i) => sum + i.revenue, 0) },
                     { revenue: analyticsData.revenue.timeline.month.slice(21, 28).reduce((sum, i) => sum + i.revenue, 0) },
                 ],
-                districtsData: analyticsData.topDistricts.week,
-                modelsData: analyticsData.topModels.week,
                 paymentsTitle: 'Successful Payments in September 2025 (Weekly)',
                 revenueTitle: 'Revenue in September 2025 (Weekly)',
                 districtsTitle: 'Top Districts This Week',
@@ -110,8 +108,6 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                 labels: months,
                 paymentsData: analyticsData.payments.timeline.year,
                 revenueData: analyticsData.revenue.timeline.year,
-                districtsData: analyticsData.topDistricts.month,
-                modelsData: analyticsData.topModels.month,
                 paymentsTitle: 'Successful Payments in 2025 (Monthly)',
                 revenueTitle: 'Revenue in 2025 (Monthly)',
                 districtsTitle: 'Top Districts This Month',
@@ -129,8 +125,6 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                     { revenue: analyticsData.revenue.timeline.year.reduce((sum, i) => sum + i.revenue, 0) },
                     { revenue: 0 },
                 ],
-                districtsData: analyticsData.topDistricts.year,
-                modelsData: analyticsData.topModels.year,
                 paymentsTitle: 'Successful Payments (Yearly)',
                 revenueTitle: 'Revenue (Yearly)',
                 districtsTitle: 'Top Districts This Year',
@@ -139,6 +133,15 @@ const Dashboard = ({ userInfo, handleLogout }) => {
         };
 
         const selected = timeframes[timeframe];
+
+        // Handle data differences for sellers
+        if (isSeller) {
+            selected.districtsData = []; // Sellers don't have top districts data
+            selected.modelsData = analyticsData.topModels ? analyticsData.topModels.map(m => ({ modelName: m.model, devicesSold: m.orderCount })) : [];
+        } else {
+            selected.districtsData = analyticsData.topDistricts ? analyticsData.topDistricts[timeframe === 'daily' ? 'today' : timeframe === 'week' ? 'week' : timeframe === 'month' ? 'month' : 'year'] || [] : [];
+            selected.modelsData = analyticsData.topModels ? analyticsData.topModels[timeframe === 'daily' ? 'today' : timeframe === 'week' ? 'week' : timeframe === 'month' ? 'month' : 'year'] || [] : [];
+        }
 
         const usersChart = {
             options: {
@@ -220,6 +223,8 @@ const Dashboard = ({ userInfo, handleLogout }) => {
         topModels: topModelsChartData
     } = getChartData();
 
+    const isSeller = Number(userInfo?.role_id) === 4;
+
     if (error) {
         return <div style={{ textAlign: 'center', fontSize: '1.2rem', color: '#FF6F61' }}>{error}</div>;
     }
@@ -294,9 +299,11 @@ const Dashboard = ({ userInfo, handleLogout }) => {
 
                                 {/* Top Districts & Top Models Charts */}
                                 <div className="row mt-5">
-                                    <div className="col-md-6">
-                                        <Chart options={topDistrictsChartData.options} series={topDistrictsChartData.series} type="bar" height={350} />
-                                    </div>
+                                    {!isSeller && (
+                                        <div className="col-md-6">
+                                            <Chart options={topDistrictsChartData.options} series={topDistrictsChartData.series} type="bar" height={350} />
+                                        </div>
+                                    )}
                                     <div className="col-md-6">
                                         <Chart options={topModelsChartData.options} series={topModelsChartData.series} type="bar" height={350} />
                                     </div>

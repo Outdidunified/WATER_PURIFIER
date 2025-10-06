@@ -82,13 +82,13 @@ const ViewManageDevice = ({ userInfo, handleLogout }) => {
                         <strong>Created By:</strong> <span>{device.createdby || '-'}</span>
                       </div>
                       <div className="col-md-4">
-                        <strong>Modified By:</strong> <span>{device.modifiedby || '-'}</span>
+                        <strong>Model Assigned By:</strong> <span>{device.model_assigned_by || '-'}</span>
                       </div>
                     </div>
 
                     <div className="row viewDataCss" style={{ marginTop: '10px' }}>
                       <div className="col-md-4">
-                        <strong>Model Assigned By:</strong> <span>{device.model_assigned_by || '-'}</span>
+                        <strong>Modified By:</strong> <span>{device.modifiedby || '-'}</span>
                       </div>
                       <div className="col-md-4">
                         <strong>Created Date:</strong>{' '}

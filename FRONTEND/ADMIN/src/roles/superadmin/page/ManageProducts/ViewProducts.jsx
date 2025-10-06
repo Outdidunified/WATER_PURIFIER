@@ -100,6 +100,40 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
                   <div><strong>Created By:</strong> {product.createdby || '-'}</div>
                 </div>
 
+                {/* Connectivity Row */}
+                <div className="mb-3 text-start">
+                  <strong>Connectivity:</strong>
+                  <div style={{ marginTop: '5px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                    {product.connectivity ? (
+                      typeof product.connectivity === 'string' ? (
+                        product.connectivity.split(',').map((item, index) => (
+                          <span key={index} style={{
+                            backgroundColor: '#007bff',
+                            color: 'white',
+                            padding: '5px 10px',
+                            borderRadius: '4px',
+                            fontSize: '14px'
+                          }}>
+                            {item.trim()}
+                          </span>
+                        ))
+                      ) : Array.isArray(product.connectivity) ? (
+                        product.connectivity.map((item, index) => (
+                          <span key={index} style={{
+                            backgroundColor: '#007bff',
+                            color: 'white',
+                            padding: '5px 10px',
+                            borderRadius: '4px',
+                            fontSize: '14px'
+                          }}>
+                            {item}
+                          </span>
+                        ))
+                      ) : '-'
+                    ) : '-'}
+                  </div>
+                </div>
+
                 {/* Second row: Created Date, Modified By, Modified Date */}
 
 

@@ -807,7 +807,7 @@ const FetchDeviceDetails = async (req, res) => {
 // UpdateDeviceDetails
 const UpdateDeviceDetails = async (req, res) => {
     try {
-        const { wp_device_id, modifiedby, model_assigned_by, model_id, model_name, status } = req.body;
+        const { wp_device_id, modifiedby, model_assigned_by, model_id, model_name, connectivity, status } = req.body;
 
         if (!wp_device_id) {
             return res.status(400).json({
@@ -834,6 +834,7 @@ const UpdateDeviceDetails = async (req, res) => {
             model_assigned_by,
             model_id,
             model_name,
+            connectivity,
             status,
             modifieddate: new Date()
         };
@@ -2412,6 +2413,53 @@ const FetchTechniciansByDistrict = async (req, res) => {
     }
 };
 
+// 3.1) Get Districts with Sellers - Returns unique districts with state (no duplicates)
+const GetDistrictsWithSellers = async (req, res) => {
+    try {
+        const db = await database.connectToDatabase();
+        const usersCollection = db.collection('users');
+
+        // Aggregate to get unique districts with states from sellers (role_id = 4)
+        const districts = await usersCollection.aggregate([
+            {
+                $match: {
+                    role_id: 4, // Only sellers
+                    district: { $exists: true, $ne: null, $ne: '' },
+                    state: { $exists: true, $ne: null, $ne: '' }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        district: '$district',
+                        state: '$state'
+                    }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    district: '$_id.district',
+                    state: '$_id.state'
+                }
+            },
+            {
+                $sort: { state: 1, district: 1 } // Sort by state, then district
+            }
+        ]).toArray();
+
+        return res.status(200).json({ 
+            status: 'Success', 
+            data: districts,
+            count: districts.length 
+        });
+    } catch (error) {
+        console.error('Error in GetDistrictsWithSellers:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
 // 4) GET: Users by district (only role_id 2 and 3)
 const GetUsersByDistrict = async (req, res) => {
     try {
@@ -3725,6 +3773,6 @@ module.exports = {
     FetchSelectServiceTask, AssignService, ReAssignService, assignPermissions, fetchPermissionsByRole,
     GetUsersByDistrict, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
     AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchEndUserDevices, FetchOrdersByUserId, FetchTechnicianTasksByUserId, GetAnalytics,
-    GetAnalyticsByDistrict
+    GetAnalyticsByDistrict,GetDistrictsWithSellers
     // UpdateOrdersStatus,
 };

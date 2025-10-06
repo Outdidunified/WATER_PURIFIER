@@ -20,6 +20,7 @@ const useAddProducts = (userInfo) => {
   const [subImages, setSubImages] = useState([null, null, null, null]); // Up to 4
 
   const [wpDeviceQuantity, setWpDeviceQuantity] = useState(0);
+  const [connectivity, setConnectivity] = useState([]);
   const [plans, setPlans] = useState([{ plans_id: 1, label: '', capacity: '', price: '' }]);
   const [durations, setDurations] = useState([
     { duration_id: 1, duration_time_limit: '', gst: '', discount: '', security_deposit: '',    durationError: ''
@@ -147,6 +148,12 @@ const handleDurationChange = (index, field, value) => {
       return;
     }
 
+    if (connectivity.length === 0) {
+      showErrorAlert("Missing Data", "Please select at least one connectivity option.");
+      setLoading(false);
+      return;
+    }
+
     if (plans.length === 0 || durations.length === 0) {
       showErrorAlert("Missing Data", "Please add at least one plan and one duration.");
       setLoading(false);
@@ -179,6 +186,7 @@ const handleDurationChange = (index, field, value) => {
     formData.append('product_details', productDetails);
     formData.append('product_specifications', productSpecifications);
     formData.append('wp_device_quantity', wpDeviceQuantity);
+    formData.append('connectivity', connectivity.join(', '));
     formData.append('main_img', mainImage);
 
     subImages.forEach((img, i) => {
@@ -218,6 +226,7 @@ const handleDurationChange = (index, field, value) => {
         setMainImage(null);
         setSubImages([null, null, null, null]);
         setWpDeviceQuantity(0);
+        setConnectivity([]);
         setPlans([{ plans_id: 1, label: '', capacity: '', price: '' }]);
         setDurations([
           { duration_id: 1, duration_time_limit: '', gst: '', discount: '', security_deposit: '' }
@@ -249,6 +258,8 @@ const handleDurationChange = (index, field, value) => {
     addSubImage,
     removeSubImage,
     handleSubImageChange,
+    connectivity,
+    setConnectivity,
     plans,
     addPlan,
     handlePlanChange,
