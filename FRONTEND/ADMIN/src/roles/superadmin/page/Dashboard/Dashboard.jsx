@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
 import Footer from '../../components/Footer';
@@ -11,6 +11,18 @@ const Dashboard = ({ userInfo, handleLogout }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [timeframe, setTimeframe] = useState('daily'); // Default to daily
+
+    // Get current date information
+    const currentDate = useMemo(() => {
+        const now = new Date();
+        return {
+            year: now.getFullYear(),
+            month: now.getMonth(), // 0-11
+            monthName: now.toLocaleString('en-US', { month: 'long' }),
+            date: now.getDate(),
+            day: now.toLocaleString('en-US', { weekday: 'long' })
+        };
+    }, []);
 
     // Fetch analytics data
     useEffect(() => {
@@ -80,10 +92,10 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                 labels: Array.from({ length: 30 }, (_, i) => `${i + 1}`),
                 paymentsData: analyticsData.payments.timeline.month.slice(0, 30),
                 revenueData: analyticsData.revenue.timeline.month.slice(0, 30),
-                paymentsTitle: 'Successful Payments in September 2025 (Daily)',
-                revenueTitle: 'Revenue in September 2025 (Daily)',
-                districtsTitle: 'Top Districts Today',
-                modelsTitle: 'Top Models Today',
+                paymentsTitle: `Successful Payments in ${currentDate.monthName} ${currentDate.year} (Daily)`,
+                revenueTitle: `Revenue in ${currentDate.monthName} ${currentDate.year} (Daily)`,
+                districtsTitle: `Top Districts Today (${currentDate.day})`,
+                modelsTitle: `Top Models Today (${currentDate.day})`,
             },
             week: {
                 labels: ['1st Week', '2nd Week', '3rd Week', '4th Week'],
@@ -99,8 +111,8 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                     { revenue: analyticsData.revenue.timeline.month.slice(14, 21).reduce((sum, i) => sum + i.revenue, 0) },
                     { revenue: analyticsData.revenue.timeline.month.slice(21, 28).reduce((sum, i) => sum + i.revenue, 0) },
                 ],
-                paymentsTitle: 'Successful Payments in September 2025 (Weekly)',
-                revenueTitle: 'Revenue in September 2025 (Weekly)',
+                paymentsTitle: `Successful Payments in ${currentDate.monthName} ${currentDate.year} (Weekly)`,
+                revenueTitle: `Revenue in ${currentDate.monthName} ${currentDate.year} (Weekly)`,
                 districtsTitle: 'Top Districts This Week',
                 modelsTitle: 'Top Models This Week',
             },
@@ -108,13 +120,13 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                 labels: months,
                 paymentsData: analyticsData.payments.timeline.year,
                 revenueData: analyticsData.revenue.timeline.year,
-                paymentsTitle: 'Successful Payments in 2025 (Monthly)',
-                revenueTitle: 'Revenue in 2025 (Monthly)',
+                paymentsTitle: `Successful Payments in ${currentDate.year} (Monthly)`,
+                revenueTitle: `Revenue in ${currentDate.year} (Monthly)`,
                 districtsTitle: 'Top Districts This Month',
                 modelsTitle: 'Top Models This Month',
             },
             year: {
-                labels: ['2024', '2025', '2026'],
+                labels: [`${currentDate.year - 1}`, `${currentDate.year}`, `${currentDate.year + 1}`],
                 paymentsData: [
                     { successful: 0 },
                     { successful: analyticsData.payments.timeline.year.reduce((sum, i) => sum + i.successful, 0) },
@@ -125,10 +137,10 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                     { revenue: analyticsData.revenue.timeline.year.reduce((sum, i) => sum + i.revenue, 0) },
                     { revenue: 0 },
                 ],
-                paymentsTitle: 'Successful Payments (Yearly)',
-                revenueTitle: 'Revenue (Yearly)',
-                districtsTitle: 'Top Districts This Year',
-                modelsTitle: 'Top Models This Year',
+                paymentsTitle: `Successful Payments (${currentDate.year})`,
+                revenueTitle: `Revenue (${currentDate.year})`,
+                districtsTitle: `Top Districts in ${currentDate.year}`,
+                modelsTitle: `Top Models in ${currentDate.year}`,
             },
         };
 
@@ -137,7 +149,7 @@ const Dashboard = ({ userInfo, handleLogout }) => {
         // Handle data differences for sellers
         if (isSeller) {
             selected.districtsData = []; // Sellers don't have top districts data
-            selected.modelsData = analyticsData.topModels ? analyticsData.topModels.map(m => ({ modelName: m.model, devicesSold: m.orderCount })) : [];
+            selected.modelsData = analyticsData.topModels ? analyticsData.topModels[timeframe === 'daily' ? 'today' : timeframe === 'week' ? 'week' : timeframe === 'month' ? 'month' : 'year'] || [] : [];
         } else {
             selected.districtsData = analyticsData.topDistricts ? analyticsData.topDistricts[timeframe === 'daily' ? 'today' : timeframe === 'week' ? 'week' : timeframe === 'month' ? 'month' : 'year'] || [] : [];
             selected.modelsData = analyticsData.topModels ? analyticsData.topModels[timeframe === 'daily' ? 'today' : timeframe === 'week' ? 'week' : timeframe === 'month' ? 'month' : 'year'] || [] : [];
@@ -145,12 +157,61 @@ const Dashboard = ({ userInfo, handleLogout }) => {
 
         const usersChart = {
             options: {
-                chart: { id: 'users-chart', toolbar: { show: false } },
+                chart: { 
+                    id: 'users-chart', 
+                    toolbar: { show: false },
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 800,
+                    }
+                },
                 labels: ['Sellers', 'End Users', 'Technicians'],
-                title: { text: 'User Distribution', align: 'center', style: { fontSize: '20px', fontWeight: '700', color: '#007bff' } },
-                colors: ['#007BFF', '#FF6F61', '#4B49AC'],
-                dataLabels: { enabled: true },
-                legend: { position: 'bottom' },
+                title: { 
+                    text: 'User Distribution', 
+                    align: 'center', 
+                    style: { 
+                        fontSize: '20px', 
+                        fontWeight: '700', 
+                        color: '#424242',
+                        fontFamily: 'inherit'
+                    } 
+                },
+                colors: ['#667eea', '#f093fb', '#4facfe'],
+                dataLabels: { 
+                    enabled: true,
+                    style: {
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        colors: ['#fff']
+                    }
+                },
+                legend: { 
+                    position: 'bottom',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    markers: {
+                        width: 12,
+                        height: 12,
+                        radius: 3
+                    }
+                },
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            labels: {
+                                show: true,
+                                total: {
+                                    show: true,
+                                    label: 'Total Users',
+                                    fontSize: '18px',
+                                    fontWeight: 700,
+                                    color: '#424242'
+                                }
+                            }
+                        }
+                    }
+                }
             },
             series: [
                 analyticsData.users.seller,
@@ -161,24 +222,148 @@ const Dashboard = ({ userInfo, handleLogout }) => {
 
         const topDistrictsChart = analyticsData.topDistricts ? {
             options: {
-                chart: { id: 'top-districts-chart', toolbar: { show: false } },
-                plotOptions: { bar: { horizontal: true, barHeight: '30%' } },
-                xaxis: { categories: selected.districtsData.map(d => d.districtName || '') },
-                title: { text: selected.districtsTitle, align: 'center', style: { fontSize: '20px', fontWeight: '700', color: '#007bff' } },
-                colors: ['#28a745'],
-                dataLabels: { enabled: true },
+                chart: { 
+                    id: 'top-districts-chart', 
+                    toolbar: { show: false },
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 800,
+                    }
+                },
+                plotOptions: { 
+                    bar: { 
+                        horizontal: true, 
+                        barHeight: '60%',
+                        borderRadius: 8,
+                        dataLabels: {
+                            position: 'top'
+                        }
+                    } 
+                },
+                xaxis: { 
+                    categories: selected.districtsData.map(d => d.districtName || ''),
+                    labels: {
+                        style: {
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            colors: '#757575'
+                        }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        style: {
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            colors: '#424242'
+                        }
+                    }
+                },
+                title: { 
+                    text: selected.districtsTitle, 
+                    align: 'center', 
+                    style: { 
+                        fontSize: '18px', 
+                        fontWeight: '700', 
+                        color: '#424242',
+                        fontFamily: 'inherit'
+                    } 
+                },
+                colors: ['#4facfe'],
+                dataLabels: { 
+                    enabled: true,
+                    style: {
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        colors: ['#fff']
+                    }
+                },
+                grid: { 
+                    borderColor: '#f1f1f1',
+                    strokeDashArray: 4
+                },
+                tooltip: {
+                    theme: 'light',
+                    y: {
+                        formatter: val => `${val} devices`
+                    }
+                }
             },
             series: [{ name: 'Devices Sold', data: selected.districtsData.map(d => d.devicesSold) }],
         } : { options: {}, series: [] };
 
         const topModelsChart = analyticsData.topModels ? {
             options: {
-                chart: { id: 'top-models-chart', toolbar: { show: false } },
-                plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 6 } },
-                xaxis: { categories: selected.modelsData.map(m => m.modelName || '') },
-                title: { text: selected.modelsTitle, align: 'center', style: { fontSize: '20px', fontWeight: '700', color: '#007bff' } },
-                colors: ['#FF6F61'],
-                dataLabels: { enabled: true },
+                chart: { 
+                    id: 'top-models-chart', 
+                    toolbar: { show: false },
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 800,
+                    }
+                },
+                plotOptions: { 
+                    bar: { 
+                        horizontal: false, 
+                        columnWidth: '60%', 
+                        borderRadius: 8,
+                        dataLabels: {
+                            position: 'top'
+                        }
+                    } 
+                },
+                xaxis: { 
+                    categories: selected.modelsData.map(m => m.modelName || ''),
+                    labels: {
+                        rotate: -45,
+                        style: {
+                            fontSize: '11px',
+                            fontWeight: 500,
+                            colors: '#757575'
+                        }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        style: {
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            colors: '#757575'
+                        }
+                    }
+                },
+                title: { 
+                    text: selected.modelsTitle, 
+                    align: 'center', 
+                    style: { 
+                        fontSize: '18px', 
+                        fontWeight: '700', 
+                        color: '#424242',
+                        fontFamily: 'inherit'
+                    } 
+                },
+                colors: ['#43e97b'],
+                dataLabels: { 
+                    enabled: true,
+                    offsetY: -20,
+                    style: {
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        colors: ['#43e97b']
+                    }
+                },
+                grid: { 
+                    borderColor: '#f1f1f1',
+                    strokeDashArray: 4
+                },
+                tooltip: {
+                    theme: 'light',
+                    y: {
+                        formatter: val => `${val} devices`
+                    }
+                }
             },
             series: [{ name: 'Devices Sold', data: selected.modelsData.map(m => m.devicesSold) }],
         } : { options: {}, series: [] };
@@ -186,26 +371,147 @@ const Dashboard = ({ userInfo, handleLogout }) => {
         return {
             payments: {
                 options: {
-                    chart: { id: 'successful-payments-chart', toolbar: { show: false } },
-                    xaxis: { categories: selected.labels, labels: { rotate: -45 } },
-                    plotOptions: { bar: { columnWidth: '30%', borderRadius: 6 } },
-                    title: { text: selected.paymentsTitle, align: 'center', style: { fontSize: '20px', fontWeight: '700', color: '#007BFF' } },
-                    colors: ['#007BFF'],
-                    dataLabels: { enabled: false },
-                    grid: { borderColor: '#ddd' },
+                    chart: { 
+                        id: 'successful-payments-chart', 
+                        toolbar: { show: false },
+                        animations: {
+                            enabled: true,
+                            easing: 'easeinout',
+                            speed: 800,
+                        }
+                    },
+                    xaxis: { 
+                        categories: selected.labels, 
+                        labels: { 
+                            rotate: -45,
+                            style: {
+                                fontSize: '12px',
+                                fontWeight: 500,
+                                colors: '#757575'
+                            }
+                        }
+                    },
+                    plotOptions: { 
+                        bar: { 
+                            columnWidth: '45%', 
+                            borderRadius: 8,
+                            distributed: false,
+                            dataLabels: {
+                                position: 'top'
+                            }
+                        } 
+                    },
+                    title: { 
+                        text: selected.paymentsTitle, 
+                        align: 'center', 
+                        style: { 
+                            fontSize: '18px', 
+                            fontWeight: '700', 
+                            color: '#424242',
+                            fontFamily: 'inherit'
+                        } 
+                    },
+                    colors: ['#667eea'],
+                    dataLabels: { 
+                        enabled: true,
+                        offsetY: -20,
+                        style: {
+                            fontSize: '12px',
+                            colors: ['#667eea'],
+                            fontWeight: 600
+                        }
+                    },
+                    grid: { 
+                        borderColor: '#f1f1f1',
+                        strokeDashArray: 4,
+                        xaxis: {
+                            lines: {
+                                show: true
+                            }
+                        }
+                    },
+                    tooltip: {
+                        theme: 'light',
+                        y: {
+                            formatter: val => `${val} payments`
+                        }
+                    }
                 },
                 series: [{ name: 'Successful Payments', data: selected.paymentsData.map(i => i.successful) }],
             },
             revenue: {
                 options: {
-                    chart: { id: 'monthly-revenue-chart', toolbar: { show: false } },
-                    xaxis: { categories: selected.labels, labels: { rotate: -45 } },
-                    stroke: { curve: 'smooth', width: 3 },
-                    title: { text: selected.revenueTitle, align: 'center', style: { fontSize: '20px', fontWeight: '700', color: '#4B49AC' } },
-                    colors: ['#FF6F61'],
+                    chart: { 
+                        id: 'monthly-revenue-chart', 
+                        toolbar: { show: false },
+                        animations: {
+                            enabled: true,
+                            easing: 'easeinout',
+                            speed: 800,
+                        }
+                    },
+                    xaxis: { 
+                        categories: selected.labels, 
+                        labels: { 
+                            rotate: -45,
+                            style: {
+                                fontSize: '12px',
+                                fontWeight: 500,
+                                colors: '#757575'
+                            }
+                        }
+                    },
+                    stroke: { curve: 'smooth', width: 4 },
+                    title: { 
+                        text: selected.revenueTitle, 
+                        align: 'center', 
+                        style: { 
+                            fontSize: '18px', 
+                            fontWeight: '700', 
+                            color: '#424242',
+                            fontFamily: 'inherit'
+                        } 
+                    },
+                    colors: ['#f093fb'],
+                    fill: {
+                        type: 'gradient',
+                        gradient: {
+                            shadeIntensity: 1,
+                            opacityFrom: 0.7,
+                            opacityTo: 0.3,
+                            stops: [0, 90, 100]
+                        }
+                    },
                     dataLabels: { enabled: false },
-                    grid: { borderColor: '#ddd' },
-                    yaxis: { labels: { formatter: val => `₹${val.toFixed(2)}` } },
+                    grid: { 
+                        borderColor: '#f1f1f1',
+                        strokeDashArray: 4
+                    },
+                    yaxis: { 
+                        labels: { 
+                            formatter: val => `₹${val.toLocaleString('en-IN', {maximumFractionDigits: 0})}`,
+                            style: {
+                                fontSize: '12px',
+                                fontWeight: 500,
+                                colors: '#757575'
+                            }
+                        } 
+                    },
+                    markers: {
+                        size: 5,
+                        colors: ['#f093fb'],
+                        strokeColors: '#fff',
+                        strokeWidth: 2,
+                        hover: {
+                            size: 7
+                        }
+                    },
+                    tooltip: {
+                        theme: 'light',
+                        y: {
+                            formatter: val => `₹${val.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+                        }
+                    }
                 },
                 series: [{ name: 'Revenue', data: selected.revenueData.map(i => i.revenue) }],
             },
@@ -242,13 +548,55 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                             </div>
                         ) : (
                             <>
-                                {/* Header Row */}
+                                {/* Header Row with Current Date */}
                                 <div className="row mb-4">
-                                    <div className="col-md-12 d-flex justify-content-between align-items-center admin-header">
-                                        <h4>Welcome, <span style={{ color: '#6C63FF' }}>{userInfo?.email}</span></h4>
-                                        <button className="btn btn-primary" onClick={() => window.location.reload()}>
-                                            <i className="fa fa-sync"></i> Reload Data
-                                        </button>
+                                    <div className="col-md-12">
+                                        <div style={{
+                                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                            borderRadius: '16px',
+                                            padding: '24px 30px',
+                                            boxShadow: '0 10px 30px rgba(102, 126, 234, 0.3)',
+                                            color: 'white',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            flexWrap: 'wrap',
+                                            gap: '15px'
+                                        }}>
+                                            <div>
+                                                <h3 style={{ margin: 0, fontWeight: '700', fontSize: '28px' }}>
+                                                    Welcome, {userInfo?.email?.split('@')[0]}! 👋
+                                                </h3>
+                                                <p style={{ margin: '8px 0 0 0', opacity: 0.95, fontSize: '15px', fontWeight: '500' }}>
+                                                    <i className="fas fa-calendar-day" style={{ marginRight: '8px' }}></i>
+                                                    {currentDate.day}, {currentDate.monthName} {currentDate.date}, {currentDate.year}
+                                                </p>
+                                            </div>
+                                            <button 
+                                                className="btn" 
+                                                onClick={() => window.location.reload()}
+                                                style={{
+                                                    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+                                                    border: '2px solid rgba(255, 255, 255, 0.5)',
+                                                    color: 'white',
+                                                    fontWeight: '600',
+                                                    padding: '10px 24px',
+                                                    borderRadius: '10px',
+                                                    transition: 'all 0.3s ease',
+                                                    cursor: 'pointer'
+                                                }}
+                                                onMouseOver={(e) => {
+                                                    e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.35)';
+                                                    e.target.style.transform = 'translateY(-2px)';
+                                                }}
+                                                onMouseOut={(e) => {
+                                                    e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.25)';
+                                                    e.target.style.transform = 'translateY(0)';
+                                                }}
+                                            >
+                                                <i className="fa fa-sync" style={{ marginRight: '8px' }}></i> Refresh Data
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -256,56 +604,231 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                                 <div className="row mb-4">
                                     <div className="col-md-6">
                                         <div className="row">
-                                            {stats.map(({ icon, label, value }, idx) => (
-                                                <div key={idx} className={idx === stats.length - 1 ? 'col-md-12 mb-3' : 'col-md-6 mb-3'}>
-                                                    <div className="stat-card" style={{ padding: '12px', backgroundColor: '#fff', borderRadius: '10px', display: 'flex', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
-                                                        <i className={icon} style={{ fontSize: '18px', color: '#007BFF', marginRight: '10px' }} />
-                                                        <div>
-                                                            <div style={{ fontSize: '13px', fontWeight: '600', color: '#555' }}>{label}</div>
-                                                            <div style={{ fontSize: '17px', fontWeight: '700', color: '#222' }}>{value}</div>
+                                            {stats.map(({ icon, label, value }, idx) => {
+                                                const colors = [
+                                                    { bg: '#e3f2fd', icon: '#2196F3', gradient: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)' },
+                                                    { bg: '#e8f5e9', icon: '#4CAF50', gradient: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)' },
+                                                    { bg: '#fff3e0', icon: '#FF9800', gradient: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)' },
+                                                    { bg: '#f3e5f5', icon: '#9C27B0', gradient: 'linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%)' },
+                                                    { bg: '#e0f2f1', icon: '#009688', gradient: 'linear-gradient(135deg, #009688 0%, #00796B 100%)' },
+                                                    { bg: '#fce4ec', icon: '#E91E63', gradient: 'linear-gradient(135deg, #E91E63 0%, #C2185B 100%)' },
+                                                    { bg: '#e8eaf6', icon: '#3F51B5', gradient: 'linear-gradient(135deg, #3F51B5 0%, #303F9F 100%)' },
+                                                    { bg: '#fff8e1', icon: '#FFC107', gradient: 'linear-gradient(135deg, #FFC107 0%, #FFA000 100%)' },
+                                                    { bg: '#ffebee', icon: '#F44336', gradient: 'linear-gradient(135deg, #F44336 0%, #D32F2F 100%)' },
+                                                ];
+                                                const colorScheme = colors[idx % colors.length];
+                                                
+                                                return (
+                                                    <div key={idx} className={idx === stats.length - 1 ? 'col-md-12 mb-3' : 'col-md-6 mb-3'}>
+                                                        <div 
+                                                            className="stat-card" 
+                                                            style={{ 
+                                                                padding: '20px', 
+                                                                backgroundColor: '#fff', 
+                                                                borderRadius: '16px', 
+                                                                display: 'flex', 
+                                                                alignItems: 'center', 
+                                                                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                                                                border: '1px solid rgba(0,0,0,0.05)',
+                                                                transition: 'all 0.3s ease',
+                                                                cursor: 'pointer',
+                                                                position: 'relative',
+                                                                overflow: 'hidden'
+                                                            }}
+                                                            onMouseOver={(e) => {
+                                                                e.currentTarget.style.transform = 'translateY(-5px)';
+                                                                e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.15)';
+                                                            }}
+                                                            onMouseOut={(e) => {
+                                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                                e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)';
+                                                            }}
+                                                        >
+                                                            <div style={{
+                                                                width: '56px',
+                                                                height: '56px',
+                                                                borderRadius: '14px',
+                                                                background: colorScheme.gradient,
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                marginRight: '16px',
+                                                                boxShadow: `0 4px 12px ${colorScheme.icon}40`
+                                                            }}>
+                                                                <i className={icon} style={{ fontSize: '24px', color: '#fff' }} />
+                                                            </div>
+                                                            <div style={{ flex: 1 }}>
+                                                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#757575', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                    {label}
+                                                                </div>
+                                                                <div style={{ fontSize: '22px', fontWeight: '700', color: '#212121' }}>
+                                                                    {value}
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
 
-                                    {/* Users Pie Chart */}
+                                    {/* Users Donut Chart */}
                                     <div className="col-md-6">
-                                        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 6px 18px rgba(0,0,0,0.12)' }}>
-                                            <Chart options={usersChartData.options} series={usersChartData.series} type="pie" height={350} />
+                                        <div style={{ 
+                                            backgroundColor: 'white', 
+                                            borderRadius: '16px', 
+                                            padding: '24px', 
+                                            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                                            border: '1px solid rgba(0,0,0,0.05)',
+                                            height: '100%',
+                                            transition: 'all 0.3s ease'
+                                        }}
+                                        onMouseOver={(e) => {
+                                            e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.12)';
+                                        }}
+                                        onMouseOut={(e) => {
+                                            e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)';
+                                        }}>
+                                            <Chart options={usersChartData.options} series={usersChartData.series} type="donut" height={350} />
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Timeframe Buttons */}
-                                <div className="row mb-4" style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
-                                    {['daily', 'week', 'month', 'year'].map(tf => (
-                                        <button key={tf} className={`btn ${timeframe === tf ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setTimeframe(tf)}>
-                                            {tf.charAt(0).toUpperCase() + tf.slice(1)}
-                                        </button>
-                                    ))}
+                                <div className="row mb-4">
+                                    <div className="col-md-12">
+                                        <div style={{
+                                            backgroundColor: 'white',
+                                            borderRadius: '16px',
+                                            padding: '20px',
+                                            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                                            border: '1px solid rgba(0,0,0,0.05)',
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            gap: '12px',
+                                            flexWrap: 'wrap'
+                                        }}>
+                                            <span style={{ fontSize: '16px', fontWeight: '600', color: '#424242', marginRight: '10px' }}>
+                                                <i className="fas fa-chart-line" style={{ marginRight: '8px', color: '#667eea' }}></i>
+                                                View Analytics:
+                                            </span>
+                                            {['daily', 'week', 'month', 'year'].map(tf => (
+                                                <button 
+                                                    key={tf} 
+                                                    onClick={() => setTimeframe(tf)}
+                                                    style={{
+                                                        padding: '10px 24px',
+                                                        borderRadius: '10px',
+                                                        border: timeframe === tf ? 'none' : '2px solid #667eea',
+                                                        background: timeframe === tf ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'white',
+                                                        color: timeframe === tf ? 'white' : '#667eea',
+                                                        fontWeight: '600',
+                                                        fontSize: '14px',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.3s ease',
+                                                        textTransform: 'capitalize',
+                                                        boxShadow: timeframe === tf ? '0 4px 15px rgba(102, 126, 234, 0.4)' : 'none'
+                                                    }}
+                                                    onMouseOver={(e) => {
+                                                        if (timeframe !== tf) {
+                                                            e.target.style.backgroundColor = '#f5f7ff';
+                                                        }
+                                                        e.target.style.transform = 'translateY(-2px)';
+                                                    }}
+                                                    onMouseOut={(e) => {
+                                                        if (timeframe !== tf) {
+                                                            e.target.style.backgroundColor = 'white';
+                                                        }
+                                                        e.target.style.transform = 'translateY(0)';
+                                                    }}
+                                                >
+                                                    {tf.charAt(0).toUpperCase() + tf.slice(1)}ly
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Payments & Revenue Charts */}
-                                <div className="row mt-5">
-                                    <div className="col-md-6">
-                                        <Chart options={paymentsChartData.options} series={paymentsChartData.series} type="bar" height={350} />
+                                <div className="row mt-4 mb-4">
+                                    <div className="col-md-6 mb-4">
+                                        <div style={{ 
+                                            backgroundColor: 'white', 
+                                            borderRadius: '16px', 
+                                            padding: '24px', 
+                                            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                                            border: '1px solid rgba(0,0,0,0.05)',
+                                            transition: 'all 0.3s ease',
+                                        }}
+                                        onMouseOver={(e) => {
+                                            e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.12)';
+                                        }}
+                                        onMouseOut={(e) => {
+                                            e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)';
+                                        }}>
+                                            <Chart options={paymentsChartData.options} series={paymentsChartData.series} type="bar" height={350} />
+                                        </div>
                                     </div>
-                                    <div className="col-md-6">
-                                        <Chart options={revenueChartData.options} series={revenueChartData.series} type="line" height={350} />
+                                    <div className="col-md-6 mb-4">
+                                        <div style={{ 
+                                            backgroundColor: 'white', 
+                                            borderRadius: '16px', 
+                                            padding: '24px', 
+                                            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                                            border: '1px solid rgba(0,0,0,0.05)',
+                                            transition: 'all 0.3s ease',
+                                        }}
+                                        onMouseOver={(e) => {
+                                            e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.12)';
+                                        }}
+                                        onMouseOut={(e) => {
+                                            e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)';
+                                        }}>
+                                            <Chart options={revenueChartData.options} series={revenueChartData.series} type="line" height={350} />
+                                        </div>
                                     </div>
                                 </div>
 
                                 {/* Top Districts & Top Models Charts */}
-                                <div className="row mt-5">
+                                <div className="row mb-4">
                                     {!isSeller && (
-                                        <div className="col-md-6">
-                                            <Chart options={topDistrictsChartData.options} series={topDistrictsChartData.series} type="bar" height={350} />
+                                        <div className="col-md-6 mb-4">
+                                            <div style={{ 
+                                                backgroundColor: 'white', 
+                                                borderRadius: '16px', 
+                                                padding: '24px', 
+                                                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                                                border: '1px solid rgba(0,0,0,0.05)',
+                                                transition: 'all 0.3s ease',
+                                            }}
+                                            onMouseOver={(e) => {
+                                                e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.12)';
+                                            }}
+                                            onMouseOut={(e) => {
+                                                e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)';
+                                            }}>
+                                                <Chart options={topDistrictsChartData.options} series={topDistrictsChartData.series} type="bar" height={350} />
+                                            </div>
                                         </div>
                                     )}
-                                    <div className="col-md-6">
-                                        <Chart options={topModelsChartData.options} series={topModelsChartData.series} type="bar" height={350} />
+                                    <div className={isSeller ? "col-md-12 mb-4" : "col-md-6 mb-4"}>
+                                        <div style={{ 
+                                            backgroundColor: 'white', 
+                                            borderRadius: '16px', 
+                                            padding: '24px', 
+                                            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                                            border: '1px solid rgba(0,0,0,0.05)',
+                                            transition: 'all 0.3s ease',
+                                        }}
+                                        onMouseOver={(e) => {
+                                            e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.12)';
+                                        }}
+                                        onMouseOut={(e) => {
+                                            e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)';
+                                        }}>
+                                            <Chart options={topModelsChartData.options} series={topModelsChartData.series} type="bar" height={350} />
+                                        </div>
                                     </div>
                                 </div>
                             </>

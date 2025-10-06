@@ -24,6 +24,7 @@ export const useViewProducts = () => {
         model_id: '',
         model_name: '',
         wp_device_quantity: '',
+        connectivity: '',
     });
 
     useEffect(() => {
@@ -48,6 +49,7 @@ export const useViewProducts = () => {
                 model_id: dataItem.model_id || '',
                 model_name: dataItem.model_name || '',
                 wp_device_quantity: dataItem.wp_device_quantity || '',
+                connectivity: dataItem.connectivity || '',
             };
             setProduct(parsedData);
             localStorage.setItem('productData', JSON.stringify(parsedData));

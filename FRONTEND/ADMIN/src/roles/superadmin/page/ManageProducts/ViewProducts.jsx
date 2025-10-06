@@ -92,48 +92,17 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
 
 
 
-                {/* First row: Model Name, Status, Quantity, Created By */}
+                {/* First row: Model Name, Status, Quantity, Created By, Connectivity */}
                 <div className="d-flex justify-content-between text-start mb-4 flex-wrap">
                   <div><strong>Model Name:</strong> {product.model_name || '-'}</div>
                   <div><strong>Status:</strong> {product.status ? 'Active' : 'Deactive'}</div>
                   <div><strong>Quantity:</strong> {product.wp_device_quantity || '-'}</div>
                   <div><strong>Created By:</strong> {product.createdby || '-'}</div>
                 </div>
-
-                {/* Connectivity Row */}
                 <div className="mb-3 text-start">
-                  <strong>Connectivity:</strong>
-                  <div style={{ marginTop: '5px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                    {product.connectivity ? (
-                      typeof product.connectivity === 'string' ? (
-                        product.connectivity.split(',').map((item, index) => (
-                          <span key={index} style={{
-                            backgroundColor: '#007bff',
-                            color: 'white',
-                            padding: '5px 10px',
-                            borderRadius: '4px',
-                            fontSize: '14px'
-                          }}>
-                            {item.trim()}
-                          </span>
-                        ))
-                      ) : Array.isArray(product.connectivity) ? (
-                        product.connectivity.map((item, index) => (
-                          <span key={index} style={{
-                            backgroundColor: '#007bff',
-                            color: 'white',
-                            padding: '5px 10px',
-                            borderRadius: '4px',
-                            fontSize: '14px'
-                          }}>
-                            {item}
-                          </span>
-                        ))
-                      ) : '-'
-                    ) : '-'}
-                  </div>
+                  
+                  <div><strong>Connectivity:</strong> {product.connectivity || '-'}</div>
                 </div>
-
                 {/* Second row: Created Date, Modified By, Modified Date */}
 
 

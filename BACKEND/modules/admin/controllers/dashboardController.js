@@ -325,6 +325,7 @@ const AddProductModels = async (req, res) => {
                 model_name,
                 wp_device_quantity,
                 product_details,
+                connectivity,
                 createdby
             } = product;
 
@@ -358,6 +359,32 @@ const AddProductModels = async (req, res) => {
             const sub_img_4 = uploadedFiles['sub_img_4']?.[0]?.filename || product.sub_img_4 || "";
             const product_specifications = uploadedFiles['spec_pdf']?.[0]?.filename || product.product_specifications || "";
 
+            // Auto-assign missing plans_id (global across all models)
+            const lastPlanIdDoc = await collection.aggregate([
+                { $unwind: '$plans' },
+                { $sort: { 'plans.plans_id': -1 } },
+                { $limit: 1 },
+                { $project: { _id: 0, plans_id: '$plans.plans_id' } }
+            ]).toArray();
+            let nextPlansId = lastPlanIdDoc.length > 0 ? lastPlanIdDoc[0].plans_id + 1 : 1;
+
+            const updatedPlans = plans.map(p =>
+                p.plans_id && Number.isInteger(p.plans_id) ? p : { ...p, plans_id: nextPlansId++ }
+            );
+
+            // Auto-assign missing duration_id (global across all models)
+            const lastDurationIdDoc = await collection.aggregate([
+                { $unwind: '$duration' },
+                { $sort: { 'duration.duration_id': -1 } },
+                { $limit: 1 },
+                { $project: { _id: 0, duration_id: '$duration.duration_id' } }
+            ]).toArray();
+            let nextDurationId = lastDurationIdDoc.length > 0 ? lastDurationIdDoc[0].duration_id + 1 : 1;
+
+            const updatedDuration = duration.map(d =>
+                d.duration_id && Number.isInteger(d.duration_id) ? d : { ...d, duration_id: nextDurationId++ }
+            );
+
             docsToInsert.push({
                 model_id,
                 model_name: model_name.trim(),
@@ -369,8 +396,9 @@ const AddProductModels = async (req, res) => {
                 product_specifications,
                 wp_device_quantity: quantityInt, 
                 product_details,
-                plans: plans.map((p, idx) => ({ ...p, plans_id: idx + 1 })),
-                duration: duration.map((d, idx) => ({ ...d, duration_id: idx + 1 })),
+                connectivity: connectivity || '',
+                plans: updatedPlans,
+                duration: updatedDuration,
                 createdby,
                 createddate: now,
                 status: true
@@ -581,6 +609,7 @@ const UpdateProductModels = async (req, res) => {
                 model_name,
                 wp_device_quantity,
                 product_details,
+                connectivity,
                 modifiedby,
                 status: rawStatus
             } = product;
@@ -672,6 +701,7 @@ const UpdateProductModels = async (req, res) => {
                         sub_img_4,
                         wp_device_quantity: quantityInt,
                         product_details,
+                        connectivity: connectivity || '',
                         product_specifications,
                         plans: updatedPlans,
                         duration: updatedDuration,
@@ -3283,8 +3313,17 @@ const GetAnalytics = async (req, res) => {
 
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        
+        // Current week (Monday to Sunday)
+        const currentDayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1; // If Sunday, go back 6 days
+        const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday);
+        startOfWeek.setHours(0, 0, 0, 0);
+        
+        // Current calendar month (from 1st to today)
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        // Last 365 days (keep original behavior for year)
         const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
         // ---------------- Helpers ----------------
@@ -3390,8 +3429,8 @@ const GetAnalytics = async (req, res) => {
         // ---------------- Timelines ----------------
         // Payments timelines
         const paymentsTodayRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: startOfToday } }, { $hour: "$createdAt" }, "hour");
-        const paymentsWeekRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: sevenDaysAgo } }, { $dayOfWeek: "$createdAt" }, "day");
-        const paymentsMonthRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: oneMonthAgo } }, { $dayOfMonth: "$createdAt" }, "day");
+        const paymentsWeekRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: startOfWeek } }, { $dayOfWeek: "$createdAt" }, "day");
+        const paymentsMonthRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: startOfMonth } }, { $dayOfMonth: "$createdAt" }, "day");
         const paymentsYearRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: oneYearAgo } }, { $month: "$createdAt" }, "month");
 
         const paymentsTimeline = {
@@ -3403,8 +3442,8 @@ const GetAnalytics = async (req, res) => {
 
         // Orders timelines
         const ordersTodayRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: startOfToday } }, { $hour: "$createdAt" }, "hour");
-        const ordersWeekRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: sevenDaysAgo } }, { $dayOfWeek: "$createdAt" }, "day");
-        const ordersMonthRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: oneMonthAgo } }, { $dayOfMonth: "$createdAt" }, "day");
+        const ordersWeekRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: startOfWeek } }, { $dayOfWeek: "$createdAt" }, "day");
+        const ordersMonthRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: startOfMonth } }, { $dayOfMonth: "$createdAt" }, "day");
         const ordersYearRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: oneYearAgo } }, { $month: "$createdAt" }, "month");
 
         const ordersTimeline = {
@@ -3416,8 +3455,8 @@ const GetAnalytics = async (req, res) => {
 
         // Revenue timelines (using orders collection)
         const revenueTodayRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: startOfToday } }, { $hour: "$createdAt" }, "hour");
-        const revenueWeekRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: sevenDaysAgo } }, { $dayOfWeek: "$createdAt" }, "day");
-        const revenueMonthRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: oneMonthAgo } }, { $dayOfMonth: "$createdAt" }, "day");
+        const revenueWeekRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: startOfWeek } }, { $dayOfWeek: "$createdAt" }, "day");
+        const revenueMonthRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: startOfMonth } }, { $dayOfMonth: "$createdAt" }, "day");
         const revenueYearRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: oneYearAgo } }, { $month: "$createdAt" }, "month");
 
         const revenueTimeline = {
@@ -3438,15 +3477,15 @@ const GetAnalytics = async (req, res) => {
         // ---------------- Top Districts per Timeframe ----------------
         const topDistrictsOverall = await getTopItems(ordersCollection, {}, "deliveryAddress.district", "districtName");
         const topDistrictsToday = await getTopItems(ordersCollection, { createdAt: { $gte: startOfToday } }, "deliveryAddress.district", "districtName");
-        const topDistrictsWeek = await getTopItems(ordersCollection, { createdAt: { $gte: sevenDaysAgo } }, "deliveryAddress.district", "districtName");
-        const topDistrictsMonth = await getTopItems(ordersCollection, { createdAt: { $gte: oneMonthAgo } }, "deliveryAddress.district", "districtName");
+        const topDistrictsWeek = await getTopItems(ordersCollection, { createdAt: { $gte: startOfWeek } }, "deliveryAddress.district", "districtName");
+        const topDistrictsMonth = await getTopItems(ordersCollection, { createdAt: { $gte: startOfMonth } }, "deliveryAddress.district", "districtName");
         const topDistrictsYear = await getTopItems(ordersCollection, { createdAt: { $gte: oneYearAgo } }, "deliveryAddress.district", "districtName");
 
         // ---------------- Top Models per Timeframe ----------------
         const topModelsOverall = await getTopItems(ordersCollection, {}, "modelName", "modelName");
         const topModelsToday = await getTopItems(ordersCollection, { createdAt: { $gte: startOfToday } }, "modelName", "modelName");
-        const topModelsWeek = await getTopItems(ordersCollection, { createdAt: { $gte: sevenDaysAgo } }, "modelName", "modelName");
-        const topModelsMonth = await getTopItems(ordersCollection, { createdAt: { $gte: oneMonthAgo } }, "modelName", "modelName");
+        const topModelsWeek = await getTopItems(ordersCollection, { createdAt: { $gte: startOfWeek } }, "modelName", "modelName");
+        const topModelsMonth = await getTopItems(ordersCollection, { createdAt: { $gte: startOfMonth } }, "modelName", "modelName");
         const topModelsYear = await getTopItems(ordersCollection, { createdAt: { $gte: oneYearAgo } }, "modelName", "modelName");
 
         // ---------------- Payload ----------------
