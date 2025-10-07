@@ -112,7 +112,8 @@ const ManageServices = ({ userInfo, handleLogout }) => {
       return;
     }
 
-    if (installationDistrict && technicianDistrict && installationDistrict !== technicianDistrict) {
+    // Only check district match for sellers (role_id === 4)
+    if (userInfo?.role_id === 4 && installationDistrict && technicianDistrict && installationDistrict !== technicianDistrict) {
       showErrorAlert('Technician district must match the service district.');
       return;
     }

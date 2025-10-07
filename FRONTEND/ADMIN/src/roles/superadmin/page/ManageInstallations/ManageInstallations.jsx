@@ -74,7 +74,8 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
       return;
     }
 
-    if (selectedTechnician.district && selectedTechnician.district !== installationDistrict) {
+    // Only check district for sellers (role_id === 4)
+    if (userInfo?.role_id === 4 && selectedTechnician.district && selectedTechnician.district !== installationDistrict) {
       showErrorAlert('Selected technician does not belong to this district.');
       setAssignLoading(false);
       return;
@@ -292,67 +293,59 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
               Assign Technician
             </h5>
 
-            <form onSubmit={handleAssignSubmit}>
-              <div className="form-group mb-3">
-                <label htmlFor="technicianId" className="mb-1" style={{ fontWeight: '500' }}>
-                  Technician ID
-                </label>
-                <select
-  className="form-control"
-  id="technicianId"
-  value={assignedTechnicianId}
-  onChange={(e) => setAssignedTechnicianId(e.target.value)}
-  required
->
-  <option value="">Select Technician</option>
-  {technicians
-    .filter((tech) => tech.status) 
-    .map((tech) => (
-      <option key={tech.technician_id} value={tech.technician_id}>
-        {tech.technician_id} - {tech.name}
-      </option>
-    ))}
-</select>
+<form onSubmit={handleAssignSubmit}>
+  <div className="form-group mb-3">
+    <label htmlFor="technicianId" className="mb-1" style={{ fontWeight: '500' }}>
+      Technician ID
+    </label>
+    <select
+      className="form-control"
+      id="technicianId"
+      value={assignedTechnicianId}
+      onChange={(e) => setAssignedTechnicianId(e.target.value)}
+      required
+    >
+      <option value="">Select Technician</option>
+      {technicians
+        .filter((tech) => tech.status)
+        .map((tech) => (
+          <option key={tech.technician_id} value={tech.technician_id}>
+            {tech.technician_id} - {tech.name}
+          </option>
+        ))}
+    </select>
+  </div>
 
-              </div>
+  <div className="d-flex justify-content-end" style={{ gap: '10px', marginTop: '20px' }}>
+    <button
+      type="button"
+      className="btn btn-outline-secondary"
+      onClick={closeAssignModal}
+      disabled={assignLoading}
+    >
+      Cancel
+    </button>
 
-              <div className="d-flex justify-content-end" style={{ gap: '10px', marginTop: '20px' }}>
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={closeAssignModal}
-                  disabled={assignLoading}
-                >
-                  Cancel
-                </button>
-                {/* <button
-            type="submit"
-            className="btn btn-success"
-            disabled={assignLoading || !assignedTechnicianId}
-          >
-            {assignLoading ? 'Assigning...' : 'Assign'}
-          </button> */}
-                <button
-                  type="submit"
-                  className={`btn ${assignMode === 'reassign' ? 'btn-warning' : 'btn-success'}`}
-                  disabled={
-                    assignLoading ||
-                    !assignedTechnicianId ||
-                    assignedTechnicianId === selectedInstallation?.assignedTechnician?.technician_id
-                  }
-                >
-                  {assignLoading
-                    ? assignMode === 'reassign'
-                      ? 'Reassigning...'
-                      : 'Assigning...'
-                    : assignMode === 'reassign'
-                      ? 'Reassign'
-                      : 'Assign'}
-                </button>
+    <button
+      type="submit"
+      className={`btn ${assignMode === 'reassign' ? 'btn-warning' : 'btn-success'}`}
+      disabled={
+        assignLoading ||
+        !assignedTechnicianId ||
+        assignedTechnicianId === selectedInstallation?.assignedTechnician?.technician_id
+      }
+    >
+      {assignLoading
+        ? assignMode === 'reassign'
+          ? 'Reassigning...'
+          : 'Assigning...'
+        : assignMode === 'reassign'
+        ? 'Reassign'
+        : 'Assign'}
+    </button>
+  </div>
+</form>
 
-
-              </div>
-            </form>
           </div>
         </div>
       )}
