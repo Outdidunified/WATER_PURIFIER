@@ -1233,6 +1233,7 @@ const AddUsers = async (req, res) => {
 
         const db = await database.connectToDatabase();
         const collection = db.collection("users");
+        const technicianCollection = db.collection("technician_details");
 
         const docsToInsert = [];
 
@@ -1377,6 +1378,7 @@ const AddUsers = async (req, res) => {
             }
 
             docsToInsert.push(newUser);
+            technicianCollection.insertOne({user_id: newUser.user_id,email: newUser.email, technician_id: newUser.technician_id || null, status: true,total_assigned_services:0,total_completed_services:0});
         }
 
         await collection.insertMany(docsToInsert);
@@ -1815,6 +1817,15 @@ const AssignInstallation = async (req, res) => {
         }
         const normalizedAddress = normalizeDeliveryAddress(orderDoc.deliveryAddress || {});
 
+        // Validate technician district matches order address district
+        const technicianDistrictNormalized = normalizeDeliveryAddress({ district: technicianUser.district || '' }).district;
+        if (normalizedAddress.district !== technicianDistrictNormalized) {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Technician district does not match order address district'
+            });
+        }
+
         // Generate task ID and OTP
         const lastTask = await serviceRecords.find().sort({ task_id: -1 }).limit(1).toArray();
         const nextTaskId = lastTask.length > 0 ? lastTask[0].task_id + 1 : 1;
@@ -1939,6 +1950,26 @@ const ReAssignInstallation = async (req, res) => {
       return res.status(400).json({
         status: 'Failed',
         message: 'Cannot reassign installation: related order is not paid.',
+      });
+    }
+
+    // 5️⃣ Fetch technician user to validate district
+    const usersCollection = db.collection("users");
+    const technicianUser = await usersCollection.findOne({ technician_id });
+    if (!technicianUser) {
+      return res.status(404).json({
+        status: 'Failed',
+        message: 'Technician not found',
+      });
+    }
+
+    // 6️⃣ Validate technician district matches order address district
+    const normalizedOrderAddress = normalizeDeliveryAddress(relatedOrder.deliveryAddress || {});
+    const technicianDistrictNormalized = normalizeDeliveryAddress({ district: technicianUser.district || '' }).district;
+    if (normalizedOrderAddress.district !== technicianDistrictNormalized) {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Technician district does not match order address district'
       });
     }
 
@@ -2295,6 +2326,16 @@ const AssignService = async (req, res) => {
             });
         }
 
+        // Validate technician district matches order address district
+        const normalizedOrderAddress = normalizeDeliveryAddress(orderDoc.deliveryAddress || {});
+        const technicianDistrictNormalized = normalizeDeliveryAddress({ district: technicianUser.district || '' }).district;
+        if (normalizedOrderAddress.district !== technicianDistrictNormalized) {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Technician district does not match order address district'
+            });
+        }
+
         // Update the existing task by task_id
         const updateResult = await serviceRecords.updateOne(
             { task_id: task_id },
@@ -2398,6 +2439,26 @@ const ReAssignService = async (req, res) => {
       return res.status(400).json({
         status: 'Failed',
         message: 'Cannot reassign service: related order is not paid.',
+      });
+    }
+
+    // 5️⃣ Fetch technician user to validate district
+    const usersCollection = db.collection("users");
+    const technicianUser = await usersCollection.findOne({ technician_id });
+    if (!technicianUser) {
+      return res.status(404).json({
+        status: 'Failed',
+        message: 'Technician not found',
+      });
+    }
+
+    // 6️⃣ Validate technician district matches order address district
+    const normalizedOrderAddress = normalizeDeliveryAddress(relatedOrder.deliveryAddress || {});
+    const technicianDistrictNormalized = normalizeDeliveryAddress({ district: technicianUser.district || '' }).district;
+    if (normalizedOrderAddress.district !== technicianDistrictNormalized) {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Technician district does not match order address district'
       });
     }
 

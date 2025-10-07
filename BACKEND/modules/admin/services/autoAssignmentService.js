@@ -117,9 +117,8 @@ async function findBestTechnician(normalizedAddress) {
     // Filter by exact state and district match only
     let technicians = allTechnicians.filter(tech => {
         const normalizedTechState = normalizeState(tech.state);
-        const techDistrict = (tech.district || '').toLowerCase().trim();
-        const targetDistrict = district.toLowerCase().trim();
-        return normalizedTechState.toLowerCase() === state.toLowerCase() && techDistrict === targetDistrict;
+        const techDistrictNormalized = normalizeDeliveryAddress({ district: tech.district || '' }).district;
+        return normalizedTechState.toLowerCase() === state.toLowerCase() && techDistrictNormalized === district;
     });
 
     console.log(`Found ${technicians.length} technicians for state: ${state}, district: ${district}`);
