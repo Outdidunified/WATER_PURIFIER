@@ -1174,6 +1174,50 @@ const UpdateUserRoles = async (req, res) => {
     }
 };
 
+async function sendUserCredentialsEmail(email, user_id, password, role_name) {
+    try {
+        const subject = `Welcome to IonHive - Your Account Credentials`;
+        const text = `Hi ${role_name},
+
+        Your IonHive account has been created successfully. Below are your login credentials:
+
+        Email: ${email}
+        User ID: ${user_id}
+        Password: ${password}
+
+        Please use these credentials to log in to your IonHive account. For security, we recommend changing your password after your first login.
+
+        Thank you for joining IonHive!`;
+
+        const html = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
+                <h2 style="color: #333;">Welcome to IonHive, ${role_name}!</h2>
+                <p style="font-size: 16px; color: #555;">
+                    Your IonHive account has been created successfully. Below are your login credentials:
+                </p>
+                <ul style="font-size: 16px; color: #555;">
+                    <li><strong>Email:</strong> ${email}</li>
+                    <li><strong>User ID:</strong> ${user_id}</li>
+                    <li><strong>Password:</strong> ${password}</li>
+                </ul>
+                <p style="font-size: 16px; color: #555;">
+                    Please use these credentials to log in to your IonHive account. For security, we recommend changing your password after your first login.
+                </p>
+                <p style="color: #555;">Thank you for joining <strong>IonHive</strong>!</p>
+                <p style="font-size: 14px; color: #888; text-align: center; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px;">
+                    This is an automated message from IonHive Water Purifier.
+                </p>
+            </div>
+        `;
+
+        await sendEmailService(email, subject, text, html);
+        return true;
+    } catch (error) {
+        console.error('Error in sendUserCredentialsEmail:', error);
+        return false;
+    }
+}
+
 // 9.Manage User
 // AddUsers controller
 const AddUsers = async (req, res) => {
@@ -1336,6 +1380,22 @@ const AddUsers = async (req, res) => {
         }
 
         await collection.insertMany(docsToInsert);
+
+        // Send email to users with role Technician or Seller
+        for (const user of docsToInsert) {
+            if (user.role_name === 'Technician' || user.role_name === 'Seller') {
+                const emailSent = await sendUserCredentialsEmail(
+                    user.email,
+                    user.user_id,
+                    user.password,
+                    user.role_name
+                );
+                if (!emailSent) {
+                    console.warn(`Failed to send credentials email to ${user.email}`);
+                    // Optionally, you could collect failed emails and include in response
+                }
+            }
+        }
 
         return res.status(200).json({
             status: 'Success',
