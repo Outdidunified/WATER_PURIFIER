@@ -375,7 +375,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                                   {imageAfterService.map((img, idx) => (
                                     <div className="col-md-3 mb-2" key={idx}>
                                       <img
-                                        src={`/upload${img}`}
+                                        src={`/upload/technician/after/${img}`}
                                         alt={`After ${idx}`}
                                         className="img-fluid rounded"
                                         style={{ border: '1px solid #ccc', padding: '5px', maxHeight: '150px' }}
