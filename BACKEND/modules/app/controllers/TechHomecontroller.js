@@ -61,9 +61,6 @@ exports.updateTaskDetails = async (req, res) => {
   console.log('----- Incoming Request to /updateTaskDetails -----');
   console.log('➡️ Body:', req.body);
   console.log('➡️ Files:', req.files);
-  console.log('➡️ Headers:', req.headers);
-  console.log('➡️ Content-Type:', req.headers['content-type']);
-  console.log('---------------------------------------------------');
 
   const {
     task_id,
@@ -104,10 +101,7 @@ exports.updateTaskDetails = async (req, res) => {
     });
 
     if (!task) {
-      return res.status(404).json({
-        error: true,
-        message: 'No task found assigned to this technician',
-      });
+      return res.status(404).json({ error: true, message: 'No task found assigned to this technician' });
     }
 
     const allowedFields = ['task_status', 'pending_reason', 'modified_by', 'modified_date'];
@@ -120,11 +114,8 @@ exports.updateTaskDetails = async (req, res) => {
     const status = updates.task_status || task.task_status;
 
     if (status === 'Pending') {
-      if (!updates.pending_reason || updates.pending_reason.trim() === '') {
-        return res.status(400).json({
-          error: true,
-          message: 'pending_reason is required when task_status is "Pending"',
-        });
+      if (!updates.pending_reason?.trim()) {
+        return res.status(400).json({ error: true, message: 'pending_reason is required when task_status is "Pending"' });
       }
     } else {
       updateData.pending_reason = null;
@@ -133,36 +124,11 @@ exports.updateTaskDetails = async (req, res) => {
     if (status === 'Completed') {
       const parsedOtp = parseInt(otp);
       if (!parsedOtp || parsedOtp !== task.otp) {
-        return res.status(400).json({
-          error: true,
-          message: 'Invalid OTP. Cannot complete task.',
-        });
+        return res.status(400).json({ error: true, message: 'Invalid OTP. Cannot complete task.' });
       }
     }
 
-    // Handle uploaded images
-    const files = req.files;
-    if (files) {
-      if (files.image_before_service && files.image_before_service.length > 0) {
-        const beforeImagePath = `/uploads/technician/before/${path.basename(files.image_before_service[0].path)}`;
-        const existingBeforeImages = task.image_before_service || [];
-        if (existingBeforeImages.length >= 5) return res.status(400).json({ error: true, message: 'Max 5 images for image_before_service' });
-        updateData.image_before_service = [...existingBeforeImages, beforeImagePath];
-      }
-
-      if (files.image_after_service && files.image_after_service.length > 0) {
-        const afterImagePath = `/uploads/technician/after/${path.basename(files.image_after_service[0].path)}`;
-        const existingAfterImages = task.image_after_service || [];
-        if (existingAfterImages.length >= 5) return res.status(400).json({ error: true, message: 'Max 5 images for image_after_service' });
-        updateData.image_after_service = [...existingAfterImages, afterImagePath];
-      }
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({ error: true, message: 'No valid fields provided for update' });
-    }
-
-    // Update task in DB
+    // ✅ Update task in DB
     const result = await serviceRecordsCollection.updateOne(
       { task_id: parseInt(task_id), assigned_technician_id: technician_id },
       { $set: updateData }
@@ -172,7 +138,7 @@ exports.updateTaskDetails = async (req, res) => {
       return res.status(400).json({ error: true, message: 'No changes were made to the task' });
     }
 
-    // Technician stats
+    // ✅ Technician stats
     if (status === 'Completed') {
       const technician = await technicianCollection.findOne({ technician_id });
       if (technician) {
@@ -182,8 +148,11 @@ exports.updateTaskDetails = async (req, res) => {
         );
       }
 
-      // ✅ Update subscription expiry now that installation is completed
-      const order = await ordersCollection.findOne({ _id: task.order_id ? new ObjectId(task.order_id) : null });
+      // ✅ Activate subscription after installation completion
+      const order = await ordersCollection.findOne({
+        customOrderId: task.order?.customOrderId || task.customOrderId
+      });
+
       if (order) {
         const subscribedAt = new Date();
         const durationStr = order.selectedDuration?.duration_time_limit || '30 days';
@@ -191,8 +160,10 @@ exports.updateTaskDetails = async (req, res) => {
         const subscriptionExpiryDate = new Date(subscribedAt);
         subscriptionExpiryDate.setDate(subscriptionExpiryDate.getDate() + durationInDays);
 
+        const userId = parseInt(task.task_created_by_user_id);
+
         await usersCollection.updateOne(
-          { user_id: task.task_created_by_user_id },
+          { user_id: userId },
           {
             $set: {
               is_subscribed: true,
@@ -202,28 +173,29 @@ exports.updateTaskDetails = async (req, res) => {
               active_plan_id: order.selectedPlan?.plans_id || null,
               active_duration_id: order.selectedDuration?.duration_time_limit || null,
               active_order_id: order._id.toString()
-            }
+            },
+            $addToSet: { assigned_device_ids: order.wp_device_id || null },
+            $unset: { assigned_device_id: '' }
           }
         );
 
-        // Update order with subscriptionExpiryDate as well
         await ordersCollection.updateOne(
-          { _id: order._id },
+          { customOrderId: order.customOrderId },
           { $set: { subscriptionExpiryDate, updatedAt: new Date() } }
         );
+
+        console.log(`🟢 Subscription activated for user ${userId}`);
       }
 
-      // Send completion email
+      // ✅ Send completion email
       const mailOptions = {
         from: 'your_email@gmail.com',
         to: task.task_created_by_user_email,
         subject: 'Task Completed Successfully',
         html: `
           <h3>Hello,</h3>
-          <p>Your service task <strong>#${task.task_id}</strong> for <strong>${task.task_type}</strong> has been <span style="color: green;">successfully completed</span>.</p>
-          <p>Task Description: ${task.task_description}</p>
-          <p><strong>Technician ID:</strong> ${task.assigned_technician_id}</p>
-          <p>Thank you for using our service!</p>
+          <p>Your service task <strong>#${task.task_id}</strong> has been <span style="color: green;">successfully completed</span>.</p>
+          <p>Subscription has been activated. 🎉</p>
         `
       };
 
@@ -240,6 +212,7 @@ exports.updateTaskDetails = async (req, res) => {
     return res.status(500).json({ error: true, message: 'Server error while updating task' });
   }
 };
+
 
 
 

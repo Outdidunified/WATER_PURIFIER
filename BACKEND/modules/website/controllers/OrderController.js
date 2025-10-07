@@ -210,6 +210,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
       return res.status(400).json({ message: 'All fields are required for verification' });
     }
 
+    // Verify signature
     const expectedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -220,17 +221,21 @@ exports.verifyRazorpayPayment = async (req, res) => {
     }
 
     const db = await connectToDatabase();
-    const order = await db.collection('orders').findOne({ razorpayOrderId: razorpay_order_id });
+    const ordersCollection = db.collection('orders');
+    const usersCollection = db.collection('users');
+    const paymentsCollection = db.collection('payments');
+    const productModelsCollection = db.collection('product_models');
 
+    const order = await ordersCollection.findOne({ razorpayOrderId: razorpay_order_id });
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
-    const user = await db.collection('users').findOne({ user_id: order.user_id });
+    const user = await usersCollection.findOne({ user_id: order.user_id });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const now = new Date();
 
-    // Update Order: payment completed, status remains Confirmed
-    await db.collection('orders').updateOne(
+    // ✅ Update order as paid and confirmed
+    await ordersCollection.updateOne(
       { _id: order._id },
       {
         $set: {
@@ -250,11 +255,11 @@ exports.verifyRazorpayPayment = async (req, res) => {
       updatedAt: now
     };
 
-    // Auto assign installation
+    // ✅ Auto assign installation
     await autoAssignInstallation(updatedOrder);
 
-    // Update Payment record
-    await db.collection('payments').updateOne(
+    // ✅ Update payment record
+    await paymentsCollection.updateOne(
       { razorpayOrderId: razorpay_order_id },
       {
         $set: {
@@ -265,58 +270,41 @@ exports.verifyRazorpayPayment = async (req, res) => {
       }
     );
 
-    // Update user assigned devices (without subscription fields)
-    await db.collection('users').updateOne(
+    // ✅ Assign device (without subscription updates)
+    await usersCollection.updateOne(
       { user_id: order.user_id },
       {
         $addToSet: { assigned_device_ids: order.wp_device_id || null },
-        $unset: { assigned_device_id: "" } // remove old field
+        $unset: { assigned_device_id: "" }
       }
     );
 
-    // Reduce product quantity if applicable
+    // ✅ Reduce product quantity
     if (order.productModelId) {
-      const productModel = await db.collection('product_models').findOne({ _id: new ObjectId(order.productModelId) });
-
-      if (!productModel) {
-        return res.status(404).json({ message: 'Product model not found' });
-      }
+      const productModel = await productModelsCollection.findOne({ _id: new ObjectId(order.productModelId) });
+      if (!productModel) return res.status(404).json({ message: 'Product model not found' });
 
       let currentQty = productModel.wp_device_quantity;
+      if (typeof currentQty === 'string') currentQty = parseInt(currentQty, 10);
+      if (isNaN(currentQty) || currentQty <= 0) return res.status(400).json({ message: 'Invalid or zero quantity' });
 
-      if (typeof currentQty === 'string') {
-        currentQty = parseInt(currentQty, 10);
-        if (isNaN(currentQty)) {
-          return res.status(500).json({ message: 'Invalid device quantity' });
-        }
-        await db.collection('product_models').updateOne(
-          { _id: new ObjectId(order.productModelId) },
-          { $set: { wp_device_quantity: currentQty } }
-        );
-      }
-
-      if (typeof currentQty === 'number' && currentQty > 0) {
-        await db.collection('product_models').updateOne(
-          { _id: new ObjectId(order.productModelId) },
-          { $inc: { wp_device_quantity: -1 } }
-        );
-      } else {
-        return res.status(400).json({ message: 'Device quantity is zero or invalid' });
-      }
+      await productModelsCollection.updateOne(
+        { _id: new ObjectId(order.productModelId) },
+        { $inc: { wp_device_quantity: -1 } }
+      );
     }
 
-    // Send payment confirmation email
+    // ✅ Email user (no subscription details yet)
     try {
-      await sendPaymentConfirmationEmail(user, order); // email without subscription details
+      await sendPaymentConfirmationEmail(user, order);
     } catch (emailError) {
       console.error('Error sending payment confirmation email:', emailError);
     }
 
     return res.status(200).json({
       status: 'success',
-      message: 'Payment verified. Subscription will activate after installation is completed.'
+      message: 'Payment verified successfully. Subscription will activate after installation is completed.'
     });
-
   } catch (error) {
     console.error('Error verifying Razorpay payment:', error);
     return res.status(500).json({ message: 'Internal server error', error: error.message });
