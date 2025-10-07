@@ -342,7 +342,10 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
             <InputField
               placeholder="Capacity"
               value={plan.capacity}
-              onChange={(e) => handlePlanChange(index, "capacity", e.target.value)}
+              onChange={(e) => {
+                const numericValue = e.target.value.replace(/[^0-9]/g, "");
+                handlePlanChange(index, "capacity", numericValue);
+              }}
               required
               maxLength={15}
             />
