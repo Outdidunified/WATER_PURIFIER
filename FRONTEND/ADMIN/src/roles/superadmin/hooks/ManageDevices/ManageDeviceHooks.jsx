@@ -132,7 +132,8 @@ const useManageDevice = (userInfo) => {
     } else {
       const filtered = stations.filter((station) =>
         station.wp_device_id?.toLowerCase().includes(text) ||
-        station.model_name?.toLowerCase().includes(text)
+        station.model_name?.toLowerCase().includes(text) ||
+        station.email?.toLowerCase().includes(text)
       );
       setFilteredStations(filtered);
     }

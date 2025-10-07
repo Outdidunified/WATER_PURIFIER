@@ -70,233 +70,302 @@ const Dashboard = ({ userInfo, handleLogout }) => {
         ]
         : [];
 
-    // Prepare chart data
-    const getChartData = () => {
-        if (!analyticsData) return {
-            payments: { options: {}, series: [] },
-            revenue: { options: {}, series: [] },
-            users: { options: {}, series: [] },
-            topDistricts: { options: {}, series: [] },
-            topModels: { options: {}, series: [] }
-        };
+const getChartData = () => {
+    if (!analyticsData) return {
+        payments: { options: {}, series: [] },
+        revenue: { options: {}, series: [] },
+        users: { options: {}, series: [] },
+        topDistricts: { options: {}, series: [] },
+        topModels: { options: {}, series: [] }
+    };
 
-        const isSeller = Number(userInfo?.role_id) === 4;
+    const isSeller = Number(userInfo?.role_id) === 4;
 
-        const months = [
-            'January', 'February', 'March', 'April', 'May', 'June',
-            'July', 'August', 'September', 'October', 'November', 'December'
-        ];
+    const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
 
-        const timeframes = {
-            daily: {
-                labels: Array.from({ length: 30 }, (_, i) => `${i + 1}`),
-                paymentsData: analyticsData.payments.timeline.month.slice(0, 30),
-                revenueData: analyticsData.revenue.timeline.month.slice(0, 30),
-                paymentsTitle: `Successful Payments in ${currentDate.monthName} ${currentDate.year} (Daily)`,
-                revenueTitle: `Revenue in ${currentDate.monthName} ${currentDate.year} (Daily)`,
-                districtsTitle: `Top Districts Today (${currentDate.day})`,
-                modelsTitle: `Top Models Today (${currentDate.day})`,
-            },
-            week: {
-                labels: ['1st Week', '2nd Week', '3rd Week', '4th Week'],
-                paymentsData: [
-                    { successful: analyticsData.payments.timeline.month.slice(0, 7).reduce((sum, i) => sum + i.successful, 0) },
-                    { successful: analyticsData.payments.timeline.month.slice(7, 14).reduce((sum, i) => sum + i.successful, 0) },
-                    { successful: analyticsData.payments.timeline.month.slice(14, 21).reduce((sum, i) => sum + i.successful, 0) },
-                    { successful: analyticsData.payments.timeline.month.slice(21, 28).reduce((sum, i) => sum + i.successful, 0) },
-                ],
-                revenueData: [
-                    { revenue: analyticsData.revenue.timeline.month.slice(0, 7).reduce((sum, i) => sum + i.revenue, 0) },
-                    { revenue: analyticsData.revenue.timeline.month.slice(7, 14).reduce((sum, i) => sum + i.revenue, 0) },
-                    { revenue: analyticsData.revenue.timeline.month.slice(14, 21).reduce((sum, i) => sum + i.revenue, 0) },
-                    { revenue: analyticsData.revenue.timeline.month.slice(21, 28).reduce((sum, i) => sum + i.revenue, 0) },
-                ],
-                paymentsTitle: `Successful Payments in ${currentDate.monthName} ${currentDate.year} (Weekly)`,
-                revenueTitle: `Revenue in ${currentDate.monthName} ${currentDate.year} (Weekly)`,
-                districtsTitle: 'Top Districts This Week',
-                modelsTitle: 'Top Models This Week',
-            },
-            month: {
-                labels: months,
-                paymentsData: analyticsData.payments.timeline.year,
-                revenueData: analyticsData.revenue.timeline.year,
-                paymentsTitle: `Successful Payments in ${currentDate.year} (Monthly)`,
-                revenueTitle: `Revenue in ${currentDate.year} (Monthly)`,
-                districtsTitle: 'Top Districts This Month',
-                modelsTitle: 'Top Models This Month',
-            },
-            year: {
-                labels: [`${currentDate.year - 1}`, `${currentDate.year}`, `${currentDate.year + 1}`],
-                paymentsData: [
-                    { successful: 0 },
-                    { successful: analyticsData.payments.timeline.year.reduce((sum, i) => sum + i.successful, 0) },
-                    { successful: 0 },
-                ],
-                revenueData: [
-                    { revenue: 0 },
-                    { revenue: analyticsData.revenue.timeline.year.reduce((sum, i) => sum + i.revenue, 0) },
-                    { revenue: 0 },
-                ],
-                paymentsTitle: `Successful Payments (${currentDate.year})`,
-                revenueTitle: `Revenue (${currentDate.year})`,
-                districtsTitle: `Top Districts in ${currentDate.year}`,
-                modelsTitle: `Top Models in ${currentDate.year}`,
-            },
-        };
+    const timeframes = {
+        daily: {
+            labels: Array.from({ length: 30 }, (_, i) => `${i + 1}`),
+            paymentsData: analyticsData.payments.timeline.month.slice(0, 30),
+            revenueData: analyticsData.revenue.timeline.month.slice(0, 30),
+            paymentsTitle: `Successful Payments in ${currentDate.monthName} ${currentDate.year} (Daily)`,
+            revenueTitle: `Revenue in ${currentDate.monthName} ${currentDate.year} (Daily)`,
+            districtsTitle: `Top Districts Today (${currentDate.day})`,
+            modelsTitle: `Top Models Today (${currentDate.day})`,
+        },
+        week: {
+            labels: ['1st Week', '2nd Week', '3rd Week', '4th Week'],
+            paymentsData: [
+                { successful: analyticsData.payments.timeline.month.slice(0, 7).reduce((sum, i) => sum + i.successful, 0) },
+                { successful: analyticsData.payments.timeline.month.slice(7, 14).reduce((sum, i) => sum + i.successful, 0) },
+                { successful: analyticsData.payments.timeline.month.slice(14, 21).reduce((sum, i) => sum + i.successful, 0) },
+                { successful: analyticsData.payments.timeline.month.slice(21, 28).reduce((sum, i) => sum + i.successful, 0) },
+            ],
+            revenueData: [
+                { revenue: analyticsData.revenue.timeline.month.slice(0, 7).reduce((sum, i) => sum + i.revenue, 0) },
+                { revenue: analyticsData.revenue.timeline.month.slice(7, 14).reduce((sum, i) => sum + i.revenue, 0) },
+                { revenue: analyticsData.revenue.timeline.month.slice(14, 21).reduce((sum, i) => sum + i.revenue, 0) },
+                { revenue: analyticsData.revenue.timeline.month.slice(21, 28).reduce((sum, i) => sum + i.revenue, 0) },
+            ],
+            paymentsTitle: `Successful Payments in ${currentDate.monthName} ${currentDate.year} (Weekly)`,
+            revenueTitle: `Revenue in ${currentDate.monthName} ${currentDate.year} (Weekly)`,
+            districtsTitle: 'Top Districts This Week',
+            modelsTitle: 'Top Models This Week',
+        },
+        month: {
+            labels: months,
+            paymentsData: analyticsData.payments.timeline.year,
+            revenueData: analyticsData.revenue.timeline.year,
+            paymentsTitle: `Successful Payments in ${currentDate.year} (Monthly)`,
+            revenueTitle: `Revenue in ${currentDate.year} (Monthly)`,
+            districtsTitle: 'Top Districts This Month',
+            modelsTitle: 'Top Models This Month',
+        },
+        year: {
+            labels: [`${currentDate.year - 1}`, `${currentDate.year}`, `${currentDate.year + 1}`],
+            paymentsData: [
+                { successful: 0 },
+                { successful: analyticsData.payments.timeline.year.reduce((sum, i) => sum + i.successful, 0) },
+                { successful: 0 },
+            ],
+            revenueData: [
+                { revenue: 0 },
+                { revenue: analyticsData.revenue.timeline.year.reduce((sum, i) => sum + i.revenue, 0) },
+                { revenue: 0 },
+            ],
+            paymentsTitle: `Successful Payments (${currentDate.year})`,
+            revenueTitle: `Revenue (${currentDate.year})`,
+            districtsTitle: `Top Districts in ${currentDate.year}`,
+            modelsTitle: `Top Models in ${currentDate.year}`,
+        },
+    };
 
-        const selected = timeframes[timeframe];
+    const selected = timeframes[timeframe];
 
-        // Handle data differences for sellers
-        if (isSeller) {
-            selected.districtsData = []; // Sellers don't have top districts data
-            selected.modelsData = analyticsData.topModels ? analyticsData.topModels[timeframe === 'daily' ? 'today' : timeframe === 'week' ? 'week' : timeframe === 'month' ? 'month' : 'year'] || [] : [];
-        } else {
-            selected.districtsData = analyticsData.topDistricts ? analyticsData.topDistricts[timeframe === 'daily' ? 'today' : timeframe === 'week' ? 'week' : timeframe === 'month' ? 'month' : 'year'] || [] : [];
-            selected.modelsData = analyticsData.topModels ? analyticsData.topModels[timeframe === 'daily' ? 'today' : timeframe === 'week' ? 'week' : timeframe === 'month' ? 'month' : 'year'] || [] : [];
-        }
+    if (isSeller) {
+        selected.districtsData = [];
+        selected.modelsData = analyticsData.topModels ? analyticsData.topModels[timeframe === 'daily' ? 'today' : timeframe === 'week' ? 'week' : timeframe === 'month' ? 'month' : 'year'] || [] : [];
+    } else {
+        selected.districtsData = analyticsData.topDistricts ? analyticsData.topDistricts[timeframe === 'daily' ? 'today' : timeframe === 'week' ? 'week' : timeframe === 'month' ? 'month' : 'year'] || [] : [];
+        selected.modelsData = analyticsData.topModels ? analyticsData.topModels[timeframe === 'daily' ? 'today' : timeframe === 'week' ? 'week' : timeframe === 'month' ? 'month' : 'year'] || [] : [];
+    }
 
-        const usersChart = {
-            options: {
-                chart: { 
-                    id: 'users-chart', 
-                    toolbar: { show: false },
-                    animations: {
-                        enabled: true,
-                        easing: 'easeinout',
-                        speed: 800,
-                    }
-                },
-                labels: ['Sellers', 'End Users', 'Technicians'],
-                title: { 
-                    text: 'User Distribution', 
-                    align: 'center', 
-                    style: { 
-                        fontSize: '20px', 
-                        fontWeight: '700', 
-                        color: '#424242',
-                        fontFamily: 'inherit'
-                    } 
-                },
-                colors: ['#667eea', '#f093fb', '#4facfe'],
-                dataLabels: { 
+    const usersChart = {
+        options: {
+            chart: { 
+                id: 'users-chart', 
+                toolbar: { show: false },
+                animations: {
                     enabled: true,
-                    style: {
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        colors: ['#fff']
-                    }
-                },
-                legend: { 
-                    position: 'bottom',
+                    easing: 'easeinout',
+                    speed: 800,
+                }
+            },
+            labels: ['Sellers', 'End Users', 'Technicians'],
+            title: { 
+                text: 'User Distribution', 
+                align: 'center', 
+                style: { 
+                    fontSize: '20px', 
+                    fontWeight: '700', 
+                    color: '#424242',
+                    fontFamily: 'inherit'
+                } 
+            },
+            colors: ['#667eea', '#f093fb', '#4facfe'],
+            dataLabels: { 
+                enabled: true,
+                style: {
                     fontSize: '14px',
-                    fontWeight: 500,
-                    markers: {
-                        width: 12,
-                        height: 12,
-                        radius: 3
-                    }
-                },
-                plotOptions: {
-                    pie: {
-                        donut: {
-                            labels: {
+                    fontWeight: '600',
+                    colors: ['#fff']
+                }
+            },
+            legend: { 
+                position: 'bottom',
+                fontSize: '14px',
+                fontWeight: 500,
+                markers: {
+                    width: 12,
+                    height: 12,
+                    radius: 3
+                }
+            },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        labels: {
+                            show: true,
+                            total: {
                                 show: true,
-                                total: {
-                                    show: true,
-                                    label: 'Total Users',
-                                    fontSize: '18px',
-                                    fontWeight: 700,
-                                    color: '#424242'
-                                }
+                                label: 'Total Users',
+                                fontSize: '18px',
+                                fontWeight: 700,
+                                color: '#424242'
                             }
                         }
                     }
                 }
-            },
-            series: [
-                analyticsData.users.seller,
-                analyticsData.users.end_user,
-                analyticsData.users.technician,
-            ],
-        };
+            }
+        },
+        series: [
+            analyticsData.users.seller,
+            analyticsData.users.end_user,
+            analyticsData.users.technician,
+        ],
+    };
 
-        const topDistrictsChart = analyticsData.topDistricts ? {
-            options: {
-                chart: { 
-                    id: 'top-districts-chart', 
-                    toolbar: { show: false },
-                    animations: {
-                        enabled: true,
-                        easing: 'easeinout',
-                        speed: 800,
-                    }
-                },
-                plotOptions: { 
-                    bar: { 
-                        horizontal: true, 
-                        barHeight: '60%',
-                        borderRadius: 8,
-                        dataLabels: {
-                            position: 'top'
-                        }
-                    } 
-                },
-                xaxis: { 
-                    categories: selected.districtsData.map(d => d.districtName || ''),
-                    labels: {
-                        style: {
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            colors: '#757575'
-                        }
-                    }
-                },
-                yaxis: {
-                    labels: {
-                        style: {
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            colors: '#424242'
-                        }
-                    }
-                },
-                title: { 
-                    text: selected.districtsTitle, 
-                    align: 'center', 
-                    style: { 
-                        fontSize: '18px', 
-                        fontWeight: '700', 
-                        color: '#424242',
-                        fontFamily: 'inherit'
-                    } 
-                },
-                colors: ['#4facfe'],
-                dataLabels: { 
+    const topDistrictsChart = analyticsData.topDistricts ? {
+        options: {
+            chart: { 
+                id: 'top-districts-chart', 
+                toolbar: { show: false },
+                animations: {
                     enabled: true,
+                    easing: 'easeinout',
+                    speed: 800,
+                }
+            },
+            plotOptions: { 
+                bar: { 
+                    horizontal: true, 
+                    barHeight: '60%',
+                    borderRadius: 8,
+                    dataLabels: {
+                        enabled: true,
+                        position: 'center', // Center the data labels inside the bars
+                        style: {
+                            colors: ['#fff'], // White text for contrast
+                            fontSize: '12px',
+                            fontWeight: 600
+                        }
+                    }
+                } 
+            },
+            xaxis: { 
+                categories: selected.districtsData.map(d => d.districtName || ''),
+                labels: {
                     style: {
                         fontSize: '12px',
-                        fontWeight: 600,
-                        colors: ['#fff']
-                    }
-                },
-                grid: { 
-                    borderColor: '#f1f1f1',
-                    strokeDashArray: 4
-                },
-                tooltip: {
-                    theme: 'light',
-                    y: {
-                        formatter: val => `${val} devices`
+                        fontWeight: 500,
+                        colors: '#757575'
                     }
                 }
             },
-            series: [{ name: 'Devices Sold', data: selected.districtsData.map(d => d.devicesSold) }],
-        } : { options: {}, series: [] };
+            yaxis: {
+                labels: {
+                    style: {
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        colors: '#424242'
+                    }
+                }
+            },
+            title: { 
+                text: selected.districtsTitle, 
+                align: 'center', 
+                style: { 
+                    fontSize: '18px', 
+                    fontWeight: '700', 
+                    color: '#424242',
+                    fontFamily: 'inherit'
+                } 
+            },
+            colors: ['#4facfe'],
+            grid: { 
+                borderColor: '#f1f1f1',
+                strokeDashArray: 4
+            },
+            tooltip: {
+                theme: 'light',
+                y: {
+                    formatter: val => `${val} devices`
+                }
+            }
+        },
+        series: [{ name: 'Devices Sold', data: selected.districtsData.map(d => d.devicesSold) }],
+    } : { options: {}, series: [] };
 
-        const topModelsChart = analyticsData.topModels ? {
+    const topModelsChart = analyticsData.topModels ? {
+        options: {
+            chart: { 
+                id: 'top-models-chart', 
+                toolbar: { show: false },
+                animations: {
+                    enabled: true,
+                    easing: 'easeinout',
+                    speed: 800,
+                }
+            },
+            plotOptions: { 
+                bar: { 
+                    horizontal: false, 
+                    columnWidth: '60%', 
+                    borderRadius: 8,
+                    dataLabels: {
+                        enabled: true,
+                        position: 'center', // Center the data labels inside the bars
+                        style: {
+                            colors: ['#fff'], // White text for contrast
+                            fontSize: '12px',
+                            fontWeight: 600
+                        }
+                    }
+                } 
+            },
+            xaxis: { 
+                categories: selected.modelsData.map(m => m.modelName || ''),
+                labels: {
+                    rotate: -45,
+                    style: {
+                        fontSize: '11px',
+                        fontWeight: 500,
+                        colors: '#757575'
+                    }
+                }
+            },
+            yaxis: {
+                labels: {
+                    style: {
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        colors: '#757575'
+                    }
+                }
+            },
+            title: { 
+                text: selected.modelsTitle, 
+                align: 'center', 
+                style: { 
+                    fontSize: '18px', 
+                    fontWeight: '700', 
+                    color: '#424242',
+                    fontFamily: 'inherit'
+                } 
+            },
+            colors: ['#43e97b'],
+            grid: { 
+                borderColor: '#f1f1f1',
+                strokeDashArray: 4
+            },
+            tooltip: {
+                theme: 'light',
+                y: {
+                    formatter: val => `${val} devices`
+                }
+            }
+        },
+        series: [{ name: 'Devices Sold', data: selected.modelsData.map(m => m.devicesSold) }],
+    } : { options: {}, series: [] };
+
+    return {
+        payments: {
             options: {
                 chart: { 
-                    id: 'top-models-chart', 
+                    id: 'successful-payments-chart', 
                     toolbar: { show: false },
                     animations: {
                         enabled: true,
@@ -304,29 +373,10 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                         speed: 800,
                     }
                 },
-                plotOptions: { 
-                    bar: { 
-                        horizontal: false, 
-                        columnWidth: '60%', 
-                        borderRadius: 8,
-                        dataLabels: {
-                            position: 'top'
-                        }
-                    } 
-                },
                 xaxis: { 
-                    categories: selected.modelsData.map(m => m.modelName || ''),
-                    labels: {
+                    categories: selected.labels, 
+                    labels: { 
                         rotate: -45,
-                        style: {
-                            fontSize: '11px',
-                            fontWeight: 500,
-                            colors: '#757575'
-                        }
-                    }
-                },
-                yaxis: {
-                    labels: {
                         style: {
                             fontSize: '12px',
                             fontWeight: 500,
@@ -334,8 +384,18 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                         }
                     }
                 },
+                plotOptions: { 
+                    bar: { 
+                        columnWidth: '45%', 
+                        borderRadius: 8,
+                        distributed: false,
+                        dataLabels: {
+                            position: 'top'
+                        }
+                    } 
+                },
                 title: { 
-                    text: selected.modelsTitle, 
+                    text: selected.paymentsTitle, 
                     align: 'center', 
                     style: { 
                         fontSize: '18px', 
@@ -344,182 +404,115 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                         fontFamily: 'inherit'
                     } 
                 },
-                colors: ['#43e97b'],
+                colors: ['#667eea'],
                 dataLabels: { 
                     enabled: true,
                     offsetY: -20,
                     style: {
                         fontSize: '12px',
-                        fontWeight: 600,
-                        colors: ['#43e97b']
+                        colors: ['#667eea'],
+                        fontWeight: 600
                     }
                 },
                 grid: { 
                     borderColor: '#f1f1f1',
-                    strokeDashArray: 4
+                    strokeDashArray: 4,
+                    xaxis: {
+                        lines: {
+                            show: true
+                        }
+                    }
                 },
                 tooltip: {
                     theme: 'light',
                     y: {
-                        formatter: val => `${val} devices`
+                        formatter: val => `${val} payments`
                     }
                 }
             },
-            series: [{ name: 'Devices Sold', data: selected.modelsData.map(m => m.devicesSold) }],
-        } : { options: {}, series: [] };
-
-        return {
-            payments: {
-                options: {
-                    chart: { 
-                        id: 'successful-payments-chart', 
-                        toolbar: { show: false },
-                        animations: {
-                            enabled: true,
-                            easing: 'easeinout',
-                            speed: 800,
-                        }
-                    },
-                    xaxis: { 
-                        categories: selected.labels, 
-                        labels: { 
-                            rotate: -45,
-                            style: {
-                                fontSize: '12px',
-                                fontWeight: 500,
-                                colors: '#757575'
-                            }
-                        }
-                    },
-                    plotOptions: { 
-                        bar: { 
-                            columnWidth: '45%', 
-                            borderRadius: 8,
-                            distributed: false,
-                            dataLabels: {
-                                position: 'top'
-                            }
-                        } 
-                    },
-                    title: { 
-                        text: selected.paymentsTitle, 
-                        align: 'center', 
-                        style: { 
-                            fontSize: '18px', 
-                            fontWeight: '700', 
-                            color: '#424242',
-                            fontFamily: 'inherit'
-                        } 
-                    },
-                    colors: ['#667eea'],
-                    dataLabels: { 
+            series: [{ name: 'Successful Payments', data: selected.paymentsData.map(i => i.successful) }],
+        },
+        revenue: {
+            options: {
+                chart: { 
+                    id: 'monthly-revenue-chart', 
+                    toolbar: { show: false },
+                    animations: {
                         enabled: true,
-                        offsetY: -20,
+                        easing: 'easeinout',
+                        speed: 800,
+                    }
+                },
+                xaxis: { 
+                    categories: selected.labels, 
+                    labels: { 
+                        rotate: -45,
                         style: {
                             fontSize: '12px',
-                            colors: ['#667eea'],
-                            fontWeight: 600
-                        }
-                    },
-                    grid: { 
-                        borderColor: '#f1f1f1',
-                        strokeDashArray: 4,
-                        xaxis: {
-                            lines: {
-                                show: true
-                            }
-                        }
-                    },
-                    tooltip: {
-                        theme: 'light',
-                        y: {
-                            formatter: val => `${val} payments`
+                            fontWeight: 500,
+                            colors: '#757575'
                         }
                     }
                 },
-                series: [{ name: 'Successful Payments', data: selected.paymentsData.map(i => i.successful) }],
-            },
-            revenue: {
-                options: {
-                    chart: { 
-                        id: 'monthly-revenue-chart', 
-                        toolbar: { show: false },
-                        animations: {
-                            enabled: true,
-                            easing: 'easeinout',
-                            speed: 800,
-                        }
-                    },
-                    xaxis: { 
-                        categories: selected.labels, 
-                        labels: { 
-                            rotate: -45,
-                            style: {
-                                fontSize: '12px',
-                                fontWeight: 500,
-                                colors: '#757575'
-                            }
-                        }
-                    },
-                    stroke: { curve: 'smooth', width: 4 },
-                    title: { 
-                        text: selected.revenueTitle, 
-                        align: 'center', 
-                        style: { 
-                            fontSize: '18px', 
-                            fontWeight: '700', 
-                            color: '#424242',
-                            fontFamily: 'inherit'
+                stroke: { curve: 'smooth', width: 4 },
+                title: { 
+                    text: selected.revenueTitle, 
+                    align: 'center', 
+                    style: { 
+                        fontSize: '18px', 
+                        fontWeight: '700', 
+                        color: '#424242',
+                        fontFamily: 'inherit'
+                    } 
+                },
+                colors: ['#f093fb'],
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.7,
+                        opacityTo: 0.3,
+                        stops: [0, 90, 100]
+                    }
+                },
+                dataLabels: { enabled: false },
+                grid: { 
+                    borderColor: '#f1f1f1',
+                    strokeDashArray: 4
+                },
+                yaxis: { 
+                    labels: { 
+                        formatter: val => `₹${val.toLocaleString('en-IN', {maximumFractionDigits: 0})}`,
+                        style: {
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            colors: '#757575'
                         } 
-                    },
+                    } 
+                },
+                markers: {
+                    size: 5,
                     colors: ['#f093fb'],
-                    fill: {
-                        type: 'gradient',
-                        gradient: {
-                            shadeIntensity: 1,
-                            opacityFrom: 0.7,
-                            opacityTo: 0.3,
-                            stops: [0, 90, 100]
-                        }
-                    },
-                    dataLabels: { enabled: false },
-                    grid: { 
-                        borderColor: '#f1f1f1',
-                        strokeDashArray: 4
-                    },
-                    yaxis: { 
-                        labels: { 
-                            formatter: val => `₹${val.toLocaleString('en-IN', {maximumFractionDigits: 0})}`,
-                            style: {
-                                fontSize: '12px',
-                                fontWeight: 500,
-                                colors: '#757575'
-                            }
-                        } 
-                    },
-                    markers: {
-                        size: 5,
-                        colors: ['#f093fb'],
-                        strokeColors: '#fff',
-                        strokeWidth: 2,
-                        hover: {
-                            size: 7
-                        }
-                    },
-                    tooltip: {
-                        theme: 'light',
-                        y: {
-                            formatter: val => `₹${val.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
-                        }
+                    strokeColors: '#fff',
+                    strokeWidth: 2,
+                    hover: {
+                        size: 7
                     }
                 },
-                series: [{ name: 'Revenue', data: selected.revenueData.map(i => i.revenue) }],
+                tooltip: {
+                    theme: 'light',
+                    y: {
+                        formatter: val => `₹${val.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+                    }
+                }
             },
-            users: usersChart,
-            topDistricts: topDistrictsChart,
-            topModels: topModelsChart,
-        };
+            series: [{ name: 'Revenue', data: selected.revenueData.map(i => i.revenue) }],
+        },
+        users: usersChart,
+        topDistricts: topDistrictsChart,
+        topModels: topModelsChart,
     };
+};
 
     const {
         payments: paymentsChartData,

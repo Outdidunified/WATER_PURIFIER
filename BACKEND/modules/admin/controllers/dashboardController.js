@@ -3539,13 +3539,16 @@ const GetAnalyticsByDistrict = async (req, res) => {
 
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const currentDayOfWeek = now.getDay();
+    const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday);
+    startOfWeek.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
     const districtRegex = new RegExp(`^${String(district).trim()}$`, 'i');
 
-    // Helpers for payments with district filter (join to orders)
+    // ---------------- Helpers ----------------
     const countPaymentsByDistrict = async (filter = {}) => {
       const result = await paymentsCollection.aggregate([
         { $lookup: { from: 'orders', localField: 'orderId', foreignField: '_id', as: 'order' } },
@@ -3561,6 +3564,16 @@ const GetAnalyticsByDistrict = async (req, res) => {
         { $lookup: { from: 'orders', localField: 'orderId', foreignField: '_id', as: 'order' } },
         { $addFields: { order: { $arrayElemAt: ['$order', 0] } } },
         { $match: { 'order.deliveryAddress.district': districtRegex, createdAt: dateFilter } },
+        { $group: { _id: groupId, total: { $sum: 1 }, successful: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'Completed'] }, 1, 0] } } } },
+        { $project: { [labelField]: '$_id', total: 1, successful: 1, _id: 0 } },
+        { $sort: { [labelField]: 1 } }
+      ]).toArray();
+      return result;
+    };
+
+    const groupTimeline = async (collection, filter, groupId, labelField) => {
+      const result = await collection.aggregate([
+        { $match: filter },
         { $group: { _id: groupId, total: { $sum: 1 }, successful: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'Completed'] }, 1, 0] } } } },
         { $project: { [labelField]: '$_id', total: 1, successful: 1, _id: 0 } },
         { $sort: { [labelField]: 1 } }
@@ -3588,7 +3601,6 @@ const GetAnalyticsByDistrict = async (req, res) => {
       return result;
     };
 
-    // Build fixed buckets for revenue (fill missing labels with 0 revenue)
     const buildRevenueBuckets = (range, results, labelKey = 'label') => {
       const buckets = [];
       for (let i = range.start; i <= range.end; i++) {
@@ -3598,7 +3610,30 @@ const GetAnalyticsByDistrict = async (req, res) => {
       return buckets;
     };
 
-    // Summary counts
+    const getTopItems = async (collection, filter, groupByField, labelField = 'name', limit = 5) => {
+      const result = await collection.aggregate([
+        { $match: { ...filter, paymentStatus: 'Completed', 'deliveryAddress.district': districtRegex } },
+        {
+          $group: {
+            _id: `$${groupByField}`,
+            devicesSold: { $sum: { $ifNull: ['$quantity', 1] } }
+          }
+        },
+        { $match: { _id: { $ne: null, $ne: 'Unknown', $exists: true } } },
+        { $sort: { devicesSold: -1 } },
+        { $limit: limit },
+        {
+          $project: {
+            [labelField]: '$_id',
+            devicesSold: 1,
+            _id: 0
+          }
+        }
+      ]).toArray();
+      return result;
+    };
+
+    // ---------------- Summary counts ----------------
     const [
       paymentsTotal, paymentsSuccess, paymentsPending,
       ordersTotal, ordersSuccess, ordersPending,
@@ -3617,10 +3652,10 @@ const GetAnalyticsByDistrict = async (req, res) => {
       usersCollection.countDocuments({ district: districtRegex, role_id: 4 })
     ]);
 
-    // Timelines
+    // ---------------- Timelines ----------------
     const paymentsTodayRaw = await groupPaymentsTimelineByDistrict({ $gte: startOfToday }, { $hour: '$createdAt' }, 'hour');
-    const paymentsWeekRaw = await groupPaymentsTimelineByDistrict({ $gte: sevenDaysAgo }, { $dayOfWeek: '$createdAt' }, 'day');
-    const paymentsMonthRaw = await groupPaymentsTimelineByDistrict({ $gte: oneMonthAgo }, { $dayOfMonth: '$createdAt' }, 'day');
+    const paymentsWeekRaw = await groupPaymentsTimelineByDistrict({ $gte: startOfWeek }, { $dayOfWeek: '$createdAt' }, 'day');
+    const paymentsMonthRaw = await groupPaymentsTimelineByDistrict({ $gte: startOfMonth }, { $dayOfMonth: '$createdAt' }, 'day');
     const paymentsYearRaw = await groupPaymentsTimelineByDistrict({ $gte: oneYearAgo }, { $month: '$createdAt' }, 'month');
 
     const paymentsTimeline = {
@@ -3632,19 +3667,9 @@ const GetAnalyticsByDistrict = async (req, res) => {
 
     const orderFilterBase = { 'deliveryAddress.district': districtRegex };
 
-    const groupTimeline = async (collection, filter, groupId, labelField) => {
-      const result = await collection.aggregate([
-        { $match: filter },
-        { $group: { _id: groupId, total: { $sum: 1 }, successful: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'Completed'] }, 1, 0] } } } },
-        { $project: { [labelField]: '$_id', total: 1, successful: 1, _id: 0 } },
-        { $sort: { [labelField]: 1 } }
-      ]).toArray();
-      return result;
-    };
-
     const ordersTodayRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: startOfToday } }, { $hour: '$createdAt' }, 'hour');
-    const ordersWeekRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: sevenDaysAgo } }, { $dayOfWeek: '$createdAt' }, 'day');
-    const ordersMonthRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: oneMonthAgo } }, { $dayOfMonth: '$createdAt' }, 'day');
+    const ordersWeekRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: startOfWeek } }, { $dayOfWeek: '$createdAt' }, 'day');
+    const ordersMonthRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: startOfMonth } }, { $dayOfMonth: '$createdAt' }, 'day');
     const ordersYearRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: oneYearAgo } }, { $month: '$createdAt' }, 'month');
 
     const ordersTimeline = {
@@ -3655,8 +3680,8 @@ const GetAnalyticsByDistrict = async (req, res) => {
     };
 
     const revenueTodayRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: startOfToday } }, { $hour: '$createdAt' }, 'hour');
-    const revenueWeekRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: sevenDaysAgo } }, { $dayOfWeek: '$createdAt' }, 'day');
-    const revenueMonthRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: oneMonthAgo } }, { $dayOfMonth: '$createdAt' }, 'day');
+    const revenueWeekRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: startOfWeek } }, { $dayOfWeek: '$createdAt' }, 'day');
+    const revenueMonthRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: startOfMonth } }, { $dayOfMonth: '$createdAt' }, 'day');
     const revenueYearRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: oneYearAgo } }, { $month: '$createdAt' }, 'month');
 
     const revenueTimeline = {
@@ -3672,33 +3697,70 @@ const GetAnalyticsByDistrict = async (req, res) => {
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]).toArray();
     const totalRevenue = totalRevenueResult[0]?.total || 0;
-    const topModels = await ordersCollection.aggregate([
-                { $match: { paymentStatus: "Completed", "deliveryAddress.district": districtRegex } },
-                {
-                    $group: {
-                    _id: "$productModel", // adjust if stored as productName or product.model
-                    totalRevenue: { $sum: { $ifNull: ["$totalPrice", "$grandTotal"] } },
-                    orderCount: { $sum: 1 }
-                    }
-                },
-                { $sort: { totalRevenue: -1 } },
-                { $limit: 5 },
-                {
-                    $project: {
-                    _id: 0,
-                    model: "$_id",
-                    totalRevenue: 1,
-                    orderCount: 1
-                    }
-                }
-                ]).toArray();
 
+    // ---------------- Top Districts per Timeframe ----------------
+    const getTopDistricts = async (filter) => {
+      const result = await ordersCollection.aggregate([
+        { $match: { ...filter, paymentStatus: 'Completed', 'deliveryAddress.district': districtRegex } },
+        {
+          $group: {
+            _id: '$deliveryAddress.district',
+            devicesSold: { $sum: { $ifNull: ['$quantity', 1] } }
+          }
+        },
+        { $match: { _id: { $ne: null, $ne: 'Unknown', $exists: true } } },
+        { $sort: { devicesSold: -1 } },
+        { $limit: 1 }, // Only the requested district
+        {
+          $project: {
+            districtName: '$_id',
+            devicesSold: 1,
+            _id: 0
+          }
+        }
+      ]).toArray();
+      return result;
+    };
+
+    const topDistrictsOverall = await getTopDistricts({});
+    const topDistrictsToday = await getTopDistricts({ createdAt: { $gte: startOfToday } });
+    const topDistrictsWeek = await getTopDistricts({ createdAt: { $gte: startOfWeek } });
+    const topDistrictsMonth = await getTopDistricts({ createdAt: { $gte: startOfMonth } });
+    const topDistrictsYear = await getTopDistricts({ createdAt: { $gte: oneYearAgo } });
+
+    // ---------------- Top Models per Timeframe ----------------
+    const topModelsOverall = await getTopItems(ordersCollection, {}, 'modelName', 'modelName');
+    const topModelsToday = await getTopItems(ordersCollection, { createdAt: { $gte: startOfToday } }, 'modelName', 'modelName');
+    const topModelsWeek = await getTopItems(ordersCollection, { createdAt: { $gte: startOfWeek } }, 'modelName', 'modelName');
+    const topModelsMonth = await getTopItems(ordersCollection, { createdAt: { $gte: startOfMonth } }, 'modelName', 'modelName');
+    const topModelsYear = await getTopItems(ordersCollection, { createdAt: { $gte: oneYearAgo } }, 'modelName', 'modelName');
+
+    // ---------------- Payload ----------------
     const payload = {
       payments: { total: paymentsTotal, successful: paymentsSuccess, pending: paymentsPending, timeline: paymentsTimeline },
       orders: { total: ordersTotal, successful: ordersSuccess, pending: ordersPending, timeline: ordersTimeline },
       revenue: { total: totalRevenue, timeline: revenueTimeline },
-      users: { total: usersTotal, admin: adminsCount, technician: techniciansCount, end_user: endUsersCount, seller: sellersCount },
-      topModels: topModels
+      users: {
+        total: usersTotal,
+        admin: adminsCount,
+        technician: techniciansCount,
+        end_user: endUsersCount,
+        seller: sellersCount
+      },
+      topDistricts: {
+        overall: topDistrictsOverall,
+        today: topDistrictsToday,
+        week: topDistrictsWeek,
+        month: topDistrictsMonth,
+        year: topDistrictsYear
+      },
+      topModels: {
+        overall: topModelsOverall,
+        today: topModelsToday,
+        week: topModelsWeek,
+        month: topModelsMonth,
+        year: topModelsYear
+      }
     };
 
     return res.status(200).json({ status: 'Success', data: payload });
