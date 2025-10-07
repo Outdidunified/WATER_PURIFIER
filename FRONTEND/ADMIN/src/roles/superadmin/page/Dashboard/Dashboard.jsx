@@ -303,7 +303,7 @@ const getChartData = () => {
             plotOptions: { 
                 bar: { 
                     horizontal: false, 
-                    columnWidth: '60%', 
+                    columnWidth: '20%', 
                     borderRadius: 8,
                     dataLabels: {
                         enabled: true,

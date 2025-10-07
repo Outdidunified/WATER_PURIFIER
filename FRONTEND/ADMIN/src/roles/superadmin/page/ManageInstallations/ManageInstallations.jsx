@@ -55,6 +55,14 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
     setAssignLoading(false);
   };
 
+  const getStatusBadgeClass = (status) => {
+    const lowerStatus = status?.toLowerCase();
+    if (lowerStatus === 'pending') return 'badge-danger';
+    if (lowerStatus === 'in progress' || lowerStatus === 'in_progress') return 'badge-warning';
+    if (lowerStatus === 'completed') return 'badge-success';
+    return 'badge-secondary'; // default
+  };
+
   const handleAssignSubmit = async (e) => {
     e.preventDefault();
     if (!assignedTechnicianId || !selectedInstallation) return;
@@ -207,7 +215,11 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                 ? new Date(item.task_assigned_date).toLocaleDateString()
                 : '-'}
             </td>
-            <td >{item.task_status || '-'}</td>
+            <td>
+              <span className={`badge ${getStatusBadgeClass(item.task_status)}`}>
+                {item.task_status || '-'}
+              </span>
+            </td>
             <td>{item.pending_reason || '-'}</td>
             <td>
               <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
