@@ -239,7 +239,7 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                                       type="button"
                                       className="btn btn-primary"
                                       onClick={() => handleAssignClick(item, 'assign')}
-                                      disabled={!!item.assigned_technician_id}
+                                      disabled={!!item.assigned_technician_id || !item.isAssignable}
                                     >
                                       Assign
                                     </button>
@@ -247,7 +247,7 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                                       type="button"
                                       className="btn btn-warning"
                                       onClick={() => handleAssignClick(item, 'reassign')}
-                                      disabled={!item.assigned_technician_id}
+                                      disabled={!item.assigned_technician_id || !item.isAssignable}
                                     >
                                       Reassign
                                     </button>

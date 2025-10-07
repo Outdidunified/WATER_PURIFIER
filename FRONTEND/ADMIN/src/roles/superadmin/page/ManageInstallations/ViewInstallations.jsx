@@ -160,6 +160,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                   task.created_at ||
                   serviceRecord.created_at ||
                   serviceRecord.createdAt;
+                const imageAfterService = task.image_after_service || serviceRecord.image_after_service || [];
 
                 return (
                   <div
@@ -357,13 +358,34 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                               <strong>Task Status:</strong> {taskStatus || '-'}
                             </div>
                           </div>
-{/* 
+{/*
                           <div className="row viewDataCss mt-2">
                             <div className="col-md-4">
                               <strong>Subscription Expiry:</strong>{' '}
                               {formatDate(subscriptionExpiry)}
                             </div>
                           </div> */}
+
+                          {/* Image After Service */}
+                          {imageAfterService?.length > 0 && (
+                            <div className="row viewDataCss mt-3">
+                              <div className="col-md-12">
+                                <strong>After Service Images:</strong>
+                                <div className="row mt-2">
+                                  {imageAfterService.map((img, idx) => (
+                                    <div className="col-md-3 mb-2" key={idx}>
+                                      <img
+                                        src={`/upload${img}`}
+                                        alt={`After ${idx}`}
+                                        className="img-fluid rounded"
+                                        style={{ border: '1px solid #ccc', padding: '5px', maxHeight: '150px' }}
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
 
                         </div>
                       </div>

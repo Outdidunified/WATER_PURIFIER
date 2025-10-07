@@ -77,7 +77,13 @@ const useManageInstallation = (userInfo) => {
         return acc;
       }, {});
 
-      const enrichedTasks = ords.map((order) => {
+      // Filter orders to only include paid and confirmed ones
+      const filteredOrds = ords.filter(order =>
+        order.paymentStatus?.toLowerCase() === 'completed' &&
+        order.orderStatus?.toLowerCase() === 'confirmed'
+      );
+
+      const enrichedTasks = filteredOrds.map((order) => {
         const matchingTask = tasks.find(
           (task) => task.wp_device_id === order.wp_device_id
         );
@@ -114,9 +120,12 @@ const useManageInstallation = (userInfo) => {
               }
             : null);
 
+        const taskStatus = matchingTask?.task_status || order.task_status || primaryRecord?.task_status || '';
+        const isAssignable = taskStatus.toLowerCase() !== 'completed';
+
         return {
           ...order,
-          task_status: matchingTask?.task_status || order.task_status ||  primaryRecord?.task_status || '',
+          task_status: taskStatus,
           pending_reason:
             matchingTask?.pending_reason ||
             primaryRecord?.pending_reason ||
@@ -134,6 +143,7 @@ const useManageInstallation = (userInfo) => {
           assigned_technician_id: primaryRecord?.assigned_technician_id || null,
           order_user_id: order.user_id || '',
           customOrderId: order.customOrderId || '',
+          isAssignable,
         };
       });
 

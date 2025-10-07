@@ -143,8 +143,10 @@ const authenticate = async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials, user is deactivated, or role not allowed' });
         }
 
-        // Check password (number or string)
-        if (user.password !== Number(password) && user.password !== password) {
+        // Check password (normalize to string for comparison)
+        const inputPassword = password.toString();
+        const dbPassword = user.password.toString();
+        if (dbPassword !== inputPassword) {
             return res.status(401).json({ message: 'Invalid password' });
         }
 
@@ -1833,7 +1835,7 @@ const AssignInstallation = async (req, res) => {
         const now = new Date();
 
         // Guard: block assignment if order not paid/confirmed
-        if (orderDoc?.paymentStatus !== 'Completed' || orderDoc?.orderStatus !== 'Confirmed') {
+        if (orderDoc?.paymentStatus?.toLowerCase() !== 'completed' || orderDoc?.orderStatus?.toLowerCase() !== 'confirmed') {
             return res.status(400).json({
                 status: 'Failed',
                 message: 'Cannot assign installation: order not paid/confirmed'
@@ -2319,7 +2321,7 @@ const AssignService = async (req, res) => {
         const ordersCollection = db.collection("orders");
         const wpId = existingTask.wp_device_id || existingTask.device_id;
         const orderDoc = await ordersCollection.findOne({ wp_device_id: wpId });
-        if (!orderDoc || orderDoc.paymentStatus !== 'Completed') {
+        if (!orderDoc || orderDoc.paymentStatus?.toLowerCase() !== 'completed') {
             return res.status(400).json({
                 status: 'Failed',
                 message: 'Cannot assign service: related order is not paid'
