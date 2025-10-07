@@ -1898,83 +1898,85 @@ const AssignInstallation = async (req, res) => {
 
 // ReAssignInstallation
 const ReAssignInstallation = async (req, res) => {
-    try {
-        const db = await database.connectToDatabase();
-        const serviceRecords = db.collection("service_records");
+  try {
+    const db = await database.connectToDatabase();
+    const serviceRecords = db.collection("service_records");
+    const ordersCollection = db.collection("orders");
 
-        const { task_id, technician_id, modified_by } = req.body;
+    const { task_id, technician_id, modified_by } = req.body;
 
-        // Basic validation
-        if (!task_id || !technician_id || !modified_by) {
-            return res.status(400).json({
-                status: 'Failed',
-                message: 'Invalid or missing required fields',
-            });
-        }
-
-        // Check if the task exists
-        const existingTask = await serviceRecords.findOne({ task_id });
-
-        if (!existingTask) {
-            return res.status(404).json({
-                status: 'Failed',
-                message: `Task with task id ${task_id} not found.`,
-            });
-        }
-
-        // Guard: only allow reassignment if task_status is 'pending'
-        if (existingTask.task_status !== 'pending') {
-            return res.status(400).json({
-                status: 'Failed',
-                message: `Cannot reassign installation: task status is '${existingTask.task_status}'. Only pending tasks can be reassigned.`,
-            });
-        }
-
-        // Guard: block reassignment if related order not paid
-        const ordersCollection = db.collection("orders");
-        const relatedOrder = await ordersCollection.findOne({ wp_device_id: existingTask.wp_device_id || existingTask.device_id });
-
-        if (!relatedOrder || relatedOrder.paymentStatus !== 'Completed') {
-            return res.status(400).json({
-                status: 'Failed',
-                message: 'Cannot reassign installation: related order is not paid',
-            });
-        }
-
-        // Update the record
-        const now = new Date();
-        const updateResult = await serviceRecords.updateOne(
-            { task_id },
-            {
-                $set: {
-                    assigned_technician_id: technician_id,
-                    modified_by,
-                    modified_date: now,
-                    pending_reason: null
-                }
-            }
-        );
-
-        if (updateResult.modifiedCount === 1) {
-            return res.status(200).json({
-                status: 'Success',
-                message: `Installation task ${task_id} reassigned successfully.`,
-            });
-        } else {
-            return res.status(500).json({
-                status: 'Failed',
-                message: 'Task update failed. Please try again.',
-            });
-        }
-
-    } catch (err) {
-        console.error("Error in ReAssignInstallation:", err);
-        return res.status(500).json({
-            status: 'Failed',
-            message: 'Internal Server Error',
-        });
+    // 1️⃣ Basic validation
+    if (!task_id || !technician_id || !modified_by) {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Invalid or missing required fields',
+      });
     }
+
+    // 2️⃣ Check if the task exists
+    const existingTask = await serviceRecords.findOne({ task_id });
+    if (!existingTask) {
+      return res.status(404).json({
+        status: 'Failed',
+        message: `Task with task id ${task_id} not found.`,
+      });
+    }
+
+    // 3️⃣ Allow reassignment only if task_status = "Pending"
+    if (existingTask.task_status.toLowerCase() !== 'pending') {
+      return res.status(400).json({
+        status: 'Failed',
+        message: `Cannot reassign installation: task status is '${existingTask.task_status}'. Only pending tasks can be reassigned.`,
+      });
+    }
+
+    // 4️⃣ Check related order payment status
+    const relatedOrder = await ordersCollection.findOne({
+      wp_device_id: existingTask.wp_device_id || existingTask.device_id,
+    });
+
+    if (!relatedOrder || relatedOrder.paymentStatus?.toLowerCase() !== 'completed') {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Cannot reassign installation: related order is not paid.',
+      });
+    }
+
+    // 5️⃣ Perform reassignment update
+    const now = new Date();
+    const updateResult = await serviceRecords.updateOne(
+      { task_id },
+      {
+        $set: {
+          assigned_technician_id: technician_id,
+          modified_by,
+          modified_date: now,
+          pending_reason: null,
+        },
+      }
+    );
+
+    if (updateResult.modifiedCount === 1) {
+      return res.status(200).json({
+        status: 'Success',
+        message: `Installation task ${task_id} reassigned successfully.`,
+      });
+    }
+
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Task update failed. Please try again.',
+    });
+
+  } catch (err) {
+    console.error("Error in ReAssignInstallation:", err);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error',
+    });
+  }
 };
+
 
 
 // FetchSelectInstallationTask
@@ -2354,79 +2356,83 @@ const AssignService = async (req, res) => {
 
 // ReAssignService
 const ReAssignService = async (req, res) => {
-    try {
-        const db = await database.connectToDatabase();
-        const serviceRecords = db.collection("service_records");
+  try {
+    const db = await database.connectToDatabase();
+    const serviceRecords = db.collection("service_records");
+    const ordersCollection = db.collection("orders");
 
-        const { task_id, technician_id, modified_by } = req.body;
+    const { task_id, technician_id, modified_by } = req.body;
 
-        // Basic validation
-        if (!task_id || !technician_id || !modified_by) {
-            return res.status(400).json({
-                status: 'Failed',
-                message: 'Invalid or missing required fields',
-            });
-        }
-
-        // Check if the task exists
-        const existingTask = await serviceRecords.findOne({ task_id });
-
-        if (!existingTask) {
-            return res.status(404).json({
-                status: 'Failed',
-                message: `Task with task_id ${task_id} not found.`,
-            });
-        }
-        if (existingTask.task_status !== 'Pending' || existingTask.task_status !== 'pending') {
-            return res.status(400).json({
-                status: 'Failed',
-                message: `Cannot reassign service: task status is '${existingTask.task_status}'. Only pending tasks can be reassigned.`,
-            });
-        }
-
-        // Guard: block reassignment if related order not paid
-        const ordersCollection = db.collection("orders");
-        const relatedOrder = await ordersCollection.findOne({ wp_device_id: existingTask.wp_device_id || existingTask.device_id });
-        if (!relatedOrder || relatedOrder.paymentStatus !== 'Completed') {
-            return res.status(400).json({
-                status: 'Failed',
-                message: 'Cannot reassign service: related order is not paid'
-            });
-        }
-
-        // Update the record
-        const now = new Date();
-        const updateResult = await serviceRecords.updateOne(
-            { task_id },
-            {
-                $set: {
-                    assigned_technician_id: technician_id,
-                    modified_by,
-                    modified_date: now,
-                    pending_reason: null
-                }
-            }
-        );
-
-        if (updateResult.modifiedCount === 1) {
-            return res.status(200).json({
-                status: 'Success',
-                message: `Service task ${task_id} reassigned successfully.`,
-            });
-        } else {
-            return res.status(500).json({
-                status: 'Failed',
-                message: 'Task update failed. Please try again.',
-            });
-        }
-
-    } catch (err) {
-        console.error("Error in ReAssignInstallation:", err);
-        return res.status(500).json({
-            status: 'Failed',
-            message: 'Internal Server Error',
-        });
+    // 1️⃣ Basic validation
+    if (!task_id || !technician_id || !modified_by) {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Invalid or missing required fields',
+      });
     }
+
+    // 2️⃣ Check if the task exists
+    const existingTask = await serviceRecords.findOne({ task_id });
+    if (!existingTask) {
+      return res.status(404).json({
+        status: 'Failed',
+        message: `Task with task_id ${task_id} not found.`,
+      });
+    }
+
+    // 3️⃣ Allow reassignment only if task_status = "Pending" (case-insensitive)
+    if (existingTask.task_status.toLowerCase() !== 'pending') {
+      return res.status(400).json({
+        status: 'Failed',
+        message: `Cannot reassign service: task status is '${existingTask.task_status}'. Only pending tasks can be reassigned.`,
+      });
+    }
+
+    // 4️⃣ Ensure related order is paid
+    const relatedOrder = await ordersCollection.findOne({
+      wp_device_id: existingTask.wp_device_id || existingTask.device_id,
+    });
+
+    if (!relatedOrder || relatedOrder.paymentStatus?.toLowerCase() !== 'completed') {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Cannot reassign service: related order is not paid.',
+      });
+    }
+
+    // 5️⃣ Update task assignment
+    const now = new Date();
+    const updateResult = await serviceRecords.updateOne(
+      { task_id },
+      {
+        $set: {
+          assigned_technician_id: technician_id,
+          modified_by,
+          modified_date: now,
+          pending_reason: null,
+        },
+      }
+    );
+
+    if (updateResult.modifiedCount === 1) {
+      return res.status(200).json({
+        status: 'Success',
+        message: `Service task ${task_id} reassigned successfully.`,
+      });
+    }
+
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Task update failed. Please try again.',
+    });
+
+  } catch (err) {
+    console.error("Error in ReAssignService:", err);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error',
+    });
+  }
 };
 
 // Admin Fetch APIs additions
