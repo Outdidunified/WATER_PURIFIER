@@ -234,7 +234,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
 
     const now = new Date();
 
-    // ✅ Update order as paid and confirmed
+    // ✅ Update order as paid, confirmed, and subscribed_at timestamp
     await ordersCollection.updateOne(
       { _id: order._id },
       {
@@ -242,6 +242,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
           paymentStatus: 'Completed',
           orderStatus: 'Confirmed',
           razorpayPaymentId: razorpay_payment_id,
+          subscribed_at: now, // ✅ Add subscription start time
           updatedAt: now
         }
       }
@@ -252,6 +253,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
       paymentStatus: 'Completed',
       orderStatus: 'Confirmed',
       razorpayPaymentId: razorpay_payment_id,
+      subscribed_at: now,
       updatedAt: now
     };
 
@@ -294,7 +296,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
       );
     }
 
-    // ✅ Email user (no subscription details yet)
+    // ✅ Send confirmation email
     try {
       await sendPaymentConfirmationEmail(user, order);
     } catch (emailError) {
@@ -303,13 +305,14 @@ exports.verifyRazorpayPayment = async (req, res) => {
 
     return res.status(200).json({
       status: 'success',
-      message: 'Payment verified successfully. Subscription will activate after installation is completed.'
+      message: 'Payment verified successfully. Subscription start time recorded. Installation will be scheduled soon.'
     });
   } catch (error) {
     console.error('Error verifying Razorpay payment:', error);
     return res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 };
+
 
 
 
