@@ -2411,7 +2411,7 @@ const ReAssignService = async (req, res) => {
           modified_by,
           modified_date: now,
           pending_reason: null,
-          assigned_date: now,
+        assigned_date: now,
         },
       }
     );
@@ -3487,7 +3487,7 @@ const GetAnalytics = async (req, res) => {
             countDocuments(ordersCollection, {}),
             countDocuments(ordersCollection, { paymentStatus: 'Completed' }),
             countDocuments(ordersCollection, { paymentStatus: 'Pending' }),
-            countDocuments(usersCollection, {}),
+            countDocuments(usersCollection, { role_id: { $in: [2, 3, 4] } }),
             countDocuments(usersCollection, { role_id: 1 }), // Admin
             countDocuments(usersCollection, { role_id: 2 }), // Technician
             countDocuments(usersCollection, { role_id: 3 }), // End User
