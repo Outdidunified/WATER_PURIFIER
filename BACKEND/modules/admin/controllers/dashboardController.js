@@ -1174,6 +1174,50 @@ const UpdateUserRoles = async (req, res) => {
     }
 };
 
+async function sendUserCredentialsEmail(email, user_id, password, role_name) {
+    try {
+        const subject = `Welcome to IonHive - Your Account Credentials`;
+        const text = `Hi ${role_name},
+
+        Your IonHive account has been created successfully. Below are your login credentials:
+
+        Email: ${email}
+        User ID: ${user_id}
+        Password: ${password}
+
+        Please use these credentials to log in to your IonHive account. For security, we recommend changing your password after your first login.
+
+        Thank you for joining IonHive!`;
+
+        const html = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
+                <h2 style="color: #333;">Welcome to IonHive, ${role_name}!</h2>
+                <p style="font-size: 16px; color: #555;">
+                    Your IonHive account has been created successfully. Below are your login credentials:
+                </p>
+                <ul style="font-size: 16px; color: #555;">
+                    <li><strong>Email:</strong> ${email}</li>
+                    <li><strong>User ID:</strong> ${user_id}</li>
+                    <li><strong>Password:</strong> ${password}</li>
+                </ul>
+                <p style="font-size: 16px; color: #555;">
+                    Please use these credentials to log in to your IonHive account. For security, we recommend changing your password after your first login.
+                </p>
+                <p style="color: #555;">Thank you for joining <strong>IonHive</strong>!</p>
+                <p style="font-size: 14px; color: #888; text-align: center; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px;">
+                    This is an automated message from IonHive Water Purifier.
+                </p>
+            </div>
+        `;
+
+        await sendEmailService(email, subject, text, html);
+        return true;
+    } catch (error) {
+        console.error('Error in sendUserCredentialsEmail:', error);
+        return false;
+    }
+}
+
 // 9.Manage User
 // AddUsers controller
 const AddUsers = async (req, res) => {
@@ -1336,6 +1380,22 @@ const AddUsers = async (req, res) => {
         }
 
         await collection.insertMany(docsToInsert);
+
+        // Send email to users with role Technician or Seller
+        for (const user of docsToInsert) {
+            if (user.role_name === 'Technician' || user.role_name === 'Seller') {
+                const emailSent = await sendUserCredentialsEmail(
+                    user.email,
+                    user.user_id,
+                    user.password,
+                    user.role_name
+                );
+                if (!emailSent) {
+                    console.warn(`Failed to send credentials email to ${user.email}`);
+                    // Optionally, you could collect failed emails and include in response
+                }
+            }
+        }
 
         return res.status(200).json({
             status: 'Success',
@@ -1838,83 +1898,85 @@ const AssignInstallation = async (req, res) => {
 
 // ReAssignInstallation
 const ReAssignInstallation = async (req, res) => {
-    try {
-        const db = await database.connectToDatabase();
-        const serviceRecords = db.collection("service_records");
+  try {
+    const db = await database.connectToDatabase();
+    const serviceRecords = db.collection("service_records");
+    const ordersCollection = db.collection("orders");
 
-        const { task_id, technician_id, modified_by } = req.body;
+    const { task_id, technician_id, modified_by } = req.body;
 
-        // Basic validation
-        if (!task_id || !technician_id || !modified_by) {
-            return res.status(400).json({
-                status: 'Failed',
-                message: 'Invalid or missing required fields',
-            });
-        }
-
-        // Check if the task exists
-        const existingTask = await serviceRecords.findOne({ task_id });
-
-        if (!existingTask) {
-            return res.status(404).json({
-                status: 'Failed',
-                message: `Task with task id ${task_id} not found.`,
-            });
-        }
-
-        // Guard: only allow reassignment if task_status is 'pending'
-        if (existingTask.task_status !== 'pending') {
-            return res.status(400).json({
-                status: 'Failed',
-                message: `Cannot reassign installation: task status is '${existingTask.task_status}'. Only pending tasks can be reassigned.`,
-            });
-        }
-
-        // Guard: block reassignment if related order not paid
-        const ordersCollection = db.collection("orders");
-        const relatedOrder = await ordersCollection.findOne({ wp_device_id: existingTask.wp_device_id || existingTask.device_id });
-
-        if (!relatedOrder || relatedOrder.paymentStatus !== 'Completed') {
-            return res.status(400).json({
-                status: 'Failed',
-                message: 'Cannot reassign installation: related order is not paid',
-            });
-        }
-
-        // Update the record
-        const now = new Date();
-        const updateResult = await serviceRecords.updateOne(
-            { task_id },
-            {
-                $set: {
-                    assigned_technician_id: technician_id,
-                    modified_by,
-                    modified_date: now,
-                    pending_reason: null
-                }
-            }
-        );
-
-        if (updateResult.modifiedCount === 1) {
-            return res.status(200).json({
-                status: 'Success',
-                message: `Installation task ${task_id} reassigned successfully.`,
-            });
-        } else {
-            return res.status(500).json({
-                status: 'Failed',
-                message: 'Task update failed. Please try again.',
-            });
-        }
-
-    } catch (err) {
-        console.error("Error in ReAssignInstallation:", err);
-        return res.status(500).json({
-            status: 'Failed',
-            message: 'Internal Server Error',
-        });
+    // 1️⃣ Basic validation
+    if (!task_id || !technician_id || !modified_by) {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Invalid or missing required fields',
+      });
     }
+
+    // 2️⃣ Check if the task exists
+    const existingTask = await serviceRecords.findOne({ task_id });
+    if (!existingTask) {
+      return res.status(404).json({
+        status: 'Failed',
+        message: `Task with task id ${task_id} not found.`,
+      });
+    }
+
+    // 3️⃣ Allow reassignment only if task_status = "Pending"
+    if (existingTask.task_status.toLowerCase() !== 'pending') {
+      return res.status(400).json({
+        status: 'Failed',
+        message: `Cannot reassign installation: task status is '${existingTask.task_status}'. Only pending tasks can be reassigned.`,
+      });
+    }
+
+    // 4️⃣ Check related order payment status
+    const relatedOrder = await ordersCollection.findOne({
+      wp_device_id: existingTask.wp_device_id || existingTask.device_id,
+    });
+
+    if (!relatedOrder || relatedOrder.paymentStatus?.toLowerCase() !== 'completed') {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Cannot reassign installation: related order is not paid.',
+      });
+    }
+
+    // 5️⃣ Perform reassignment update
+    const now = new Date();
+    const updateResult = await serviceRecords.updateOne(
+      { task_id },
+      {
+        $set: {
+          assigned_technician_id: technician_id,
+          modified_by,
+          modified_date: now,
+          pending_reason: null,
+        },
+      }
+    );
+
+    if (updateResult.modifiedCount === 1) {
+      return res.status(200).json({
+        status: 'Success',
+        message: `Installation task ${task_id} reassigned successfully.`,
+      });
+    }
+
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Task update failed. Please try again.',
+    });
+
+  } catch (err) {
+    console.error("Error in ReAssignInstallation:", err);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error',
+    });
+  }
 };
+
 
 
 // FetchSelectInstallationTask
@@ -2294,79 +2356,83 @@ const AssignService = async (req, res) => {
 
 // ReAssignService
 const ReAssignService = async (req, res) => {
-    try {
-        const db = await database.connectToDatabase();
-        const serviceRecords = db.collection("service_records");
+  try {
+    const db = await database.connectToDatabase();
+    const serviceRecords = db.collection("service_records");
+    const ordersCollection = db.collection("orders");
 
-        const { task_id, technician_id, modified_by } = req.body;
+    const { task_id, technician_id, modified_by } = req.body;
 
-        // Basic validation
-        if (!task_id || !technician_id || !modified_by) {
-            return res.status(400).json({
-                status: 'Failed',
-                message: 'Invalid or missing required fields',
-            });
-        }
-
-        // Check if the task exists
-        const existingTask = await serviceRecords.findOne({ task_id });
-
-        if (!existingTask) {
-            return res.status(404).json({
-                status: 'Failed',
-                message: `Task with task_id ${task_id} not found.`,
-            });
-        }
-        if (existingTask.task_status !== 'Pending' || existingTask.task_status !== 'pending') {
-            return res.status(400).json({
-                status: 'Failed',
-                message: `Cannot reassign service: task status is '${existingTask.task_status}'. Only pending tasks can be reassigned.`,
-            });
-        }
-
-        // Guard: block reassignment if related order not paid
-        const ordersCollection = db.collection("orders");
-        const relatedOrder = await ordersCollection.findOne({ wp_device_id: existingTask.wp_device_id || existingTask.device_id });
-        if (!relatedOrder || relatedOrder.paymentStatus !== 'Completed') {
-            return res.status(400).json({
-                status: 'Failed',
-                message: 'Cannot reassign service: related order is not paid'
-            });
-        }
-
-        // Update the record
-        const now = new Date();
-        const updateResult = await serviceRecords.updateOne(
-            { task_id },
-            {
-                $set: {
-                    assigned_technician_id: technician_id,
-                    modified_by,
-                    modified_date: now,
-                    pending_reason: null
-                }
-            }
-        );
-
-        if (updateResult.modifiedCount === 1) {
-            return res.status(200).json({
-                status: 'Success',
-                message: `Service task ${task_id} reassigned successfully.`,
-            });
-        } else {
-            return res.status(500).json({
-                status: 'Failed',
-                message: 'Task update failed. Please try again.',
-            });
-        }
-
-    } catch (err) {
-        console.error("Error in ReAssignInstallation:", err);
-        return res.status(500).json({
-            status: 'Failed',
-            message: 'Internal Server Error',
-        });
+    // 1️⃣ Basic validation
+    if (!task_id || !technician_id || !modified_by) {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Invalid or missing required fields',
+      });
     }
+
+    // 2️⃣ Check if the task exists
+    const existingTask = await serviceRecords.findOne({ task_id });
+    if (!existingTask) {
+      return res.status(404).json({
+        status: 'Failed',
+        message: `Task with task_id ${task_id} not found.`,
+      });
+    }
+
+    // 3️⃣ Allow reassignment only if task_status = "Pending" (case-insensitive)
+    if (existingTask.task_status.toLowerCase() !== 'pending') {
+      return res.status(400).json({
+        status: 'Failed',
+        message: `Cannot reassign service: task status is '${existingTask.task_status}'. Only pending tasks can be reassigned.`,
+      });
+    }
+
+    // 4️⃣ Ensure related order is paid
+    const relatedOrder = await ordersCollection.findOne({
+      wp_device_id: existingTask.wp_device_id || existingTask.device_id,
+    });
+
+    if (!relatedOrder || relatedOrder.paymentStatus?.toLowerCase() !== 'completed') {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Cannot reassign service: related order is not paid.',
+      });
+    }
+
+    // 5️⃣ Update task assignment
+    const now = new Date();
+    const updateResult = await serviceRecords.updateOne(
+      { task_id },
+      {
+        $set: {
+          assigned_technician_id: technician_id,
+          modified_by,
+          modified_date: now,
+          pending_reason: null,
+        },
+      }
+    );
+
+    if (updateResult.modifiedCount === 1) {
+      return res.status(200).json({
+        status: 'Success',
+        message: `Service task ${task_id} reassigned successfully.`,
+      });
+    }
+
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Task update failed. Please try again.',
+    });
+
+  } catch (err) {
+    console.error("Error in ReAssignService:", err);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error',
+    });
+  }
 };
 
 // Admin Fetch APIs additions
