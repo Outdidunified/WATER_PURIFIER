@@ -64,7 +64,7 @@ exports.updateTaskDetails = async (req, res) => {
   console.log('➡️ Headers:', req.headers);
   console.log('➡️ Content-Type:', req.headers['content-type']);
   console.log('---------------------------------------------------');
-  
+
   const {
     task_id,
     user_id,
@@ -77,10 +77,7 @@ exports.updateTaskDetails = async (req, res) => {
 
   const updates = typeof updatesJSON === 'string' ? JSON.parse(updatesJSON) : updatesJSON;
 
-  if (
-    !task_id || !user_id || !role_id || !email || !technician_id || 
-    !updates || typeof updates !== 'object'
-  ) {
+  if (!task_id || !user_id || !role_id || !email || !technician_id || !updates || typeof updates !== 'object') {
     return res.status(400).json({
       error: true,
       message: 'task_id, user_id, role_id, email, technician_id and valid updates object are required',
@@ -98,6 +95,8 @@ exports.updateTaskDetails = async (req, res) => {
     const db = await connectToDatabase();
     const serviceRecordsCollection = db.collection('service_records');
     const technicianCollection = db.collection('technician_details');
+    const usersCollection = db.collection('users');
+    const ordersCollection = db.collection('orders');
 
     const task = await serviceRecordsCollection.findOne({
       task_id: parseInt(task_id),
@@ -111,19 +110,11 @@ exports.updateTaskDetails = async (req, res) => {
       });
     }
 
-    const allowedFields = [
-      'task_status',
-      'pending_reason',
-      'modified_by',
-      'modified_date'
-    ];
-
+    const allowedFields = ['task_status', 'pending_reason', 'modified_by', 'modified_date'];
     const updateData = {};
 
     for (let key in updates) {
-      if (allowedFields.includes(key)) {
-        updateData[key] = updates[key];
-      }
+      if (allowedFields.includes(key)) updateData[key] = updates[key];
     }
 
     const status = updates.task_status || task.task_status;
@@ -149,75 +140,80 @@ exports.updateTaskDetails = async (req, res) => {
       }
     }
 
-    // 🔄 Handle uploaded images
+    // Handle uploaded images
     const files = req.files;
-
     if (files) {
       if (files.image_before_service && files.image_before_service.length > 0) {
         const beforeImagePath = `/uploads/technician/before/${path.basename(files.image_before_service[0].path)}`;
         const existingBeforeImages = task.image_before_service || [];
-
-        if (existingBeforeImages.length >= 5) {
-          return res.status(400).json({
-            error: true,
-            message: 'Maximum of 5 images already uploaded for image_before_service',
-          });
-        }
-
+        if (existingBeforeImages.length >= 5) return res.status(400).json({ error: true, message: 'Max 5 images for image_before_service' });
         updateData.image_before_service = [...existingBeforeImages, beforeImagePath];
       }
 
       if (files.image_after_service && files.image_after_service.length > 0) {
         const afterImagePath = `/uploads/technician/after/${path.basename(files.image_after_service[0].path)}`;
         const existingAfterImages = task.image_after_service || [];
-
-        if (existingAfterImages.length >= 5) {
-          return res.status(400).json({
-            error: true,
-            message: 'Maximum of 5 images already uploaded for image_after_service',
-          });
-        }
-
+        if (existingAfterImages.length >= 5) return res.status(400).json({ error: true, message: 'Max 5 images for image_after_service' });
         updateData.image_after_service = [...existingAfterImages, afterImagePath];
       }
     }
 
     if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({
-        error: true,
-        message: 'No valid fields provided for update',
-      });
+      return res.status(400).json({ error: true, message: 'No valid fields provided for update' });
     }
 
-    // ✅ Update task in DB
+    // Update task in DB
     const result = await serviceRecordsCollection.updateOne(
       { task_id: parseInt(task_id), assigned_technician_id: technician_id },
       { $set: updateData }
     );
 
     if (result.modifiedCount === 0) {
-      return res.status(400).json({
-        error: true,
-        message: 'No changes were made to the task',
-      });
+      return res.status(400).json({ error: true, message: 'No changes were made to the task' });
     }
 
-    // ✅ Update technician stats if task completed
+    // Technician stats
     if (status === 'Completed') {
       const technician = await technicianCollection.findOne({ technician_id });
-
       if (technician) {
         await technicianCollection.updateOne(
           { technician_id },
-          {
-            $set: {
-              total_completed_services: (technician.total_completed_services || 0) + 1
-            }
-          }
+          { $set: { total_completed_services: (technician.total_completed_services || 0) + 1 } }
         );
       }
 
-      // ✅ Send success email
+      // ✅ Update subscription expiry now that installation is completed
+      const order = await ordersCollection.findOne({ _id: task.order_id ? new ObjectId(task.order_id) : null });
+      if (order) {
+        const subscribedAt = new Date();
+        const durationStr = order.selectedDuration?.duration_time_limit || '30 days';
+        const durationInDays = parseInt(durationStr.split(' ')[0], 10) || 30;
+        const subscriptionExpiryDate = new Date(subscribedAt);
+        subscriptionExpiryDate.setDate(subscriptionExpiryDate.getDate() + durationInDays);
+
+        await usersCollection.updateOne(
+          { user_id: task.task_created_by_user_id },
+          {
+            $set: {
+              is_subscribed: true,
+              subscribed_at: subscribedAt,
+              subscription_expiry_date: subscriptionExpiryDate,
+              active_label: order.selectedPlan?.label || null,
+              active_plan_id: order.selectedPlan?.plans_id || null,
+              active_duration_id: order.selectedDuration?.duration_time_limit || null,
+              active_order_id: order._id.toString()
+            }
+          }
+        );
+
+        // Update order with subscriptionExpiryDate as well
+        await ordersCollection.updateOne(
+          { _id: order._id },
+          { $set: { subscriptionExpiryDate, updatedAt: new Date() } }
+        );
+      }
+
+      // Send completion email
       const mailOptions = {
         from: 'your_email@gmail.com',
         to: task.task_created_by_user_email,
@@ -232,26 +228,19 @@ exports.updateTaskDetails = async (req, res) => {
       };
 
       transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-          console.error('Error sending mail:', error);
-        } else {
-          console.log('Email sent:', info.response);
-        }
+        if (error) console.error('Error sending mail:', error);
+        else console.log('Email sent:', info.response);
       });
     }
 
-    return res.status(200).json({
-      error: false,
-      message: 'Task updated successfully',
-    });
+    return res.status(200).json({ error: false, message: 'Task updated successfully' });
+
   } catch (error) {
     console.error('Error updating task:', error);
-    return res.status(500).json({
-      error: true,
-      message: 'Server error while updating task',
-    });
+    return res.status(500).json({ error: true, message: 'Server error while updating task' });
   }
 };
+
 
 
   
