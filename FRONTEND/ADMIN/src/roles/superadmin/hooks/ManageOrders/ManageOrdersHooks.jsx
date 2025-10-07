@@ -46,14 +46,17 @@ const useManageOrders = (userInfo) => {
         }
     }, []);
 
-    const handleSearchInputChange = (e) => {
-    const inputValue = e.target.value.toUpperCase();
-    const filtered = orders.filter((order) =>
-        order.customOrderId?.toUpperCase().includes(inputValue) ||
-        order.deliveryAddress?.name?.toUpperCase().includes(inputValue)
-    );
-    setFilteredOrders(filtered);
+  const handleSearchInputChange = (e) => {
+  const inputValue = e.target.value.toUpperCase();
+  const filtered = orders.filter((order) =>
+    order.customOrderId?.toUpperCase().includes(inputValue) ||
+    order.deliveryAddress?.name?.toUpperCase().includes(inputValue) ||
+    order.email?.toUpperCase().includes(inputValue)|| 
+    order.phoneNumber?.toUpperCase().includes(inputValue)
+  );
+  setFilteredOrders(filtered);
 };
+
 
 
     const handleEditOrder = (order) => {
