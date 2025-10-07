@@ -1952,6 +1952,7 @@ const ReAssignInstallation = async (req, res) => {
           modified_by,
           modified_date: now,
           pending_reason: null,
+          assigned_date: now,
         },
       }
     );
@@ -2410,6 +2411,7 @@ const ReAssignService = async (req, res) => {
           modified_by,
           modified_date: now,
           pending_reason: null,
+          assigned_date: now,
         },
       }
     );
