@@ -36,6 +36,7 @@ exports.fetchUserDetails = async (req, res) => {
       name,
       email: dbEmail,
       phone,
+      password,
       addressline1,
       addressline2,
       city,
@@ -53,6 +54,7 @@ exports.fetchUserDetails = async (req, res) => {
       name,
       email: dbEmail,
       phone,
+      password,
       addressline1,
       addressline2: addressline2 || '',
       city,
@@ -94,6 +96,7 @@ exports.fetchUserDetails = async (req, res) => {
     role_id, 
     name, 
     phone, 
+    password,
     addressline1,
     addressline2, // optional
     city, 
@@ -112,6 +115,7 @@ exports.fetchUserDetails = async (req, res) => {
   if (!addressline1) missingFields.push('addressline1');
   if (!city) missingFields.push('city');
   if (!district) missingFields.push('district');
+  if(!password) missingFields.push('password');
   if (!state) missingFields.push('state');
   if (!country) missingFields.push('country');
   if (!pincode) missingFields.push('pincode');
