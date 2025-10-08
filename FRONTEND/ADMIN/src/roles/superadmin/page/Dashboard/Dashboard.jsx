@@ -12,6 +12,8 @@ const Dashboard = ({ userInfo, handleLogout }) => {
     const [error, setError] = useState(null);
     const [timeframe, setTimeframe] = useState('daily'); // Default to daily
 
+    const isSeller = Number(userInfo?.role_id) === 4;
+
     // Get current date information
     const currentDate = useMemo(() => {
         const now = new Date();
@@ -29,7 +31,6 @@ const Dashboard = ({ userInfo, handleLogout }) => {
         const loadData = async () => {
             try {
                 setLoading(true);
-                const isSeller = Number(userInfo?.role_id) === 4;
                 const url = isSeller
                     ? '/api/admin/analytics/by-district'
                     : '/api/admin/analytics';
@@ -49,7 +50,7 @@ const Dashboard = ({ userInfo, handleLogout }) => {
             }
         };
         loadData();
-    }, [userInfo]);
+    }, [userInfo, isSeller]);
 
     // Stats cards
     const stats = analyticsData
@@ -58,8 +59,10 @@ const Dashboard = ({ userInfo, handleLogout }) => {
             { icon: 'fas fa-check-circle', label: 'Successful Payments', value: analyticsData.payments.successful },
             { icon: 'fas fa-shopping-cart', label: 'Total Orders', value: analyticsData.orders.total },
             { icon: 'fas fa-check-circle', label: 'Successful Orders', value: analyticsData.orders.successful },
-            { icon: 'fas fa-users', label: 'Total Users', value: analyticsData.users.total },
-            { icon: 'fas fa-store', label: 'Total Sellers', value: analyticsData.users.seller },
+            { icon: 'fas fa-users', label: 'Total Users', value: isSeller ? analyticsData.users.end_user + analyticsData.users.technician : analyticsData.users.total },
+            ...(isSeller ? [] : [
+                { icon: 'fas fa-store', label: 'Total Sellers', value: analyticsData.users.seller }
+            ]),
             { icon: 'fas fa-user', label: 'Total End Users', value: analyticsData.users.end_user },
             { icon: 'fas fa-tools', label: 'Total Technicians', value: analyticsData.users.technician },
             {
@@ -78,8 +81,6 @@ const getChartData = () => {
         topDistricts: { options: {}, series: [] },
         topModels: { options: {}, series: [] }
     };
-
-    const isSeller = Number(userInfo?.role_id) === 4;
 
     const months = [
         'January', 'February', 'March', 'April', 'May', 'June',
@@ -155,8 +156,8 @@ const getChartData = () => {
 
     const usersChart = {
         options: {
-            chart: { 
-                id: 'users-chart', 
+            chart: {
+                id: 'users-chart',
                 toolbar: { show: false },
                 animations: {
                     enabled: true,
@@ -164,19 +165,19 @@ const getChartData = () => {
                     speed: 800,
                 }
             },
-            labels: ['Sellers', 'End Users', 'Technicians'],
-            title: { 
-                text: 'User Distribution', 
-                align: 'center', 
-                style: { 
-                    fontSize: '20px', 
-                    fontWeight: '700', 
+            labels: isSeller ? ['End Users', 'Technicians'] : ['Sellers', 'End Users', 'Technicians'],
+            title: {
+                text: 'User Distribution',
+                align: 'center',
+                style: {
+                    fontSize: '20px',
+                    fontWeight: '700',
                     color: '#424242',
                     fontFamily: 'inherit'
-                } 
+                }
             },
-            colors: ['#667eea', '#f093fb', '#4facfe'],
-            dataLabels: { 
+            colors: isSeller ? ['#f093fb', '#4facfe'] : ['#667eea', '#f093fb', '#4facfe'],
+            dataLabels: {
                 enabled: true,
                 style: {
                     fontSize: '14px',
@@ -184,7 +185,7 @@ const getChartData = () => {
                     colors: ['#fff']
                 }
             },
-            legend: { 
+            legend: {
                 position: 'bottom',
                 fontSize: '14px',
                 fontWeight: 500,
@@ -211,7 +212,10 @@ const getChartData = () => {
                 }
             }
         },
-        series: [
+        series: isSeller ? [
+            analyticsData.users.end_user,
+            analyticsData.users.technician,
+        ] : [
             analyticsData.users.seller,
             analyticsData.users.end_user,
             analyticsData.users.technician,
@@ -522,8 +526,6 @@ const getChartData = () => {
         topModels: topModelsChartData
     } = getChartData();
 
-    const isSeller = Number(userInfo?.role_id) === 4;
-
     if (error) {
         return <div style={{ textAlign: 'center', fontSize: '1.2rem', color: '#FF6F61' }}>{error}</div>;
     }
@@ -612,7 +614,7 @@ const getChartData = () => {
                                                 const colorScheme = colors[idx % colors.length];
                                                 
                                                 return (
-                                                    <div key={idx} className={idx === stats.length - 1 ? 'col-md-12 mb-3' : 'col-md-6 mb-3'}>
+                                                    <div key={idx} className={isSeller || idx !== stats.length - 1 ? 'col-md-6 mb-3' : 'col-md-12 mb-3'}>
                                                         <div 
                                                             className="stat-card" 
                                                             style={{ 
@@ -667,10 +669,10 @@ const getChartData = () => {
 
                                     {/* Users Donut Chart */}
                                     <div className="col-md-6">
-                                        <div style={{ 
-                                            backgroundColor: 'white', 
-                                            borderRadius: '16px', 
-                                            padding: '24px', 
+                                        <div style={{
+                                            backgroundColor: 'white',
+                                            borderRadius: '16px',
+                                            padding: '24px',
                                             boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                                             border: '1px solid rgba(0,0,0,0.05)',
                                             height: '100%',
