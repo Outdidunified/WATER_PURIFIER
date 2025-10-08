@@ -847,21 +847,28 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                         )}
                                                                     </div>
                                                                     <div className="card-footer text-center">
-                                                                        {products[selectedModelIndex]?.wp_device_quantity === 0 ? (
-                                                                            <button className="btn btn-danger" disabled>
-                                                                                Out of Stock
-                                                                            </button>
-                                                                        ) : (
-                                                                            <button
-                                                                                className="btn btn-primary"
-                                                                                onClick={() => {
-                                                                                    setSelectedPlanIndex(planIndex);
-                                                                                    handleSubscribeClick();
-                                                                                }}
-                                                                            >
-                                                                                Subscribe Now
-                                                                            </button>
-                                                                        )}
+                                                                        {(() => {
+                                                                            const product = products[selectedModelIndex];
+                                                                            const isOutOfStock = !product?.wp_device_id || product?.wp_device_quantity <= 0;
+                                                                            if (isOutOfStock) {
+                                                                                return (
+                                                                                    <button className="btn btn-danger" disabled>
+                                                                                        Out of Stock
+                                                                                    </button>
+                                                                                );
+                                                                            }
+                                                                            return (
+                                                                                <button
+                                                                                    className="btn btn-primary"
+                                                                                    onClick={() => {
+                                                                                        setSelectedPlanIndex(planIndex);
+                                                                                        handleSubscribeClick();
+                                                                                    }}
+                                                                                >
+                                                                                    Subscribe Now
+                                                                                </button>
+                                                                            );
+                                                                        })()}
                                                                     </div>
                                                                 </div>
                                                             </div>
