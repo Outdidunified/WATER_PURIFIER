@@ -5,7 +5,7 @@
 # Node.js dependencies
 BACKEND/node_modules/
 BACKEND/Log/*.log
-BACKEND/public/uploads/*
+
 
 # MacOS system files
 .DS_Store

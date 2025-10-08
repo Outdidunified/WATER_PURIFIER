@@ -20,10 +20,17 @@ const useAddProducts = (userInfo) => {
   const [subImages, setSubImages] = useState([null, null, null, null]); // Up to 4
 
   const [wpDeviceQuantity, setWpDeviceQuantity] = useState(0);
+  const [connectivity, setConnectivity] = useState([]);
   const [plans, setPlans] = useState([{ plans_id: 1, label: '', capacity: '', price: '' }]);
   const [durations, setDurations] = useState([
-    { duration_id: 1, duration_time_limit: '', gst: '', discount: '', security_deposit: '',    durationError: ''
- },
+    {
+      duration_id: 1,
+      duration_time_limit: '28 days',
+      gst: '',
+      discount: '',
+      security_deposit: '',
+      durationError: ''
+    }
   ]);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -100,10 +107,17 @@ const useAddProducts = (userInfo) => {
   };
 
   const handlePlanChange = (index, field, value) => {
-    const updatedPlans = plans.map((plan, idx) =>
-      idx === index ? { ...plan, [field]: value } : plan
-    );
-    setPlans(updatedPlans);
+    setPlans(prevPlans => {
+      const updatedPlans = prevPlans.map((plan, idx) =>
+        idx === index ? { ...plan, [field]: value } : plan
+      );
+
+      if (field === 'label' && value.toLowerCase() === 'unlimited') {
+        updatedPlans[index] = { ...updatedPlans[index], capacity: '' };
+      }
+
+      return updatedPlans;
+    });
   };
 
   const addDuration = () => {
@@ -111,25 +125,70 @@ const useAddProducts = (userInfo) => {
       ...durations,
       {
         duration_id: Date.now(),
-        duration_time_limit: '',
+        duration_time_limit: '28 days',
         gst: '',
         discount: '',
-        security_deposit: ''
+        security_deposit: '',
+        durationError: ''
       }
     ]);
   };
 
-const handleDurationChange = (index, field, value) => {
-  const updatedDurations = durations.map((duration, idx) => {
-    if (idx === index) {
-      return {
-        ...duration,
-        [field]: value,
-        durationError: ''  // optional: clear error directly
-      };
+  const normalizeNumericInput = (rawValue, options = {}) => {
+    const { allowDecimal = false, maxDecimals = 2, max = null } = options;
+    let sanitized = rawValue.replace(/[^0-9.]/g, '');
+
+    if (!allowDecimal) {
+      return sanitized.replace(/\./g, '');
     }
-    return duration;
-  });
+
+    const dotCount = (sanitized.match(/\./g) || []).length;
+    if (dotCount > 1) return null;
+
+    if (sanitized.includes('.')) {
+      const [integerPart, decimalPart] = sanitized.split('.');
+      if (decimalPart && decimalPart.length > maxDecimals) return null;
+      sanitized = `${integerPart}.${decimalPart ?? ''}`;
+    }
+
+    if (sanitized === '.') {
+      sanitized = '0.';
+    }
+
+    const numericValue = sanitized === '' ? '' : Number(sanitized);
+    if (max !== null && numericValue > max) return null;
+
+    return sanitized;
+  };
+
+const handleDurationChange = (index, field, value) => {
+  if (field === 'duration_time_limit') {
+    const updatedDurations = durations.map((duration, idx) =>
+      idx === index ? { ...duration, [field]: value } : duration
+    );
+    setDurations(updatedDurations);
+    return;
+  }
+
+  const configMap = {
+    gst: { allowDecimal: true, maxDecimals: 2, max: 100 },
+    discount: { allowDecimal: true, maxDecimals: 2, max: 100 },
+    security_deposit: { allowDecimal: true, maxDecimals: 2 }
+  };
+
+  const config = configMap[field];
+  const normalizedValue = config ? normalizeNumericInput(value, config) : value;
+  if (normalizedValue === null) return;
+
+  const updatedDurations = durations.map((duration, idx) =>
+    idx === index
+      ? {
+          ...duration,
+          [field]: normalizedValue,
+          durationError: ''
+        }
+      : duration
+  );
 
   setDurations(updatedDurations);
 };
@@ -147,6 +206,12 @@ const handleDurationChange = (index, field, value) => {
       return;
     }
 
+    if (connectivity.length === 0) {
+      showErrorAlert("Missing Data", "Please select at least one connectivity option.");
+      setLoading(false);
+      return;
+    }
+
     if (plans.length === 0 || durations.length === 0) {
       showErrorAlert("Missing Data", "Please add at least one plan and one duration.");
       setLoading(false);
@@ -154,8 +219,17 @@ const handleDurationChange = (index, field, value) => {
     }
 
     for (let plan of plans) {
-      if (!plan.label || !plan.capacity || plan.price === '' || isNaN(Number(plan.price))) {
-        showErrorAlert("Give valid Plan", "Each plan must have label, capacity, and numeric price.");
+      const requiresCapacity = plan.label && plan.label.toLowerCase() !== 'unlimited';
+      if (
+        !plan.label ||
+        (requiresCapacity && !plan.capacity) ||
+        plan.price === '' ||
+        isNaN(Number(plan.price))
+      ) {
+        showErrorAlert(
+          "Give valid Plan",
+          "Each plan must include a label, numeric price, and capacity unless it is unlimited."
+        );
         setLoading(false);
         return;
       }
@@ -179,6 +253,7 @@ const handleDurationChange = (index, field, value) => {
     formData.append('product_details', productDetails);
     formData.append('product_specifications', productSpecifications);
     formData.append('wp_device_quantity', wpDeviceQuantity);
+    formData.append('connectivity', connectivity.join(', '));
     formData.append('main_img', mainImage);
 
     subImages.forEach((img, i) => {
@@ -218,6 +293,7 @@ const handleDurationChange = (index, field, value) => {
         setMainImage(null);
         setSubImages([null, null, null, null]);
         setWpDeviceQuantity(0);
+        setConnectivity([]);
         setPlans([{ plans_id: 1, label: '', capacity: '', price: '' }]);
         setDurations([
           { duration_id: 1, duration_time_limit: '', gst: '', discount: '', security_deposit: '' }
@@ -249,6 +325,8 @@ const handleDurationChange = (index, field, value) => {
     addSubImage,
     removeSubImage,
     handleSubImageChange,
+    connectivity,
+    setConnectivity,
     plans,
     addPlan,
     handlePlanChange,

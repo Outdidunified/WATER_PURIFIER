@@ -40,58 +40,64 @@ const useViewManageUser = () => {
     setTechnicianTasks([]);
 
     try {
-      if (userData.role_id === 3) { // EndUser
+      if (userData.role_id === 3) {
+        // ===== End User =====
         const [ordersResponse, devicesResponse, subscriptionResponse] = await Promise.all([
-          axiosInstance.post('/api/admin/FetchOrdersByUserId', {
-            user_id: userData.user_id
-          }),
-          axiosInstance.post('/api/admin/FetchEndUserDevices', {
-            user_id: userData.user_id
-          }),
+          axiosInstance.post('/api/admin/FetchOrdersByUserId', { user_id: userData.user_id }),
+          axiosInstance.post('/api/admin/FetchEndUserDevices', { user_id: userData.user_id }),
           axiosInstance.post('/api/app/enduserhome/getActiveSubscriptionDetails', {
             user_id: userData.user_id,
             email: userData.email,
-            role_id: userData.role_id
-          })
+            role_id: userData.role_id,
+          }),
         ]);
 
+        // Orders
         if (ordersResponse.status === 200 && ordersResponse.data.status === 'Success') {
           const normalizedOrders = (ordersResponse.data.data || []).map((order) => ({
             ...order,
             planStartDate: order.planStartDate || order.createdAt || null,
           }));
-
           setOrders(normalizedOrders);
         } else {
-          console.error('Failed to fetch orders:', ordersResponse.data.message);
-          setOrders([]);
+          console.warn('No orders found:', ordersResponse.data.message);
         }
 
+        // Devices
         if (devicesResponse.status === 200 && devicesResponse.data.status === 'Success') {
           setEndUserDevices(devicesResponse.data.data || []);
         } else {
-          console.error('Failed to fetch devices:', devicesResponse.data.message);
-          setEndUserDevices([]);
+          console.warn('No devices found:', devicesResponse.data.message);
         }
 
+        // Subscription
         if (subscriptionResponse.status === 200 && !subscriptionResponse.data.error) {
           setSubscriptionDetails(subscriptionResponse.data.data?.subscription || null);
         } else {
-          console.error('Failed to fetch subscription details:', subscriptionResponse.data.message);
-          setSubscriptionDetails(null);
+          console.warn('No active subscription:', subscriptionResponse.data.message);
         }
-      } else if (userData.role_id === 2) { // Technician
-        // Fetch technician tasks/devices
-        const tasksResponse = await axiosInstance.post('/api/admin/FetchTechnicianTasksByUserId', {
-          user_id: userData.user_id,
-          email: userData.email
-        });
 
-        if (tasksResponse.status === 200 && tasksResponse.data.status === 'Success') {
-          setTechnicianTasks(tasksResponse.data.data || []);
-        } else {
-          console.error('Failed to fetch technician tasks:', tasksResponse.data.message);
-          setTechnicianTasks([]);
+      } else if (userData.role_id === 2) {
+        // ===== Technician =====
+        try {
+          const tasksResponse = await axiosInstance.post('/api/admin/FetchTechnicianTasksByUserId', {
+            user_id: userData.user_id,
+            email: userData.email,
+          });
+
+          if (tasksResponse.status === 200) {
+            if (tasksResponse.data.status === 'Success') {
+              setTechnicianTasks(tasksResponse.data.data || []);
+              setError(null);
+            } else {
+              setError(tasksResponse.data.message || 'Unexpected response from server');
+              setTechnicianTasks([]);
+            }
+          } else {
+            setError('Failed to fetch technician tasks (server error)');
+          }
+        } catch (err) {
+          setError(err.response?.data?.message || 'Failed to fetch technician tasks');
         }
       }
     } catch (err) {

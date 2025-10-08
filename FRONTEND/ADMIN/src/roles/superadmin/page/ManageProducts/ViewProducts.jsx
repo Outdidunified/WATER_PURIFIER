@@ -92,14 +92,17 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
 
 
 
-                {/* First row: Model Name, Status, Quantity, Created By */}
+                {/* First row: Model Name, Status, Quantity, Created By, Connectivity */}
                 <div className="d-flex justify-content-between text-start mb-4 flex-wrap">
                   <div><strong>Model Name:</strong> {product.model_name || '-'}</div>
                   <div><strong>Status:</strong> {product.status ? 'Active' : 'Deactive'}</div>
                   <div><strong>Quantity:</strong> {product.wp_device_quantity || '-'}</div>
                   <div><strong>Created By:</strong> {product.createdby || '-'}</div>
                 </div>
-
+                <div className="mb-3 text-start">
+                  
+                  <div><strong>Connectivity:</strong> {product.connectivity || '-'}</div>
+                </div>
                 {/* Second row: Created Date, Modified By, Modified Date */}
 
 

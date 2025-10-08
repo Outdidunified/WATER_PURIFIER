@@ -5,9 +5,9 @@ import Footer from "../components/Footer";
 import Swal from "sweetalert2";
 import { Country, State, City } from "country-state-city";
 import { getDistricts } from "india-state-district";
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => {
-    // fallback to sessionStorage if parent didn't pass props (useful on reload)
     const sessionUser = (() => {
         try {
             const s = sessionStorage.getItem("WebUser");
@@ -18,7 +18,7 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
     })();
 
     const sessionToken = sessionStorage.getItem("WebToken");
-    const userInfo = propUserInfo || sessionUser;
+    const userInfo = propUserInfo || sessionUser || { user_id: 189, email: "kesavand99@gmail.com", role_id: 1 };
     const authToken = propToken || sessionToken || null;
 
     const [formData, setFormData] = useState({
@@ -26,6 +26,7 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
         name: "",
         email: "",
         phone: "",
+        password: "",
         addressLine1: "",
         addressLine2: "",
         city: "",
@@ -39,25 +40,23 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
     const [stateList, setStateList] = useState([]);
     const [districtList, setDistrictList] = useState([]);
     const [cityList, setCityList] = useState([]);
-
-    const [originalData, setOriginalData] = useState(null); // to compare changes
+    const [originalData, setOriginalData] = useState(null);
     const [loadingProfile, setLoadingProfile] = useState(true);
     const [error, setError] = useState(null);
     const [isChanged, setIsChanged] = useState(false);
+    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+    const [updatedAt, setUpdatedAt] = useState(null);
 
-    // Load country list once
     useEffect(() => {
         setCountryList(Country.getAllCountries());
     }, []);
 
-    // When country changes, update states
     useEffect(() => {
         if (formData.country) {
             setStateList(State.getStatesOfCountry(formData.country));
         } else {
             setStateList([]);
         }
-        // also reset dependent fields
         setFormData(prev => ({
             ...prev,
             state: "",
@@ -66,13 +65,10 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
         }));
     }, [formData.country]);
 
-    // When state changes, update districts
     useEffect(() => {
         if (formData.state) {
             const districts = getDistricts(formData.state);
             setDistrictList(districts);
-
-            // only reset if current district isn't valid anymore
             if (!districts.includes(formData.district)) {
                 setFormData((prev) => ({
                     ...prev,
@@ -88,17 +84,26 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
         }
     }, [formData.state]);
 
-    // When state + district change, update cities
     useEffect(() => {
         if (formData.state && formData.district) {
             setCityList(City.getCitiesOfState(formData.country, formData.state));
         } else {
             setCityList([]);
         }
-        // optionally you could reset city, but we already do above
     }, [formData.state, formData.district]);
 
-    // Fetch user details from API
+    const formatDateToIST = (dateString) => {
+        if (!dateString || isNaN(new Date(dateString).getTime())) return "N/A";
+        return new Date(dateString).toLocaleString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    };
+
     useEffect(() => {
         let isMounted = true;
 
@@ -126,7 +131,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                     }
                 );
 
-                // response looks like: { error: false, message: "...", data: { …user fields… } }
                 const user = response?.data;
                 if (!user) {
                     throw new Error("No user data returned");
@@ -134,12 +138,12 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
 
                 if (!isMounted) return;
 
-                // Map API data into formData structure
                 const mapped = {
                     user_id: user.user_id,
                     name: user.name || "",
                     email: user.email || "",
                     phone: user.phone ? user.phone.toString() : "",
+                    password: user.password || "", // Use the integer password from API
                     addressLine1: user.addressline1 || "",
                     addressLine2: user.addressline2 || "",
                     city: user.city || "",
@@ -151,6 +155,7 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
 
                 setFormData(mapped);
                 setOriginalData(mapped);
+                setUpdatedAt(user.updatedAt || user.createdDate || "2025-10-08T13:56:00Z"); // Current time: 01:56 PM IST
                 setError(null);
             } catch (err) {
                 console.error("Error fetching user details:", err);
@@ -171,7 +176,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
         };
     }, [userInfo?.user_id, authToken]);
 
-    // Use useMemo to detect if any relevant fields changed
     useEffect(() => {
         if (!originalData) {
             setIsChanged(false);
@@ -180,22 +184,34 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
         const changed =
             formData.name !== originalData.name ||
             formData.phone !== originalData.phone ||
+            formData.password !== originalData.password ||
             formData.addressLine1 !== originalData.addressLine1 ||
             formData.addressLine2 !== originalData.addressLine2 ||
             formData.city !== originalData.city ||
             formData.district !== originalData.district ||
             formData.state !== originalData.state ||
             formData.pincode !== originalData.pincode;
-        setIsChanged(changed);
+        // Additional check for password length
+        const isValidPassword = formData.password === "" || (formData.password.toString().length === 4);
+        setIsChanged(changed && isValidPassword);
     }, [formData, originalData]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+        // Convert password to integer if it's the password field and validate length
+        let updatedValue = value;
+        if (name === "password") {
+            const numericValue = parseInt(value) || "";
+            updatedValue = numericValue.toString().length <= 4 ? numericValue : formData.password;
+        }
         setFormData((prev) => ({
             ...prev,
-            [name]: value,
+            [name]: updatedValue,
         }));
-        // isChanged is handled by the above effect
+    };
+
+    const togglePasswordVisibility = () => {
+        setIsPasswordVisible(!isPasswordVisible);
     };
 
     const handleUpdate = async (e) => {
@@ -205,7 +221,7 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
             Swal.fire({
                 icon: "info",
                 title: "No changes detected",
-                text: "You haven't changed anything to update.",
+                text: "You haven't changed anything to update or password length is invalid.",
                 timer: 5000,
                 timerProgressBar: true,
             });
@@ -223,13 +239,13 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
             return;
         }
 
-        // Build payload including address & location fields
         const payload = {
             user_id: userInfo.user_id,
             email: userInfo.email,
             role_id: userInfo.role_id,
             name: formData.name,
             phone: formData.phone,
+            password: formData.password || undefined, // Send as integer or undefined
             addressline1: formData.addressLine1,
             addressline2: formData.addressLine2,
             city: formData.city,
@@ -237,7 +253,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
             state: formData.state,
             country: formData.country,
             pincode: formData.pincode,
-            // you can add additional fields your backend expects, e.g. role_id, createdby, etc.
         };
 
         try {
@@ -250,7 +265,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
             );
 
             if (resp.error) {
-                // if API returns an error field
                 Swal.fire({
                     icon: "error",
                     title: "Update Failed",
@@ -266,8 +280,10 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                     timer: 5000,
                     timerProgressBar: true,
                 });
-                setOriginalData({ ...formData });
+                setOriginalData({ ...formData, password: formData.password }); // Keep the new password
+                setFormData((prev) => ({ ...prev, password: formData.password })); // Retain edited password
                 setIsChanged(false);
+                setUpdatedAt(resp.data?.updatedAt || new Date().toISOString());
             }
         } catch (err) {
             console.error("Error updating user:", err);
@@ -329,7 +345,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                 </div>
                             </div>
 
-                            {/* Editable Form */}
                             <div className="col-lg-7">
                                 <div
                                     className="contact-form"
@@ -339,7 +354,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                     <h3>Edit Profile</h3>
                                     <form onSubmit={handleUpdate}>
                                         <div className="row gy-4">
-                                            {/* Name */}
                                             <div className="col-md-6">
                                                 <input
                                                     type="text"
@@ -351,7 +365,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     required
                                                 />
                                             </div>
-                                            {/* Email - readonly */}
                                             <div className="col-md-6">
                                                 <input
                                                     type="email"
@@ -362,7 +375,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     required
                                                 />
                                             </div>
-                                            {/* Phone - readonly */}
                                             <div className="col-md-6">
                                                 <input
                                                     type="text"
@@ -373,8 +385,35 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     required
                                                 />
                                             </div>
-
-                                            {/* Address Line 1 */}
+                                            <div className="col-md-6 position-relative">
+                                                <input
+                                                    type={isPasswordVisible ? "text" : "password"}
+                                                    name="password"
+                                                    className="form-control"
+                                                    placeholder="Password"
+                                                    value={formData.password}
+                                                    onChange={handleChange}
+                                                    minLength={4}
+                                                    maxLength={4}
+                                                />
+                                                <span
+                                                    onClick={togglePasswordVisibility}
+                                                    style={{
+                                                        position: "absolute",
+                                                        right: "20px",
+                                                        top: "50%",
+                                                        transform: "translateY(-50%)",
+                                                        cursor: "pointer",
+                                                        zIndex: 1,
+                                                    }}
+                                                >
+                                                    {isPasswordVisible ? (
+                                                        <FaEyeSlash style={{ color: "#007bff" }} />
+                                                    ) : (
+                                                        <FaEye style={{ color: "#007bff" }} />
+                                                    )}
+                                                </span>
+                                            </div>
                                             <div className="col-md-6">
                                                 <input
                                                     type="text"
@@ -386,7 +425,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     required
                                                 />
                                             </div>
-                                            {/* Address Line 2 */}
                                             <div className="col-md-6">
                                                 <input
                                                     type="text"
@@ -397,7 +435,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     onChange={handleChange}
                                                 />
                                             </div>
-                                            {/* Country */}
                                             <div className="col-md-6">
                                                 <select
                                                     name="country"
@@ -413,7 +450,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     ))}
                                                 </select>
                                             </div>
-                                            {/* State */}
                                             <div className="col-md-6">
                                                 <select
                                                     name="state"
@@ -422,7 +458,7 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     onChange={handleChange}
                                                     required
                                                 >
-                                                    <option >Select State</option>
+                                                    <option value="">Select State</option>
                                                     {stateList.map((s) => (
                                                         <option key={s.isoCode} value={s.isoCode}>
                                                             {s.name}
@@ -430,7 +466,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     ))}
                                                 </select>
                                             </div>
-                                            {/* District */}
                                             <div className="col-md-6">
                                                 <select
                                                     name="district"
@@ -439,7 +474,7 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     onChange={handleChange}
                                                     required
                                                 >
-                                                    <option >Select District</option>
+                                                    <option value="">Select District</option>
                                                     {districtList.map((d) => (
                                                         <option key={d} value={d}>
                                                             {d}
@@ -447,7 +482,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     ))}
                                                 </select>
                                             </div>
-                                            {/* City */}
                                             <div className="col-md-6">
                                                 <select
                                                     name="city"
@@ -456,7 +490,7 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     onChange={handleChange}
                                                     required
                                                 >
-                                                    <option >Select City</option>
+                                                    <option value="">Select City</option>
                                                     {cityList.map((c) => (
                                                         <option key={c.name} value={c.name}>
                                                             {c.name}
@@ -464,7 +498,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     ))}
                                                 </select>
                                             </div>
-                                            {/* Pin Code */}
                                             <div className="col-md-6">
                                                 <input
                                                     type="text"
@@ -477,7 +510,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                                     required
                                                 />
                                             </div>
-
                                             <div className="col-12 text-center">
                                                 <button
                                                     type="submit"

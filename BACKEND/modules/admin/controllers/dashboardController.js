@@ -143,8 +143,10 @@ const authenticate = async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials, user is deactivated, or role not allowed' });
         }
 
-        // Check password (number or string)
-        if (user.password !== Number(password) && user.password !== password) {
+        // Check password (normalize to string for comparison)
+        const inputPassword = password.toString();
+        const dbPassword = user.password.toString();
+        if (dbPassword !== inputPassword) {
             return res.status(401).json({ message: 'Invalid password' });
         }
 
@@ -325,6 +327,7 @@ const AddProductModels = async (req, res) => {
                 model_name,
                 wp_device_quantity,
                 product_details,
+                connectivity,
                 createdby
             } = product;
 
@@ -358,6 +361,32 @@ const AddProductModels = async (req, res) => {
             const sub_img_4 = uploadedFiles['sub_img_4']?.[0]?.filename || product.sub_img_4 || "";
             const product_specifications = uploadedFiles['spec_pdf']?.[0]?.filename || product.product_specifications || "";
 
+            // Auto-assign missing plans_id (global across all models)
+            const lastPlanIdDoc = await collection.aggregate([
+                { $unwind: '$plans' },
+                { $sort: { 'plans.plans_id': -1 } },
+                { $limit: 1 },
+                { $project: { _id: 0, plans_id: '$plans.plans_id' } }
+            ]).toArray();
+            let nextPlansId = lastPlanIdDoc.length > 0 ? lastPlanIdDoc[0].plans_id + 1 : 1;
+
+            const updatedPlans = plans.map(p =>
+                p.plans_id && Number.isInteger(p.plans_id) ? p : { ...p, plans_id: nextPlansId++ }
+            );
+
+            // Auto-assign missing duration_id (global across all models)
+            const lastDurationIdDoc = await collection.aggregate([
+                { $unwind: '$duration' },
+                { $sort: { 'duration.duration_id': -1 } },
+                { $limit: 1 },
+                { $project: { _id: 0, duration_id: '$duration.duration_id' } }
+            ]).toArray();
+            let nextDurationId = lastDurationIdDoc.length > 0 ? lastDurationIdDoc[0].duration_id + 1 : 1;
+
+            const updatedDuration = duration.map(d =>
+                d.duration_id && Number.isInteger(d.duration_id) ? d : { ...d, duration_id: nextDurationId++ }
+            );
+
             docsToInsert.push({
                 model_id,
                 model_name: model_name.trim(),
@@ -369,8 +398,9 @@ const AddProductModels = async (req, res) => {
                 product_specifications,
                 wp_device_quantity: quantityInt, 
                 product_details,
-                plans: plans.map((p, idx) => ({ ...p, plans_id: idx + 1 })),
-                duration: duration.map((d, idx) => ({ ...d, duration_id: idx + 1 })),
+                connectivity: connectivity || '',
+                plans: updatedPlans,
+                duration: updatedDuration,
                 createdby,
                 createddate: now,
                 status: true
@@ -581,6 +611,7 @@ const UpdateProductModels = async (req, res) => {
                 model_name,
                 wp_device_quantity,
                 product_details,
+                connectivity,
                 modifiedby,
                 status: rawStatus
             } = product;
@@ -672,6 +703,7 @@ const UpdateProductModels = async (req, res) => {
                         sub_img_4,
                         wp_device_quantity: quantityInt,
                         product_details,
+                        connectivity: connectivity || '',
                         product_specifications,
                         plans: updatedPlans,
                         duration: updatedDuration,
@@ -807,7 +839,7 @@ const FetchDeviceDetails = async (req, res) => {
 // UpdateDeviceDetails
 const UpdateDeviceDetails = async (req, res) => {
     try {
-        const { wp_device_id, modifiedby, model_assigned_by, model_id, model_name, status } = req.body;
+        const { wp_device_id, modifiedby, model_assigned_by, model_id, model_name, connectivity, status } = req.body;
 
         if (!wp_device_id) {
             return res.status(400).json({
@@ -834,6 +866,7 @@ const UpdateDeviceDetails = async (req, res) => {
             model_assigned_by,
             model_id,
             model_name,
+            connectivity,
             status,
             modifieddate: new Date()
         };
@@ -1143,6 +1176,50 @@ const UpdateUserRoles = async (req, res) => {
     }
 };
 
+async function sendUserCredentialsEmail(email, user_id, password, role_name) {
+    try {
+        const subject = `Welcome to IonHive - Your Account Credentials`;
+        const text = `Hi ${role_name},
+
+        Your IonHive account has been created successfully. Below are your login credentials:
+
+        Email: ${email}
+        User ID: ${user_id}
+        Password: ${password}
+
+        Please use these credentials to log in to your IonHive account. For security, we recommend changing your password after your first login.
+
+        Thank you for joining IonHive!`;
+
+        const html = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
+                <h2 style="color: #333;">Welcome to IonHive, ${role_name}!</h2>
+                <p style="font-size: 16px; color: #555;">
+                    Your IonHive account has been created successfully. Below are your login credentials:
+                </p>
+                <ul style="font-size: 16px; color: #555;">
+                    <li><strong>Email:</strong> ${email}</li>
+                    <li><strong>User ID:</strong> ${user_id}</li>
+                    <li><strong>Password:</strong> ${password}</li>
+                </ul>
+                <p style="font-size: 16px; color: #555;">
+                    Please use these credentials to log in to your IonHive account. For security, we recommend changing your password after your first login.
+                </p>
+                <p style="color: #555;">Thank you for joining <strong>IonHive</strong>!</p>
+                <p style="font-size: 14px; color: #888; text-align: center; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px;">
+                    This is an automated message from IonHive Water Purifier.
+                </p>
+            </div>
+        `;
+
+        await sendEmailService(email, subject, text, html);
+        return true;
+    } catch (error) {
+        console.error('Error in sendUserCredentialsEmail:', error);
+        return false;
+    }
+}
+
 // 9.Manage User
 // AddUsers controller
 const AddUsers = async (req, res) => {
@@ -1158,6 +1235,7 @@ const AddUsers = async (req, res) => {
 
         const db = await database.connectToDatabase();
         const collection = db.collection("users");
+        const technicianCollection = db.collection("technician_details");
 
         const docsToInsert = [];
 
@@ -1302,9 +1380,26 @@ const AddUsers = async (req, res) => {
             }
 
             docsToInsert.push(newUser);
+            technicianCollection.insertOne({user_id: newUser.user_id,email: newUser.email, technician_id: newUser.technician_id || null, status: true,total_assigned_services:0,total_completed_services:0});
         }
 
         await collection.insertMany(docsToInsert);
+
+        // Send email to users with role Technician or Seller
+        for (const user of docsToInsert) {
+            if (user.role_name === 'Technician' || user.role_name === 'Seller') {
+                const emailSent = await sendUserCredentialsEmail(
+                    user.email,
+                    user.user_id,
+                    user.password,
+                    user.role_name
+                );
+                if (!emailSent) {
+                    console.warn(`Failed to send credentials email to ${user.email}`);
+                    // Optionally, you could collect failed emails and include in response
+                }
+            }
+        }
 
         return res.status(200).json({
             status: 'Success',
@@ -1724,6 +1819,15 @@ const AssignInstallation = async (req, res) => {
         }
         const normalizedAddress = normalizeDeliveryAddress(orderDoc.deliveryAddress || {});
 
+        // Validate technician district matches order address district
+        const technicianDistrictNormalized = normalizeDeliveryAddress({ district: technicianUser.district || '' }).district;
+        if (normalizedAddress.district !== technicianDistrictNormalized) {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Technician district does not match order address district'
+            });
+        }
+
         // Generate task ID and OTP
         const lastTask = await serviceRecords.find().sort({ task_id: -1 }).limit(1).toArray();
         const nextTaskId = lastTask.length > 0 ? lastTask[0].task_id + 1 : 1;
@@ -1731,7 +1835,7 @@ const AssignInstallation = async (req, res) => {
         const now = new Date();
 
         // Guard: block assignment if order not paid/confirmed
-        if (orderDoc?.paymentStatus !== 'Completed' || orderDoc?.orderStatus !== 'Confirmed') {
+        if (orderDoc?.paymentStatus?.toLowerCase() !== 'completed' || orderDoc?.orderStatus?.toLowerCase() !== 'confirmed') {
             return res.status(400).json({
                 status: 'Failed',
                 message: 'Cannot assign installation: order not paid/confirmed'
@@ -1807,83 +1911,106 @@ const AssignInstallation = async (req, res) => {
 
 // ReAssignInstallation
 const ReAssignInstallation = async (req, res) => {
-    try {
-        const db = await database.connectToDatabase();
-        const serviceRecords = db.collection("service_records");
+  try {
+    const db = await database.connectToDatabase();
+    const serviceRecords = db.collection("service_records");
+    const ordersCollection = db.collection("orders");
 
-        const { task_id, technician_id, modified_by } = req.body;
+    const { task_id, technician_id, modified_by } = req.body;
 
-        // Basic validation
-        if (!task_id || !technician_id || !modified_by) {
-            return res.status(400).json({
-                status: 'Failed',
-                message: 'Invalid or missing required fields',
-            });
-        }
-
-        // Check if the task exists
-        const existingTask = await serviceRecords.findOne({ task_id });
-
-        if (!existingTask) {
-            return res.status(404).json({
-                status: 'Failed',
-                message: `Task with task id ${task_id} not found.`,
-            });
-        }
-
-        // Guard: only allow reassignment if task_status is 'pending'
-        if (existingTask.task_status !== 'pending') {
-            return res.status(400).json({
-                status: 'Failed',
-                message: `Cannot reassign installation: task status is '${existingTask.task_status}'. Only pending tasks can be reassigned.`,
-            });
-        }
-
-        // Guard: block reassignment if related order not paid
-        const ordersCollection = db.collection("orders");
-        const relatedOrder = await ordersCollection.findOne({ wp_device_id: existingTask.wp_device_id || existingTask.device_id });
-
-        if (!relatedOrder || relatedOrder.paymentStatus !== 'Completed') {
-            return res.status(400).json({
-                status: 'Failed',
-                message: 'Cannot reassign installation: related order is not paid',
-            });
-        }
-
-        // Update the record
-        const now = new Date();
-        const updateResult = await serviceRecords.updateOne(
-            { task_id },
-            {
-                $set: {
-                    assigned_technician_id: technician_id,
-                    modified_by,
-                    modified_date: now,
-                    pending_reason: null
-                }
-            }
-        );
-
-        if (updateResult.modifiedCount === 1) {
-            return res.status(200).json({
-                status: 'Success',
-                message: `Installation task ${task_id} reassigned successfully.`,
-            });
-        } else {
-            return res.status(500).json({
-                status: 'Failed',
-                message: 'Task update failed. Please try again.',
-            });
-        }
-
-    } catch (err) {
-        console.error("Error in ReAssignInstallation:", err);
-        return res.status(500).json({
-            status: 'Failed',
-            message: 'Internal Server Error',
-        });
+    // 1️⃣ Basic validation
+    if (!task_id || !technician_id || !modified_by) {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Invalid or missing required fields',
+      });
     }
+
+    // 2️⃣ Check if the task exists
+    const existingTask = await serviceRecords.findOne({ task_id });
+    if (!existingTask) {
+      return res.status(404).json({
+        status: 'Failed',
+        message: `Task with task id ${task_id} not found.`,
+      });
+    }
+
+    // 3️⃣ Allow reassignment only if task_status = "Pending"
+    if (existingTask.task_status.toLowerCase() !== 'pending') {
+      return res.status(400).json({
+        status: 'Failed',
+        message: `Cannot reassign installation: task status is '${existingTask.task_status}'. Only pending tasks can be reassigned.`,
+      });
+    }
+
+    // 4️⃣ Check related order payment status
+    const relatedOrder = await ordersCollection.findOne({
+      wp_device_id: existingTask.wp_device_id || existingTask.device_id,
+    });
+
+    if (!relatedOrder || relatedOrder.paymentStatus?.toLowerCase() !== 'completed') {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Cannot reassign installation: related order is not paid.',
+      });
+    }
+
+    // 5️⃣ Fetch technician user to validate district
+    const usersCollection = db.collection("users");
+    const technicianUser = await usersCollection.findOne({ technician_id });
+    if (!technicianUser) {
+      return res.status(404).json({
+        status: 'Failed',
+        message: 'Technician not found',
+      });
+    }
+
+    // 6️⃣ Validate technician district matches order address district
+    const normalizedOrderAddress = normalizeDeliveryAddress(relatedOrder.deliveryAddress || {});
+    const technicianDistrictNormalized = normalizeDeliveryAddress({ district: technicianUser.district || '' }).district;
+    if (normalizedOrderAddress.district !== technicianDistrictNormalized) {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Technician district does not match order address district'
+      });
+    }
+
+    // 5️⃣ Perform reassignment update
+    const now = new Date();
+    const updateResult = await serviceRecords.updateOne(
+      { task_id },
+      {
+        $set: {
+          assigned_technician_id: technician_id,
+          modified_by,
+          modified_date: now,
+          pending_reason: null,
+          assigned_date: now,
+        },
+      }
+    );
+
+    if (updateResult.modifiedCount === 1) {
+      return res.status(200).json({
+        status: 'Success',
+        message: `Installation task ${task_id} reassigned successfully.`,
+      });
+    }
+
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Task update failed. Please try again.',
+    });
+
+  } catch (err) {
+    console.error("Error in ReAssignInstallation:", err);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error',
+    });
+  }
 };
+
 
 
 // FetchSelectInstallationTask
@@ -2194,10 +2321,20 @@ const AssignService = async (req, res) => {
         const ordersCollection = db.collection("orders");
         const wpId = existingTask.wp_device_id || existingTask.device_id;
         const orderDoc = await ordersCollection.findOne({ wp_device_id: wpId });
-        if (!orderDoc || orderDoc.paymentStatus !== 'Completed') {
+        if (!orderDoc || orderDoc.paymentStatus?.toLowerCase() !== 'completed') {
             return res.status(400).json({
                 status: 'Failed',
                 message: 'Cannot assign service: related order is not paid'
+            });
+        }
+
+        // Validate technician district matches order address district
+        const normalizedOrderAddress = normalizeDeliveryAddress(orderDoc.deliveryAddress || {});
+        const technicianDistrictNormalized = normalizeDeliveryAddress({ district: technicianUser.district || '' }).district;
+        if (normalizedOrderAddress.district !== technicianDistrictNormalized) {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Technician district does not match order address district'
             });
         }
 
@@ -2263,79 +2400,104 @@ const AssignService = async (req, res) => {
 
 // ReAssignService
 const ReAssignService = async (req, res) => {
-    try {
-        const db = await database.connectToDatabase();
-        const serviceRecords = db.collection("service_records");
+  try {
+    const db = await database.connectToDatabase();
+    const serviceRecords = db.collection("service_records");
+    const ordersCollection = db.collection("orders");
 
-        const { task_id, technician_id, modified_by } = req.body;
+    const { task_id, technician_id, modified_by } = req.body;
 
-        // Basic validation
-        if (!task_id || !technician_id || !modified_by) {
-            return res.status(400).json({
-                status: 'Failed',
-                message: 'Invalid or missing required fields',
-            });
-        }
-
-        // Check if the task exists
-        const existingTask = await serviceRecords.findOne({ task_id });
-
-        if (!existingTask) {
-            return res.status(404).json({
-                status: 'Failed',
-                message: `Task with task_id ${task_id} not found.`,
-            });
-        }
-        if (existingTask.task_status !== 'Pending' || existingTask.task_status !== 'pending') {
-            return res.status(400).json({
-                status: 'Failed',
-                message: `Cannot reassign service: task status is '${existingTask.task_status}'. Only pending tasks can be reassigned.`,
-            });
-        }
-
-        // Guard: block reassignment if related order not paid
-        const ordersCollection = db.collection("orders");
-        const relatedOrder = await ordersCollection.findOne({ wp_device_id: existingTask.wp_device_id || existingTask.device_id });
-        if (!relatedOrder || relatedOrder.paymentStatus !== 'Completed') {
-            return res.status(400).json({
-                status: 'Failed',
-                message: 'Cannot reassign service: related order is not paid'
-            });
-        }
-
-        // Update the record
-        const now = new Date();
-        const updateResult = await serviceRecords.updateOne(
-            { task_id },
-            {
-                $set: {
-                    assigned_technician_id: technician_id,
-                    modified_by,
-                    modified_date: now,
-                    pending_reason: null
-                }
-            }
-        );
-
-        if (updateResult.modifiedCount === 1) {
-            return res.status(200).json({
-                status: 'Success',
-                message: `Service task ${task_id} reassigned successfully.`,
-            });
-        } else {
-            return res.status(500).json({
-                status: 'Failed',
-                message: 'Task update failed. Please try again.',
-            });
-        }
-
-    } catch (err) {
-        console.error("Error in ReAssignInstallation:", err);
-        return res.status(500).json({
-            status: 'Failed',
-            message: 'Internal Server Error',
-        });
+    // 1️⃣ Basic validation
+    if (!task_id || !technician_id || !modified_by) {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Invalid or missing required fields',
+      });
     }
+
+    // 2️⃣ Check if the task exists
+    const existingTask = await serviceRecords.findOne({ task_id });
+    if (!existingTask) {
+      return res.status(404).json({
+        status: 'Failed',
+        message: `Task with task_id ${task_id} not found.`,
+      });
+    }
+
+    // 3️⃣ Allow reassignment only if task_status = "Pending" (case-insensitive)
+    if (existingTask.task_status.toLowerCase() !== 'pending') {
+      return res.status(400).json({
+        status: 'Failed',
+        message: `Cannot reassign service: task status is '${existingTask.task_status}'. Only pending tasks can be reassigned.`,
+      });
+    }
+
+    // 4️⃣ Ensure related order is paid
+    const relatedOrder = await ordersCollection.findOne({
+      wp_device_id: existingTask.wp_device_id || existingTask.device_id,
+    });
+
+    if (!relatedOrder || relatedOrder.paymentStatus?.toLowerCase() !== 'completed') {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Cannot reassign service: related order is not paid.',
+      });
+    }
+
+    // 5️⃣ Fetch technician user to validate district
+    const usersCollection = db.collection("users");
+    const technicianUser = await usersCollection.findOne({ technician_id });
+    if (!technicianUser) {
+      return res.status(404).json({
+        status: 'Failed',
+        message: 'Technician not found',
+      });
+    }
+
+    // 6️⃣ Validate technician district matches order address district
+    const normalizedOrderAddress = normalizeDeliveryAddress(relatedOrder.deliveryAddress || {});
+    const technicianDistrictNormalized = normalizeDeliveryAddress({ district: technicianUser.district || '' }).district;
+    if (normalizedOrderAddress.district !== technicianDistrictNormalized) {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Technician district does not match order address district'
+      });
+    }
+
+    // 5️⃣ Update task assignment
+    const now = new Date();
+    const updateResult = await serviceRecords.updateOne(
+      { task_id },
+      {
+        $set: {
+          assigned_technician_id: technician_id,
+          modified_by,
+          modified_date: now,
+          pending_reason: null,
+        assigned_date: now,
+        },
+      }
+    );
+
+    if (updateResult.modifiedCount === 1) {
+      return res.status(200).json({
+        status: 'Success',
+        message: `Service task ${task_id} reassigned successfully.`,
+      });
+    }
+
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Task update failed. Please try again.',
+    });
+
+  } catch (err) {
+    console.error("Error in ReAssignService:", err);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error',
+    });
+  }
 };
 
 // Admin Fetch APIs additions
@@ -2407,6 +2569,53 @@ const FetchTechniciansByDistrict = async (req, res) => {
         return res.status(200).json({ status: 'Success', data: technicians });
     } catch (error) {
         console.error('Error in FetchTechniciansByDistrict:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// 3.1) Get Districts with Sellers - Returns unique districts with state (no duplicates)
+const GetDistrictsWithSellers = async (req, res) => {
+    try {
+        const db = await database.connectToDatabase();
+        const usersCollection = db.collection('users');
+
+        // Aggregate to get unique districts with states from sellers (role_id = 4)
+        const districts = await usersCollection.aggregate([
+            {
+                $match: {
+                    role_id: 4, // Only sellers
+                    district: { $exists: true, $ne: null, $ne: '' },
+                    state: { $exists: true, $ne: null, $ne: '' }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        district: '$district',
+                        state: '$state'
+                    }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    district: '$_id.district',
+                    state: '$_id.state'
+                }
+            },
+            {
+                $sort: { state: 1, district: 1 } // Sort by state, then district
+            }
+        ]).toArray();
+
+        return res.status(200).json({ 
+            status: 'Success', 
+            data: districts,
+            count: districts.length 
+        });
+    } catch (error) {
+        console.error('Error in GetDistrictsWithSellers:', error);
         logger?.error?.(error);
         return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
     }
@@ -3235,8 +3444,17 @@ const GetAnalytics = async (req, res) => {
 
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        
+        // Current week (Monday to Sunday)
+        const currentDayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1; // If Sunday, go back 6 days
+        const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday);
+        startOfWeek.setHours(0, 0, 0, 0);
+        
+        // Current calendar month (from 1st to today)
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        // Last 365 days (keep original behavior for year)
         const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
         // ---------------- Helpers ----------------
@@ -3332,7 +3550,7 @@ const GetAnalytics = async (req, res) => {
             countDocuments(ordersCollection, {}),
             countDocuments(ordersCollection, { paymentStatus: 'Completed' }),
             countDocuments(ordersCollection, { paymentStatus: 'Pending' }),
-            countDocuments(usersCollection, {}),
+            countDocuments(usersCollection, { role_id: { $in: [2, 3, 4] } }),
             countDocuments(usersCollection, { role_id: 1 }), // Admin
             countDocuments(usersCollection, { role_id: 2 }), // Technician
             countDocuments(usersCollection, { role_id: 3 }), // End User
@@ -3342,8 +3560,8 @@ const GetAnalytics = async (req, res) => {
         // ---------------- Timelines ----------------
         // Payments timelines
         const paymentsTodayRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: startOfToday } }, { $hour: "$createdAt" }, "hour");
-        const paymentsWeekRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: sevenDaysAgo } }, { $dayOfWeek: "$createdAt" }, "day");
-        const paymentsMonthRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: oneMonthAgo } }, { $dayOfMonth: "$createdAt" }, "day");
+        const paymentsWeekRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: startOfWeek } }, { $dayOfWeek: "$createdAt" }, "day");
+        const paymentsMonthRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: startOfMonth } }, { $dayOfMonth: "$createdAt" }, "day");
         const paymentsYearRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: oneYearAgo } }, { $month: "$createdAt" }, "month");
 
         const paymentsTimeline = {
@@ -3355,8 +3573,8 @@ const GetAnalytics = async (req, res) => {
 
         // Orders timelines
         const ordersTodayRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: startOfToday } }, { $hour: "$createdAt" }, "hour");
-        const ordersWeekRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: sevenDaysAgo } }, { $dayOfWeek: "$createdAt" }, "day");
-        const ordersMonthRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: oneMonthAgo } }, { $dayOfMonth: "$createdAt" }, "day");
+        const ordersWeekRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: startOfWeek } }, { $dayOfWeek: "$createdAt" }, "day");
+        const ordersMonthRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: startOfMonth } }, { $dayOfMonth: "$createdAt" }, "day");
         const ordersYearRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: oneYearAgo } }, { $month: "$createdAt" }, "month");
 
         const ordersTimeline = {
@@ -3368,8 +3586,8 @@ const GetAnalytics = async (req, res) => {
 
         // Revenue timelines (using orders collection)
         const revenueTodayRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: startOfToday } }, { $hour: "$createdAt" }, "hour");
-        const revenueWeekRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: sevenDaysAgo } }, { $dayOfWeek: "$createdAt" }, "day");
-        const revenueMonthRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: oneMonthAgo } }, { $dayOfMonth: "$createdAt" }, "day");
+        const revenueWeekRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: startOfWeek } }, { $dayOfWeek: "$createdAt" }, "day");
+        const revenueMonthRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: startOfMonth } }, { $dayOfMonth: "$createdAt" }, "day");
         const revenueYearRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: oneYearAgo } }, { $month: "$createdAt" }, "month");
 
         const revenueTimeline = {
@@ -3390,15 +3608,15 @@ const GetAnalytics = async (req, res) => {
         // ---------------- Top Districts per Timeframe ----------------
         const topDistrictsOverall = await getTopItems(ordersCollection, {}, "deliveryAddress.district", "districtName");
         const topDistrictsToday = await getTopItems(ordersCollection, { createdAt: { $gte: startOfToday } }, "deliveryAddress.district", "districtName");
-        const topDistrictsWeek = await getTopItems(ordersCollection, { createdAt: { $gte: sevenDaysAgo } }, "deliveryAddress.district", "districtName");
-        const topDistrictsMonth = await getTopItems(ordersCollection, { createdAt: { $gte: oneMonthAgo } }, "deliveryAddress.district", "districtName");
+        const topDistrictsWeek = await getTopItems(ordersCollection, { createdAt: { $gte: startOfWeek } }, "deliveryAddress.district", "districtName");
+        const topDistrictsMonth = await getTopItems(ordersCollection, { createdAt: { $gte: startOfMonth } }, "deliveryAddress.district", "districtName");
         const topDistrictsYear = await getTopItems(ordersCollection, { createdAt: { $gte: oneYearAgo } }, "deliveryAddress.district", "districtName");
 
         // ---------------- Top Models per Timeframe ----------------
         const topModelsOverall = await getTopItems(ordersCollection, {}, "modelName", "modelName");
         const topModelsToday = await getTopItems(ordersCollection, { createdAt: { $gte: startOfToday } }, "modelName", "modelName");
-        const topModelsWeek = await getTopItems(ordersCollection, { createdAt: { $gte: sevenDaysAgo } }, "modelName", "modelName");
-        const topModelsMonth = await getTopItems(ordersCollection, { createdAt: { $gte: oneMonthAgo } }, "modelName", "modelName");
+        const topModelsWeek = await getTopItems(ordersCollection, { createdAt: { $gte: startOfWeek } }, "modelName", "modelName");
+        const topModelsMonth = await getTopItems(ordersCollection, { createdAt: { $gte: startOfMonth } }, "modelName", "modelName");
         const topModelsYear = await getTopItems(ordersCollection, { createdAt: { $gte: oneYearAgo } }, "modelName", "modelName");
 
         // ---------------- Payload ----------------
@@ -3452,13 +3670,16 @@ const GetAnalyticsByDistrict = async (req, res) => {
 
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const currentDayOfWeek = now.getDay();
+    const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday);
+    startOfWeek.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
     const districtRegex = new RegExp(`^${String(district).trim()}$`, 'i');
 
-    // Helpers for payments with district filter (join to orders)
+    // ---------------- Helpers ----------------
     const countPaymentsByDistrict = async (filter = {}) => {
       const result = await paymentsCollection.aggregate([
         { $lookup: { from: 'orders', localField: 'orderId', foreignField: '_id', as: 'order' } },
@@ -3474,6 +3695,16 @@ const GetAnalyticsByDistrict = async (req, res) => {
         { $lookup: { from: 'orders', localField: 'orderId', foreignField: '_id', as: 'order' } },
         { $addFields: { order: { $arrayElemAt: ['$order', 0] } } },
         { $match: { 'order.deliveryAddress.district': districtRegex, createdAt: dateFilter } },
+        { $group: { _id: groupId, total: { $sum: 1 }, successful: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'Completed'] }, 1, 0] } } } },
+        { $project: { [labelField]: '$_id', total: 1, successful: 1, _id: 0 } },
+        { $sort: { [labelField]: 1 } }
+      ]).toArray();
+      return result;
+    };
+
+    const groupTimeline = async (collection, filter, groupId, labelField) => {
+      const result = await collection.aggregate([
+        { $match: filter },
         { $group: { _id: groupId, total: { $sum: 1 }, successful: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'Completed'] }, 1, 0] } } } },
         { $project: { [labelField]: '$_id', total: 1, successful: 1, _id: 0 } },
         { $sort: { [labelField]: 1 } }
@@ -3501,7 +3732,6 @@ const GetAnalyticsByDistrict = async (req, res) => {
       return result;
     };
 
-    // Build fixed buckets for revenue (fill missing labels with 0 revenue)
     const buildRevenueBuckets = (range, results, labelKey = 'label') => {
       const buckets = [];
       for (let i = range.start; i <= range.end; i++) {
@@ -3511,7 +3741,30 @@ const GetAnalyticsByDistrict = async (req, res) => {
       return buckets;
     };
 
-    // Summary counts
+    const getTopItems = async (collection, filter, groupByField, labelField = 'name', limit = 5) => {
+      const result = await collection.aggregate([
+        { $match: { ...filter, paymentStatus: 'Completed', 'deliveryAddress.district': districtRegex } },
+        {
+          $group: {
+            _id: `$${groupByField}`,
+            devicesSold: { $sum: { $ifNull: ['$quantity', 1] } }
+          }
+        },
+        { $match: { _id: { $ne: null, $ne: 'Unknown', $exists: true } } },
+        { $sort: { devicesSold: -1 } },
+        { $limit: limit },
+        {
+          $project: {
+            [labelField]: '$_id',
+            devicesSold: 1,
+            _id: 0
+          }
+        }
+      ]).toArray();
+      return result;
+    };
+
+    // ---------------- Summary counts ----------------
     const [
       paymentsTotal, paymentsSuccess, paymentsPending,
       ordersTotal, ordersSuccess, ordersPending,
@@ -3530,10 +3783,10 @@ const GetAnalyticsByDistrict = async (req, res) => {
       usersCollection.countDocuments({ district: districtRegex, role_id: 4 })
     ]);
 
-    // Timelines
+    // ---------------- Timelines ----------------
     const paymentsTodayRaw = await groupPaymentsTimelineByDistrict({ $gte: startOfToday }, { $hour: '$createdAt' }, 'hour');
-    const paymentsWeekRaw = await groupPaymentsTimelineByDistrict({ $gte: sevenDaysAgo }, { $dayOfWeek: '$createdAt' }, 'day');
-    const paymentsMonthRaw = await groupPaymentsTimelineByDistrict({ $gte: oneMonthAgo }, { $dayOfMonth: '$createdAt' }, 'day');
+    const paymentsWeekRaw = await groupPaymentsTimelineByDistrict({ $gte: startOfWeek }, { $dayOfWeek: '$createdAt' }, 'day');
+    const paymentsMonthRaw = await groupPaymentsTimelineByDistrict({ $gte: startOfMonth }, { $dayOfMonth: '$createdAt' }, 'day');
     const paymentsYearRaw = await groupPaymentsTimelineByDistrict({ $gte: oneYearAgo }, { $month: '$createdAt' }, 'month');
 
     const paymentsTimeline = {
@@ -3545,19 +3798,9 @@ const GetAnalyticsByDistrict = async (req, res) => {
 
     const orderFilterBase = { 'deliveryAddress.district': districtRegex };
 
-    const groupTimeline = async (collection, filter, groupId, labelField) => {
-      const result = await collection.aggregate([
-        { $match: filter },
-        { $group: { _id: groupId, total: { $sum: 1 }, successful: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'Completed'] }, 1, 0] } } } },
-        { $project: { [labelField]: '$_id', total: 1, successful: 1, _id: 0 } },
-        { $sort: { [labelField]: 1 } }
-      ]).toArray();
-      return result;
-    };
-
     const ordersTodayRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: startOfToday } }, { $hour: '$createdAt' }, 'hour');
-    const ordersWeekRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: sevenDaysAgo } }, { $dayOfWeek: '$createdAt' }, 'day');
-    const ordersMonthRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: oneMonthAgo } }, { $dayOfMonth: '$createdAt' }, 'day');
+    const ordersWeekRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: startOfWeek } }, { $dayOfWeek: '$createdAt' }, 'day');
+    const ordersMonthRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: startOfMonth } }, { $dayOfMonth: '$createdAt' }, 'day');
     const ordersYearRaw = await groupTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: oneYearAgo } }, { $month: '$createdAt' }, 'month');
 
     const ordersTimeline = {
@@ -3568,8 +3811,8 @@ const GetAnalyticsByDistrict = async (req, res) => {
     };
 
     const revenueTodayRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: startOfToday } }, { $hour: '$createdAt' }, 'hour');
-    const revenueWeekRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: sevenDaysAgo } }, { $dayOfWeek: '$createdAt' }, 'day');
-    const revenueMonthRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: oneMonthAgo } }, { $dayOfMonth: '$createdAt' }, 'day');
+    const revenueWeekRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: startOfWeek } }, { $dayOfWeek: '$createdAt' }, 'day');
+    const revenueMonthRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: startOfMonth } }, { $dayOfMonth: '$createdAt' }, 'day');
     const revenueYearRaw = await groupRevenueTimeline(ordersCollection, { ...orderFilterBase, createdAt: { $gte: oneYearAgo } }, { $month: '$createdAt' }, 'month');
 
     const revenueTimeline = {
@@ -3585,33 +3828,70 @@ const GetAnalyticsByDistrict = async (req, res) => {
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]).toArray();
     const totalRevenue = totalRevenueResult[0]?.total || 0;
-    const topModels = await ordersCollection.aggregate([
-                { $match: { paymentStatus: "Completed", "deliveryAddress.district": districtRegex } },
-                {
-                    $group: {
-                    _id: "$productModel", // adjust if stored as productName or product.model
-                    totalRevenue: { $sum: { $ifNull: ["$totalPrice", "$grandTotal"] } },
-                    orderCount: { $sum: 1 }
-                    }
-                },
-                { $sort: { totalRevenue: -1 } },
-                { $limit: 5 },
-                {
-                    $project: {
-                    _id: 0,
-                    model: "$_id",
-                    totalRevenue: 1,
-                    orderCount: 1
-                    }
-                }
-                ]).toArray();
 
+    // ---------------- Top Districts per Timeframe ----------------
+    const getTopDistricts = async (filter) => {
+      const result = await ordersCollection.aggregate([
+        { $match: { ...filter, paymentStatus: 'Completed', 'deliveryAddress.district': districtRegex } },
+        {
+          $group: {
+            _id: '$deliveryAddress.district',
+            devicesSold: { $sum: { $ifNull: ['$quantity', 1] } }
+          }
+        },
+        { $match: { _id: { $ne: null, $ne: 'Unknown', $exists: true } } },
+        { $sort: { devicesSold: -1 } },
+        { $limit: 1 }, // Only the requested district
+        {
+          $project: {
+            districtName: '$_id',
+            devicesSold: 1,
+            _id: 0
+          }
+        }
+      ]).toArray();
+      return result;
+    };
+
+    const topDistrictsOverall = await getTopDistricts({});
+    const topDistrictsToday = await getTopDistricts({ createdAt: { $gte: startOfToday } });
+    const topDistrictsWeek = await getTopDistricts({ createdAt: { $gte: startOfWeek } });
+    const topDistrictsMonth = await getTopDistricts({ createdAt: { $gte: startOfMonth } });
+    const topDistrictsYear = await getTopDistricts({ createdAt: { $gte: oneYearAgo } });
+
+    // ---------------- Top Models per Timeframe ----------------
+    const topModelsOverall = await getTopItems(ordersCollection, {}, 'modelName', 'modelName');
+    const topModelsToday = await getTopItems(ordersCollection, { createdAt: { $gte: startOfToday } }, 'modelName', 'modelName');
+    const topModelsWeek = await getTopItems(ordersCollection, { createdAt: { $gte: startOfWeek } }, 'modelName', 'modelName');
+    const topModelsMonth = await getTopItems(ordersCollection, { createdAt: { $gte: startOfMonth } }, 'modelName', 'modelName');
+    const topModelsYear = await getTopItems(ordersCollection, { createdAt: { $gte: oneYearAgo } }, 'modelName', 'modelName');
+
+    // ---------------- Payload ----------------
     const payload = {
       payments: { total: paymentsTotal, successful: paymentsSuccess, pending: paymentsPending, timeline: paymentsTimeline },
       orders: { total: ordersTotal, successful: ordersSuccess, pending: ordersPending, timeline: ordersTimeline },
       revenue: { total: totalRevenue, timeline: revenueTimeline },
-      users: { total: usersTotal, admin: adminsCount, technician: techniciansCount, end_user: endUsersCount, seller: sellersCount },
-      topModels: topModels
+      users: {
+        total: usersTotal,
+        admin: adminsCount,
+        technician: techniciansCount,
+        end_user: endUsersCount,
+        seller: sellersCount
+      },
+      topDistricts: {
+        overall: topDistrictsOverall,
+        today: topDistrictsToday,
+        week: topDistrictsWeek,
+        month: topDistrictsMonth,
+        year: topDistrictsYear
+      },
+      topModels: {
+        overall: topModelsOverall,
+        today: topModelsToday,
+        week: topModelsWeek,
+        month: topModelsMonth,
+        year: topModelsYear
+      }
     };
 
     return res.status(200).json({ status: 'Success', data: payload });
@@ -3725,6 +4005,6 @@ module.exports = {
     FetchSelectServiceTask, AssignService, ReAssignService, assignPermissions, fetchPermissionsByRole,
     GetUsersByDistrict, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
     AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchEndUserDevices, FetchOrdersByUserId, FetchTechnicianTasksByUserId, GetAnalytics,
-    GetAnalyticsByDistrict
+    GetAnalyticsByDistrict,GetDistrictsWithSellers
     // UpdateOrdersStatus,
 };

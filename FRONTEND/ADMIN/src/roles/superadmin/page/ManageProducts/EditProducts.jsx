@@ -17,6 +17,8 @@ const EditProducts = ({ userInfo, handleLogout }) => {
     productSpecifications,
     mainImage,
     subImages,
+    connectivity,
+    setConnectivity,
     plans,
     durations,
     setModelName,
@@ -87,6 +89,57 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                         maxLength={20}
                         required
                       />
+                    </div>
+                  </div>
+
+                  {/* Connectivity */}
+                  <div className="row mb-4">
+                    <div className="col-md-12">
+                      <label className="input-label">Connectivity *</label>
+                      <div className="form-control" style={{ minHeight: '38px', display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center' }}>
+                        {connectivity.map((item, index) => (
+                          <span key={index} style={{
+                            backgroundColor: '#007bff',
+                            color: 'white',
+                            padding: '5px 10px',
+                            borderRadius: '4px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            fontSize: '14px'
+                          }}>
+                            {item}
+                            <span
+                              onClick={() => setConnectivity(prev => prev.filter((_, i) => i !== index))}
+                              style={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '18px' }}
+                            >
+                              ×
+                            </span>
+                          </span>
+                        ))}
+                        <select
+                          style={{
+                            border: 'none',
+                            outline: 'none',
+                            flex: 1,
+                            minWidth: '150px',
+                            backgroundColor: 'transparent'
+                          }}
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value && !connectivity.includes(e.target.value)) {
+                              setConnectivity(prev => [...prev, e.target.value]);
+                            }
+                          }}
+                        >
+                          <option value="">Select Connectivity</option>
+                          {['Bluetooth', 'Wifi', '4G', 'Ethernet']
+                            .filter(option => !connectivity.includes(option))
+                            .map(option => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
 

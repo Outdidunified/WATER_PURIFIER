@@ -105,6 +105,8 @@ router.post('/FetchUsers', verifyToken, Controller.FetchUsers);
 router.post('/FetchSellers', verifyToken, Controller.FetchSellers);
 // Route to FetchTechniciansByDistrict (role 2)
 router.post('/FetchTechniciansByDistrict', verifyToken, Controller.FetchTechniciansByDistrict);
+// Route to GetDistrictsWithSellers - Get unique districts with state where sellers exist
+router.get('/GetDistrictsWithSellers',  Controller.GetDistrictsWithSellers);
 
 // Route to UpdateUsers
 router.post('/UpdateUsers', verifyToken, Controller.UpdateUsers);

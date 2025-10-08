@@ -36,6 +36,7 @@ exports.fetchUserDetails = async (req, res) => {
       name,
       email: dbEmail,
       phone,
+      password,
       addressline1,
       addressline2,
       city,
@@ -53,6 +54,7 @@ exports.fetchUserDetails = async (req, res) => {
       name,
       email: dbEmail,
       phone,
+      password,
       addressline1,
       addressline2: addressline2 || '',
       city,
@@ -87,13 +89,14 @@ exports.fetchUserDetails = async (req, res) => {
 
   
   
- exports.updateUserDetails = async (req, res) => {
+exports.updateUserDetails = async (req, res) => {
   const { 
     user_id, 
     email, 
     role_id, 
     name, 
     phone, 
+    password, // optional
     addressline1,
     addressline2, // optional
     city, 
@@ -103,11 +106,12 @@ exports.fetchUserDetails = async (req, res) => {
     pincode
   } = req.body;
 
+  // Validate required fields
   if (!user_id || !email || !role_id) {
     return res.status(400).json({ error: true, message: 'user_id, email, and role_id are required' });
   }
 
-  // Validate required address fields (without 'address')
+  // Validate required address fields
   const missingFields = [];
   if (!addressline1) missingFields.push('addressline1');
   if (!city) missingFields.push('city');
@@ -115,6 +119,7 @@ exports.fetchUserDetails = async (req, res) => {
   if (!state) missingFields.push('state');
   if (!country) missingFields.push('country');
   if (!pincode) missingFields.push('pincode');
+
   if (missingFields.length) {
     return res.status(400).json({
       error: true,
@@ -141,6 +146,7 @@ exports.fetchUserDetails = async (req, res) => {
     const isSameData =
       (name === undefined || name === existingUser.name) &&
       (phone === undefined || phone === existingUser.phone) &&
+      (password === undefined || password === existingUser.password) &&
       (addressline1 === undefined || addressline1 === existingUser.addressline1) &&
       (addressline2 === undefined || addressline2 === existingUser.addressline2) &&
       (city === undefined || city === existingUser.city) &&
@@ -150,13 +156,14 @@ exports.fetchUserDetails = async (req, res) => {
       (pincode === undefined || pincode === existingUser.pincode);
 
     if (isSameData) {
-      return res.status(402).json({ error: true, message: 'No changes were made. Same data submitted.' });
+      return res.status(200).json({ error: false, message: 'No changes were made. Same data submitted.' });
     }
 
-    // Prepare update
+    // Prepare update object
     const updateFields = {
       ...(name !== undefined && { name }),
       ...(phone !== undefined && { phone }),
+      ...(password !== undefined && { password }), // optional plain-text update
       ...(addressline1 !== undefined && { addressline1 }),
       ...(addressline2 !== undefined && { addressline2 }),
       ...(city !== undefined && { city }),
@@ -168,26 +175,27 @@ exports.fetchUserDetails = async (req, res) => {
       modifiedDate: new Date()
     };
 
-    const result = await usersCollection.updateOne(
+    // Update user
+    await usersCollection.updateOne(
       { user_id: parseInt(user_id), role_id: parseInt(role_id) },
       { $set: updateFields }
     );
 
     return res.status(200).json({
-  error: false,
-  message: 'User details updated successfully',
-  data: {
-    user_id: parseInt(user_id),
-    ...updateFields
-  }
-});
-
+      error: false,
+      message: 'User details updated successfully',
+      data: {
+        user_id: parseInt(user_id),
+        ...updateFields
+      }
+    });
 
   } catch (error) {
     console.error('Update user error:', error);
-    res.status(500).json({ error: true, message: 'Server error while updating user details' });
+    return res.status(500).json({ error: true, message: 'Server error while updating user details' });
   }
 };
+
 
   
  exports.createServiceRequest = async (req, res) => {
@@ -267,7 +275,7 @@ exports.fetchUserDetails = async (req, res) => {
       otp: null
     };
 
-    // ✅ Step 4: Insert into collection
+    // ✅ Step 4: Insert into collection 
     await serviceRecordsCollection.insertOne(newServiceRecord);
 
     // Auto assign service
@@ -288,71 +296,103 @@ exports.fetchUserDetails = async (req, res) => {
   }
 };
 
-  
   exports.fetchpaymenthistory = async (req, res) => {
-    try {
-      const { user_id } = req.body;
-  
-      if (!user_id) {
-        return res
-          .status(400)
-          .json({ success: false, message: 'user_id is required in request body' });
-      }
-  
-      const db = await connectToDatabase();
-      const paymentCollection = db.collection('payments');
-      const orderCollection = db.collection('orders');
-  
-      // Fetch payment records for the user
-      const payments = await paymentCollection.find({ user_id }).toArray();
-  
-      // Convert each payment's orderId (string) to ObjectId safely
-      const orderIdMap = {};
-      const validOrderObjectIds = [];
-  
-      for (const payment of payments) {
-        if (payment.orderId) {
-          try {
-            const oid = new ObjectId(payment.orderId);
-            orderIdMap[payment.orderId] = oid;
-            validOrderObjectIds.push(oid);
-          } catch (_) {
-            // ignore invalid ObjectId
-          }
+  try {
+    const { user_id } = req.body;
+
+    if (!user_id) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'user_id is required in request body' });
+    }
+
+    const db = await connectToDatabase();
+    const paymentCollection = db.collection('payments');
+    const orderCollection = db.collection('orders');
+    const serviceRecordsCollection = db.collection('service_records');
+
+    // 1️⃣ Fetch payments for the user
+    const payments = await paymentCollection.find({ user_id }).toArray();
+
+    // 2️⃣ Extract valid order ObjectIds
+    const validOrderObjectIds = [];
+    for (const payment of payments) {
+      if (payment.orderId) {
+        try {
+          validOrderObjectIds.push(new ObjectId(payment.orderId));
+        } catch {
+          // ignore invalid ObjectIds
         }
       }
-  
-      // Fetch all matching orders in one query
-      const orders = await orderCollection
-        .find({ _id: { $in: validOrderObjectIds } })
-        .toArray();
-  
-      // Map orders by stringified ObjectId
-      const orderMap = {};
-      for (const order of orders) {
-        orderMap[order._id.toString()] = order;
-      }
-  
-      // Attach matched order to each payment
-      const paymentsWithOrders = payments.map(payment => {
-        const order = orderMap[payment.orderId];
-        return {
-          ...payment,
-          orders: order ? [order] : []
-        };
-      });
-  
-      res.status(200).json({
-        success: true,
-        message: 'Payment history with orders fetched successfully',
-        data: paymentsWithOrders
-      });
-  
-    } catch (error) {
-      console.error('❌ Error fetching payment history:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Server error while fetching payment history'
-      });
     }
-  };
+
+    // 3️⃣ Fetch all matching orders
+    const orders = await orderCollection
+      .find({ _id: { $in: validOrderObjectIds } })
+      .toArray();
+
+    // 4️⃣ Fetch all service records (only task_type = 1)
+    const serviceRecords = await serviceRecordsCollection
+      .find({ task_type: 1 })
+      .toArray();
+
+    // 5️⃣ Map wp_device_id → task_status (case-insensitive)
+    const serviceRecordMap = {};
+    for (const record of serviceRecords) {
+      if (record.wp_device_id) {
+        serviceRecordMap[record.wp_device_id.toLowerCase()] = record.task_status;
+      }
+    }
+
+    // 6️⃣ Build order map for quick lookup
+    const orderMap = {};
+    for (const order of orders) {
+      orderMap[order._id.toString()] = order;
+    }
+
+    // 7️⃣ Merge payment + order + task_status logic
+    const paymentsWithOrders = payments.map(payment => {
+      const order = orderMap[payment.orderId];
+      let taskStatus = 'N/A';
+
+      if (
+        payment.paymentStatus === 'Completed' &&
+        order?.orderStatus === 'Confirmed'
+      ) {
+        const possibleDeviceId =
+          order.wp_device_id || order.device_id || '';
+        const normalizedId = possibleDeviceId.toString().toLowerCase();
+
+        if (serviceRecordMap[normalizedId]) {
+          taskStatus = serviceRecordMap[normalizedId];
+        }
+      }
+
+      return {
+        ...payment,
+        orders: order
+          ? [
+              {
+                ...order,
+                task_status: taskStatus,
+              },
+            ]
+          : [],
+      };
+    });
+
+    // ✅ Final response
+    res.status(200).json({
+      success: true,
+      message:
+        'Payment history with orders and conditional task status fetched successfully',
+      data: paymentsWithOrders,
+    });
+  } catch (error) {
+    console.error('❌ Error fetching payment history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching payment history',
+    });
+  }
+};

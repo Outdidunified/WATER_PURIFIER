@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Swal from 'sweetalert2';
@@ -8,7 +8,10 @@ import { Country, State, City } from "country-state-city";
 import { getDistricts } from "india-state-district";
 
 const Home = ({ userInfo, token, handleLogout }) => {
+    const durationRef = useRef(null);
     const [hoveredQR, setHoveredQR] = useState(null);
+    const [showSummaryModal, setShowSummaryModal] = useState(false);
+    const [showModal, setShowModal] = useState(false);
 
     const baseStyle = {
         width: "150px",
@@ -33,36 +36,8 @@ const Home = ({ userInfo, token, handleLogout }) => {
     const [selectedModelIndex, setSelectedModelIndex] = useState(0);
     const [selectedPlanIndex, setSelectedPlanIndex] = useState(0);
     const [selectedDurationIndex, setSelectedDurationIndex] = useState(0);
-
-    const [loading, setLoading] = useState(true); // optional for loading UI
-    const [error, setError] = useState(null);     // optional for error handling
-
-    console.log(products, 'products...')
-    console.log(loading, 'loading...')
-    console.log(error, 'error...')
-
-    useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const response = await axios.get('/api/website/products/productswithplan');
-                const productArray = response.data?.data || [];
-                const filteredProducts = productArray.filter(
-                    (product) =>
-                        parseInt(product.wp_device_quantity || "0", 10) > 0 &&
-                        product.status === true
-                );
-
-                setProducts(filteredProducts);
-
-                // setProducts(productArray);
-            } catch (err) {
-                setError(err.message || 'Something went wrong');
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchProducts();
-    }, []);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
@@ -79,32 +54,30 @@ const Home = ({ userInfo, token, handleLogout }) => {
     const [stateList, setStateList] = useState([]);
     const [districtList, setDistrictList] = useState([]);
     const [cityList, setCityList] = useState([]);
-
     const [subLoading, setSubLoading] = useState(false);
 
-    {/* Sub model */ }
-    const [showModal, setShowModal] = useState(false);
+    const RAZORPAY_KEY = "rzp_test_oHoZ3Q1fF6pYEI";
 
-    const handleSubscribeClick = () => {
-        if (userInfo?.email) {
-            setShowModal(true); // Open subscribe modal
-        } else {
-            Swal.fire({
-                title: 'Login Required',
-                text: 'You need to log in to subscribe.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Login',
-                cancelButtonText: 'Cancel',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    navigate('/auth'); // Go to login page
-                }
-            });
-        }
-    };
+    // Fetch products
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const response = await axios.get('/api/website/products/productswithplan');
+                const productArray = response.data?.data || [];
+                const filteredProducts = productArray.filter(
+                    (product) => product.status === true
+                );
+                setProducts(filteredProducts);
+            } catch (err) {
+                setError(err.message || 'Something went wrong');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchProducts();
+    }, []);
 
-    // Load countries once
+    // Load countries
     useEffect(() => {
         setCountryList(Country.getAllCountries() || []);
     }, []);
@@ -116,7 +89,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
         } else {
             setStateList([]);
         }
-        // reset dependent selects
         setState("");
         setCity("");
         setCityList([]);
@@ -124,7 +96,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
         setDistrict("");
     }, [country]);
 
-    // When state changes: load cities (country-state-city) and districts (india-state-district)
+    // Load cities and districts when state changes
     useEffect(() => {
         if (!state) {
             setCityList([]);
@@ -134,14 +106,11 @@ const Home = ({ userInfo, token, handleLogout }) => {
             return;
         }
 
-        // cities from country-state-city
         const cities = City.getCitiesOfState(country, state) || [];
         setCityList(cities);
 
-        // districts using india-state-district helper
         try {
-            const rawDistricts = getDistricts(state); // expect state isoCode like "TN", "KA", "MH"
-            // normalize result: package might return array of strings OR array of {name, code}
+            const rawDistricts = getDistricts(state);
             let normalized = [];
             if (Array.isArray(rawDistricts)) {
                 if (rawDistricts.length === 0) normalized = [];
@@ -150,22 +119,81 @@ const Home = ({ userInfo, token, handleLogout }) => {
             }
             setDistrictList(normalized);
         } catch (err) {
-            // safe fallback - empty list
             console.error("getDistricts error:", err);
             setDistrictList([]);
         }
 
-        // reset lower-level selections
         setCity("");
         setDistrict("");
     }, [state, country]);
 
-    const RAZORPAY_KEY = "rzp_test_oHoZ3Q1fF6pYEI";
+    // Calculate price details
+    const calculatePriceDetails = () => {
+        const selectedProduct = products[selectedModelIndex];
+        const selectedPlan = selectedProduct?.plans[selectedPlanIndex];
+        const selectedDuration = selectedProduct?.duration[selectedDurationIndex];
 
+        if (!selectedProduct || !selectedPlan || !selectedDuration) {
+            return null;
+        }
+
+        const basePrice = selectedPlan?.price || 0;
+        const gstRate = selectedDuration?.gst || 0;
+        const discountRate = selectedDuration?.discount || 0;
+
+        const gstAmount = (basePrice * gstRate) / 100;
+        const priceWithGST = basePrice + gstAmount;
+        const discountAmount = (priceWithGST * discountRate) / 100;
+        const finalMonthlyPrice = priceWithGST - discountAmount;
+
+        const durationDays = parseInt(selectedDuration?.duration_time_limit?.replace(/[^\d]/g, ""), 10) || 0;
+        const perDayPrice = finalMonthlyPrice / 28;
+        const grandTotal = parseFloat((perDayPrice * durationDays).toFixed(2));
+        const securityDeposit = !userInfo?.security_deposit ? selectedDuration?.security_deposit || 0 : 0;
+        const grandTotalWithDeposit = parseFloat((grandTotal + securityDeposit).toFixed(2));
+
+        return {
+            selectedProduct,
+            selectedPlan,
+            selectedDuration,
+            basePrice,
+            gstRate,
+            gstAmount,
+            priceWithGST,
+            discountRate,
+            discountAmount,
+            finalMonthlyPrice,
+            durationDays,
+            grandTotal,
+            securityDeposit,
+            grandTotalWithDeposit,
+        };
+    };
+
+    // Handle subscribe click
+    const handleSubscribeClick = () => {
+        if (userInfo?.email) {
+            setShowSummaryModal(true); // Show summary modal first
+        } else {
+            Swal.fire({
+                title: 'Login Required',
+                text: 'You need to log in to subscribe.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Login',
+                cancelButtonText: 'Cancel',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    navigate('/auth');
+                }
+            });
+        }
+    };
+
+    // Handle form submission for subscription
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Validation regex
         const phoneRegex = /^[1-9][0-9]{9}$/;
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -173,7 +201,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
             return Swal.fire({
                 icon: 'error',
                 title: 'Invalid Phone Number',
-                text: 'Phone number must be 10 digits and not start with 0.'
+                text: 'Phone number must be 10 digits and not start with 0.',
             });
         }
 
@@ -181,54 +209,35 @@ const Home = ({ userInfo, token, handleLogout }) => {
             return Swal.fire({
                 icon: 'error',
                 title: 'Invalid Email ID',
-                text: 'Please enter a valid email address.'
+                text: 'Please enter a valid email address.',
             });
         }
 
-        const selectedProduct = products[selectedModelIndex];
-        const selectedPlan = selectedProduct?.plans[selectedPlanIndex];
-        const selectedDuration = selectedProduct?.duration[selectedDurationIndex];
-
-        if (!selectedProduct || !selectedPlan || !selectedDuration) {
+        const priceDetails = calculatePriceDetails();
+        if (!priceDetails) {
             return Swal.fire({
                 icon: 'error',
                 title: 'Selection Missing',
-                text: 'Please make sure a model, plan, and duration are selected.'
+                text: 'Please make sure a model, plan, and duration are selected.',
             });
         }
 
         setSubLoading(true);
 
         try {
-            // Price calculation
-            const basePrice = selectedPlan?.price || 0;
-            const gstRate = selectedDuration?.gst || 0;
-            const discountRate = selectedDuration?.discount || 0;
-
-            const gstAmount = (basePrice * gstRate) / 100;
-            const priceWithGST = basePrice + gstAmount;
-            const discountAmount = (priceWithGST * discountRate) / 100;
-            const finalMonthlyPrice = priceWithGST - discountAmount;
-
-            const durationDays = parseInt(selectedDuration?.duration_time_limit?.replace(/[^\d]/g, ""), 10) || 0;
-            const perDayPrice = finalMonthlyPrice / 28;
-            const grandTotal = parseFloat((perDayPrice * durationDays).toFixed(2));
-            const securityDeposit = !userInfo?.security_deposit ? selectedDuration?.security_deposit || 0 : 0;
-            const grandTotalWithDeposit = parseFloat((grandTotal + securityDeposit).toFixed(2));
-
-            // Prepare payload with proper data types
             const payload = {
-                productModelId: selectedProduct._id,
-                selectedPlanId: selectedPlan?.plans_id || 0, // prefer plans_id number
-                selectedDurationId: selectedDuration.duration_id,
-                priceWithGST: parseFloat(priceWithGST.toFixed(2)),
-                gstAmount: parseFloat(gstAmount.toFixed(2)),
-                discountAmount: parseFloat(discountAmount.toFixed(2)),
-                finalMonthlyPrice: parseFloat(finalMonthlyPrice.toFixed(2)),
-                grandTotal: grandTotalWithDeposit,
-                securityDeposit,
-                wp_device_id: selectedProduct.wp_device_id,
+                productModelId: priceDetails.selectedProduct._id,
+                selectedPlanId: priceDetails.selectedPlan?.plans_id || 0,
+                selectedDurationId: priceDetails.selectedDuration.duration_id,
+                priceWithGST: parseFloat(priceDetails.priceWithGST.toFixed(2)),
+                gstAmount: parseFloat(priceDetails.gstAmount.toFixed(2)),
+                discountAmount: parseFloat(priceDetails.discountAmount.toFixed(2)),
+                finalMonthlyPrice: parseFloat(priceDetails.finalMonthlyPrice.toFixed(2)),
+                grandTotal: priceDetails.grandTotalWithDeposit,
+                securityDeposit: priceDetails.securityDeposit,
+                wp_device_id: priceDetails.selectedProduct.wp_device_id,
                 deliveryAddress: {
+                    country,
                     name,
                     street,
                     landmark,
@@ -238,17 +247,16 @@ const Home = ({ userInfo, token, handleLogout }) => {
                     phone: phone.trim(),
                     pincode: pincode.trim(),
                     email: emailID,
-                }
+                },
             };
 
             const token = sessionStorage.getItem("WebToken");
 
-            // Call order place API
             const res = await fetch("/api/website/orders/orderplace", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
+                    "Authorization": `Bearer ${token}`,
                 },
                 body: JSON.stringify(payload),
             });
@@ -260,41 +268,64 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 return Swal.fire("Error", data.message || "Order failed", "error");
             }
 
-            // Razorpay payment options
             const options = {
                 key: RAZORPAY_KEY,
                 amount: data.data.razorpayOrder.amount,
                 currency: "INR",
                 order_id: data.data.razorpayOrder.id,
                 name: "Subscription Payment",
-                description: `Subscription for ${durationDays} days`,
+                description: `Subscription for ${priceDetails.durationDays} days`,
                 handler: async (response) => {
-                    const verifyRes = await fetch("/api/website/orders/orderverify", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${token}`
-                        },
-                        body: JSON.stringify(response),
+                    // Show loading message during verification
+                    Swal.fire({
+                        title: 'Verifying Your Payment',
+                        text: 'Please wait a few seconds while we verify your order payment...',
+                        icon: 'info',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
                     });
-                    const verifyData = await verifyRes.json();
 
-                    if (verifyData.status && verifyData.status.toLowerCase() === "success") {
-                        //  Swal.fire("Payment Successful", "Subscription activated!", "success").then(() => {
-                        Swal.fire({
-                            icon: "success",
-                            title: "Payment Successful",
-                            text: "Subscription activated!",
-                            timer: 2000,
-                            showConfirmButton: false
-                        }).then(() => {
-                            setShowModal(false);
-                            setName(""), setPhone(""), setEmailID(""), setStreet(""), setLandmark(""),
-                                setPincode(""), setCity(""), setDistrict(""), setState(""),
-                                window.location.href = "/";
+                    try {
+                        const verifyRes = await fetch("/api/website/orders/orderverify", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${token}`,
+                            },
+                            body: JSON.stringify(response),
                         });
-                    } else {
-                        Swal.fire("Error", "Verification failed", "error");
+                        const verifyData = await verifyRes.json();
+
+                        if (verifyData.status && verifyData.status.toLowerCase() === "success") {
+                            Swal.fire({
+                                icon: "success",
+                                title: "Payment Successful",
+                                text: "Subscription activated! Please log in to continue.",
+                                iconHtml: '<i class="fas fa-sign-in-alt"></i>', // Font Awesome login icon
+                                timer: 3000,
+                                showConfirmButton: false,
+                            }).then(() => {
+                                setShowModal(false);
+                                setName("");
+                                setPhone("");
+                                setEmailID("");
+                                setStreet("");
+                                setLandmark("");
+                                setPincode("");
+                                setCity("");
+                                setDistrict("");
+                                setState("");
+                                window.location.href = "/";
+                            });
+                        } else {
+                            Swal.fire("Error", "Verification failed", "error");
+                        }
+                    } catch (error) {
+                        Swal.fire("Error", error.message || "Verification failed. Please try again.", "error");
                     }
                 },
                 modal: {
@@ -303,25 +334,23 @@ const Home = ({ userInfo, token, handleLogout }) => {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
-                                "Authorization": `Bearer ${token}`
+                                "Authorization": `Bearer ${token}`,
                             },
                             body: JSON.stringify({ reason: "User cancelled", orderId: data.data.orderId }),
                         });
                         Swal.fire("Payment Cancelled", "You cancelled the payment", "warning");
-                    }
+                    },
                 },
                 prefill: { name, email: emailID, contact: phone.trim() },
                 theme: { color: "#3399cc" },
             };
 
             const rzp = new window.Razorpay(options);
-
             rzp.open();
 
             rzp.on('payment.failed', function (response) {
                 Swal.fire("Payment Failed", response.error.description, "error");
             });
-
         } catch (error) {
             console.error("Error in handleSubmit:", error);
             Swal.fire("Error", error.message || "Something went wrong. Please try again later.", "error");
@@ -330,9 +359,10 @@ const Home = ({ userInfo, token, handleLogout }) => {
         }
     };
 
+    // Handle main image
     const [mainImage, setMainImage] = useState("");
     useEffect(() => {
-        if (products[selectedModelIndex]) {
+        if (products.length > 0 && products[selectedModelIndex]) {
             setMainImage(products[selectedModelIndex].main_img);
         }
     }, [selectedModelIndex, products]);
@@ -372,7 +402,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
         // Close if already open, otherwise open the clicked item
         setActiveIndex(index === activeIndex ? null : index);
     };
-
 
     const [formData, setFormData] = useState({
         name: "",
@@ -420,69 +449,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
         }
     };
 
-    const indianCities = [
-        "Bangalore", "Hyderabad", "Mumbai", "Delhi", "Chennai", "Kolkata", "Pune",
-        "Ahmedabad", "Jaipur", "Surat", "Lucknow", "Kanpur", "Nagpur", "Indore",
-        "Thane", "Bhopal", "Visakhapatnam", "Patna", "Vadodara", "Ghaziabad"
-    ];
-
-    // Call Request
-    const [formDataCallRequest, setFormDataCallRequest] = useState({
-        name: "",
-        phone: "",
-        city: "Bangalore",
-    });
-
-    const handleChangeCallRequest = (e) => {
-        const { name, value } = e.target;
-
-        if (name === "phone") {
-            let phone = value.replace(/\D/g, ""); // Only digits
-            if (phone.startsWith("0")) {
-                phone = phone.substring(1); // Remove leading 0
-            }
-            if (phone.length > 10) {
-                phone = phone.substring(0, 10); // Limit to 10 digits
-            }
-            setFormDataCallRequest({ ...formDataCallRequest, [name]: phone });
-        } else {
-            setFormDataCallRequest({ ...formDataCallRequest, [name]: value });
-        }
-    };
-
-    const handleSubmitCallRequest = async (e) => {
-        e.preventDefault();
-
-        if (formDataCallRequest.phone.length !== 10) {
-            Swal.fire("Error", "Phone number must be exactly 10 digits.", "error");
-            return;
-        }
-
-        try {
-            const response = await fetch(
-                "/api/website/callRequest",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(formDataCallRequest), // phone as string
-                }
-            );
-
-            const result = await response.json();
-
-            if (result.success) {
-                Swal.fire("Success", result.message, "success");
-                setFormDataCallRequest({ name: "", phone: "", city: "Bangalore" });
-            } else {
-                Swal.fire("Error", result.message || "Something went wrong.", "error");
-            }
-        } catch (error) {
-            Swal.fire("Error", "Server error. Please try later.", "error");
-        }
-    };
-
     // Email validation
     const sanitizeEmail = (value) => {
         // Remove spaces and keep only valid characters for an email
@@ -506,6 +472,36 @@ const Home = ({ userInfo, token, handleLogout }) => {
         // No @ symbol: Limit to 50 characters and return
         return lowerCaseEmail.slice(0, 50);
     };
+
+    const [districts, setDistricts] = useState([]);
+
+    useEffect(() => {
+        const fetchDistricts = async () => {
+            try {
+                const response = await axios.get("/api/admin/GetDistrictsWithSellers");
+                if (response.data?.status === "Success" && Array.isArray(response.data.data)) {
+                    setDistricts(response.data.data);
+                } else {
+                    console.warn("Unexpected API structure:", response.data);
+                }
+            } catch (error) {
+                console.error("Error fetching districts:", error);
+                Swal.fire("Error", "Failed to load city data", "error");
+            }
+        };
+
+        fetchDistricts();
+    }, []);
+
+    // ✅ Dynamically build map using "country-state-city"
+    const stateNameMap = {};
+    const indianStates = State.getStatesOfCountry("IN"); // all states of India
+
+    indianStates.forEach((s) => {
+        // Example: { name: "Karnataka", isoCode: "KA" }
+        stateNameMap[s.isoCode.toUpperCase()] = s.name;
+    });
+
 
     return (
         <div>
@@ -593,7 +589,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                         {/* <!-- /Stats Section --> */}
 
                         <div className="row stats-row gy-4 mt-5" data-aos="fade-up" data-aos-delay="500">
-                            <div className="col-lg-3 col-md-6">
+                            <div className="col-lg-4 col-md-6">
                                 <div className="stat-item" style={{ padding: '0px' }}>
                                     <div className="stat-icon">
                                         <i className="bi bi-tools"></i>
@@ -603,17 +599,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                     </div>
                                 </div>
                             </div>
-                            <div className="col-lg-3 col-md-6">
-                                <div className="stat-item" style={{ padding: '0px' }}>
-                                    <div className="stat-icon">
-                                        <i className="bi bi-shield-check"></i>
-                                    </div>
-                                    <div className="stat-content">
-                                        <h4>7 days Risk-Free Trial</h4>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="col-lg-3 col-md-6">
+                            <div className="col-lg-4 col-md-6">
                                 <div className="stat-item" style={{ padding: '0px' }}>
                                     <div className="stat-icon">
                                         <i className="bi bi-lightning-charge"></i>
@@ -623,7 +609,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                     </div>
                                 </div>
                             </div>
-                            <div className="col-lg-3 col-md-6">
+                            <div className="col-lg-4 col-md-6">
                                 <div className="stat-item" style={{ padding: '0px' }}>
                                     <div className="stat-icon">
                                         <i className="bi bi-currency-rupee"></i>
@@ -678,199 +664,70 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                 {/* <!-- Features Section --> */}
                 <section id="hero" className="features section">
-
-                    {/* <!-- Section Title --> */}
-                    <div className="container section-title" data-aos="fade-up">
+                    <div className="container section-title" data-aos="fade-up" style={{ paddingBottom: '0px' }}>
                         <h2>Products That Fit Every Lifestyle And Budget</h2>
                         <p>Each of our smart water purifiers comes with advanced multi-stage purification and IoT technology.</p>
                     </div>
-                    {/* <!-- End Section Title --> */}
 
                     {products.length > 0 ? (
                         <div className="container">
-
-                            {/* === Model Tabs === */}
-                            <div className="d-flex justify-content-center">
-                                <ul className="nav nav-tabs">
-                                    {products.map((product, index) => (
-                                        <li key={product._id} className="nav-item">
-                                            <button
-                                                className={`nav-link ${selectedModelIndex === index ? 'active' : ''}`}
-                                                onClick={() => {
-                                                    setSelectedModelIndex(index);
-                                                    setSelectedPlanIndex(0);
-                                                    setSelectedDurationIndex(0);
-                                                }}
-                                            >
-                                                <h4>{product.model_name}</h4>
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-
-                            {/* === Main Product Display === */}
                             <div className="tab-content">
-                                <div className="tab-pane fade active show" style={{ padding: '20px' }}>
-                                    <div className="container" data-aos="fade-up" >
-
+                                <div className="tab-pane fade active show">
+                                    <div className="container" data-aos="fade-up">
                                         <div className="row gy-4">
-
                                             <div className="col-lg-3 col-md-6">
                                                 <div className="stats-item text-center w-100 h-100">
                                                     <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Multistage Universal Water purifier</p>
                                                 </div>
                                             </div>
-                                            {/* <!-- End Stats Item --> */}
-
                                             <div className="col-lg-3 col-md-6">
                                                 <div className="stats-item text-center w-100 h-100">
                                                     <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Goodness of copper</p>
                                                 </div>
                                             </div>
-                                            {/* <!-- End Stats Item --> */}
-
                                             <div className="col-lg-3 col-md-6">
                                                 <div className="stats-item text-center w-100 h-100">
                                                     <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> RO Purification</p>
                                                 </div>
                                             </div>
-                                            {/* <!-- End Stats Item --> */}
-
                                             <div className="col-lg-3 col-md-6">
                                                 <div className="stats-item text-center w-100 h-100">
                                                     <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> In-line UV purification</p>
                                                 </div>
                                             </div>
-                                            {/* <!-- End Stats Item --> */}
-
                                         </div>
-
                                     </div>
 
-                                    <div className="row mt-4">
-
-                                        {/* === Left Column === */}
-                                        <div className="col-lg-6">
-                                            <h3>Flexible Rental Plans</h3>
-                                            <p className="fst-italic">
-                                                Security deposit of ₹{products[selectedModelIndex].duration[selectedDurationIndex]?.security_deposit || 0} will be 100% refundable
-                                            </p>
-
-                                            {/* Step 1: Plans */}
-                                            <h5>Step 1: Choose Monthly Plan</h5>
-                                            <div className="d-flex flex-wrap gap-2 mb-3">
-                                                {products[selectedModelIndex].plans.map((plan, planIndex) => (
-                                                    <button
-                                                        key={plan.plans_id}
-                                                        className={`btn ${selectedPlanIndex === planIndex ? 'btn-primary' : 'btn-outline-primary'}`}
-                                                        onClick={() => setSelectedPlanIndex(planIndex)}
-                                                    >
-                                                        {plan.label}<br />
-                                                        <small>{plan.capacity}</small>
-                                                    </button>
-                                                ))}
+                                    <div className="row mt-4 align-items-start">
+                                        <div className="col-lg-6 col-12" style={{ padding: '20px' }}>
+                                            <div className="d-flex justify-content-center flex-column align-items-center section-title">
+                                                <div className="text-center mb-3">
+                                                    <h2>Select Model</h2>
+                                                </div>
+                                                <ul className="nav nav-tabs flex-wrap" style={{ justifyContent: 'center' }}>
+                                                    {products.map((product, index) => (
+                                                        <li key={product._id} className="nav-item">
+                                                            <button
+                                                                className={`nav-link ${selectedModelIndex === index ? 'active' : ''} text-center`}
+                                                                onClick={() => {
+                                                                    setSelectedModelIndex(index);
+                                                                    setSelectedPlanIndex(0);
+                                                                    setSelectedDurationIndex(0);
+                                                                    setTimeout(() => {
+                                                                        durationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                                                    }, 100);
+                                                                }}
+                                                                style={{ minWidth: '150px', margin: '5px' }}
+                                                            >
+                                                                <h4>{product.model_name}</h4>
+                                                            </button>
+                                                        </li>
+                                                    ))}
+                                                </ul>
                                             </div>
-
-                                            {/* Step 2: Durations */}
-                                            <h5>Step 2: Choose Duration</h5>
-                                            <div className="d-flex flex-wrap gap-2 mb-3">
-                                                {products[selectedModelIndex].duration.map((duration, durationIndex) => (
-                                                    <button
-                                                        key={duration.duration_id}
-                                                        className={`btn ${selectedDurationIndex === durationIndex ? 'btn-primary' : 'btn-outline-primary'}`}
-                                                        onClick={() => setSelectedDurationIndex(durationIndex)}
-                                                    >
-                                                        {duration.duration_time_limit}
-                                                    </button>
-                                                ))}
-                                            </div>
-
-                                            {/* === Pricing Summary === */}
-                                            <div className="mt-3 p-3 border rounded bg-light">
-                                                {(() => {
-                                                    const selectedPlan = products[selectedModelIndex].plans[selectedPlanIndex];
-                                                    const selectedDuration = products[selectedModelIndex].duration[selectedDurationIndex];
-
-                                                    const baseMonthlyPrice = selectedPlan?.price || 0;
-                                                    const gstRate = selectedDuration?.gst || 0;
-                                                    const discount = selectedDuration?.discount || 0;
-
-                                                    // Safely parse duration_days from string like "360 days"
-                                                    const durationTimeString = selectedDuration?.duration_time_limit || "0";
-                                                    const durationDays = parseInt(durationTimeString.replace(/[^\d]/g, ""), 10) || 0;
-
-                                                    const gstAmount = (baseMonthlyPrice * gstRate) / 100;
-                                                    const priceWithGST = baseMonthlyPrice + gstAmount;
-                                                    const discountAmount = (priceWithGST * discount) / 100;
-                                                    const finalMonthlyPrice = priceWithGST - discountAmount;
-
-                                                    const perDayPrice = finalMonthlyPrice / 28;
-                                                    // const grandTotal = parseFloat((perDayPrice * durationDays).toFixed(2));
-                                                    const grandTotal = parseFloat((perDayPrice * durationDays).toFixed(2));
-                                                    const securityDeposit = !userInfo?.security_deposit ? selectedDuration?.security_deposit || 0 : 0;
-                                                    const grandTotalWithDeposit = parseFloat((grandTotal + securityDeposit).toFixed(2));
-
-                                                    return (
-                                                        <>
-                                                            {!userInfo?.security_deposit && (
-                                                                <p className="fst-italic text-warning">
-                                                                    First time order: ₹{products[selectedModelIndex].duration[selectedDurationIndex]?.security_deposit || 0} security deposit will be 100% refundable upon product return.
-                                                                </p>
-                                                            )}
-                                                            {userInfo?.security_deposit && (
-                                                                <div className="alert alert-info">
-                                                                    You've already paid a security deposit. It won't be charged again.
-                                                                </div>
-                                                            )}
-
-
-                                                            <p>Selected plan price (based on 28-day month): ₹{baseMonthlyPrice.toFixed(2)}</p>
-                                                            <p>GST ({gstRate}%): ₹{gstAmount.toFixed(2)}</p>
-                                                            <p>Price After GST: ₹{priceWithGST.toFixed(2)}</p>
-                                                            <p>{discount}% discount, Savings of ₹{discountAmount.toFixed(2)}</p>
-
-                                                            <p style={{ fontWeight: "bold" }}>
-                                                                Final Price Per (based on 28-day month): ₹{finalMonthlyPrice.toFixed(2)}
-                                                            </p>
-
-                                                            {/* <p style={{ fontWeight: "bold" }}>
-                                                                Per Day Price (based on 28-day month): ₹{perDayPrice.toFixed(2)}
-                                                            </p> */}
-
-                                                            <p style={{ fontWeight: "bold" }}>
-                                                                Selected duration: {durationDays} days
-                                                            </p>
-
-                                                            <h5 style={{ color: "#0d83fd" }}>
-                                                                {/* Grand Total: ₹{grandTotal}, */}
-                                                                Grand Total: ₹{grandTotalWithDeposit}
-                                                            </h5>
-
-                                                            <div className="d-flex flex-wrap gap-2 mb-3">
-                                                                <button
-                                                                    className="btn btn-primary me-0 me-sm-2 mx-1"
-                                                                    onClick={handleSubscribeClick}
-                                                                >
-                                                                    Subscribe Now
-                                                                </button>
-                                                                {/* <button
-                                                                    className="btn btn-primary me-0 me-sm-2 mx-1"
-                                                                    onClick={() => navigate(`/product-list`)}
-                                                                >
-                                                                    Know More
-                                                                </button> */}
-                                                            </div>
-                                                        </>
-                                                    );
-                                                })()}
-                                            </div>
-
                                         </div>
 
-                                        {/* === Right Column: Main Image + Thumbnails === */}
-                                        <div className="col-lg-6 order-1 order-lg-2 text-center">
-                                            {/* Main Image */}
+                                        <div className="col-lg-6 col-12 text-center" style={{ padding: '20px' }}>
                                             <img
                                                 src={`/upload/img/${mainImage || products[selectedModelIndex]?.main_img}`}
                                                 alt="Main Product"
@@ -878,15 +735,13 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 style={{
                                                     boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
                                                     borderRadius: '20px',
-                                                    width: '450px',
-                                                    height: '450px',
-                                                    objectFit: 'cover',
+                                                    maxWidth: '100%',
+                                                    width: '400px',
+                                                    height: '300px',
+                                                    objectFit: 'contain',
                                                 }}
                                             />
-
-                                            {/* Thumbnails */}
-                                            <div className="d-flex justify-content-center align-items-center gap-3 mt-3">
-                                                {/* Sub Images */}
+                                            <div className="d-flex justify-content-center align-items-center flex-wrap gap-3 mt-3">
                                                 {[1, 2, 3, 4].map((num) => {
                                                     const subImg = products[selectedModelIndex]?.[`sub_img_${num}`];
                                                     return subImg ? (
@@ -897,17 +752,15 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                             className="rounded"
                                                             style={{
                                                                 width: "80px",
-                                                                height: "60px",
+                                                                height: "80px",
                                                                 objectFit: "cover",
-                                                                border: (mainImage === subImg) ? "2px solid #0d83fd" : "1px solid #ccc",
+                                                                border: mainImage === subImg ? "2px solid #0d83fd" : "1px solid #ccc",
                                                                 cursor: "pointer",
                                                             }}
                                                             onClick={() => setMainImage(subImg)}
                                                         />
                                                     ) : null;
                                                 })}
-
-                                                {/* Main Image Preview (clickable) */}
                                                 {products[selectedModelIndex]?.main_img && (
                                                     <img
                                                         src={`/upload/img/${products[selectedModelIndex].main_img}`}
@@ -915,9 +768,9 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                         className="rounded"
                                                         style={{
                                                             width: "80px",
-                                                            height: "60px",
+                                                            height: "80px",
                                                             objectFit: "cover",
-                                                            border: (mainImage === products[selectedModelIndex].main_img) ? "2px solid #0d83fd" : "2px dashed #0d83fd",
+                                                            border: mainImage === products[selectedModelIndex].main_img ? "2px solid #0d83fd" : "2px dashed #0d83fd",
                                                             cursor: "pointer",
                                                         }}
                                                         onClick={() => setMainImage(products[selectedModelIndex].main_img)}
@@ -925,7 +778,105 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 )}
                                             </div>
                                         </div>
+                                    </div>
 
+                                    <div ref={durationRef}>
+                                        <div className="row mt-4">
+                                            <div className="col-lg-12">
+                                                <h3>Flexible Rental Plans</h3>
+                                                <p className="fst-italic">
+                                                    Security deposit of ₹{products[selectedModelIndex]?.duration[selectedDurationIndex]?.security_deposit || 0} will be 100% refundable
+                                                </p>
+
+                                                <h5>Choose Duration</h5>
+                                                <div className="d-flex flex-wrap gap-2 mb-3">
+                                                    {products[selectedModelIndex]?.duration.map((duration, durationIndex) => (
+                                                        <button
+                                                            key={duration.duration_id}
+                                                            className={`btn ${selectedDurationIndex === durationIndex ? 'btn-primary' : 'btn-outline-primary'}`}
+                                                            onClick={() => setSelectedDurationIndex(durationIndex)}
+                                                        >
+                                                            {duration.duration_time_limit}
+                                                        </button>
+                                                    ))}
+                                                </div>
+
+                                                <div className="row">
+                                                    {products[selectedModelIndex]?.plans.map((plan, planIndex) => {
+                                                        const priceDetails = calculatePriceDetails();
+                                                        if (!priceDetails) return null;
+
+                                                        return (
+                                                            <div className="col-md-3 mb-4" key={plan.plans_id}>
+                                                                <div
+                                                                    className="card h-100"
+                                                                    style={{
+                                                                        position: 'relative',
+                                                                        borderRadius: '20px',
+                                                                        overflow: 'hidden',
+                                                                        border: '3px solid transparent',
+                                                                        boxShadow: '0 0 10px rgba(13, 110, 253, 0.3)',
+                                                                        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                                                                    }}
+                                                                    onMouseEnter={(e) => {
+                                                                        e.currentTarget.style.transform = 'scale(1.03)';
+                                                                        e.currentTarget.style.boxShadow = '0 0 20px rgba(13, 110, 253, 0.6)';
+                                                                    }}
+                                                                    onMouseLeave={(e) => {
+                                                                        e.currentTarget.style.transform = 'scale(1)';
+                                                                        e.currentTarget.style.boxShadow = '0 0 10px rgba(13, 110, 253, 0.3)';
+                                                                    }}
+                                                                >
+                                                                    <div className="card-header bg-light text-center">
+                                                                        <h4 style={{ color: "#0d83fd" }}>{plan.label}</h4>
+                                                                        <p>{plan.capacity}</p>
+                                                                    </div>
+                                                                    <div className="card-body text-center">
+                                                                        <h4>
+                                                                            Price:₹{plan.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                        </h4>
+                                                                        <p>Connectivity: {products[selectedModelIndex].connectivity || 'N/A'}</p>
+                                                                        <p>Total for {priceDetails.selectedDuration.duration_time_limit}</p>
+                                                                        <p className="text-muted">₹{priceDetails.finalMonthlyPrice.toFixed(0)} / Month (28 days basis)</p>
+                                                                        <p>Discount: {priceDetails.discountRate}%</p>
+                                                                        {!userInfo?.security_deposit && (
+                                                                            <p className="text-warning">Includes ₹{priceDetails.securityDeposit || 0} refundable deposit</p>
+                                                                        )}
+                                                                        {userInfo?.security_deposit && (
+                                                                            <p className="text-info">No additional deposit required</p>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="card-footer text-center">
+                                                                        {(() => {
+                                                                            const product = products[selectedModelIndex];
+                                                                            const isOutOfStock = !product?.wp_device_id || product?.wp_device_quantity <= 0;
+                                                                            if (isOutOfStock) {
+                                                                                return (
+                                                                                    <button className="btn btn-danger" disabled>
+                                                                                        Out of Stock
+                                                                                    </button>
+                                                                                );
+                                                                            }
+                                                                            return (
+                                                                                <button
+                                                                                    className="btn btn-primary"
+                                                                                    onClick={() => {
+                                                                                        setSelectedPlanIndex(planIndex);
+                                                                                        handleSubscribeClick();
+                                                                                    }}
+                                                                                >
+                                                                                    Subscribe Now
+                                                                                </button>
+                                                                            );
+                                                                        })()}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -936,137 +887,174 @@ const Home = ({ userInfo, token, handleLogout }) => {
                         </div>
                     )}
 
+                    {showSummaryModal && (
+                        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)", padding: "20px" }}>
+                            <div className="modal-dialog modal-lg">
+                                <div className="modal-content" style={{ marginTop: '20%', border: '2px solid #0d6efd' }}>
+                                    <div className="modal-header">
+                                        <h5 className="modal-title" style={{ color: '#0d6efd' }}>Subscription Summary</h5>
+                                        <button type="button" className="btn-close" onClick={() => setShowSummaryModal(false)}></button>
+                                    </div>
+                                    <div className="modal-body">
+                                        {(() => {
+                                            const priceDetails = calculatePriceDetails();
+                                            if (!priceDetails) return <p>Error loading summary. Please try again.</p>;
 
-                    <div className="container">
-
-                        <div className="d-flex justify-content-center">
-
-                            {/* Subscribe model start */}
-                            {/* Modal Component */}
-                            <div className={`modal ${showModal ? "d-block" : "d-none"}`} tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-                                <div className="modal-dialog">
-                                    <div className="modal-content" style={{ marginTop: '30%' }}>
-                                        <div className="modal-header" style={{ alignItems: 'center' }}>
-                                            <h5 className="modal-title">Submit Your Details</h5>
-                                            <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
-                                        </div>
-                                        <div className="modal-body" style={{
-                                            height: "500px", overflowY: "auto", paddingRight: "10px"
-                                        }}>
-                                            <form onSubmit={handleSubmit}>
-                                                <div className="mb-3">
-                                                    <label>Name</label>
-                                                    <input type="text" className="form-control" required value={name}
-                                                        // onChange={(e) => setName(e.target.value)} 
-                                                        onChange={(e) => {
-                                                            if (/^[a-zA-Z\s]*$/.test(e.target.value)) setName(e.target.value);
-                                                        }}
-                                                    />
-                                                </div>
-                                                <div className="mb-3">
-                                                    <label>Phone Number</label>
-                                                    <input
-                                                        type="tel"
-                                                        className="form-control"
-                                                        required
-                                                        value={phone}
-                                                        minLength={10}
-                                                        maxLength={10}
-                                                        onChange={(e) => {
-                                                            let input = e.target.value.replace(/\D/g, ''); // Remove non-digits
-
-                                                            // Prevent first digit from being 0–5
-                                                            if (input.length === 1 && /^[0-5]$/.test(input)) {
-                                                                input = ''; // Clear if first digit is 0–5
-                                                            }
-
-                                                            setPhone(input);
-                                                        }}
-                                                    />
-                                                </div>
-                                                <div className="mb-3">
-                                                    <label>Email ID</label>
-                                                    <input
-                                                        type="email"
-                                                        className="form-control"
-                                                        required
-                                                        value={emailID}
-                                                        onChange={(e) => setEmailID(sanitizeEmail(e.target.value))}
-                                                    />
-                                                </div>
-                                                <div className="mb-3">
-                                                    <label>Street Address</label>
-                                                    <input type="text" className="form-control" required value={street} onChange={e => setStreet(e.target.value)} />
-                                                </div>
-
-                                                <div className="mb-3">
-                                                    <label>Landmark</label>
-                                                    <input type="text" className="form-control" value={landmark} onChange={e => setLandmark(e.target.value)} />
-                                                </div>
-
-                                                <div className="mb-3">
-                                                    <label>Country</label>
-                                                    <select className="form-control" value={country} onChange={e => setCountry(e.target.value)}>
-                                                        {countryList.map(c => <option key={c.isoCode} value={c.isoCode}>{c.name}</option>)}
-                                                    </select>
-                                                </div>
-
-                                                <div className="mb-3">
-                                                    <label>State</label>
-                                                    <select className="form-control" value={state} onChange={e => setState(e.target.value)}>
-                                                        <option >Select State</option>
-                                                        {stateList.map(s =>
-                                                            <option key={s.isoCode} value={s.isoCode}>{s.name}</option>
-                                                        )}
-                                                    </select>
-                                                </div>
-
-                                                <div className="mb-3">
-                                                    <label>District</label>
-                                                    <select className="form-control" value={district} onChange={e => setDistrict(e.target.value)}>
-                                                        <option >Select District</option>
-                                                        {districtList.map(d => <option key={d} value={d}>{d}</option>)}
-                                                    </select>
-                                                </div>
-
-                                                <div className="mb-3">
-                                                    <label>City</label>
-                                                    <select className="form-control" value={city} onChange={e => setCity(e.target.value)}>
-                                                        <option >Select City</option>
-                                                        {cityList.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                                                    </select>
-                                                </div>
-
-                                                <div className="mb-3">
-                                                    <label>Pin Code</label>
-                                                    <input type="text" className="form-control" value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, ''))} maxLength={6} required />
-                                                </div>
-
-                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-
-                                                    <p>
-                                                        <i className="bi bi-check2-circle" style={{ color: '#0d83fd' }}></i> Lifetime Free Maintenance<br />
-                                                        <i className="bi bi-check2-circle" style={{ color: '#0d83fd' }}></i> 48 Hours Installation
-                                                    </p>
-
-                                                    <button type="submit" className="btn btn-primary mb-2"> {subLoading ? "Processing..." : "Subscribe Now"}</button>
-                                                </div>
-                                            </form>
-                                        </div>
+                                            return (
+                                                <>
+                                                    <p><strong>Model:</strong> {priceDetails.selectedProduct?.model_name}</p>
+                                                    <p><strong>Plan:</strong> {priceDetails.selectedPlan?.label}</p>
+                                                    <p><strong>Capacity:</strong> {priceDetails.selectedPlan?.capacity}</p>
+                                                    <hr style={{ color: '#0d6efd' }} />
+                                                    <p><strong>Price:</strong> ₹{priceDetails.basePrice.toLocaleString('en-IN')}</p>
+                                                    {/* <p><strong>Base Monthly Price:</strong> ₹{priceDetails.basePrice.toLocaleString('en-IN')}</p> */}
+                                                    <p><strong>GST ({priceDetails.gstRate}%):</strong> ₹{priceDetails.gstAmount.toLocaleString('en-IN')}</p>
+                                                    <p><strong>Price with GST:</strong> ₹{priceDetails.priceWithGST.toLocaleString('en-IN')}</p>
+                                                    <p><strong>Discount ({priceDetails.discountRate}%):</strong> ₹{priceDetails.discountAmount.toLocaleString('en-IN')}</p>
+                                                    <p><strong>Final Monthly Price:</strong> ₹{priceDetails.finalMonthlyPrice.toLocaleString('en-IN')}</p>
+                                                    <p><strong>Duration:</strong> {priceDetails.durationDays} days</p>
+                                                    <hr style={{ color: '#0d6efd' }} />
+                                                    <p><strong>Subtotal:</strong> ₹{priceDetails.grandTotal.toLocaleString('en-IN')}</p>
+                                                    <p><strong>Security Deposit:</strong> ₹{priceDetails.securityDeposit.toLocaleString('en-IN')}</p>
+                                                    <h4 style={{ color: '#0d6efd' }}><strong>Grand Total:</strong> ₹{priceDetails.grandTotalWithDeposit.toLocaleString('en-IN')}</h4>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button className="btn btn-secondary" onClick={() => setShowSummaryModal(false)}>Cancel</button>
+                                        <button
+                                            className="btn btn-primary"
+                                            onClick={() => {
+                                                setShowSummaryModal(false);
+                                                setShowModal(true);
+                                            }}
+                                        >
+                                            Checkout
+                                        </button>
                                     </div>
                                 </div>
                             </div>
-                            {/* Subscribe model end */}
-
                         </div>
+                    )}
 
-                    </div>
-
+                    {showModal && (
+                        <div className={`modal ${showModal ? "d-block" : "d-none"}`} tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+                            <div className="modal-dialog">
+                                <div className="modal-content" style={{ marginTop: '30%' }}>
+                                    <div className="modal-header" style={{ alignItems: 'center' }}>
+                                        <h5 className="modal-title">Delivery Address</h5>
+                                        <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
+                                    </div>
+                                    <div className="modal-body" style={{ height: "600px", overflowY: "auto", paddingRight: "10px", padding: '30px' }}>
+                                        <form onSubmit={handleSubmit}>
+                                            <div className="mb-3">
+                                                <label>Name</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    required
+                                                    value={name}
+                                                    onChange={(e) => {
+                                                        if (/^[a-zA-Z\s]*$/.test(e.target.value)) setName(e.target.value);
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="mb-3">
+                                                <label>Phone Number</label>
+                                                <input
+                                                    type="tel"
+                                                    className="form-control"
+                                                    required
+                                                    value={phone}
+                                                    minLength={10}
+                                                    maxLength={10}
+                                                    onChange={(e) => {
+                                                        let input = e.target.value.replace(/\D/g, '');
+                                                        if (input.length === 1 && /^[0-5]$/.test(input)) {
+                                                            input = '';
+                                                        }
+                                                        setPhone(input);
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="mb-3">
+                                                <label>Email ID</label>
+                                                <input
+                                                    type="email"
+                                                    className="form-control"
+                                                    required
+                                                    value={emailID}
+                                                    onChange={(e) => setEmailID(sanitizeEmail(e.target.value))}
+                                                />
+                                            </div>
+                                            <div className="mb-3">
+                                                <label>Street Address</label>
+                                                <input type="text" className="form-control" required value={street} onChange={e => setStreet(e.target.value)} />
+                                            </div>
+                                            <div className="mb-3">
+                                                <label>Landmark</label>
+                                                <input type="text" className="form-control" value={landmark} onChange={e => setLandmark(e.target.value)} />
+                                            </div>
+                                            <div className="mb-3">
+                                                <label>Country</label>
+                                                <select className="form-control" value={country} onChange={e => setCountry(e.target.value)}>
+                                                    {countryList.map(c => <option key={c.isoCode} value={c.isoCode}>{c.name}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="mb-3">
+                                                <label>State</label>
+                                                <select className="form-control" value={state} onChange={e => setState(e.target.value)}>
+                                                    <option>Select State</option>
+                                                    {stateList.map(s => (
+                                                        <option key={s.isoCode} value={s.isoCode}>{s.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="mb-3">
+                                                <label>District</label>
+                                                <select className="form-control" value={district} onChange={e => setDistrict(e.target.value)}>
+                                                    <option>Select District</option>
+                                                    {districtList.map(d => <option key={d} value={d}>{d}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="mb-3">
+                                                <label>City</label>
+                                                <select className="form-control" value={city} onChange={e => setCity(e.target.value)}>
+                                                    <option>Select City</option>
+                                                    {cityList.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="mb-3">
+                                                <label>Pin Code</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    value={pincode}
+                                                    onChange={e => setPincode(e.target.value.replace(/\D/g, ''))}
+                                                    maxLength={6}
+                                                    required
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                                                <p>
+                                                    <i className="bi bi-check2-circle" style={{ color: '#0d83fd' }}></i> Lifetime Free Maintenance<br />
+                                                    <i className="bi bi-check2-circle" style={{ color: '#0d83fd' }}></i> 48 Hours Installation
+                                                </p>
+                                                <button type="submit" className="btn btn-primary mb-2" disabled={subLoading}>
+                                                    {subLoading ? "Processing..." : "Subscribe Now"}
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </section>
                 {/* <!-- /Features Section --> */}
 
                 {/* <!-- Start Product detail Section --> */}
-
                 {products.length > 0 ? (
                     <section id="features" className="features section" style={{ padding: '0px' }}>
 
@@ -1095,7 +1083,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
                         <h3>No products available at the moment.</h3>
                     </div>
                 )}
-
                 {/* <!-- Start Product detail Section --> */}
 
                 {/* <!-- Start Advantage Section --> */}
@@ -1292,186 +1279,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 </section>
                 {/* <!-- End Advantage Section --> */}
 
-                {/* <!-- Call To Action Section --> */}
-                <section id="call-to-action" className="call-to-action section">
-
-                    <div className="container" data-aos="fade-up" data-aos-delay="100">
-
-                        <div className="row content justify-content-center align-items-center position-relative">
-                            <div className="mx-auto text-center">
-                                <h2 className="display-4 mb-4">A Thriving Community Of Over 1 Million</h2>
-                                <p className="mb-4">1 in 3 new ionHive users find us through a friend or family referral. Our happy customers understand the impact of pure drinking water on the health and wellness of the entire community.</p>
-                                <div className="scroll-wrapper">
-                                    <div className="scroll-container" >
-                                        <div className="scroll-row">
-                                            {/* Pricing Card Start  */}
-                                            <div className="pricing-card-container" style={{ backgroundColor: 'white', borderRadius: '20px', padding: '20px' }}>
-                                                <div className="pricing-card">
-                                                    {/* Video Thumbnail Section */}
-                                                    <div className="youtube-thumbnail relative rounded-[16px] overflow-hidden mb-4" style={{ height: '200px' }}>
-                                                        <a
-                                                            href="https://www.youtube.com/watch?v=Y7f98aduVJ8"
-                                                            className="glightbox block w-full h-full"
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                        >
-                                                            <img
-                                                                src="https://i.ytimg.com/vi/Y7f98aduVJ8/hqdefault.jpg"
-                                                                alt="Video Thumbnail"
-                                                                loading="lazy"
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                                                                <svg width="60" height="60" fill="white" viewBox="0 0 24 24">
-                                                                    <path d="M8 5v14l11-7z" />
-                                                                </svg>
-                                                            </div>
-                                                        </a>
-                                                    </div>
-
-                                                    {/* Textual Content */}
-                                                    <div style={{ color: 'black' }}>
-                                                        <p className="mb-1" style={{ color: 'black' }}>
-                                                            It’s just something that you fit and forget.<br />
-                                                            You fit the device, you subscribe to a plan and that's it. <br />
-                                                            And you have an app so I think it's convenient, <br />
-                                                            it's cost effective and it's safe.
-                                                        </p>
-                                                        <h3 className="text-xl font-semibold mb-2">Kesavan D</h3>
-                                                        <div className="price text-lg mb-2">
-                                                            <span className="amount font-bold">Bangalore</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="pricing-card-container" style={{ backgroundColor: 'white', borderRadius: '20px', padding: '20px' }}>
-                                                <div className="pricing-card">
-                                                    {/* Video Thumbnail Section */}
-                                                    <div className="youtube-thumbnail relative rounded-[16px] overflow-hidden mb-4" style={{ height: '200px' }}>
-                                                        <a
-                                                            href="https://www.youtube.com/watch?v=Y7f98aduVJ8"
-                                                            className="glightbox block w-full h-full"
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                        >
-                                                            <img
-                                                                src="https://i.ytimg.com/vi/Y7f98aduVJ8/hqdefault.jpg"
-                                                                alt="Video Thumbnail"
-                                                                loading="lazy"
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                                                                <svg width="60" height="60" fill="white" viewBox="0 0 24 24">
-                                                                    <path d="M8 5v14l11-7z" />
-                                                                </svg>
-                                                            </div>
-                                                        </a>
-                                                    </div>
-
-                                                    {/* Textual Content */}
-                                                    <div style={{ color: 'black' }}>
-                                                        <p className="mb-1" style={{ color: 'black' }}>
-                                                            It’s just something that you fit and forget.<br />
-                                                            You fit the device, you subscribe to a plan and that's it. <br />
-                                                            And you have an app so I think it's convenient, <br />
-                                                            it's cost effective and it's safe.
-                                                        </p>
-                                                        <h3 className="text-xl font-semibold mb-2">Kesavan D</h3>
-                                                        <div className="price text-lg mb-2">
-                                                            <span className="amount font-bold">Bangalore</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="pricing-card-container" style={{ backgroundColor: 'white', borderRadius: '20px', padding: '20px' }}>
-                                                <div className="pricing-card">
-                                                    {/* Video Thumbnail Section */}
-                                                    <div className="youtube-thumbnail relative rounded-[16px] overflow-hidden mb-4" style={{ height: '200px' }}>
-                                                        <a
-                                                            href="https://www.youtube.com/watch?v=Y7f98aduVJ8"
-                                                            className="glightbox block w-full h-full"
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                        >
-                                                            <img
-                                                                src="https://i.ytimg.com/vi/Y7f98aduVJ8/hqdefault.jpg"
-                                                                alt="Video Thumbnail"
-                                                                loading="lazy"
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                                                                <svg width="60" height="60" fill="white" viewBox="0 0 24 24">
-                                                                    <path d="M8 5v14l11-7z" />
-                                                                </svg>
-                                                            </div>
-                                                        </a>
-                                                    </div>
-
-                                                    {/* Textual Content */}
-                                                    <div style={{ color: 'black' }}>
-                                                        <p className="mb-1" style={{ color: 'black' }}>
-                                                            It’s just something that you fit and forget.<br />
-                                                            You fit the device, you subscribe to a plan and that's it. <br />
-                                                            And you have an app so I think it's convenient, <br />
-                                                            it's cost effective and it's safe.
-                                                        </p>
-                                                        <h3 className="text-xl font-semibold mb-2">Kesavan D</h3>
-                                                        <div className="price text-lg mb-2">
-                                                            <span className="amount font-bold">Bangalore</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {/* Duplicate as needed for 4-5 cards */}
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                            {/* <!-- Abstract Background Elements --> */}
-                            <div className="shape shape-1">
-                                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M47.1,-57.1C59.9,-45.6,68.5,-28.9,71.4,-10.9C74.2,7.1,71.3,26.3,61.5,41.1C51.7,55.9,35,66.2,16.9,69.2C-1.3,72.2,-21,67.8,-36.9,57.9C-52.8,48,-64.9,32.6,-69.1,15.1C-73.3,-2.4,-69.5,-22,-59.4,-37.1C-49.3,-52.2,-32.8,-62.9,-15.7,-64.9C1.5,-67,34.3,-68.5,47.1,-57.1Z" transform="translate(100 100)"></path>
-                                </svg>
-                            </div>
-
-                            <div className="shape shape-2">
-                                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M41.3,-49.1C54.4,-39.3,66.6,-27.2,71.1,-12.1C75.6,3,72.4,20.9,63.3,34.4C54.2,47.9,39.2,56.9,23.2,62.3C7.1,67.7,-10,69.4,-24.8,64.1C-39.7,58.8,-52.3,46.5,-60.1,31.5C-67.9,16.4,-70.9,-1.4,-66.3,-16.6C-61.8,-31.8,-49.7,-44.3,-36.3,-54C-22.9,-63.7,-8.2,-70.6,3.6,-75.1C15.4,-79.6,28.2,-58.9,41.3,-49.1Z" transform="translate(100 100)"></path>
-                                </svg>
-                            </div>
-
-                            {/* <!-- Dot Pattern Groups --> */}
-                            <div className="dots dots-1">
-                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                                    <pattern id="dot-pattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                                        <circle cx="2" cy="2" r="2" fill="currentColor"></circle>
-                                    </pattern>
-                                    <rect width="100" height="100" fill="url(#dot-pattern)"></rect>
-                                </svg>
-                            </div>
-
-                            <div className="dots dots-2">
-                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                                    <pattern id="dot-pattern-2" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                                        <circle cx="2" cy="2" r="2" fill="currentColor"></circle>
-                                    </pattern>
-                                    <rect width="100" height="100" fill="url(#dot-pattern-2)"></rect>
-                                </svg>
-                            </div>
-
-                            <div className="shape shape-3">
-                                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M43.3,-57.1C57.4,-46.5,71.1,-32.6,75.3,-16.2C79.5,0.2,74.2,19.1,65.1,35.3C56,51.5,43.1,65,27.4,71.7C11.7,78.4,-6.8,78.3,-23.9,72.4C-41,66.5,-56.7,54.8,-65.4,39.2C-74.1,23.6,-75.8,4,-71.7,-13.2C-67.6,-30.4,-57.7,-45.2,-44.3,-56.1C-30.9,-67,-15.5,-74,0.7,-74.9C16.8,-75.8,33.7,-70.7,43.3,-57.1Z" transform="translate(100 100)"></path>
-                                </svg>
-                            </div>
-                        </div>
-
-                    </div>
-
-                </section>
-                {/* <!-- /Call To Action Section --> */}
 
                 {/* <!-- Features 2 Section --> */}
                 <section id="how-it-works" className="features-2 section">
@@ -1538,37 +1345,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                 <div className="phone-mockup text-center">
                                     <img src="assets/img/phone-app-screen.webp" alt="Phone Mockup" className="img-fluid" />
                                 </div>
-                                {/* <div className="container text-center" style={{ marginTop: "20px" }}>
-                                    <div className="row justify-content-center">
-
-                                        <div className="col-md-6 col-12 mb-4">
-                                            <div className="phone-mockup text-center">
-                                                <img
-                                                    src="assets/img/water_playStore.png"
-                                                    alt="Google Play QR"
-                                                    style={getStyle('play')}
-                                                    onMouseEnter={() => setHoveredQR('play')}
-                                                    onMouseLeave={() => setHoveredQR(null)}
-                                                />
-                                                <p style={{ marginTop: "10px" }}>Google Play Store Scan to Download</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="col-md-6 col-12 mb-4">
-                                            <div className="phone-mockup text-center">
-                                                <img
-                                                    src="assets/img/water_appStore.png"
-                                                    alt="App Store QR"
-                                                    style={getStyle('app')}
-                                                    onMouseEnter={() => setHoveredQR('app')}
-                                                    onMouseLeave={() => setHoveredQR(null)}
-                                                />
-                                                <p style={{ marginTop: "10px" }}>App Store Scan to Download</p>
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                </div> */}
                             </div>
                             {/* <!-- End Phone Mockup --> */}
 
@@ -1650,139 +1426,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 </section>
                 {/* <!-- /Features 2 Section --> */}
 
-
-                {/* <!-- Call To Action Section --> */}
-                <section id="call-to-action" className="call-to-action section">
-                    <div className="container" data-aos="fade-up" data-aos-delay="100">
-                        <div className="row content justify-content-center align-items-center position-relative">
-                            <div className="col-lg-8 mx-auto text-center">
-                                <h2 className="display-4 mb-4">Start Your 7-Day Risk-Free Trial</h2>
-                                <p className="mb-4">Trusted by a community of 1M+ accross 9 cities</p>
-                                <div className="container" data-aos="fade-up" data-aos-delay="100" style={{ padding: '0px' }}>
-                                    <div className="row g-4">
-                                        <div className="col-lg-12">
-                                            <div className="contact-form" data-aos="fade-up" data-aos-delay="300">
-                                                <form onSubmit={handleSubmitCallRequest} method="post" className="php-email-form" data-aos="fade-up" data-aos-delay="200">
-                                                    <div className="row gy-4">
-                                                        <div className="col-md-6">
-                                                            <input type="text"
-                                                                name="name"
-                                                                className="form-control"
-                                                                placeholder="Enter Your Name"
-                                                                value={formDataCallRequest.name}
-                                                                // onChange={handleChangeCallRequest}
-                                                                onChange={(e) => {
-                                                                    if (/^[a-zA-Z\s]*$/.test(e.target.value)) handleChangeCallRequest(e);
-                                                                }}
-                                                                required
-                                                            />
-                                                        </div>
-
-                                                        <div className="col-md-6">
-                                                            <input
-                                                                type="text"
-                                                                name="phone"
-                                                                className="form-control"
-                                                                placeholder="Enter Your Phone"
-                                                                value={formDataCallRequest.phone}
-                                                                onChange={(e) => {
-                                                                    let val = e.target.value.replace(/\D/g, ""); // only digits
-                                                                    if (val.length === 1 && !/[6-9]/.test(val)) {
-                                                                        val = ""; // remove invalid 1st digit
-                                                                    }
-                                                                    if (val.length > 10) {
-                                                                        val = val.slice(0, 10); // max 10 digits
-                                                                    }
-
-                                                                    setFormDataCallRequest((prev) => ({
-                                                                        ...prev,
-                                                                        phone: val,
-                                                                    }));
-                                                                }}
-                                                                required
-                                                            />
-                                                        </div>
-
-                                                        <div className="col-md-6">
-                                                            <select
-                                                                className="form-control"
-                                                                name="city"
-                                                                value={formDataCallRequest.city}
-                                                                onChange={handleChangeCallRequest}
-                                                                required
-                                                            >
-                                                                <option value="">Select a city</option>
-                                                                {indianCities.map((city) => (
-                                                                    <option key={city} value={city}>
-                                                                        {city}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
-
-                                                        <div className="col-md-6">
-                                                            <button type="submit" className="btn" style={{ backgroundColor: "#14ff10", borderRadius: "20px" }}>
-                                                                Book Now
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </form>
-                                                <p style={{ fontSize: '0.9rem', padding: '10px' }}>
-                                                    By creating an account on  <strong>ionHive</strong>, you agree to our <a href="#" style={{ color: '#14ff10' }}>Terms of Use</a>
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                            {/* <!-- Abstract Background Elements --> */}
-                            <div className="shape shape-1">
-                                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M47.1,-57.1C59.9,-45.6,68.5,-28.9,71.4,-10.9C74.2,7.1,71.3,26.3,61.5,41.1C51.7,55.9,35,66.2,16.9,69.2C-1.3,72.2,-21,67.8,-36.9,57.9C-52.8,48,-64.9,32.6,-69.1,15.1C-73.3,-2.4,-69.5,-22,-59.4,-37.1C-49.3,-52.2,-32.8,-62.9,-15.7,-64.9C1.5,-67,34.3,-68.5,47.1,-57.1Z" transform="translate(100 100)"></path>
-                                </svg>
-                            </div>
-
-                            <div className="shape shape-2">
-                                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M41.3,-49.1C54.4,-39.3,66.6,-27.2,71.1,-12.1C75.6,3,72.4,20.9,63.3,34.4C54.2,47.9,39.2,56.9,23.2,62.3C7.1,67.7,-10,69.4,-24.8,64.1C-39.7,58.8,-52.3,46.5,-60.1,31.5C-67.9,16.4,-70.9,-1.4,-66.3,-16.6C-61.8,-31.8,-49.7,-44.3,-36.3,-54C-22.9,-63.7,-8.2,-70.6,3.6,-75.1C15.4,-79.6,28.2,-58.9,41.3,-49.1Z" transform="translate(100 100)"></path>
-                                </svg>
-                            </div>
-
-                            {/* <!-- Dot Pattern Groups --> */}
-                            <div className="dots dots-1">
-                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                                    <pattern id="dot-pattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                                        <circle cx="2" cy="2" r="2" fill="currentColor"></circle>
-                                    </pattern>
-                                    <rect width="100" height="100" fill="url(#dot-pattern)"></rect>
-                                </svg>
-                            </div>
-
-                            <div className="dots dots-2">
-                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                                    <pattern id="dot-pattern-2" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                                        <circle cx="2" cy="2" r="2" fill="currentColor"></circle>
-                                    </pattern>
-                                    <rect width="100" height="100" fill="url(#dot-pattern-2)"></rect>
-                                </svg>
-                            </div>
-
-                            <div className="shape shape-3">
-                                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M43.3,-57.1C57.4,-46.5,71.1,-32.6,75.3,-16.2C79.5,0.2,74.2,19.1,65.1,35.3C56,51.5,43.1,65,27.4,71.7C11.7,78.4,-6.8,78.3,-23.9,72.4C-41,66.5,-56.7,54.8,-65.4,39.2C-74.1,23.6,-75.8,4,-71.7,-13.2C-67.6,-30.4,-57.7,-45.2,-44.3,-56.1C-30.9,-67,-15.5,-74,0.7,-74.9C16.8,-75.8,33.7,-70.7,43.3,-57.1Z" transform="translate(100 100)"></path>
-                                </svg>
-                            </div>
-                        </div>
-
-                    </div>
-
-                </section>
-                {/* <!-- /Call To Action Section --> */}
-
                 {/* <!-- Faq Section --> */}
                 <section className="faq-9 faq section light-background" id="faq">
                     <div className="container">
@@ -1822,68 +1465,131 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                 {/* <!-- City Section --> */}
                 <section id="contact" className="contact section light-background">
-
-                    {/* <!-- Section Title --> */}
-                    <div className="container section-title" data-aos="fade-up">
+                    <div
+                        className="container section-title"
+                        data-aos="fade-up"
+                        style={{ paddingBottom: "0px" }}
+                    >
                         <h2>Cities We Are Present In</h2>
                     </div>
-                    {/* <!-- End Section Title --> */}
 
-                    <div className="container" data-aos="fade-up" data-aos-delay="100">
-                        <div className="container footer-top">
-                            <div className="row gy-4">
-                                <div className="col-lg-4 col-md-6 footer-about">
-                                    <a href="index.html" className="logo d-flex align-items-center">
-                                        <span className="sitename">copper Water purifier</span>
-                                    </a>
-                                    <div className="footer-contact pt-3">
-                                        <p>copper Water purifier in Bengaluru</p>
-                                        <p>copper Water purifier in Hyderabad</p>
-                                        <p>copper Water purifier in Delhi</p>
-                                        <p>copper Water purifier in Gurgaon</p>
-                                        <p>copper Water purifier in Ghaziabad</p>
-                                        <p>copper Water purifier in Faridabad</p>
-                                        <p>copper Water purifier in Noida</p>
-                                        <p>copper Water purifier in Mumbai</p>
-                                    </div>
+                    <div
+                        className="container"
+                        data-aos="fade-up"
+                        data-aos-delay="100"
+                    >
+                        {(() => {
+                            // Build dynamic state name map
+                            const stateNameMap = {};
+                            const indianStates = State.getStatesOfCountry("IN");
+                            indianStates.forEach((s) => {
+                                stateNameMap[s.isoCode.toUpperCase()] = s.name;
+                            });
+
+                            // Group districts by state
+                            const grouped = districts.reduce((acc, item) => {
+                                let state = item.state?.trim() || "Unknown";
+                                const upper = state.toUpperCase();
+                                if (stateNameMap[upper]) state = stateNameMap[upper];
+
+                                if (!acc[state]) acc[state] = [];
+                                acc[state].push(item.district);
+                                return acc;
+                            }, {});
+
+                            const stateEntries = Object.entries(grouped).sort((a, b) =>
+                                a[0].localeCompare(b[0])
+                            );
+
+                            const columnStyle = {
+                                flex: "1 1 280px",
+                                minWidth: "280px",
+                                textAlign: "center",
+                                background: "rgba(13,110,253,0.03)",
+                                borderRadius: "12px",
+                                padding: "20px",
+                                boxShadow: "0 0 8px rgba(13,110,253,0.15)",
+                            };
+
+                            const stateTitleStyle = {
+                                fontWeight: "bold",
+                                fontSize: "18px",
+                                color: "#0d6efd",
+                                borderBottom: "2px solid #0d6efd",
+                                paddingBottom: "5px",
+                                marginBottom: "10px",
+                            };
+
+                            const pStyle = {
+                                margin: "6px 0",
+                                padding: "6px",
+                                borderRadius: "8px",
+                                transition: "all 0.3s ease",
+                                backgroundColor: "rgba(13,110,253,0.05)",
+                                cursor: "default",
+                            };
+
+                            // Split stateEntries into chunks of 3 with padding for last row
+                            const rows = [];
+                            for (let i = 0; i < stateEntries.length; i += 3) {
+                                const chunk = stateEntries.slice(i, i + 3);
+                                while (chunk.length < 3) {
+                                    chunk.push(null); // Pad with nulls to keep 3 columns
+                                }
+                                rows.push(chunk);
+                            }
+
+                            return rows.map((row, rowIndex) => (
+                                <div
+                                    key={`row-${rowIndex}`}
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "center",
+                                        gap: "40px",
+                                        marginBottom: "30px",
+                                        flexWrap: "wrap",
+                                    }}
+                                >
+                                    {row.map((entry, colIndex) => {
+                                        if (!entry) {
+                                            // Empty column to maintain layout
+                                            return (
+                                                <div
+                                                    key={`empty-${rowIndex}-${colIndex}`}
+                                                    style={{ flex: "1 1 280px", minWidth: "280px" }}
+                                                />
+                                            );
+                                        }
+
+                                        const [state, cityList] = entry;
+                                        return (
+                                            <div key={`state-${rowIndex}-${colIndex}`} style={columnStyle}>
+                                                <div className="footer-contact pt-3">
+                                                    <h4 style={stateTitleStyle}>{state}</h4>
+                                                    {cityList.map((city, j) => (
+                                                        <p
+                                                            key={`city-${rowIndex}-${colIndex}-${j}`}
+                                                            style={pStyle}
+                                                            onMouseEnter={(e) =>
+                                                            (e.currentTarget.style.backgroundColor =
+                                                                "rgba(13,110,253,0.15)")
+                                                            }
+                                                            onMouseLeave={(e) =>
+                                                            (e.currentTarget.style.backgroundColor =
+                                                                "rgba(13,110,253,0.05)")
+                                                            }
+                                                        >
+                                                            {city}
+                                                        </p>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-
-                                <div className="col-lg-4 col-md-6 footer-about">
-                                    <a href="index.html" className="logo d-flex align-items-center">
-                                        <span className="sitename">RO+  Water Purifier</span>
-                                    </a>
-                                    <div className="footer-contact pt-3">
-                                        <p>RO+ Water purifier in Bengaluru</p>
-                                        <p>RO+ Water purifier in Hyderabad</p>
-                                        <p>RO+ Water purifier in Delhi</p>
-                                        <p>RO+ Water purifier in Gurgaon</p>
-                                        <p>RO+ Water purifier in Ghaziabad</p>
-                                        <p>RO+ Water purifier in Faridabad</p>
-                                        <p>RO+ Water purifier in Noida</p>
-                                        <p>RO+ Water purifier in Mumbai</p>
-                                    </div>
-                                </div>
-
-                                <div className="col-lg-4 col-md-6 footer-about">
-                                    <a href="index.html" className="logo d-flex align-items-center">
-                                        <span className="sitename">alkaline Water Purifier</span>
-                                    </a>
-                                    <div className="footer-contact pt-3">
-                                        <p>alkaline Water purifier in Bengaluru</p>
-                                        <p>alkaline Water purifier in Hyderabad</p>
-                                        <p>alkaline Water purifier in Delhi</p>
-                                        <p>alkaline Water purifier in Gurgaon</p>
-                                        <p>alkaline Water purifier in Ghaziabad</p>
-                                        <p>alkaline Water purifier in Faridabad</p>
-                                        <p>alkaline Water purifier in Noida</p>
-                                        <p>alkaline Water purifier in Mumbai</p>
-                                    </div>
-                                </div>
-
-                            </div>
-                        </div>
+                            ));
+                        })()}
                     </div>
-
                 </section>
                 {/* <!-- /City Section --> */}
 
@@ -1991,9 +1697,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                 </section>
                 {/* <!-- /Contact Section --> */}
-
             </main>
-
             {/* Footer */}
             < Footer />
         </div>

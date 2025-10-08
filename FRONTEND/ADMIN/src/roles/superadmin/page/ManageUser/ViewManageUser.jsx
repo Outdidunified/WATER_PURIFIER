@@ -251,8 +251,8 @@ const ViewManageUser = ({ userInfo, handleLogout }) => {
                           <p className="mt-2">Loading technician tasks...</p>
                         </div>
                       ) : error ? (
-                        <div className="alert alert-danger">
-                          <strong>Error:</strong> {error}
+                        <div className={`alert ${error === 'No tasks found for this technician' ? 'alert-info' : 'alert-danger'}`}>
+                          <strong>{error === 'No tasks found for this technician' ? 'Info:' : 'Error:'}</strong> {error}
                         </div>
                       ) : technicianTasks.length === 0 ? (
                         <div className="text-center py-4">

@@ -49,9 +49,12 @@ const fetchTechnicians = async () => {
           tech => tech.technician_id === task.assigned_technician_id
         );
 
+        const isAssignable = task.task_status?.toLowerCase() !== 'completed';
+
         return {
           ...task,
           assignedTechnician: assignedTechnician || null,
+          isAssignable,
         };
       });
 

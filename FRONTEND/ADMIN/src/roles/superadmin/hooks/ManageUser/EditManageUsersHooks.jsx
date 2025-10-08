@@ -7,11 +7,11 @@ const useEditManageUsers = (userInfo) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const storedData = localStorage.getItem('editDeviceData');
-  const dataItem = location.state?.user || (storedData ? JSON.parse(storedData) : null);
+  const storedData = localStorage.getItem('editUserData');
+  const dataItem = location.state?.user || location.state?.dataItem || (storedData ? JSON.parse(storedData) : null);
 
   useEffect(() => {
-    if (dataItem) localStorage.setItem('editDeviceData', JSON.stringify(dataItem));
+    if (dataItem) localStorage.setItem('editUserData', JSON.stringify(dataItem));
   }, [dataItem]);
 
   const [errorMessage, setErrorMessage] = useState('');
