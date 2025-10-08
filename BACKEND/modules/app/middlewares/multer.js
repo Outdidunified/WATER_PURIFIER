@@ -10,7 +10,7 @@ const createDirIfNotExists = (dirPath) => {
 };
 
 // Create the upload directories
-const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'technician');
+const uploadDir = path.join(process.cwd(), '..', 'upload', 'technician');
 createDirIfNotExists(uploadDir);
 createDirIfNotExists(path.join(uploadDir, 'before'));
 createDirIfNotExists(path.join(uploadDir, 'after'));

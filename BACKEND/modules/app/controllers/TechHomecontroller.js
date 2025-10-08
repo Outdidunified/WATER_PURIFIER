@@ -61,6 +61,7 @@ exports.updateTaskDetails = async (req, res) => {
   console.log('----- Incoming Request to /updateTaskDetails -----');
   console.log('➡️ Body:', req.body);
   console.log('➡️ Files:', req.files);
+  console.log('---------------------------------------------------');
 
   const {
     task_id,
@@ -113,19 +114,64 @@ exports.updateTaskDetails = async (req, res) => {
 
     const status = updates.task_status || task.task_status;
 
+    // ✅ Validate Pending Reason
     if (status === 'Pending') {
       if (!updates.pending_reason?.trim()) {
-        return res.status(400).json({ error: true, message: 'pending_reason is required when task_status is "Pending"' });
+        return res.status(400).json({
+          error: true,
+          message: 'pending_reason is required when task_status is "Pending"',
+        });
       }
     } else {
       updateData.pending_reason = null;
     }
 
+    // ✅ OTP check for Completed status
     if (status === 'Completed') {
       const parsedOtp = parseInt(otp);
       if (!parsedOtp || parsedOtp !== task.otp) {
         return res.status(400).json({ error: true, message: 'Invalid OTP. Cannot complete task.' });
       }
+    }
+
+    // ✅ Handle uploaded images
+    const files = req.files;
+
+    if (files) {
+      if (files.image_before_service && files.image_before_service.length > 0) {
+        const beforeImagePath = `/upload/technician/before/${path.basename(files.image_before_service[0].path)}`;
+        const existingBeforeImages = task.image_before_service || [];
+
+        if (existingBeforeImages.length >= 5) {
+          return res.status(400).json({
+            error: true,
+            message: 'Maximum of 5 images already uploaded for image_before_service',
+          });
+        }
+
+        updateData.image_before_service = [...existingBeforeImages, beforeImagePath];
+      }
+
+      if (files.image_after_service && files.image_after_service.length > 0) {
+        const afterImagePath = `/upload/technician/after/${path.basename(files.image_after_service[0].path)}`;
+        const existingAfterImages = task.image_after_service || [];
+
+        if (existingAfterImages.length >= 5) {
+          return res.status(400).json({
+            error: true,
+            message: 'Maximum of 5 images already uploaded for image_after_service',
+          });
+        }
+
+        updateData.image_after_service = [...existingAfterImages, afterImagePath];
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        error: true,
+        message: 'No valid fields provided for update',
+      });
     }
 
     // ✅ Update task in DB
@@ -135,10 +181,13 @@ exports.updateTaskDetails = async (req, res) => {
     );
 
     if (result.modifiedCount === 0) {
-      return res.status(400).json({ error: true, message: 'No changes were made to the task' });
+      return res.status(400).json({
+        error: true,
+        message: 'No changes were made to the task',
+      });
     }
 
-    // ✅ Technician stats
+    // ✅ Technician stats + Subscription activation if completed
     if (status === 'Completed') {
       const technician = await technicianCollection.findOne({ technician_id });
       if (technician) {
@@ -148,7 +197,7 @@ exports.updateTaskDetails = async (req, res) => {
         );
       }
 
-      // ✅ Activate subscription after installation completion
+      // ✅ Activate subscription
       const order = await ordersCollection.findOne({
         customOrderId: task.order?.customOrderId || task.customOrderId
       });
