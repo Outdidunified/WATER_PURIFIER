@@ -14,7 +14,7 @@ import Login from "../roles/website/pages/Login";
 import Header from "../roles/website/components/Header";
 import Swal from 'sweetalert2';
 import Profile from "../roles/website/pages/Profile";
-import PaymentHistory from "../roles/website/pages/PaymentHistory";
+import OrderHistory from "../roles/website/pages/OrderHistory";
 
 const WebsiteRoutes = () => {
     const location = useLocation();
@@ -22,6 +22,11 @@ const WebsiteRoutes = () => {
 
     const [userInfo, setUserInfo] = useState(null);
     const [token, setToken] = useState(null);
+
+    // Scroll to top on route change
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [location.pathname]);
 
     // If the URL has ?data=... try to parse it safely and login
     useEffect(() => {
@@ -102,7 +107,7 @@ const WebsiteRoutes = () => {
                 <Route path="/terms-of-service" element={<TermsOfService userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
                 <Route path="/auth" element={<Login handleLogin={handleLogin} token={token} handleLogout={handleLogout} />} />
                 <Route path="/profile" element={<Profile userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
-                <Route path="/payment-history" element={<PaymentHistory handleLogin={handleLogin} userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
+                <Route path="/order-history" element={<OrderHistory handleLogin={handleLogin} userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
             </Routes>
         </>
     );
