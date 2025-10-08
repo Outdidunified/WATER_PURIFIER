@@ -59,9 +59,10 @@ async function sendAssignInstallationEmail(email, otp) {
         `;
 
         await sendEmail(email, subject, text, html);
+        return { subject, text, html };
     } catch (error) {
         console.error('Error in sendAssignInstallationEmail:', error);
-        return false;
+        return null;
     }
 }
 
@@ -94,19 +95,74 @@ async function sendAssignServiceEmail(email, otp) {
         `;
 
         await sendEmail(email, subject, text, html);
+        return { subject, text, html };
     } catch (error) {
         console.error('Error in sendAssignServiceEmail:', error);
-        return false;
+        return null;
     }
 }
 
+async function sendTechnicianAssignmentEmail(technician, { taskId, otp, taskType, normalizedAddress }) {
+    if (!technician?.email) {
+        return null;
+    }
+
+    const taskTitle = taskType === 1 ? 'Installation' : 'Service';
+    const taskLabel = taskTitle.toLowerCase();
+    const technicianName = technician.name || 'Technician';
+    const locationString = [normalizedAddress?.city, normalizedAddress?.district, normalizedAddress?.state]
+        .filter(Boolean)
+        .join(', ');
+
+    const subject = `New ${taskTitle} Task Assigned - IonHive`;
+    const locationText = locationString ? `\nLocation: ${locationString}` : '';
+    const locationListItem = locationString ? `<li><strong>Location:</strong> ${locationString}</li>` : '';
+
+    const text = `Hello ${technicianName},
+
+A new ${taskLabel} task (Task ID: ${taskId}) has been assigned to you. Please review the schedule and reach out to the customer to confirm the appointment.
+
+Customer OTP: ${otp}${locationText}
+
+Thank you,
+IonHive Team`;
+
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
+            <h2 style="color: #333;">New ${taskTitle} Assignment</h2>
+            <p style="font-size: 16px; color: #555;">You have been assigned a new ${taskLabel} task.</p>
+            <ul style="font-size: 16px; color: #555;">
+                <li><strong>Task ID:</strong> ${taskId}</li>
+                <li><strong>Customer OTP:</strong> ${otp}</li>
+                ${locationListItem}
+            </ul>
+            <p style="font-size: 16px; color: #555;">Please contact the customer to coordinate the ${taskLabel}.</p>
+            <p style="font-size: 14px; color: #888; text-align: center; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px;">This is an automated message from IonHive Water Purifier.</p>
+        </div>
+    `;
+
+    await sendEmail(technician.email, subject, text, html);
+    return { subject, text, html };
+}
+
 // Find the best technician based on location and workload
-async function findBestTechnician(normalizedAddress) {
+async function findBestTechnician(normalizedAddress, excludedTechnicianIds = []) {
     const db = await connectToDatabase();
     const usersCollection = db.collection('users');
     const serviceRecordsCollection = db.collection('service_records');
 
-    const { state, district, city } = normalizedAddress;
+    if (!normalizedAddress?.state || !normalizedAddress?.district) {
+        return null;
+    }
+
+    const { state, district } = normalizedAddress;
+
+    // Normalize excluded technician ids for easy comparison
+    const excludedSet = new Set(
+        (excludedTechnicianIds || [])
+            .map(id => (id !== undefined && id !== null) ? id.toString().trim() : null)
+            .filter(Boolean)
+    );
 
     // Find all technicians (we'll filter by normalized state)
     const allTechnicians = await usersCollection.find({
@@ -116,9 +172,14 @@ async function findBestTechnician(normalizedAddress) {
 
     // Filter by exact state and district match only
     let technicians = allTechnicians.filter(tech => {
-        const normalizedTechState = normalizeState(tech.state);
+        const normalizedTechState = normalizeState(tech.state || '');
         const techDistrictNormalized = normalizeDeliveryAddress({ district: tech.district || '' }).district;
-        return normalizedTechState.toLowerCase() === state.toLowerCase() && techDistrictNormalized === district;
+        const technicianId = (tech.technician_id !== undefined && tech.technician_id !== null)
+            ? tech.technician_id.toString().trim()
+            : null;
+        const matchesLocation = normalizedTechState.toLowerCase() === state.toLowerCase() && techDistrictNormalized === district;
+        const notExcluded = technicianId ? !excludedSet.has(technicianId) : false;
+        return matchesLocation && notExcluded;
     });
 
     console.log(`Found ${technicians.length} technicians for state: ${state}, district: ${district}`);
@@ -199,6 +260,7 @@ async function autoAssignInstallation(order) {
             wp_device_id: order.wp_device_id,
             created_date: now,
             created_by: 'system',
+            assignment_history: [],
             address: normalizedAddress,
             product: {
                 model_name: order.modelName,
@@ -229,7 +291,15 @@ async function autoAssignInstallation(order) {
                         assigned_technician_id: technician.technician_id,
                         assigned_date: now,
                         otp: otp,
-                        assigned_by: 'system'
+                        assigned_by: 'system',
+                        pending_reason: null
+                    },
+                    $push: {
+                        assignment_history: {
+                            technician_id: technician.technician_id,
+                            assigned_date: now,
+                            assigned_by: 'system'
+                        }
                     }
                 }
             );
@@ -250,8 +320,14 @@ async function autoAssignInstallation(order) {
                 { upsert: true }
             );
 
-            // Send OTP email
+            // Send notifications
             await sendAssignInstallationEmail(orderUser.email, otp);
+            await sendTechnicianAssignmentEmail(technician, {
+                taskId: nextTaskId,
+                otp,
+                taskType: 1,
+                normalizedAddress
+            });
 
             console.log(`Installation auto-assigned to technician ${technician.technician_id}`);
         } else {
@@ -333,8 +409,17 @@ async function autoAssignService(taskId) {
             city: user.city
         });
 
+        const historyTechnicianIds = (task.assignment_history || [])
+            .map(entry => (entry?.technician_id !== undefined && entry?.technician_id !== null)
+                ? entry.technician_id.toString().trim()
+                : null)
+            .filter(Boolean);
+        if (task.assigned_technician_id) {
+            historyTechnicianIds.push(task.assigned_technician_id.toString().trim());
+        }
+
         // Find best technician
-        const technician = await findBestTechnician(normalizedAddress);
+        const technician = await findBestTechnician(normalizedAddress, historyTechnicianIds);
         if (!technician) {
             console.log('No available technician for service');
             return;
@@ -355,6 +440,13 @@ async function autoAssignService(taskId) {
                     assigned_by: 'system',
                     modified_by: 'system',
                     modified_date: now
+                },
+                $push: {
+                    assignment_history: {
+                        technician_id: technician.technician_id,
+                        assigned_date: now,
+                        assigned_by: 'system'
+                    }
                 }
             }
         );
@@ -375,8 +467,14 @@ async function autoAssignService(taskId) {
             { upsert: true }
         );
 
-        // Send OTP email
+        // Send notifications
         await sendAssignServiceEmail(task.task_created_by_user_email, otp);
+        await sendTechnicianAssignmentEmail(technician, {
+            taskId: taskId,
+            otp,
+            taskType: 2,
+            normalizedAddress
+        });
 
         console.log(`Service auto-assigned to technician ${technician.technician_id}`);
 
@@ -396,7 +494,8 @@ async function autoAssignPendingTasks() {
 
         // Find all unassigned tasks
         const pendingTasks = await serviceRecords.find({
-            assigned_technician_id: null
+            assigned_technician_id: null,
+            task_status: { $in: ["Unassigned", "Pending"] }
         }).toArray();
 
         console.log(`Found ${pendingTasks.length} pending tasks`);
@@ -432,7 +531,13 @@ async function autoAssignPendingTasks() {
             }
 
             // Find best technician
-            const technician = await findBestTechnician(normalizedAddress);
+            const assignmentHistoryIds = (task.assignment_history || [])
+                .map(entry => (entry?.technician_id !== undefined && entry?.technician_id !== null)
+                    ? entry.technician_id.toString().trim()
+                    : null)
+                .filter(Boolean);
+
+            const technician = await findBestTechnician(normalizedAddress, assignmentHistoryIds);
             if (!technician) {
                 console.log(`No available technician for task ${task.task_id}`);
                 continue;
@@ -453,7 +558,15 @@ async function autoAssignPendingTasks() {
                             otp: otp,
                             assigned_by: 'system',
                             modified_by: 'system',
-                            modified_date: now
+                            modified_date: now,
+                            pending_reason: null
+                        },
+                        $push: {
+                            assignment_history: {
+                                technician_id: technician.technician_id,
+                                assigned_date: now,
+                                assigned_by: 'system'
+                            }
                         }
                     }
                 );
@@ -480,6 +593,13 @@ async function autoAssignPendingTasks() {
                     await sendAssignInstallationEmail(user.email, otp);
                 }
 
+                await sendTechnicianAssignmentEmail(technician, {
+                    taskId: task.task_id,
+                    otp,
+                    taskType: 1,
+                    normalizedAddress
+                });
+
             } else if (task.task_type === 2) {
                 // Assign service
                 await serviceRecords.updateOne(
@@ -492,7 +612,15 @@ async function autoAssignPendingTasks() {
                             otp: otp,
                             assigned_by: 'system',
                             modified_by: 'system',
-                            modified_date: now
+                            modified_date: now,
+                            pending_reason: null
+                        },
+                        $push: {
+                            assignment_history: {
+                                technician_id: technician.technician_id,
+                                assigned_date: now,
+                                assigned_by: 'system'
+                            }
                         }
                     }
                 );
@@ -513,8 +641,14 @@ async function autoAssignPendingTasks() {
                     { upsert: true }
                 );
 
-                // Send OTP email
+                // Send notifications
                 await sendAssignServiceEmail(task.task_created_by_user_email, otp);
+                await sendTechnicianAssignmentEmail(technician, {
+                    taskId: task.task_id,
+                    otp,
+                    taskType: 2,
+                    normalizedAddress
+                });
             }
 
             console.log(`Auto-assigned pending task ${task.task_id} to technician ${technician.technician_id}`);
@@ -525,9 +659,223 @@ async function autoAssignPendingTasks() {
     }
 }
 
+async function autoReassignOverdueTasks() {
+    try {
+        const db = await connectToDatabase();
+        const serviceRecords = db.collection("service_records");
+        const usersCollection = db.collection("users");
+        const ordersCollection = db.collection("orders");
+        const technicianDetailsCollection = db.collection("technician_details");
+
+        const now = new Date();
+        const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+
+        const candidateTasksCursor = serviceRecords.find({
+            task_type: { $in: [1, 2] },
+            assigned_technician_id: { $ne: null },
+            task_status: { $in: ["Pending", "Initiated", "In Progress"] }
+        }).limit(50);
+
+        for await (const task of candidateTasksCursor) {
+            const estimatedStart = task.estimated_start ? new Date(task.estimated_start) : null;
+            const estimatedEnd = task.estimated_end ? new Date(task.estimated_end) : null;
+
+            const isStartValid = estimatedStart && !Number.isNaN(estimatedStart.getTime());
+            const isEndValid = estimatedEnd && !Number.isNaN(estimatedEnd.getTime());
+            const isStartOverdue = isStartValid && estimatedStart <= threeDaysAgo;
+            const isEndOverdue = isEndValid && estimatedEnd < now;
+
+            if (!isStartOverdue && !isEndOverdue) {
+                continue;
+            }
+
+            const currentTechnicianId = task.assigned_technician_id;
+            const currentTechnicianIdStr = (currentTechnicianId !== undefined && currentTechnicianId !== null)
+                ? currentTechnicianId.toString().trim()
+                : null;
+
+            const assignmentHistory = Array.isArray(task.assignment_history) ? [...task.assignment_history] : [];
+            let historyUpdated = false;
+            const unassignedReason = isEndOverdue
+                ? 'Estimated end date exceeded'
+                : 'Estimated start overdue';
+
+            if (currentTechnicianIdStr) {
+                for (let i = assignmentHistory.length - 1; i >= 0; i -= 1) {
+                    const entry = assignmentHistory[i];
+                    if (!entry) {
+                        continue;
+                    }
+
+                    const entryTechnicianId = (entry.technician_id !== undefined && entry.technician_id !== null)
+                        ? entry.technician_id.toString().trim()
+                        : null;
+
+                    if (!entryTechnicianId) {
+                        continue;
+                    }
+
+                    if (entryTechnicianId === currentTechnicianIdStr && !entry.unassigned_date) {
+                        assignmentHistory[i] = {
+                            ...entry,
+                            unassigned_date: now,
+                            unassigned_by: 'system',
+                            unassigned_reason: unassignedReason
+                        };
+                        historyUpdated = true;
+                        break;
+                    }
+                }
+            }
+
+            if (historyUpdated) {
+                await serviceRecords.updateOne(
+                    { task_id: task.task_id },
+                    { $set: { assignment_history: assignmentHistory } }
+                );
+            }
+
+            const historyTechnicianIds = assignmentHistory
+                .map(entry => (entry?.technician_id !== undefined && entry?.technician_id !== null)
+                    ? entry.technician_id.toString().trim()
+                    : null)
+                .filter(Boolean);
+
+            if (currentTechnicianIdStr && !historyTechnicianIds.includes(currentTechnicianIdStr)) {
+                historyTechnicianIds.push(currentTechnicianIdStr);
+            }
+
+            let normalizedAddress = null;
+            if (task.task_type === 1) {
+                if (task.address) {
+                    normalizedAddress = task.address;
+                } else if (task.order?.customOrderId) {
+                    const order = await ordersCollection.findOne({ customOrderId: task.order.customOrderId });
+                    if (order?.deliveryAddress) {
+                        normalizedAddress = normalizeDeliveryAddress(order.deliveryAddress);
+                    }
+                }
+            } else if (task.task_type === 2) {
+                const user = await usersCollection.findOne({ user_id: task.task_created_by_user_id });
+                if (user) {
+                    normalizedAddress = normalizeDeliveryAddress({
+                        state: user.state,
+                        district: user.district,
+                        city: user.city
+                    });
+                }
+            }
+
+            const commonSet = {
+                modified_by: 'system',
+                modified_date: now,
+                estimated_start: null,
+                estimated_end: null
+            };
+
+            if (!normalizedAddress) {
+                await serviceRecords.updateOne(
+                    { task_id: task.task_id },
+                    {
+                        $set: {
+                            assigned_technician_id: null,
+                            task_status: "Unassigned",
+                            pending_reason: "Missing address for reassignment",
+                            otp: null,
+                            ...commonSet
+                        }
+                    }
+                );
+                console.log(`Overdue task ${task.task_id} unassigned due to missing address`);
+                continue;
+            }
+
+            const technician = await findBestTechnician(normalizedAddress, historyTechnicianIds);
+            if (!technician) {
+                await serviceRecords.updateOne(
+                    { task_id: task.task_id },
+                    {
+                        $set: {
+                            assigned_technician_id: null,
+                            task_status: "Unassigned",
+                            pending_reason: "No technicians available for overdue reassignment",
+                            otp: null,
+                            ...commonSet
+                        }
+                    }
+                );
+                console.log(`Overdue task ${task.task_id} left unassigned - no technicians available`);
+                continue;
+            }
+
+            const otp = Math.floor(100000 + Math.random() * 900000);
+
+            await serviceRecords.updateOne(
+                { task_id: task.task_id },
+                {
+                    $set: {
+                        task_status: "Pending",
+                        assigned_technician_id: technician.technician_id,
+                        assigned_date: now,
+                        pending_reason: null,
+                        assigned_by: 'system',
+                        otp,
+                        ...commonSet
+                    },
+                    $push: {
+                        assignment_history: {
+                            technician_id: technician.technician_id,
+                            assigned_date: now,
+                            assigned_by: 'system',
+                            reassigned_reason: unassignedReason
+                        }
+                    }
+                }
+            );
+
+            await technicianDetailsCollection.updateOne(
+                { technician_id: technician.technician_id },
+                {
+                    $set: {
+                        user_id: technician.user_id,
+                        role_id: technician.role_id,
+                        email: technician.email,
+                        technician_id: technician.technician_id,
+                        status: true
+                    },
+                    $inc: { total_assigned_services: 1 }
+                },
+                { upsert: true }
+            );
+
+            if (task.task_created_by_user_email) {
+                if (task.task_type === 1) {
+                    await sendAssignInstallationEmail(task.task_created_by_user_email, otp);
+                } else if (task.task_type === 2) {
+                    await sendAssignServiceEmail(task.task_created_by_user_email, otp);
+                }
+            }
+
+            await sendTechnicianAssignmentEmail(technician, {
+                taskId: task.task_id,
+                otp,
+                taskType: task.task_type,
+                normalizedAddress
+            });
+
+            console.log(`Overdue task ${task.task_id} reassigned to technician ${technician.technician_id}`);
+        }
+
+        console.log('Finished processing overdue task reassignment');
+    } catch (err) {
+        console.error("Error in autoReassignOverdueTasks:", err);
+    }
+}
+
 module.exports = {
     autoAssignInstallation,
     autoAssignService,
     autoAssignPendingTasks,
-    autoAssignPendingInstallations
+    autoAssignPendingInstallations,
+    autoReassignOverdueTasks
 };

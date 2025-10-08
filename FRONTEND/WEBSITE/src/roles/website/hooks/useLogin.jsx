@@ -8,7 +8,7 @@ const useLogin = (handleLogin) => {
     const [step, setStep] = useState("login"); // login, otp, register
     const [phone, setPhone] = useState("");
     const [otp, setOtp] = useState("");
-    const [name, setName] = useState(""); 
+    const [name, setName] = useState("");
     const [password, setPassword] = useState("");
     const [emailID, setEmailID] = useState("");
     const [city, setCity] = useState("");
@@ -94,7 +94,14 @@ const useLogin = (handleLogin) => {
         setDistrict("");
     }, [state, country]);
 
-    const validateEmail = (email) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[cC][oO][mM]$/.test(email);
+    const validateEmail = (email) => {
+        // Check for exactly one @ symbol and a basic Gmail pattern
+        const atCount = (email.match(/@/g) || []).length;
+        if (atCount !== 1) return false;
+
+        // Validate Gmail pattern (letters, digits, ._%+- before @, domain with .com)
+        return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[cC][oO][mM]$/.test(email);
+    };
 
     const handleEmailLogin = async () => {
         if (!validateEmail(emailID)) {
@@ -183,6 +190,12 @@ const useLogin = (handleLogin) => {
             Swal.fire('Error', 'Please fill all required fields', 'error');
             return;
         }
+        // Validate email for multiple @ symbols
+        if (!validateEmail(emailID)) {
+            Swal.fire("Error", "Enter a valid Gmail address with exactly one @ symbol", "error");
+            return;
+        }
+
         setLoadingReg(true);
         try {
             const res = await fetch("/api/website/auth/register", {

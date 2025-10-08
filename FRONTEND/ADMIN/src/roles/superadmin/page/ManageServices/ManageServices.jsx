@@ -52,7 +52,7 @@ const ManageServices = ({ userInfo, handleLogout }) => {
     const dateValue = task.assigned_date || task.task_assigned_date || task.assignedDate;
     if (!dateValue) return '-';
     const parsedDate = new Date(dateValue);
-    return Number.isNaN(parsedDate.getTime()) ? '-' : parsedDate.toLocaleString();
+    return Number.isNaN(parsedDate.getTime()) ? '-' : parsedDate.toLocaleDateString();
   };
 
   // Modal state
@@ -94,6 +94,14 @@ const ManageServices = ({ userInfo, handleLogout }) => {
     setSelectedInstallation(null);
     setAssignedTechnicianId('');
     setAssignLoading(false);
+  };
+
+  const getStatusBadgeClass = (status) => {
+    const lowerStatus = status?.toLowerCase();
+    if (lowerStatus === 'pending') return 'badge-danger';
+    if (lowerStatus === 'in progress' || lowerStatus === 'in_progress') return 'badge-warning';
+    if (lowerStatus === 'completed') return 'badge-success';
+    return 'badge-secondary'; // default
   };
 
   const handleAssignSubmit = async (e) => {
@@ -193,14 +201,16 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                         <thead style={{ textAlign: 'center', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#fff' }}>
                           <tr>
                             <th>Sl.No</th>
-                            <th>Status</th>
-                            <th>Task Type</th>
+                           <th>Task Type</th>
                             <th>Email ID</th>
                             <th>Technician Name</th>
                             <th>Technician ID</th>
-                            <th>Pending Reason</th>
                             <th>Device ID</th>
                             <th>Assigned Date</th>
+                            <th>Status</th>
+                            <th>Pending Reason</th>
+                            
+                            
                             <th>Assign</th>
                             <th>Actions</th>
                           </tr>
@@ -219,7 +229,7 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                             serviceTasks.map((item, index) => (
                               <tr key={item._id || index}>
                                 <td>{index + 1}</td>
-                                <td>{item.task_status || '-'}</td>
+                                
                                 <td>
                                   {{
                                     1: 'Installation',
@@ -230,9 +240,17 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                                 <td>{item.task_created_by_user_email || '-'}</td>
                                 <td>{resolveTechnicianName(item)}</td>
                                 <td>{resolveTechnicianId(item)}</td>
+                                 
+                                 <td>{item.device_id || item.wp_device_id || '-'}</td>
+                                 <td>{resolveAssignedDate(item)}</td>
+                                <td>
+                                  <span className={`badge ${getStatusBadgeClass(item.task_status)}`}>
+                                    {item.task_status || '-'}
+                                  </span>
+                                </td>
                                 <td>{resolvePendingReason(item)}</td>
-                                <td>{item.device_id || item.wp_device_id || '-'}</td>
-                                <td>{resolveAssignedDate(item)}</td>
+                               
+                               
                                 <td>
                                   <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
                                     <button
