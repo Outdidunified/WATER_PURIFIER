@@ -56,6 +56,8 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
   const [selectedCity, setSelectedCity] = useState(null);
   const [selectedDistrict, setSelectedDistrict] = useState(null);
 
+  const normalizeValue = (value) => (value ?? '').toString().trim().toLowerCase();
+
   // 🧩 Load all countries on mount
   useEffect(() => {
     const countryOptions = GeoService.getCountriesForSelect();
@@ -64,67 +66,84 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
 
   // 🧩 Preload existing values when country/state/city/district already exist (from DB)
   useEffect(() => {
-    if (!country) return;
+    if (!country || !countries.length) return;
 
-    const countryOptions = GeoService.getCountriesForSelect();
-    const existingCountry = countryOptions.find(
-      (c) =>
-        c.value.toLowerCase() === country.toLowerCase() ||
-        c.label.toLowerCase() === country.toLowerCase()
+    const existingCountry = countries.find((c) =>
+      normalizeValue(c.value) === normalizeValue(country) ||
+      normalizeValue(c.label) === normalizeValue(country)
     );
 
-    if (existingCountry) {
-      setSelectedCountry(existingCountry);
-      setCountry(existingCountry.value);
-
-      // Load states for this country
-      const stateOptions = GeoService.getStatesForSelect(existingCountry.isoCode);
-      setStates(stateOptions);
-
-      const existingState = stateOptions.find(
-        (s) =>
-          s.value.toLowerCase() === state?.toLowerCase() ||
-          s.label.toLowerCase() === state?.toLowerCase()
-      );
-      if (existingState) {
-        setSelectedState(existingState);
-        setState(existingState.value);
-
-        // Load cities & districts
-        const cityOptions = GeoService.getCitiesForSelect(
-          existingCountry.isoCode,
-          existingState.value
-        );
-        setCities(cityOptions);
-
-        const districtOptions = GeoService.getDistrictsForSelect(
-          existingCountry.isoCode,
-          existingState.value
-        );
-        setDistricts(districtOptions);
-
-        const existingCity = cityOptions.find(
-          (c) =>
-            c.value.toLowerCase() === city?.toLowerCase() ||
-            c.label.toLowerCase() === city?.toLowerCase()
-        );
-        if (existingCity) {
-          setSelectedCity(existingCity);
-          setCity(existingCity.value);
-        }
-
-        const existingDistrict = districtOptions.find(
-          (d) =>
-            d.value.toLowerCase() === district?.toLowerCase() ||
-            d.label.toLowerCase() === district?.toLowerCase()
-        );
-        if (existingDistrict) {
-          setSelectedDistrict(existingDistrict);
-          setDistrict(existingDistrict.value);
-        }
-      }
+    if (!existingCountry) {
+      setSelectedCountry(null);
+      return;
     }
-  }, [country, state, city, district]);
+
+    setSelectedCountry(existingCountry);
+
+    let stateOptions = GeoService.getStatesForSelect(existingCountry.isoCode);
+    const normalizedState = normalizeValue(state);
+    let stateMatch = stateOptions.find((s) =>
+      normalizeValue(s.value) === normalizedState ||
+      normalizeValue(s.label) === normalizedState
+    );
+
+    if (!stateMatch && state) {
+      const fallbackState = { value: state, label: state, isoCode: state };
+      stateOptions = [...stateOptions, fallbackState];
+      stateMatch = fallbackState;
+    }
+
+    setStates(stateOptions);
+    setSelectedState(stateMatch || null);
+
+    if (!stateMatch) {
+      setCities([]);
+      setDistricts([]);
+      setSelectedCity(null);
+      setSelectedDistrict(null);
+      return;
+    }
+
+    const cityOptions = GeoService.getCitiesForSelect(
+      existingCountry.isoCode,
+      stateMatch.value
+    );
+    const normalizedCity = normalizeValue(city);
+    let cityMatch = cityOptions.find((c) =>
+      normalizeValue(c.value) === normalizedCity ||
+      normalizeValue(c.label) === normalizedCity
+    );
+
+    let finalCityOptions = cityOptions;
+    if (!cityMatch && city) {
+      const fallbackCity = { value: city, label: city };
+      finalCityOptions = [...cityOptions, fallbackCity];
+      cityMatch = fallbackCity;
+    }
+
+    setCities(finalCityOptions);
+    setSelectedCity(cityMatch || null);
+
+    const districtOptions = GeoService.getDistrictsForSelect(
+      existingCountry.isoCode,
+      stateMatch.value
+    );
+    const normalizedDistrict = normalizeValue(district);
+    let districtMatch = districtOptions.find((d) =>
+      normalizeValue(d.value) === normalizedDistrict ||
+      normalizeValue(d.label) === normalizedDistrict
+    );
+
+    let finalDistrictOptions = districtOptions;
+    if (!districtMatch && district) {
+      const fallbackDistrict = { value: district, label: district };
+      finalDistrictOptions = [...districtOptions, fallbackDistrict];
+      districtMatch = fallbackDistrict;
+    }
+
+    setDistricts(finalDistrictOptions);
+    setSelectedDistrict(districtMatch || null);
+  }, [country, state, city, district, countries]);
 
   // 🧩 When user selects a country → load states
   useEffect(() => {
@@ -132,11 +151,6 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
 
     const stateOptions = GeoService.getStatesForSelect(selectedCountry.isoCode);
     setStates(stateOptions);
-    setCities([]);
-    setDistricts([]);
-    setSelectedState(null);
-    setSelectedCity(null);
-    setSelectedDistrict(null);
   }, [selectedCountry]);
 
   // 🧩 When user selects a state → load cities & districts
@@ -154,8 +168,6 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
 
     setCities(cityOptions);
     setDistricts(districtOptions);
-    setSelectedCity(null);
-    setSelectedDistrict(null);
   }, [selectedState]);
 
   const formFieldStyle = { marginBottom: '15px', display: 'flex', flexDirection: 'column' };

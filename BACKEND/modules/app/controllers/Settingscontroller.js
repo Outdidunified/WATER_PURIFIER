@@ -89,14 +89,14 @@ exports.fetchUserDetails = async (req, res) => {
 
   
   
- exports.updateUserDetails = async (req, res) => {
+exports.updateUserDetails = async (req, res) => {
   const { 
     user_id, 
     email, 
     role_id, 
     name, 
     phone, 
-    password,
+    password, // optional
     addressline1,
     addressline2, // optional
     city, 
@@ -106,19 +106,20 @@ exports.fetchUserDetails = async (req, res) => {
     pincode
   } = req.body;
 
+  // Validate required fields
   if (!user_id || !email || !role_id) {
     return res.status(400).json({ error: true, message: 'user_id, email, and role_id are required' });
   }
 
-  // Validate required address fields (without 'address')
+  // Validate required address fields
   const missingFields = [];
   if (!addressline1) missingFields.push('addressline1');
   if (!city) missingFields.push('city');
   if (!district) missingFields.push('district');
-  if(!password) missingFields.push('password');
   if (!state) missingFields.push('state');
   if (!country) missingFields.push('country');
   if (!pincode) missingFields.push('pincode');
+
   if (missingFields.length) {
     return res.status(400).json({
       error: true,
@@ -145,6 +146,7 @@ exports.fetchUserDetails = async (req, res) => {
     const isSameData =
       (name === undefined || name === existingUser.name) &&
       (phone === undefined || phone === existingUser.phone) &&
+      (password === undefined || password === existingUser.password) &&
       (addressline1 === undefined || addressline1 === existingUser.addressline1) &&
       (addressline2 === undefined || addressline2 === existingUser.addressline2) &&
       (city === undefined || city === existingUser.city) &&
@@ -154,13 +156,14 @@ exports.fetchUserDetails = async (req, res) => {
       (pincode === undefined || pincode === existingUser.pincode);
 
     if (isSameData) {
-      return res.status(402).json({ error: true, message: 'No changes were made. Same data submitted.' });
+      return res.status(200).json({ error: false, message: 'No changes were made. Same data submitted.' });
     }
 
-    // Prepare update
+    // Prepare update object
     const updateFields = {
       ...(name !== undefined && { name }),
       ...(phone !== undefined && { phone }),
+      ...(password !== undefined && { password }), // optional plain-text update
       ...(addressline1 !== undefined && { addressline1 }),
       ...(addressline2 !== undefined && { addressline2 }),
       ...(city !== undefined && { city }),
@@ -172,26 +175,27 @@ exports.fetchUserDetails = async (req, res) => {
       modifiedDate: new Date()
     };
 
-    const result = await usersCollection.updateOne(
+    // Update user
+    await usersCollection.updateOne(
       { user_id: parseInt(user_id), role_id: parseInt(role_id) },
       { $set: updateFields }
     );
 
     return res.status(200).json({
-  error: false,
-  message: 'User details updated successfully',
-  data: {
-    user_id: parseInt(user_id),
-    ...updateFields
-  }
-});
-
+      error: false,
+      message: 'User details updated successfully',
+      data: {
+        user_id: parseInt(user_id),
+        ...updateFields
+      }
+    });
 
   } catch (error) {
     console.error('Update user error:', error);
-    res.status(500).json({ error: true, message: 'Server error while updating user details' });
+    return res.status(500).json({ error: true, message: 'Server error while updating user details' });
   }
 };
+
 
   
  exports.createServiceRequest = async (req, res) => {
