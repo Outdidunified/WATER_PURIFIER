@@ -313,7 +313,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                     <div className="container section-title" data-aos="fade-up">
                         <h2>Profile</h2>
                         <p>Your account details</p>
-                        <p><strong>Last Updated:</strong> {formatDateToIST(updatedAt)}</p> {/* Re-added for clarity */}
                     </div>
 
                     <div className="container" data-aos="fade-up" data-aos-delay="100">
