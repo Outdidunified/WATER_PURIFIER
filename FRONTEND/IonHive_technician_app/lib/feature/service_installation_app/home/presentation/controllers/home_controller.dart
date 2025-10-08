@@ -103,7 +103,6 @@ class TechnicianController extends GetxController {
     required int taskId,
     required String action,
     String? declineReason,
-    DateTime? estimatedStart,
     DateTime? estimatedEnd,
   }) async {
     try {
@@ -112,7 +111,6 @@ class TechnicianController extends GetxController {
         taskId: taskId,
         action: action,
         declineReason: declineReason,
-        estimatedStart: estimatedStart,
         estimatedEnd: estimatedEnd,
       );
 

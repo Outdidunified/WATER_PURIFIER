@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:ionhive_water_purifier/core/controllers/session_controller.dart';
 import 'package:ionhive_water_purifier/core/services/base_api_service.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/settings/data/urls.dart';
@@ -11,12 +12,20 @@ class SettingsApi extends BaseApiService {
     final userId = _sessionController.userId.value;
     final email = _sessionController.emailId.value;
 
-    return makeRequest<Map<String, dynamic>>(
+    final response = await makeRequest<Map<String, dynamic>>(
       url: SettingsUrl.FetchUserDetails.url,
       method: SettingsUrl.FetchUserDetails.method,
       body: {'user_id': userId, "email": email, "role_id": 3},
       responseParser: (data) => data as Map<String, dynamic>,
     );
+    
+    // Debug: Log the raw response
+    debugPrint('🔍 API Raw Response: $response');
+    if (response['data'] != null) {
+      debugPrint('🔍 API Data Password: ${response['data']['password']}');
+    }
+    
+    return response;
   }
 
   Future<Map<String, dynamic>> fetchPaymentHistory() async {
@@ -63,24 +72,28 @@ class SettingsApi extends BaseApiService {
     required String state,
     required String country,
     required String pincode,
+    required String password,
   }) async {
+    final Map<String, dynamic> body = {
+      'user_id': userId,
+      'email': email,
+      'role_id': 3,
+      'name': name,
+      'phone': phone,
+      'addressline1': addressline1,
+      'addressline2': addressline2,
+      'city': city,
+      'district': district,
+      'state': state,
+      'country': country,
+      'pincode': pincode,
+      'password': int.parse(password),
+    };
+    
     return makeRequest<Map<String, dynamic>>(
       url: SettingsUrl.UpdateUserDetails.url,
       method: SettingsUrl.UpdateUserDetails.method,
-      body: {
-        'user_id': userId,
-        'email': email,
-        'role_id': 3,
-        'name': name,
-        'phone': phone,
-        'addressline1': addressline1,
-        'addressline2': addressline2,
-        'city': city,
-        'district': district,
-        'state': state,
-        'country': country,
-        'pincode': pincode,
-      },
+      body: body,
       responseParser: (data) => data as Map<String, dynamic>,
     );
   }

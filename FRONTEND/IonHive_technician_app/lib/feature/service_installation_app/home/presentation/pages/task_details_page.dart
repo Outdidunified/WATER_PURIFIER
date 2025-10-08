@@ -67,941 +67,457 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     }
   }
 
-Future<void> _acceptTask() async {
-  // Show dialog to select estimated start and end times
-  DateTime? estimatedStart;
-  DateTime? estimatedEnd;
+  Future<void> _acceptTask() async {
+    if (widget.task.taskId == null) {
+      CustomSnackbar.showError(message: 'Task ID is missing');
+      return;
+    }
 
-  await showDialog(
-    context: context,
-    builder: (context) {
-      DateTime? start;
-      DateTime? end;
-      return StatefulBuilder(
-        builder: (context, setState) {
-          return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            backgroundColor: Colors.white,
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.85,
-              constraints: const BoxConstraints(maxHeight: 400),
-              padding: const EdgeInsets.all(20),
-              child: SingleChildScrollView(
+    // --- Convert assigned date to local for UI ---
+    final DateTime assignedDateUtc = widget.task.assignedDate!;
+    final DateTime assignedDate = assignedDateUtc.toLocal(); // For display & picker
+    final DateTime threeDaysLater = assignedDate.add(const Duration(days: 3));
+
+    DateTime? estimatedEnd;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        DateTime? end;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              backgroundColor: Colors.white,
+              shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.85,
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
                       'Accept Task',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black),
                     ),
                     const SizedBox(height: 16),
-                    // Start date time picker
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              start == null
-                                  ? 'Select Start Date & Time'
-                                  : DateFormat('MMM dd, yyyy - hh:mm a').format(start!),
-                              style: const TextStyle(
-                                  fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.calendar_today, color: Colors.blue),
-                            onPressed: () async {
-                              DateTime? date;
-                              await showDialog<DateTime>(
-                                context: context,
-                                builder: (context) => Dialog(
+
+                    // END DATE & TIME PICKER
+                    GestureDetector(
+                      onTap: () async {
+                        final DateTime today = DateTime.now();
+                        final DateTime startDate =
+                        assignedDate.isAfter(today) ? assignedDate : today;
+
+                        // --- Date Picker ---
+                        DateTime? pickedDate = await showDialog<DateTime>(
+                          context: context,
+                          builder: (context) {
+                            DateTime tempDate = startDate;
+                            return Dialog(
+                              backgroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16)),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                width: MediaQuery.of(context).size.width * 0.8,
+                                height: 360,
+                                child: Column(
+                                  children: [
+                                    const Text(
+                                      'Select End Date',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Expanded(
+                                      child: CalendarDatePicker(
+                                        initialDate: startDate,
+                                        firstDate: startDate,
+                                        lastDate: threeDaysLater,
+                                        onDateChanged: (date) {
+                                          tempDate = date;
+                                        },
+                                      ),
+                                    ),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(context),
+                                          child: const Text('Cancel',
+                                              style: TextStyle(fontSize: 13)),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        ElevatedButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, tempDate),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.blue,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 14, vertical: 6),
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                BorderRadius.circular(6)),
+                                          ),
+                                          child: const Text(
+                                            'OK',
+                                            style: TextStyle(
+                                                fontSize: 13, color: Colors.white),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+
+                        if (pickedDate == null) return;
+
+                        // --- Time Picker ---
+                        TimeOfDay? pickedTime = await showDialog<TimeOfDay>(
+                          context: context,
+                          builder: (context) {
+                            TimeOfDay time = TimeOfDay(
+                                hour: assignedDate.hour,
+                                minute: assignedDate.minute);
+                            return StatefulBuilder(
+                              builder: (context, setTimeState) {
+                                return Dialog(
                                   backgroundColor: Colors.white,
                                   shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(16)),
                                   child: Container(
-                                    width: 320,
-                                    padding: const EdgeInsets.all(12),
+                                    padding: const EdgeInsets.all(16),
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         const Text(
-                                          'Select Date',
+                                          'Select End Time',
                                           style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Container(
-                                          height: 280,
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey.shade50,
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(color: Colors.grey.shade200),
-                                          ),
-                                          child: Theme(
-                                            data: Theme.of(context).copyWith(
-                                              colorScheme: Theme.of(context).colorScheme.copyWith(
-                                                    primary: Colors.blue,
-                                                    onPrimary: Colors.white,
-                                                    surface: Colors.white,
-                                                    onSurface: Colors.black87,
-                                                    // Fix selected date visibility
-                                                    secondary: Colors.blue.shade600,
-                                                    onSecondary: Colors.white,
-                                                    // These properties control the selected date appearance
-                                                    tertiary: Colors.blue,
-                                                    onTertiary: Colors.white,
-                                                    surfaceVariant: Colors.blue.shade50,
-                                                    onSurfaceVariant: Colors.blue.shade700,
-                                                    // Today's date and selected date colors
-                                                    primaryContainer: Colors.blue,
-                                                    onPrimaryContainer: Colors.white,
-                                                    outline: Colors.blue.shade300,
-                                                  ),
-                                              textButtonTheme: TextButtonThemeData(
-                                                style: TextButton.styleFrom(
-                                                  foregroundColor: Colors.blue,
-                                                ),
-                                              ),
-                                            ),
-                                            child: CalendarDatePicker(
-                                              initialDate: DateTime.now(),
-                                              firstDate: DateTime.now(),
-                                              lastDate: DateTime.now()
-                                                  .add(const Duration(days: 365)),
-                                              onDateChanged: (selectedDate) {
-                                                date = selectedDate;
-                                              },
-                                              currentDate: start ?? DateTime.now(),
-                                              selectableDayPredicate: (day) => true,
-                                            ),
-                                          ),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16),
                                         ),
                                         const SizedBox(height: 16),
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.end,
-                                          children: [
-                                            TextButton(
-                                              onPressed: () => Navigator.of(context).pop(),
-                                              style: TextButton.styleFrom(
-                                                padding: const EdgeInsets.symmetric(
-                                                    horizontal: 16, vertical: 8),
-                                                minimumSize: Size.zero,
-                                              ),
-                                              child: const Text(
-                                                'Cancel',
-                                                style:
-                                                    TextStyle(color: Colors.grey, fontSize: 14),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            ElevatedButton(
-                                              onPressed: () => Navigator.of(context).pop(date),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.blue,
-                                                foregroundColor: Colors.white,
-                                                padding: const EdgeInsets.symmetric(
-                                                    horizontal: 12, vertical: 6),
-                                                minimumSize: const Size(40, 28),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(6),
-                                                ),
-                                              ),
-                                              child: const Text(
-                                                'OK',
-                                                style: TextStyle(fontSize: 12),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
 
-                              if (date != null) {
-                                TimeOfDay time = TimeOfDay.now();
-                                await showDialog<TimeOfDay>(
-                                  context: context,
-                                  barrierColor: Colors.black54,
-                                  builder: (context) => StatefulBuilder(
-                                    builder: (context, setState) => Dialog(
-                                      backgroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(16)),
-                                      elevation: 8,
-                                      child: Container(
-                                        width: 280,
-                                        padding: const EdgeInsets.all(16),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
+                                        // Hour, Minute, AM/PM
+                                        Row(
+                                          mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
                                           children: [
-                                            const Text(
-                                              'Select Time',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.black87,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 16),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                  horizontal: 12, vertical: 12),
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    Colors.blue.shade50,
-                                                    Colors.indigo.shade50
-                                                  ],
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                ),
-                                                borderRadius: BorderRadius.circular(12),
-                                                border:
-                                                    Border.all(color: Colors.blue.shade200),
-                                              ),
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.spaceEvenly,
-                                                children: [
-                                                  Column(
-                                                    children: [
-                                                      const Text(
-                                                        'Hour',
-                                                        style: TextStyle(
-                                                            fontSize: 12,
-                                                            color: Colors.grey,
-                                                            fontWeight: FontWeight.w400),
-                                                      ),
-                                                      const SizedBox(height: 8),
-                                                      Container(
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                                horizontal: 8, vertical: 6),
-                                                        decoration: BoxDecoration(
-                                                          color: Colors.white,
-                                                          borderRadius:
-                                                              BorderRadius.circular(8),
-                                                          boxShadow: [
-                                                            BoxShadow(
-                                                              color: Colors.grey.shade300,
-                                                              blurRadius: 2,
-                                                              offset: const Offset(0, 1),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        child: DropdownButton<int>(
-                                                          value: time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod,
-                                                          underline: const SizedBox(),
-                                                          isDense: true,
-                                                          menuMaxHeight: 240,
-                                                          dropdownColor: Colors.white,
-                                                          items: List.generate(
-                                                            12,
-                                                            (i) => DropdownMenuItem(
-                                                              value: i + 1,
-                                                              child: Text(
-                                                                (i + 1).toString().padLeft(2, '0'),
-                                                                style: const TextStyle(
-                                                                    fontSize: 12,
-                                                                    fontWeight: FontWeight.w400,
-                                                                    color: Colors.black87),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                          onChanged: (value) {
-                                                            if (value != null) {
-                                                              setState(() {
-                                                                final newHour = time.period == DayPeriod.am 
-                                                                    ? (value == 12 ? 0 : value)
-                                                                    : (value == 12 ? 12 : value + 12);
-                                                                time = TimeOfDay(
-                                                                    hour: newHour,
-                                                                    minute: time.minute);
-                                                              });
-                                                            }
-                                                          },
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                 
-                                                  Column(
-                                                    children: [
-                                                      const Text(
-                                                        'Minute',
-                                                        style: TextStyle(
-                                                            fontSize: 12,
-                                                            color: Colors.grey,
-                                                            fontWeight: FontWeight.w400),
-                                                      ),
-                                                      const SizedBox(height: 8),
-                                                      Container(
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                                horizontal: 8, vertical: 6),
-                                                        decoration: BoxDecoration(
-                                                          color: Colors.white,
-                                                          borderRadius:
-                                                              BorderRadius.circular(8),
-                                                          boxShadow: [
-                                                            BoxShadow(
-                                                              color: Colors.grey.shade300,
-                                                              blurRadius: 2,
-                                                              offset: const Offset(0, 1),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        child: DropdownButton<int>(
-                                                          value: time.minute,
-                                                          underline: const SizedBox(),
-                                                          isDense: true,
-                                                          menuMaxHeight: 240,
-                                                          dropdownColor: Colors.white,
-                                                          items: List.generate(
-                                                            60,
-                                                            (i) => DropdownMenuItem(
-                                                              value: i,
-                                                              child: Text(
-                                                                i.toString().padLeft(2, '0'),
-                                                                style: const TextStyle(
-                                                                    fontSize: 12,
-                                                                    fontWeight: FontWeight.w400,
-                                                                    color: Colors.black87),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                          onChanged: (value) {
-                                                            if (value != null) {
-                                                              setState(() {
-                                                                time = TimeOfDay(
-                                                                    hour: time.hour,
-                                                                    minute: value);
-                                                              });
-                                                            }
-                                                          },
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  Column(
-                                                    children: [
-                                                      const Text(
-                                                        'Period',
-                                                        style: TextStyle(
-                                                            fontSize: 12,
-                                                            color: Colors.grey,
-                                                            fontWeight: FontWeight.w400),
-                                                      ),
-                                                      const SizedBox(height: 8),
-                                                      Container(
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                                horizontal: 8, vertical: 6),
-                                                        decoration: BoxDecoration(
-                                                          color: Colors.white,
-                                                          borderRadius:
-                                                              BorderRadius.circular(8),
-                                                          boxShadow: [
-                                                            BoxShadow(
-                                                              color: Colors.grey.shade300,
-                                                              blurRadius: 2,
-                                                              offset: const Offset(0, 1),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        child: DropdownButton<DayPeriod>(
-                                                          value: time.period,
-                                                          underline: const SizedBox(),
-                                                          isDense: true,
-                                                          dropdownColor: Colors.white,
-                                                          items: const [
-                                                            DropdownMenuItem(
-                                                              value: DayPeriod.am,
-                                                              child: Text(
-                                                                'AM',
-                                                                style: TextStyle(
-                                                                    fontSize: 12,
-                                                                    fontWeight: FontWeight.w400,
-                                                                    color: Colors.black87),
-                                                              ),
-                                                            ),
-                                                            DropdownMenuItem(
-                                                              value: DayPeriod.pm,
-                                                              child: Text(
-                                                                'PM',
-                                                                style: TextStyle(
-                                                                    fontSize: 12,
-                                                                    fontWeight: FontWeight.w400,
-                                                                    color: Colors.black87),
-                                                              ),
-                                                            ),
-                                                          ],
-                                                          onChanged: (value) {
-                                                            if (value != null) {
-                                                              setState(() {
-                                                                final currentHour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-                                                                final newHour = value == DayPeriod.am 
-                                                                    ? (currentHour == 12 ? 0 : currentHour)
-                                                                    : (currentHour == 12 ? 12 : currentHour + 12);
-                                                                time = TimeOfDay(
-                                                                    hour: newHour,
-                                                                    minute: time.minute);
-                                                              });
-                                                            }
-                                                          },
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(height: 20),
-                                            Row(
-                                              mainAxisAlignment: MainAxisAlignment.end,
+                                            // Hour
+                                            Column(
                                               children: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.of(context).pop(),
-                                                  child: const Text('Cancel'),
+                                                const Text('Hour',
+                                                    style: TextStyle(fontSize: 12)),
+                                                DropdownButton<int>(
+                                                  value: time.hourOfPeriod == 0
+                                                      ? 12
+                                                      : time.hourOfPeriod,
+                                                  menuMaxHeight: 220,
+                                                  isDense: true,
+                                                  dropdownColor: Colors.white,
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.black),
+                                                  underline: const SizedBox(),
+                                                  borderRadius:
+                                                  BorderRadius.circular(6),
+                                                  items: List.generate(12, (i) {
+                                                    return DropdownMenuItem(
+                                                      value: i + 1,
+                                                      child: Container(
+                                                        height: 22,
+                                                        alignment:
+                                                        Alignment.center,
+                                                        child: Text(
+                                                            (i + 1)
+                                                                .toString()
+                                                                .padLeft(2, '0')),
+                                                      ),
+                                                    );
+                                                  }),
+                                                  onChanged: (value) {
+                                                    if (value != null) {
+                                                      setTimeState(() {
+                                                        final newHour = time.period ==
+                                                            DayPeriod.am
+                                                            ? (value == 12 ? 0 : value)
+                                                            : (value == 12
+                                                            ? 12
+                                                            : value + 12);
+                                                        time = TimeOfDay(
+                                                            hour: newHour,
+                                                            minute: time.minute);
+                                                      });
+                                                    }
+                                                  },
                                                 ),
-                                                const SizedBox(width: 8),
-                                                ElevatedButton(
-                                                  onPressed: () =>
-                                                      Navigator.of(context).pop(time),
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor: Colors.blue,
-                                                    foregroundColor: Colors.white,
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                            horizontal: 12,
-                                                            vertical: 6),
-                                                    minimumSize: const Size(40, 28),
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(6),
-                                                    ),
-                                                  ),
-                                                  child: const Text(
-                                                    'OK',
-                                                    style: TextStyle(fontSize: 12),
-                                                  ),
+                                              ],
+                                            ),
+
+                                            // Minute
+                                            Column(
+                                              children: [
+                                                const Text('Min',
+                                                    style: TextStyle(fontSize: 12)),
+                                                DropdownButton<int>(
+                                                  value: time.minute,
+                                                  menuMaxHeight: 220,
+                                                  isDense: true,
+                                                  dropdownColor: Colors.white,
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.black),
+                                                  underline: const SizedBox(),
+                                                  borderRadius:
+                                                  BorderRadius.circular(6),
+                                                  items: List.generate(60, (i) {
+                                                    return DropdownMenuItem(
+                                                      value: i,
+                                                      child: Container(
+                                                        height: 22,
+                                                        alignment:
+                                                        Alignment.center,
+                                                        child: Text(
+                                                            i.toString().padLeft(2, '0')),
+                                                      ),
+                                                    );
+                                                  }),
+                                                  onChanged: (value) {
+                                                    if (value != null) {
+                                                      setTimeState(() {
+                                                        time = TimeOfDay(
+                                                            hour: time.hour,
+                                                            minute: value);
+                                                      });
+                                                    }
+                                                  },
+                                                ),
+                                              ],
+                                            ),
+
+                                            // AM/PM
+                                            Column(
+                                              children: [
+                                                const Text('AM/PM',
+                                                    style: TextStyle(fontSize: 12)),
+                                                DropdownButton<DayPeriod>(
+                                                  value: time.period,
+                                                  menuMaxHeight: 220,
+                                                  isDense: true,
+                                                  dropdownColor: Colors.white,
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.black),
+                                                  underline: const SizedBox(),
+                                                  borderRadius:
+                                                  BorderRadius.circular(6),
+                                                  items: const [
+                                                    DropdownMenuItem(
+                                                        value: DayPeriod.am,
+                                                        child: Text('AM')),
+                                                    DropdownMenuItem(
+                                                        value: DayPeriod.pm,
+                                                        child: Text('PM')),
+                                                  ],
+                                                  onChanged: (value) {
+                                                    if (value != null) {
+                                                      setTimeState(() {
+                                                        final currentHour =
+                                                        time.hourOfPeriod == 0
+                                                            ? 12
+                                                            : time.hourOfPeriod;
+                                                        final newHour =
+                                                        value == DayPeriod.am
+                                                            ? (currentHour == 12
+                                                            ? 0
+                                                            : currentHour)
+                                                            : (currentHour == 12
+                                                            ? 12
+                                                            : currentHour + 12);
+                                                        time = TimeOfDay(
+                                                            hour: newHour,
+                                                            minute: time.minute);
+                                                      });
+                                                    }
+                                                  },
                                                 ),
                                               ],
                                             ),
                                           ],
                                         ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                                if (time != null) {
-                                  setState(() {
-                                    start = DateTime(date!.year, date!.month, date!.day,
-                                        time.hour, time.minute);
-                                  });
-                                }
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    // End date time picker (reuse same pattern)
-                    Container(
-  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12), // reduced padding
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              end == null
-                                  ? 'Select End Date & Time'
-                                  : DateFormat('MMM dd, yyyy - hh:mm a').format(end!),
-                              style: const TextStyle(
-                                  fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.calendar_today, color: Colors.blue),
-                            onPressed: () async {
-                              DateTime? date;
-                              await showDialog<DateTime>(
-                                context: context,
-                                builder: (context) => Dialog(
-                                  backgroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16)),
-                                  child: Container(
-                                    width: 320,
-                                    padding: const EdgeInsets.all(12),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Text(
-                                          'Select End Date',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Container(
-                                          height: 280,
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey.shade50,
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(color: Colors.grey.shade200),
-                                          ),
-                                          child: Theme(
-                                            data: Theme.of(context).copyWith(
-                                              colorScheme: Theme.of(context).colorScheme.copyWith(
-                                                    primary: Colors.blue,
-                                                    onPrimary: Colors.white,
-                                                    surface: Colors.white,
-                                                    onSurface: Colors.black87,
-                                                    // Fix selected date visibility
-                                                    secondary: Colors.blue.shade600,
-                                                    onSecondary: Colors.white,
-                                                    // These properties control the selected date appearance
-                                                    tertiary: Colors.blue,
-                                                    onTertiary: Colors.white,
-                                                    surfaceVariant: Colors.blue.shade50,
-                                                    onSurfaceVariant: Colors.blue.shade700,
-                                                    // Today's date and selected date colors
-                                                    primaryContainer: Colors.blue,
-                                                    onPrimaryContainer: Colors.white,
-                                                    outline: Colors.blue.shade300,
-                                                  ),
-                                              textButtonTheme: TextButtonThemeData(
-                                                style: TextButton.styleFrom(
-                                                  foregroundColor: Colors.blue,
-                                                ),
-                                              ),
-                                            ),
-                                            child: CalendarDatePicker(
-                                              initialDate: start ?? DateTime.now(),
-                                              firstDate: DateTime.now(),
-                                              lastDate: DateTime.now()
-                                                  .add(const Duration(days: 365)),
-                                              onDateChanged: (selectedDate) {
-                                                date = selectedDate;
-                                              },
-                                              currentDate: end ?? DateTime.now(),
-                                              selectableDayPredicate: (day) => true,
-                                            ),
-                                          ),
-                                        ),
                                         const SizedBox(height: 16),
+
+                                        // Buttons
                                         Row(
                                           mainAxisAlignment: MainAxisAlignment.end,
                                           children: [
                                             TextButton(
-                                              onPressed: () => Navigator.of(context).pop(),
-                                              style: TextButton.styleFrom(
-                                                padding: const EdgeInsets.symmetric(
-                                                    horizontal: 16, vertical: 8),
-                                                minimumSize: Size.zero,
-                                              ),
-                                              child: const Text(
-                                                'Cancel',
-                                                style:
-                                                    TextStyle(color: Colors.grey, fontSize: 14),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            ElevatedButton(
                                               onPressed: () =>
-                                                  Navigator.of(context).pop(date),
+                                                  Navigator.pop(context),
+                                              child: const Text('Cancel',
+                                                  style: TextStyle(fontSize: 13)),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            ElevatedButton(
                                               style: ElevatedButton.styleFrom(
                                                 backgroundColor: Colors.blue,
-                                                foregroundColor: Colors.white,
-                                                padding: const EdgeInsets.symmetric(
-                                                    horizontal: 12, vertical: 6),
-                                                minimumSize: const Size(40, 28),
+                                                padding:
+                                                const EdgeInsets.symmetric(
+                                                    horizontal: 14,
+                                                    vertical: 6),
                                                 shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(6),
-                                                ),
+                                                    borderRadius:
+                                                    BorderRadius.circular(6)),
                                               ),
-                                              child: const Text(
-                                                'OK',
-                                                style: TextStyle(fontSize: 12),
-                                              ),
+                                              onPressed: () =>
+                                                  Navigator.pop(context, time),
+                                              child: const Text('OK',
+                                                  style: TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.white)),
                                             ),
                                           ],
                                         ),
                                       ],
                                     ),
                                   ),
-                                ),
-                              );
-
-                              if (date != null) {
-                                TimeOfDay time = TimeOfDay.now();
-                                await showDialog<TimeOfDay>(
-                                  context: context,
-                                  barrierColor: Colors.black54,
-                                  builder: (context) => StatefulBuilder(
-                                    builder: (context, setState) => Dialog(
-                                      backgroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(16)),
-                                      elevation: 8,
-                                      child: Container(
-                                        width: 280,
-                                        padding: const EdgeInsets.all(16),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Text(
-                                              'Select End Time',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.black87,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 16),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                  horizontal: 12, vertical: 12),
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    Colors.blue.shade50,
-                                                    Colors.indigo.shade50
-                                                  ],
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                ),
-                                                borderRadius: BorderRadius.circular(12),
-                                                border:
-                                                    Border.all(color: Colors.blue.shade200),
-                                              ),
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.spaceEvenly,
-                                                children: [
-                                                  Column(
-                                                    children: [
-                                                      const Text(
-                                                        'Hour',
-                                                        style: TextStyle(
-                                                            fontSize: 12,
-                                                            color: Colors.grey,
-                                                            fontWeight: FontWeight.w400),
-                                                      ),
-                                                      const SizedBox(height: 8),
-                                                      Container(
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                                horizontal: 8, vertical: 6),
-                                                        decoration: BoxDecoration(
-                                                          color: Colors.white,
-                                                          borderRadius:
-                                                              BorderRadius.circular(8),
-                                                          boxShadow: [
-                                                            BoxShadow(
-                                                              color: Colors.grey.shade300,
-                                                              blurRadius: 2,
-                                                              offset: const Offset(0, 1),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        child: DropdownButton<int>(
-                                                          value: time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod,
-                                                          underline: const SizedBox(),
-                                                          isDense: true,
-                                                          menuMaxHeight: 240,
-                                                          dropdownColor: Colors.white,
-                                                          items: List.generate(
-                                                            12,
-                                                            (i) => DropdownMenuItem(
-                                                              value: i + 1,
-                                                              child: Text(
-                                                                (i + 1).toString().padLeft(2, '0'),
-                                                                style: const TextStyle(
-                                                                    fontSize: 12,
-                                                                    fontWeight: FontWeight.w400,
-                                                                    color: Colors.black87),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                          onChanged: (value) {
-                                                            if (value != null) {
-                                                              setState(() {
-                                                                final newHour = time.period == DayPeriod.am 
-                                                                    ? (value == 12 ? 0 : value)
-                                                                    : (value == 12 ? 12 : value + 12);
-                                                                time = TimeOfDay(
-                                                                    hour: newHour,
-                                                                    minute: time.minute);
-                                                              });
-                                                            }
-                                                          },
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                
-                                                  Column(
-                                                    children: [
-                                                      const Text(
-                                                        'Minute',
-                                                        style: TextStyle(
-                                                            fontSize: 12,
-                                                            color: Colors.grey,
-                                                            fontWeight: FontWeight.w400),
-                                                      ),
-                                                      const SizedBox(height: 8),
-                                                      Container(
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                                horizontal: 8, vertical: 6),
-                                                        decoration: BoxDecoration(
-                                                          color: Colors.white,
-                                                          borderRadius:
-                                                              BorderRadius.circular(8),
-                                                          boxShadow: [
-                                                            BoxShadow(
-                                                              color: Colors.grey.shade300,
-                                                              blurRadius: 2,
-                                                              offset: const Offset(0, 1),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        child: DropdownButton<int>(
-                                                          value: time.minute,
-                                                          underline: const SizedBox(),
-                                                          isDense: true,
-                                                          menuMaxHeight: 240,
-                                                          dropdownColor: Colors.white,
-                                                          items: List.generate(
-                                                            60,
-                                                            (i) => DropdownMenuItem(
-                                                              value: i,
-                                                              child: Text(
-                                                                i.toString().padLeft(2, '0'),
-                                                                style: const TextStyle(
-                                                                    fontSize: 12,
-                                                                    fontWeight: FontWeight.w400,
-                                                                    color: Colors.black87),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                          onChanged: (value) {
-                                                            if (value != null) {
-                                                              setState(() {
-                                                                time = TimeOfDay(
-                                                                    hour: time.hour,
-                                                                    minute: value);
-                                                              });
-                                                            }
-                                                          },
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  Column(
-                                                    children: [
-                                                      const Text(
-                                                        'Period',
-                                                        style: TextStyle(
-                                                            fontSize: 12,
-                                                            color: Colors.grey,
-                                                            fontWeight: FontWeight.w400),
-                                                      ),
-                                                      const SizedBox(height: 8),
-                                                      Container(
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                                horizontal: 8, vertical: 6),
-                                                        decoration: BoxDecoration(
-                                                          color: Colors.white,
-                                                          borderRadius:
-                                                              BorderRadius.circular(8),
-                                                          boxShadow: [
-                                                            BoxShadow(
-                                                              color: Colors.grey.shade300,
-                                                              blurRadius: 2,
-                                                              offset: const Offset(0, 1),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        child: DropdownButton<DayPeriod>(
-                                                          value: time.period,
-                                                          underline: const SizedBox(),
-                                                          isDense: true,
-                                                          dropdownColor: Colors.white,
-                                                          items: const [
-                                                            DropdownMenuItem(
-                                                              value: DayPeriod.am,
-                                                              child: Text(
-                                                                'AM',
-                                                                style: TextStyle(
-                                                                    fontSize: 12,
-                                                                    fontWeight: FontWeight.w400,
-                                                                    color: Colors.black87),
-                                                              ),
-                                                            ),
-                                                            DropdownMenuItem(
-                                                              value: DayPeriod.pm,
-                                                              child: Text(
-                                                                'PM',
-                                                                style: TextStyle(
-                                                                    fontSize: 12,
-                                                                    fontWeight: FontWeight.w400,
-                                                                    color: Colors.black87),
-                                                              ),
-                                                            ),
-                                                          ],
-                                                          onChanged: (value) {
-                                                            if (value != null) {
-                                                              setState(() {
-                                                                final currentHour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-                                                                final newHour = value == DayPeriod.am 
-                                                                    ? (currentHour == 12 ? 0 : currentHour)
-                                                                    : (currentHour == 12 ? 12 : currentHour + 12);
-                                                                time = TimeOfDay(
-                                                                    hour: newHour,
-                                                                    minute: time.minute);
-                                                              });
-                                                            }
-                                                          },
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(height: 20),
-                                            Row(
-                                              mainAxisAlignment: MainAxisAlignment.end,
-                                              children: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.of(context).pop(),
-                                                  child: const Text('Cancel'),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                ElevatedButton(
-                                                  onPressed: () =>
-                                                      Navigator.of(context).pop(time),
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor: Colors.blue,
-                                                    foregroundColor: Colors.white,
-                                                    padding: const EdgeInsets.symmetric(
-                                                        horizontal: 16, vertical: 8),
-                                                    minimumSize: Size.zero,
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius: BorderRadius.circular(6),
-                                                    ),
-                                                  ),
-                                                  child: const Text('OK'),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
                                 );
-                                if (time != null) {
-                                  setState(() {
-                                    end = DateTime(date!.year, date!.month, date!.day,
-                                        time.hour, time.minute);
-                                  });
-                                }
-                              }
-                            },
-                          ),
-                        ],
+                              },
+                            );
+                          },
+                        );
+
+                        if (pickedTime != null) {
+                          setState(() {
+                            end = DateTime(
+                              pickedDate.year,
+                              pickedDate.month,
+                              pickedDate.day,
+                              pickedTime.hour,
+                              pickedTime.minute,
+                            );
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                end == null
+                                    ? 'Select End Date & Time'
+                                    : DateFormat('MMM dd, yyyy - hh:mm a')
+                                    .format(end!),
+                                style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.black87),
+                              ),
+                            ),
+                            const Icon(Icons.calendar_today, color: Colors.blue),
+                          ],
+                        ),
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
+                    // Bottom Buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: const Text('Cancel'),
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel', style: TextStyle(fontSize: 13)),
                         ),
                         const SizedBox(width: 10),
-                        TextButton(
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 6),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6)),
+                          ),
                           onPressed: () {
-                            if (start == null || end == null) {
+                            if (end == null) {
                               CustomSnackbar.showError(
-                                  message: 'Please select both start and end times');
+                                  message: 'Please select end date & time');
                               return;
                             }
-                            if (end!.isBefore(start!)) {
+
+                            // --- Validation in local time ---
+                            final DateTime minAllowed = assignedDate;
+                            final DateTime maxAllowed = threeDaysLater;
+                            if (end!.isBefore(minAllowed) || end!.isAfter(maxAllowed)) {
                               CustomSnackbar.showError(
-                                  message: 'End time must be after start time');
+                                message:
+                                'Estimated end must be between ${DateFormat('MMM dd, yyyy hh:mm a').format(minAllowed)} and ${DateFormat('MMM dd, yyyy hh:mm a').format(maxAllowed)}',
+                              );
                               return;
                             }
-                            estimatedStart = start;
+
                             estimatedEnd = end;
-                            Navigator.of(context).pop();
+                            Navigator.pop(context);
                           },
-                          child: const Text('Accept'),
+                          child: const Text('Accept',
+                              style: TextStyle(fontSize: 13, color: Colors.white)),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-            ),
-          );
-        },
-      );
-    },
-  );
-
-  if (estimatedStart == null || estimatedEnd == null) return;
-
-  if (widget.task.taskId == null) {
-    CustomSnackbar.showError(message: 'Task ID is missing');
-    return;
-  }
-
-  setState(() => _isLoading = true);
-  try {
-    await controller.acceptDeclineTask(
-      taskId: widget.task.taskId!,
-      action: 'accept',
-      estimatedStart: estimatedStart,
-      estimatedEnd: estimatedEnd,
+            );
+          },
+        );
+      },
     );
-    setState(() {
-      _accepted = true;
-      _selectedStatus = 'Completed';
-    });
-  } catch (e) {
-    CustomSnackbar.showError(message: 'Failed to accept task: $e');
-  } finally {
-    setState(() => _isLoading = false);
+
+    if (estimatedEnd == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      // --- Send UTC to backend ---
+      await controller.acceptDeclineTask(
+        taskId: widget.task.taskId!,
+        action: 'accept',
+        estimatedEnd: estimatedEnd!.toUtc(),
+      );
+
+      setState(() {
+        _accepted = true;
+        _selectedStatus = 'Completed';
+      });
+    } catch (e) {
+      CustomSnackbar.showError(message: e.toString());
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
-}
+
+
+
+
+
+
+
 
 
 
@@ -1016,62 +532,85 @@ Future<void> _acceptTask() async {
       context: context,
       builder: (context) {
         String declineReason = '';
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          backgroundColor: Colors.white,
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.85,
-            constraints: const BoxConstraints(maxHeight: 300),
-            padding: const EdgeInsets.all(20),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Decline Task',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: TextField(
-                      onChanged: (value) => declineReason = value,
-                      decoration: const InputDecoration(
-                        labelText: 'Reason for declining',
-                        hintText: 'Enter reason...',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.all(16),
-                      ),
-                      maxLines: 3,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+        bool showError = false;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              backgroundColor: Colors.white,
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.85,
+                constraints: const BoxConstraints(maxHeight: 300),
+                padding: const EdgeInsets.all(20),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(null),
-                        child: const Text('Cancel'),
+                      const Text(
+                        'Decline Task',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      const SizedBox(width: 10),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(declineReason.trim()),
-                        child: const Text('Decline'),
+                      const SizedBox(height: 16),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: showError ? Colors.red : Colors.transparent,
+                          ),
+                        ),
+                        child: TextField(
+                          onChanged: (value) {
+                            setDialogState(() {
+                              declineReason = value;
+                              if (showError && declineReason.trim().isNotEmpty) {
+                                showError = false;
+                              }
+                            });
+                          },
+                          decoration: InputDecoration(
+                            labelText: 'Reason for declining',
+                            hintText: 'Enter reason...',
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.all(16),
+                            errorText: showError ? 'Reason is required' : null,
+                          ),
+                          maxLines: 3,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(null),
+                            child: const Text('Cancel'),
+                          ),
+                          const SizedBox(width: 10),
+                          TextButton(
+                            onPressed: () {
+                              final trimmedReason = declineReason.trim();
+                              if (trimmedReason.isEmpty) {
+                                setDialogState(() => showError = true);
+                                return;
+                              }
+                              Navigator.of(context).pop(trimmedReason);
+                            },
+                            child: const Text('Decline'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -1175,6 +714,35 @@ Future<void> _acceptTask() async {
         ],
       ),
     );
+  }
+
+  String _formatAddress(Address address) {
+    List<String> addressParts = [];
+    if (address.name != null && address.name!.isNotEmpty) {
+      addressParts.add(address.name!);
+    }
+    if (address.street != null && address.street!.isNotEmpty) {
+      addressParts.add(address.street!);
+    }
+    if (address.landmark != null && address.landmark!.isNotEmpty) {
+      addressParts.add('Near ${address.landmark!}');
+    }
+    if (address.city != null && address.city!.isNotEmpty) {
+      addressParts.add(address.city!);
+    }
+    if (address.district != null && address.district!.isNotEmpty) {
+      addressParts.add(address.district!);
+    }
+    if (address.state != null && address.state!.isNotEmpty) {
+      addressParts.add(address.state!);
+    }
+    if (address.pincode != null && address.pincode!.isNotEmpty) {
+      addressParts.add(address.pincode!);
+    }
+    if (address.phone != null && address.phone!.isNotEmpty) {
+      addressParts.add('Phone: ${address.phone!}');
+    }
+    return addressParts.isNotEmpty ? addressParts.join(', ') : 'N/A';
   }
 
   Widget _buildDropdown() {
@@ -1312,6 +880,11 @@ Future<void> _acceptTask() async {
                 _buildInfoItem("Customer's email", task.taskCreatedByUserEmail),
                 if (task.wpDeviceId != null)
                   _buildInfoItem('WP Device ID', task.wpDeviceId),
+                if (task.product?.modelName != null)
+                  _buildInfoItem('Model Name', task.product!.modelName),
+                if (task.address != null) ...[
+                  _buildInfoItem('Delivery Address', _formatAddress(task.address!)),
+                ],
                 const SizedBox(height: 30),
                 if (!_accepted && !_declined) ...[
                   Text('Accept or Decline Task',

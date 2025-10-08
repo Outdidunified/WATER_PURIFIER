@@ -36,6 +36,21 @@ class SettingsController extends GetxController {
   final editStateController = TextEditingController();
   final editCountryController = TextEditingController();
   final editPincodeController = TextEditingController();
+  // Password controller
+  final editPasswordController = TextEditingController();
+  
+  // Original values for change detection
+  String _originalName = '';
+  String _originalPhone = '';
+  String _originalCity = '';
+  String _originalAddress1 = '';
+  String _originalAddress2 = '';
+  String _originalDistrict = '';
+  String _originalState = '';
+  String _originalCountry = '';
+  String _originalPincode = '';
+  String _originalPassword = '';
+  
   final formKey = GlobalKey<FormState>();
   var isFormValid = false.obs;
   var isEditLoading = false.obs;
@@ -44,6 +59,7 @@ class SettingsController extends GetxController {
   var nameError = ''.obs;
   var phoneError = ''.obs;
   var cityError = ''.obs;
+  var passwordError = ''.obs;
 
   var paymentHistoryList = <PaymentHistory>[].obs;
   // Add reactive list for delivery address visibility
@@ -57,7 +73,6 @@ class SettingsController extends GetxController {
 
   Timer? _debounce;
   Timer? _saveDebounce;
-  var _isFormInitialized = false;
 
   // Method to toggle visibility at a specific index
   void toggleDeliveryAddressVisibility(int index) {
@@ -149,20 +164,47 @@ class SettingsController extends GetxController {
   }
 
   void initializeEditForm() {
-    if (_isFormInitialized) return;
+    if (userData.value == null) return;
 
-    editNameController.text = userData.value?.data.name ?? '';
-    editPhoneController.text = userData.value?.data.phone?.toString() ?? '';
-    editCityController.text = userData.value?.data.city ?? '';
-    // initialize address fields
-    editAddressLine1Controller.text = userData.value?.data.addressline1 ?? '';
-    editAddressLine2Controller.text = userData.value?.data.addressline2 ?? '';
-    editDistrictController.text = userData.value?.data.district ?? '';
-    editStateController.text = userData.value?.data.state ?? '';
-    editCountryController.text = userData.value?.data.country ?? '';
-    editPincodeController.text = userData.value?.data.pincode ?? '';
+    // Store original values for change detection
+    _originalName = userData.value?.data.name ?? '';
+    _originalPhone = userData.value?.data.phone?.toString() ?? '';
+    _originalCity = userData.value?.data.city ?? '';
+    _originalAddress1 = userData.value?.data.addressline1 ?? '';
+    _originalAddress2 = userData.value?.data.addressline2 ?? '';
+    _originalDistrict = userData.value?.data.district ?? '';
+    _originalState = userData.value?.data.state ?? '';
+    _originalCountry = userData.value?.data.country ?? '';
+    _originalPincode = userData.value?.data.pincode ?? '';
+    _originalPassword = userData.value?.data.password?.toString() ?? '';
+
+    // If password from backend is null, use from session
+    final sessionController = Get.find<SessionController>();
+    if (_originalPassword.isEmpty && sessionController.password.value.isNotEmpty) {
+      _originalPassword = sessionController.password.value;
+    }
+
+    // Debug: Check password value
+    debugPrint('🔐 Password from backend: ${userData.value?.data.password}');
+    debugPrint('🔐 Password from session: ${sessionController.password.value}');
+    debugPrint('🔐 Original password string: $_originalPassword');
+
+    // Initialize controllers with original values
+    editNameController.text = _originalName;
+    editPhoneController.text = _originalPhone;
+    editCityController.text = _originalCity;
+    editAddressLine1Controller.text = _originalAddress1;
+    editAddressLine2Controller.text = _originalAddress2;
+    editDistrictController.text = _originalDistrict;
+    editStateController.text = _originalState;
+    editCountryController.text = _originalCountry;
+    editPincodeController.text = _originalPincode;
+    editPasswordController.text = _originalPassword;
+
+    // Debug: Verify password controller was set
+    debugPrint('🔐 Password controller text: ${editPasswordController.text}');
+
     validateForm();
-    _isFormInitialized = true;
   }
 
   void validateForm() {
@@ -171,11 +213,19 @@ class SettingsController extends GetxController {
       final name = editNameController.text.trim();
       final phone = editPhoneController.text.trim();
       final city = editCityController.text.trim();
+      final address1 = editAddressLine1Controller.text.trim();
+      final address2 = editAddressLine2Controller.text.trim();
+      final district = editDistrictController.text.trim();
+      final state = editStateController.text.trim();
+      final country = editCountryController.text.trim();
+      final pincode = editPincodeController.text.trim();
+      final password = editPasswordController.text.trim();
 
       // Reset error messages
       nameError.value = '';
       phoneError.value = '';
       cityError.value = '';
+      passwordError.value = '';
 
       // Validate each field
       if (name.isEmpty) {
@@ -196,10 +246,34 @@ class SettingsController extends GetxController {
         cityError.value = 'City must be at least 2 characters';
       }
 
-      // Update form validity
-      isFormValid.value = nameError.value.isEmpty &&
+      // Validate password - must be exactly 4 digits
+      if (password.isEmpty) {
+        passwordError.value = 'Password is required';
+      } else if (password.length != 4 || !RegExp(r'^[0-9]+$').hasMatch(password)) {
+        passwordError.value = 'Password must be exactly 4 digits';
+      }
+
+      // Check if all fields are valid
+      final isValid = nameError.value.isEmpty &&
           phoneError.value.isEmpty &&
-          cityError.value.isEmpty;
+          cityError.value.isEmpty &&
+          passwordError.value.isEmpty;
+
+      // Check if there are any changes from original values
+      final hasChanges = name != _originalName ||
+          phone != _originalPhone ||
+          city != _originalCity ||
+          address1 != _originalAddress1 ||
+          address2 != _originalAddress2 ||
+          district != _originalDistrict ||
+          state != _originalState ||
+          country != _originalCountry ||
+          pincode != _originalPincode ||
+          password != _originalPassword;
+
+      // Update form validity - enable button if there are ANY changes
+      // Validation errors will still show, but user can attempt to save
+      isFormValid.value = hasChanges;
     });
   }
 
@@ -219,10 +293,10 @@ class SettingsController extends GetxController {
           username: response.data!.data.name,
           isSubscribed: response.data!.data.isSubscribed,
           technicianId: sessionController.technicianId.value,
+          password: response.data!.data.password?.toString(),
         );
 
         // Initialize the form fields with user data after successful fetch
-        _isFormInitialized = false; // Reset to ensure form gets initialized
         initializeEditForm();
       } else {
         errorMessage.value = response.message ?? 'No user details found';
@@ -273,11 +347,58 @@ class SettingsController extends GetxController {
   required String state,
   required String country,
   required String pincode,
+  required String password,
 }) async {
   try {
     isEditLoading(true);
 
+    // Validate required fields before attempting to save
+    if (name.trim().isEmpty) {
+      CustomSnackbar.showError(message: 'Username is required');
+      isEditLoading(false);
+      return;
+    }
+    if (name.trim().length < 3) {
+      CustomSnackbar.showError(message: 'Username must be at least 3 characters');
+      isEditLoading(false);
+      return;
+    }
+    if (phone.trim().isEmpty) {
+      CustomSnackbar.showError(message: 'Phone number is required');
+      isEditLoading(false);
+      return;
+    }
+    if (city.trim().isEmpty) {
+      CustomSnackbar.showError(message: 'City is required');
+      isEditLoading(false);
+      return;
+    }
+    if (city.trim().length < 2) {
+      CustomSnackbar.showError(message: 'City must be at least 2 characters');
+      isEditLoading(false);
+      return;
+    }
+
     final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    
+    if (cleanPhone.length != 10) {
+      CustomSnackbar.showError(message: 'Phone number must be exactly 10 digits');
+      isEditLoading(false);
+      return;
+    }
+    
+    // Validate password (required field)
+    if (password.isEmpty) {
+      CustomSnackbar.showError(message: 'Password is required');
+      isEditLoading(false);
+      return;
+    }
+    if (password.length != 4 || !RegExp(r'^[0-9]+$').hasMatch(password)) {
+      CustomSnackbar.showError(message: 'Password must be exactly 4 digits');
+      isEditLoading(false);
+      return;
+    }
+    
     final phoneInt = int.parse(cleanPhone);
 
     // Check if any change
@@ -291,7 +412,8 @@ class SettingsController extends GetxController {
         district == (currentData.district ?? '') &&
         state == (currentData.state ?? '') &&
         country == (currentData.country ?? '') &&
-        pincode == (currentData.pincode ?? '')) {
+        pincode == (currentData.pincode ?? '') &&
+        password == (currentData.password?.toString() ?? '')) {
       CustomSnackbar.showInfo(message: 'No changes made to update.');
       isEditLoading(false);
       return;
@@ -309,14 +431,21 @@ class SettingsController extends GetxController {
       state: state,
       country: country,
       pincode: pincode,
+      password: password,
     );
 
     if (response.error == false && response.data != null) {
+      debugPrint('✅ Update successful - Password being saved: $password');
+      
+      debugPrint('✅ Update successful - Password being saved: $password');
+      
       final Map<String, dynamic> safeData = {
         'user_id': response.data?['user_id'] ?? userId,
         'name': response.data?['name'] ?? name,
         'email': response.data?['email'] ?? email,
         'phone': response.data?['phone'] ?? phoneInt,
+        'password': response.data?['password'] ?? int.parse(password),
+        'password': response.data?['password'] ?? int.parse(password),
         'addressline1': response.data?['addressline1'] ?? addressline1,
         'addressline2': response.data?['addressline2'] ?? addressline2,
         'city': response.data?['city'] ?? city,
@@ -330,12 +459,29 @@ class SettingsController extends GetxController {
             currentData?.createdDate.toIso8601String() ?? DateTime.now().toIso8601String(),
         'modifiedDate': response.data?['modifiedDate'] ?? DateTime.now().toIso8601String(),
       };
+      
+      debugPrint('✅ SafeData password: ${safeData['password']}');
+      
+      debugPrint('✅ SafeData password: ${safeData['password']}');
 
       userData.value = UserDetailsModel.fromJson({
         'error': false,
         'message': response.message ?? 'User details updated successfully',
         'data': safeData,
       });
+
+      // Save updated password to session
+      final sessionController = Get.find<SessionController>();
+      await sessionController.saveSession(
+        userId: sessionController.userId.value,
+        emailId: sessionController.emailId.value,
+        token: sessionController.token.value,
+        userRole: sessionController.userRole.value,
+        username: userData.value!.data.name,
+        isSubscribed: userData.value!.data.isSubscribed,
+        technicianId: sessionController.technicianId.value,
+        password: userData.value!.data.password?.toString(),
+      );
 
       CustomSnackbar.showSuccess(message: 'User details updated successfully');
       await Future.delayed(const Duration(seconds: 2));
@@ -372,6 +518,7 @@ class SettingsController extends GetxController {
         state: editStateController.text.trim(),
         country: editCountryController.text.trim(),
         pincode: editPincodeController.text.trim(),
+        password: editPasswordController.text.trim(),
       );
     });
   }

@@ -31,6 +31,17 @@ class TechnicianSettingsController extends GetxController {
   final editCountryController = TextEditingController();
   final editPincodeController = TextEditingController();
 
+  // Original values for change detection
+  String _originalName = '';
+  String _originalPhone = '';
+  String _originalCity = '';
+  String _originalAddress1 = '';
+  String _originalAddress2 = '';
+  String _originalDistrict = '';
+  String _originalState = '';
+  String _originalCountry = '';
+  String _originalPincode = '';
+
   final formKey = GlobalKey<FormState>();
   var isFormValid = false.obs;
   var isEditLoading = false.obs;
@@ -86,15 +97,25 @@ class TechnicianSettingsController extends GetxController {
 
   void initializeEditForm() {
     if (technicianData.value != null) {
-      editNameController.text = technicianData.value?.name ?? '';
-      editPhoneController.text = technicianData.value?.phone.toString() ?? '';
-      editCityController.text = technicianData.value?.city ?? '';
-      editAddress1Controller.text = technicianData.value?.addressline1 ?? '';
-      editAddress2Controller.text = technicianData.value?.addressline2 ?? '';
-      editDistrictController.text = technicianData.value?.district ?? '';
-      editStateController.text = technicianData.value?.state ?? '';
-      editCountryController.text = technicianData.value?.country ?? '';
-      editPincodeController.text = technicianData.value?.pincode ?? '';
+      _originalName = technicianData.value?.name ?? '';
+      _originalPhone = technicianData.value?.phone.toString() ?? '';
+      _originalCity = technicianData.value?.city ?? '';
+      _originalAddress1 = technicianData.value?.addressline1 ?? '';
+      _originalAddress2 = technicianData.value?.addressline2 ?? '';
+      _originalDistrict = technicianData.value?.district ?? '';
+      _originalState = technicianData.value?.state ?? '';
+      _originalCountry = technicianData.value?.country ?? '';
+      _originalPincode = technicianData.value?.pincode ?? '';
+
+      editNameController.text = _originalName;
+      editPhoneController.text = _originalPhone;
+      editCityController.text = _originalCity;
+      editAddress1Controller.text = _originalAddress1;
+      editAddress2Controller.text = _originalAddress2;
+      editDistrictController.text = _originalDistrict;
+      editStateController.text = _originalState;
+      editCountryController.text = _originalCountry;
+      editPincodeController.text = _originalPincode;
     }
   }
 
@@ -162,7 +183,8 @@ class TechnicianSettingsController extends GetxController {
       pincodeError.value = 'Pincode is required';
     }
 
-    isFormValid.value = nameError.value.isEmpty &&
+    // Check if all fields are valid
+    final isValid = nameError.value.isEmpty &&
         phoneError.value.isEmpty &&
         cityError.value.isEmpty &&
         address1Error.value.isEmpty &&
@@ -170,6 +192,19 @@ class TechnicianSettingsController extends GetxController {
         stateError.value.isEmpty &&
         countryError.value.isEmpty &&
         pincodeError.value.isEmpty;
+
+    // Check if there are any changes from original values
+    final hasChanges = name != _originalName ||
+        phone != _originalPhone ||
+        city != _originalCity ||
+        address1 != _originalAddress1 ||
+        editAddress2Controller.text.trim() != _originalAddress2 ||
+        district != _originalDistrict ||
+        state != _originalState ||
+        country != _originalCountry ||
+        pincode != _originalPincode;
+
+    isFormValid.value = isValid && hasChanges;
   }
 
   Future<void> fetchTechnicianDetails() async {
@@ -190,6 +225,7 @@ class TechnicianSettingsController extends GetxController {
           technicianId: Get.find<SessionController>().technicianId.value,
         );
         initializeEditForm();
+        validateForm();
       } else {
         errorMessage.value = response.message ?? 'No technician details found';
       }
@@ -240,6 +276,8 @@ class TechnicianSettingsController extends GetxController {
           country: country,
           pincode: pincode,
         );
+        // Update original values after successful save
+        initializeEditForm();
         CustomSnackbar.showSuccess(message: 'Details updated successfully');
         await Future.delayed(const Duration(seconds: 2));
         Get.back();
