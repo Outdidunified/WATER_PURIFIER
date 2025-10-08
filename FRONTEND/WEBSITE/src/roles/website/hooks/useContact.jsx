@@ -49,7 +49,7 @@ const useContact = () => {
         } catch (error) {
             Swal.fire("Error", "Server error. Please try again later.", "error");
         }
-    };    
+    };
 
     // Email validation
     const sanitizeEmail = (value) => {
