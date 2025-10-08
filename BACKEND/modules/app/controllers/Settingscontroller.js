@@ -275,7 +275,7 @@ exports.updateUserDetails = async (req, res) => {
       otp: null
     };
 
-    // ✅ Step 4: Insert into collection
+    // ✅ Step 4: Insert into collection 
     await serviceRecordsCollection.insertOne(newServiceRecord);
 
     // Auto assign service
