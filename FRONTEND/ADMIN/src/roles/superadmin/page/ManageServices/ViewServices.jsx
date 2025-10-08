@@ -239,7 +239,7 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                               {task.image_before_service.map((img, idx) => (
                                 <div className="col-md-3 mb-2" key={idx}>
                                   <img
-                                    src={`/upload${img}`}
+                                    src={`${img}`}
                                     alt={`Before ${idx}`}
                                     className="img-fluid rounded"
                                     style={{ border: '1px solid #ccc', padding: '5px', maxHeight: '150px' }}
@@ -260,7 +260,7 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                               {task.image_after_service.map((img, idx) => (
                                 <div className="col-md-3 mb-2" key={idx}>
                                   <img
-                                    src={`/upload${img}`}
+                                    src={`${img}`}
                                     alt={`After ${idx}`}
                                     className="img-fluid rounded"
                                     style={{ border: '1px solid #ccc', padding: '5px', maxHeight: '150px' }}
