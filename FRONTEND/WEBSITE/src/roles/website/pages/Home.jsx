@@ -849,7 +849,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                     <div className="card-footer text-center">
                                                                         {(() => {
                                                                             const product = products[selectedModelIndex];
-                                                                            const isOutOfStock = !product?.wp_device_id || product?.wp_device_quantity <= 0;
+                                                                            const isOutOfStock = !product?.wp_device_id;
                                                                             if (isOutOfStock) {
                                                                                 return (
                                                                                     <button className="btn btn-danger" disabled>
