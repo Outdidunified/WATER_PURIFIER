@@ -111,6 +111,7 @@ function normalizeDeliveryAddress(address = {}) {
     state: trimVal(normalizeState(address.state) || ''),
     pincode: trimVal(address.pincode || ''),
     email: trimVal(address.email || ''),
+    country: trimVal(address.country || ''), // default to India
   };
 }
 
