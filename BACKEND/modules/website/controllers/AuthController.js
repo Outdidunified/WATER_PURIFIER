@@ -156,15 +156,28 @@ exports.login = async (req, res) => {
   const { email, role_id } = req.body;
 
   if (!email || Number(role_id) !== 3) {
-    return res.status(400).json({ error: true, message: 'Email and role_id = 3 are required' });
+    return res.status(400).json({
+      error: true,
+      message: 'Email and role_id = 3 are required',
+    });
   }
 
   try {
     const db = await connectToDatabase();
+
+    // Fetch role details
     const role = await db.collection('user_roles').findOne({ role_id: Number(role_id) });
 
     if (!role) {
       return res.status(404).json({ error: true, message: 'Role not found' });
+    }
+
+    // 🔒 Block login if EndUser role is deactivated
+    if (role.role_id === 3 && role.status === false) {
+      return res.status(403).json({
+        error: true,
+        message: 'EndUser role is deactivated. Login not allowed.',
+      });
     }
 
     const otp = generateOtp();
@@ -172,13 +185,16 @@ exports.login = async (req, res) => {
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
     const createdDate = new Date();
 
-    const existingUser = await db.collection('users').findOne({ email, role_id: Number(role_id) });
+    // Check if user already exists
+    const existingUser = await db
+      .collection('users')
+      .findOne({ email, role_id: Number(role_id) });
 
     if (existingUser) {
       //  Check and reset expired subscription if needed
       await checkAndResetSubscription(db, existingUser);
 
-      // Update OTP
+      // Update OTP for existing user
       await db.collection('users').updateOne(
         { email, role_id: Number(role_id) },
         { $set: { otp, otpGeneratedAt, otpExpires } }
@@ -193,12 +209,19 @@ exports.login = async (req, res) => {
         data: {
           user_id: existingUser.user_id,
           role_id: existingUser.role_id,
-          email: existingUser.email
-        }
+          email: existingUser.email,
+        },
       });
     } else {
+      // Register a new user
       const generatedPassword = generateNumericPassword();
-      const lastUser = await db.collection('users').find().sort({ user_id: -1 }).limit(1).toArray();
+      const lastUser = await db
+        .collection('users')
+        .find()
+        .sort({ user_id: -1 })
+        .limit(1)
+        .toArray();
+
       const newUserId = lastUser.length > 0 ? lastUser[0].user_id + 1 : 1;
 
       const newUser = {
@@ -215,7 +238,7 @@ exports.login = async (req, res) => {
         user_id: newUserId,
         status: true,
         is_subscribed: false,
-        createdDate
+        createdDate,
       };
 
       await db.collection('users').insertOne(newUser);
@@ -229,20 +252,20 @@ exports.login = async (req, res) => {
         data: {
           user_id: newUserId,
           role_id: role.role_id,
-          email
-        }
+          email,
+        },
       });
     }
-
   } catch (error) {
     console.error('Register/Login error:', error);
     return res.status(500).json({
       error: true,
       message: 'Register/Login failed',
-      details: error.message
+      details: error.message,
     });
   }
 };
+
 
 
 
@@ -418,6 +441,27 @@ exports.loginWithEmail = async (req, res) => {
   try {
     const db = await connectToDatabase();
 
+    // 🔍 Fetch the role document
+    const role = await db.collection('user_roles').findOne({ role_id: Number(role_id) });
+
+    if (!role) {
+      return res.status(404).json({
+        error: true,
+        status: 'failed',
+        message: 'Role not found'
+      });
+    }
+
+    // 🔒 Block login if EndUser role is deactivated
+    if (role.role_id === 3 && role.status === false) {
+      return res.status(403).json({
+        error: true,
+        status: 'failed',
+        message: 'EndUser role is deactivated. Login not allowed.'
+      });
+    }
+
+    // 🔍 Find the user by email and role
     const user = await db.collection('users').findOne({ email, role_id: Number(role_id) });
 
     if (!user) {
@@ -428,6 +472,7 @@ exports.loginWithEmail = async (req, res) => {
       });
     }
 
+    // 🔑 Verify password
     if (user.password !== password) {
       return res.status(400).json({
         error: true,
@@ -436,6 +481,7 @@ exports.loginWithEmail = async (req, res) => {
       });
     }
 
+    // 🚫 Only allow End Users (role_id = 3)
     if (Number(role_id) !== 3) {
       return res.status(403).json({
         error: true,
@@ -444,6 +490,7 @@ exports.loginWithEmail = async (req, res) => {
       });
     }
 
+    // 🚫 Block deactivated users
     if (!user.status) {
       return res.status(403).json({
         error: true,
@@ -455,6 +502,7 @@ exports.loginWithEmail = async (req, res) => {
     // ✅ Check and reset expired subscriptions
     await checkAndResetSubscription(db, user);
 
+    // 🪙 Generate JWT token
     const token = generateToken(user._id);
 
     const minimalUser = {
@@ -464,7 +512,7 @@ exports.loginWithEmail = async (req, res) => {
       email: user.email,
     };
 
-    res.status(200).json({
+    return res.status(200).json({
       error: false,
       status: 'success',
       message: 'Login successful',
@@ -473,7 +521,8 @@ exports.loginWithEmail = async (req, res) => {
     });
 
   } catch (err) {
-    res.status(500).json({
+    console.error('LoginWithEmail error:', err);
+    return res.status(500).json({
       error: true,
       status: 'error',
       message: 'Login error',
@@ -481,6 +530,7 @@ exports.loginWithEmail = async (req, res) => {
     });
   }
 };
+
 
 
 
