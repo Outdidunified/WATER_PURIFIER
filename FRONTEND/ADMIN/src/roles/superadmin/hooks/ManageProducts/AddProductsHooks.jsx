@@ -25,7 +25,7 @@ const useAddProducts = (userInfo) => {
   const [durations, setDurations] = useState([
     {
       duration_id: 1,
-      duration_time_limit: '28 days',
+      duration_time_limit: '',
       gst: '',
       discount: '',
       security_deposit: '',
@@ -125,7 +125,7 @@ const useAddProducts = (userInfo) => {
       ...durations,
       {
         duration_id: Date.now(),
-        duration_time_limit: '28 days',
+        duration_time_limit: '',
         gst: '',
         discount: '',
         security_deposit: '',

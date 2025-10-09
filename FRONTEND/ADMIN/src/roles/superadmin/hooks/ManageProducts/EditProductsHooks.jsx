@@ -242,8 +242,8 @@ const useEditProducts = (userInfo) => {
       return;
     }
 
-    // Validate PDF file if provided
-    if (productSpecifications && productSpecifications.type !== 'application/pdf') {
+    // Validate PDF file if a new file is provided
+    if (productSpecifications instanceof File && productSpecifications.type !== 'application/pdf') {
       showErrorAlert("Invalid File", "Product Specifications must be a PDF file.");
       setLoading(false);
       return;

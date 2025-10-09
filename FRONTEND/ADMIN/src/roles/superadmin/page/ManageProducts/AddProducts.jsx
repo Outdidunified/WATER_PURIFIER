@@ -88,7 +88,8 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
                         placeholder="Device Quantity"
                         value={wpDeviceQuantity}
                         onChange={(e) => {
-                          const value = e.target.value.replace(/[^0-9]/g, '');
+                          let value = e.target.value.replace(/[^0-9]/g, '');
+                          value = value.replace(/^0+(?=\d)/, '');
                           setWpDeviceQuantity(value);
                         }}
                         maxLength={20}
@@ -419,6 +420,7 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
   onChange={(e) => handleDurationChange(index, 'duration_time_limit', e.target.value)}
   required
 >
+  <option value="">Select Duration</option>
   <option value="28 days">28 days</option>
   <option value="60 days">60 days</option>
   <option value="90 days">90 days</option>
