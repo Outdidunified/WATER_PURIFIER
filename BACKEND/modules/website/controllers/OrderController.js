@@ -290,10 +290,10 @@ exports.verifyRazorpayPayment = async (req, res) => {
       if (typeof currentQty === 'string') currentQty = parseInt(currentQty, 10);
       if (isNaN(currentQty) || currentQty <= 0) return res.status(400).json({ message: 'Invalid or zero quantity' });
 
-      await productModelsCollection.updateOne(
-        { _id: new ObjectId(order.productModelId) },
-        { $inc: { wp_device_quantity: -1 } }
-      );
+      // await productModelsCollection.updateOne(
+      //   { _id: new ObjectId(order.productModelId) },
+      //   // { $inc: { wp_device_quantity: -1 } }
+      // );
     }
 
     // ✅ Send confirmation email

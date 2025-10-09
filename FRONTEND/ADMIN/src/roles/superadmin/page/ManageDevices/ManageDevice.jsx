@@ -120,7 +120,7 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                                                 >
                                                                     <option value="">Select Model</option>
                                                                     {models
-                                                                        .filter(model => model.status) // only include models with status === true
+                                                                        .filter(model => model.status && model.wp_device_quantity > 0) // only include models with status === true
                                                                         .map(model => (
                                                                             <option key={model.id} value={model.model_name}>
                                                                                 {model.model_name}
