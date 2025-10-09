@@ -30,6 +30,7 @@ exports.register = async (req, res) => {
     createdby
   } = req.body;
 
+  // 🔹 Validation
   if (!name || !password || !city || (!email && !phone)) {
     return res.status(400).json({
       status: 'failed',
@@ -41,17 +42,27 @@ exports.register = async (req, res) => {
   try {
     const db = await connectToDatabase();
 
-    // Only allow registration for End User role
+    // 🔹 Check EndUser role status
     const role = await db.collection('user_roles').findOne({ role_id: 3 });
-    if (!role || !role.status) {
-      return res.status(403).json({
+
+    if (!role) {
+      return res.status(404).json({
         status: 'failed',
         error: true,
-        message: 'Registration is only allowed for EndUser role'
+        message: 'EndUser role not found'
       });
     }
 
-    // Check if any user exists with the same email
+    // 🔒 Block registration if EndUser role is deactivated
+    if (role.status === false) {
+      return res.status(403).json({
+        status: 'failed',
+        error: true,
+        message: 'EndUser role is deactivated. Registration not allowed.'
+      });
+    }
+
+    // 🔹 Check for duplicate EndUser with same email
     const existingUsers = await db.collection('users').find({
       $or: [{ email }]
     }).toArray();
@@ -65,16 +76,16 @@ exports.register = async (req, res) => {
       });
     }
 
-
+    // 🔹 Prepare new user data
     const otp = generateOtp();
-    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // expires in 5 min
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
     const otpGeneratedAt = new Date();
     const createdDate = new Date();
 
     const lastUser = await db.collection('users').find().sort({ user_id: -1 }).limit(1).toArray();
     const newUserId = lastUser.length > 0 ? lastUser[0].user_id + 1 : 1;
 
-    const result = await db.collection('users').insertOne({
+    const newUser = {
       name,
       email,
       phone,
@@ -96,22 +107,13 @@ exports.register = async (req, res) => {
       role_name: role.role_name,
       user_id: newUserId,
       is_subscribed: false
-    });
-    // Before (incomplete and causing error)
-/*
-    // Send OTP
-    if (email) {
-    //   await sendOtpEmail(email, otp);
-    //   console.log(`OTP sent to email: ${email}`);
-    // }
+    };
 
-    // if (phone) {
-    //   console.log(`OTP sent to phone: ${phone}: ${otp}`);
-    // }
-*/
+    const result = await db.collection('users').insertOne(newUser);
 
-// After
-// OTP sending disabled by requirement; proceed without sending.
+    // 📴 OTP sending disabled intentionally
+    // (You can re-enable if needed using sendOtpEmail or SMS gateway)
+
     res.status(201).json({
       status: 'success',
       error: false,
@@ -148,6 +150,7 @@ exports.register = async (req, res) => {
     });
   }
 };
+
 
 
 exports.login = async (req, res) => {
