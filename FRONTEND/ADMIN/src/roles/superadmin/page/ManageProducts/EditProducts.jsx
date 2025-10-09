@@ -165,6 +165,15 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                         className="form-control"
                         onChange={(e) => setProductSpecifications(e.target.files[0])}
                       />
+                      <span style={{ marginLeft: '10px', fontSize: '14px', color: '#666' }}>
+                        {productSpecifications
+                          ? (productSpecifications instanceof File
+                            ? productSpecifications.name
+                            : (typeof productSpecifications === 'string'
+                              ? productSpecifications.split('/').pop() || productSpecifications
+                              : 'No file chosen'))
+                          : 'No file chosen'}
+                      </span>
                     </div>
                   </div>
 

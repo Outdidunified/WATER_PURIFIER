@@ -115,7 +115,11 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
                 {/* Specifications PDF */}
                 <div className="mb-4 text-start">
                   <strong>Specifications:</strong>{' '}
-                  {product.product_specifications || '-'}
+                  {product.product_specifications ? (
+                    <a href={`/upload/pdf/${product.product_specifications}`} target="_blank" rel="noopener noreferrer">
+                      View PDF
+                    </a>
+                  ) : '-'}
                 </div>
 
                 {/* Plans */}
