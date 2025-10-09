@@ -132,6 +132,9 @@ exports.updateTaskDetails = async (req, res) => {
       if (!parsedOtp || parsedOtp !== task.otp) {
         return res.status(400).json({ error: true, message: 'Invalid OTP. Cannot complete task.' });
       }
+
+      // ✅ Add completed_date
+      updateData.completed_date = new Date(); // store in UTC
     }
 
     // ✅ Handle uploaded images
@@ -261,6 +264,7 @@ exports.updateTaskDetails = async (req, res) => {
     return res.status(500).json({ error: true, message: 'Server error while updating task' });
   }
 };
+
 
 
 
