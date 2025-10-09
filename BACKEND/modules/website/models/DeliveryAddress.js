@@ -68,6 +68,20 @@ function normalizeState(state) {
   return stateCorrections[normalizedKey] || state.trim();
 }
 
+/** Normalize country code to full name */
+const countryCorrections = {
+  'in': 'India',
+  'us': 'United States',
+  'uk': 'United Kingdom',
+  // Add more as needed
+};
+
+function normalizeCountry(country) {
+  if (!country || typeof country !== 'string') return '';
+  const normalizedKey = country.toLowerCase().trim();
+  return countryCorrections[normalizedKey] || country.trim();
+}
+
 const districtCorrections = {
   'parvathipuram manyam': 'Parvathipuram Manyam',
   'parvathipuram manyam district': 'Parvathipuram Manyam',
@@ -111,7 +125,7 @@ function normalizeDeliveryAddress(address = {}) {
     state: trimVal(normalizeState(address.state) || ''),
     pincode: trimVal(address.pincode || ''),
     email: trimVal(address.email || ''),
-    country: trimVal(address.country || ''), // default to India
+    country: normalizeCountry(address.country) || 'India',
   };
 }
 
@@ -155,4 +169,5 @@ module.exports = {
   validateDeliveryAddress,
   normalizeDeliveryAddress,
   normalizeState,
+  normalizeCountry,
 };
