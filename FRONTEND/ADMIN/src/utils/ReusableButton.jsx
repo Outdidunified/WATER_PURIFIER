@@ -1,26 +1,17 @@
-//Reusable
-import React from 'react';
+// utils/ReusableButton.jsx
+import React from "react";
 
-const ReusableButton = ({
-  type = 'button',
-  onClick,
-  disabled = false,
-  loading = false,
-  children,
-  className = '',
-  style = {},
-}) => {
+const ReusableButton = ({ type = "button", onClick, loading, children, ...props }) => {
   return (
-    <div style={{ textAlign: 'center', padding: '10px', ...style }}>
-      <button
-        type={type}
-        onClick={onClick}
-        className={`btn btn-primary ${className}`}
-        disabled={disabled || loading}
-      >
-        {loading ? <div className="spinner"></div> : children}
-      </button>
-    </div>
+    <button
+      type={type}          // ✅ type now works
+      onClick={onClick}    // ✅ onClick now works
+      disabled={loading}
+      {...props}
+      className="btn btn-primary"
+    >
+      {loading ? "Loading..." : children}
+    </button>
   );
 };
 

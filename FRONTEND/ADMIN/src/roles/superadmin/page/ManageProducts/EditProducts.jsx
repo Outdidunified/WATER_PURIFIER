@@ -36,7 +36,6 @@ const EditProducts = ({ userInfo, handleLogout }) => {
     handleAddProduct,
     status,
     setStatus,
-    isModified,
     errorMessage
   } = useEditProducts(userInfo);
 
@@ -159,16 +158,12 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="input-label" htmlFor="productSpecifications">Product Specifications</label>
-                      <textarea
-                        id="productSpecifications"
+                      <label className="input-label" htmlFor="productSpecifications">Product Specifications (PDF)</label>
+                      <input
+                        type="file"
+                        accept="application/pdf"
                         className="form-control"
-                        style={{ minHeight: '130px' }}
-                        value={productSpecifications}
-                        onChange={(e) => setProductSpecifications(e.target.value)}
-                        required
-                        maxLength={500}
-                        placeholder="Enter product specifications (10-500 chars)"
+                        onChange={(e) => setProductSpecifications(e.target.files[0])}
                       />
                     </div>
                   </div>
@@ -346,7 +341,7 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                   {errorMessage && <div className="text-danger mb-3">{errorMessage}</div>}
 
                   <div className="mt-4">
-                    <ReusableButton type="submit" loading={loading} disabled={!isModified}>Update</ReusableButton>
+                    <ReusableButton type="submit" loading={loading}>Update</ReusableButton>
                   </div>
                 </form>
               </div>
