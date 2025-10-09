@@ -190,7 +190,7 @@ exports.updateTaskDetails = async (req, res) => {
       });
     }
 
-    // ✅ Technician stats + Subscription activation if completed
+    // ✅ Technician stats + Subscription expiry updates if completed
     if (status === 'Completed') {
       const technician = await technicianCollection.findOne({ technician_id });
       if (technician) {
@@ -200,7 +200,7 @@ exports.updateTaskDetails = async (req, res) => {
         );
       }
 
-      // ✅ Activate subscription
+      // ✅ Update subscription expiry only (do NOT touch is_subscribed)
       const order = await ordersCollection.findOne({
         customOrderId: task.order?.customOrderId || task.customOrderId
       });
@@ -218,16 +218,8 @@ exports.updateTaskDetails = async (req, res) => {
           { user_id: userId },
           {
             $set: {
-              is_subscribed: true,
-              subscribed_at: subscribedAt,
-              subscription_expiry_date: subscriptionExpiryDate,
-              active_label: order.selectedPlan?.label || null,
-              active_plan_id: order.selectedPlan?.plans_id || null,
-              active_duration_id: order.selectedDuration?.duration_time_limit || null,
-              active_order_id: order._id.toString()
-            },
-            $addToSet: { assigned_device_ids: order.wp_device_id || null },
-            $unset: { assigned_device_id: '' }
+              subscription_expiry_date: subscriptionExpiryDate
+            }
           }
         );
 
@@ -236,7 +228,7 @@ exports.updateTaskDetails = async (req, res) => {
           { $set: { subscriptionExpiryDate, updatedAt: new Date() } }
         );
 
-        console.log(`🟢 Subscription activated for user ${userId}`);
+        console.log(`🟢 Subscription expiry updated for user ${userId}`);
       }
 
       // ✅ Send completion email
@@ -247,7 +239,7 @@ exports.updateTaskDetails = async (req, res) => {
         html: `
           <h3>Hello,</h3>
           <p>Your service task <strong>#${task.task_id}</strong> has been <span style="color: green;">successfully completed</span>.</p>
-          <p>Subscription has been activated. 🎉</p>
+          <p>Subscription expiry has been updated. 🎉</p>
         `
       };
 
@@ -264,6 +256,7 @@ exports.updateTaskDetails = async (req, res) => {
     return res.status(500).json({ error: true, message: 'Server error while updating task' });
   }
 };
+
 
 
 

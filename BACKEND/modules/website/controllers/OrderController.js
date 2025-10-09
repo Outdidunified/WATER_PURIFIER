@@ -71,9 +71,9 @@ exports.createSubscriptionOrder = async (req, res) => {
     const productModel = await db.collection('product_models').findOne({ _id: new ObjectId(productModelId) });
     if (!productModel) return res.status(404).json({ message: 'Product model not found' });
 
-    if (!productModel.wp_device_quantity || productModel.wp_device_quantity <= 0) {
-      return res.status(404).json({ message: 'No available devices for this product model' });
-    }
+    // if (!productModel.wp_device_quantity || productModel.wp_device_quantity <= 0) {
+    //   return res.status(404).json({ message: 'No available devices for this product model' });
+    // }
 
     // Validate device availability
     const device = await db.collection('device_details').findOne({
@@ -210,7 +210,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
       return res.status(400).json({ message: 'All fields are required for verification' });
     }
 
-    // Verify signature
+    // ✅ Verify Razorpay signature
     const expectedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -226,6 +226,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
     const paymentsCollection = db.collection('payments');
     const productModelsCollection = db.collection('product_models');
 
+    // ✅ Fetch order and user
     const order = await ordersCollection.findOne({ razorpayOrderId: razorpay_order_id });
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
@@ -234,7 +235,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
 
     const now = new Date();
 
-    // ✅ Update order as paid, confirmed, and subscribed_at timestamp
+    // ✅ Update order
     await ordersCollection.updateOne(
       { _id: order._id },
       {
@@ -242,23 +243,34 @@ exports.verifyRazorpayPayment = async (req, res) => {
           paymentStatus: 'Completed',
           orderStatus: 'Confirmed',
           razorpayPaymentId: razorpay_payment_id,
-          subscribed_at: now, // ✅ Add subscription start time
+          subscribed_at: now,
           updatedAt: now
         }
       }
     );
 
-    const updatedOrder = {
-      ...order,
-      paymentStatus: 'Completed',
-      orderStatus: 'Confirmed',
-      razorpayPaymentId: razorpay_payment_id,
-      subscribed_at: now,
-      updatedAt: now
-    };
+    const updatedOrder = { ...order, paymentStatus: 'Completed', orderStatus: 'Confirmed', razorpayPaymentId: razorpay_payment_id, subscribed_at: now, updatedAt: now };
 
-    // ✅ Auto assign installation
-    await autoAssignInstallation(updatedOrder);
+    // ✅ Update user subscription & active plan
+    const userUpdateResult = await usersCollection.updateOne(
+      { user_id: order.user_id },
+      {
+        $set: {
+          is_subscribed: true,
+          subscribed_at: now,
+          active_order_id: order._id.toString(),
+          active_label: order.selectedPlan?.label || null,
+          active_plan_id: order.selectedPlan?.plans_id || null,
+          active_duration_id: order.selectedDuration?.duration_time_limit || null
+        },
+        $addToSet: { assigned_device_ids: order.wp_device_id },
+        $unset: { assigned_device_id: "" }
+      }
+    );
+
+    if (userUpdateResult.matchedCount === 0) {
+      console.warn(`⚠️ User update did not match any document for user_id ${order.user_id}`);
+    }
 
     // ✅ Update payment record
     await paymentsCollection.updateOne(
@@ -272,31 +284,25 @@ exports.verifyRazorpayPayment = async (req, res) => {
       }
     );
 
-    // ✅ Assign device (without subscription updates)
-    await usersCollection.updateOne(
-      { user_id: order.user_id },
-      {
-        $addToSet: { assigned_device_ids: order.wp_device_id || null },
-        $unset: { assigned_device_id: "" }
-      }
-    );
-
     // ✅ Reduce product quantity
-    if (order.productModelId) {
-      const productModel = await productModelsCollection.findOne({ _id: new ObjectId(order.productModelId) });
-      if (!productModel) return res.status(404).json({ message: 'Product model not found' });
+    // if (order.productModelId) {
+    //   const productModel = await productModelsCollection.findOne({ _id: new ObjectId(order.productModelId) });
+    //   if (productModel) {
+    //     let currentQty = productModel.wp_device_quantity;
+    //     if (typeof currentQty === 'string') currentQty = parseInt(currentQty, 10);
+    //     if (!isNaN(currentQty) && currentQty > 0) {
+    //       await productModelsCollection.updateOne(
+    //         { _id: new ObjectId(order.productModelId) },
+    //         { $inc: { wp_device_quantity: -1 } }
+    //       );
+    //     }
+    //   }
+    // }
 
-      let currentQty = productModel.wp_device_quantity;
-      if (typeof currentQty === 'string') currentQty = parseInt(currentQty, 10);
-      if (isNaN(currentQty) || currentQty <= 0) return res.status(400).json({ message: 'Invalid or zero quantity' });
+    // ✅ Auto-assign installation
+    await autoAssignInstallation(updatedOrder);
 
-      // await productModelsCollection.updateOne(
-      //   { _id: new ObjectId(order.productModelId) },
-      //   // { $inc: { wp_device_quantity: -1 } }
-      // );
-    }
-
-    // ✅ Send confirmation email
+    // ✅ Send payment confirmation email
     try {
       await sendPaymentConfirmationEmail(user, order);
     } catch (emailError) {
@@ -305,13 +311,15 @@ exports.verifyRazorpayPayment = async (req, res) => {
 
     return res.status(200).json({
       status: 'success',
-      message: 'Payment verified successfully. Subscription start time recorded. Installation will be scheduled soon.'
+      message: 'Payment verified successfully. Subscription activated immediately. Installation will be scheduled soon.'
     });
+
   } catch (error) {
     console.error('Error verifying Razorpay payment:', error);
     return res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 };
+
 
 
 
