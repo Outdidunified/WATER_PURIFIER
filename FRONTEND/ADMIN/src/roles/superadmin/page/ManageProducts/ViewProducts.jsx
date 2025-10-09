@@ -16,7 +16,7 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
   };
 
   const handleEditDeviceList = () => {
-    navigate('/superadmin/EditProducts', { state: { newUser: product } });
+    navigate('/superadmin/EditProducts', { state: { dataItem: product } });
   };
 
   return (

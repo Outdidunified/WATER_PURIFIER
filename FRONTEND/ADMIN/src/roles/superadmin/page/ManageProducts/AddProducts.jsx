@@ -163,15 +163,12 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="input-label">Product Specifications</label>
-                      <textarea
+                      <label className="input-label">Product Specifications (PDF)</label>
+                      <input
+                        type="file"
+                        accept="application/pdf"
                         className="form-control"
-                              style={{ minHeight: '130px' }}
-
-                        value={productSpecifications}
-                        onChange={(e) => setProductSpecifications(e.target.value.trimStart())}
-                        required
-                        maxLength={500}
+                        onChange={(e) => setProductSpecifications(e.target.files[0])}
                       />
                     </div>
                   </div>

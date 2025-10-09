@@ -16,7 +16,7 @@ const useEditProducts = (userInfo) => {
   const [modelId, setModelId] = useState(null);
   const [modelName, setModelName] = useState('');
   const [productDetails, setProductDetails] = useState('');
-  const [productSpecifications, setProductSpecifications] = useState('');
+  const [productSpecifications, setProductSpecifications] = useState(null); // Now storing PDF File
   const [mainImage, setMainImage] = useState(null);
   const [subImages, setSubImages] = useState([null, null, null, null]);
   const [wpDeviceQuantity, setWpDeviceQuantity] = useState(0);
@@ -28,40 +28,42 @@ const useEditProducts = (userInfo) => {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [productData, setProductData] = useState(null);
 
   useEffect(() => {
     if (fetchDataCalled.current) return;
 
     const { dataItem } = location.state || {};
-    let productData = dataItem;
+    let data = dataItem;
 
-    if (!productData) {
+    if (!data) {
       const stored = localStorage.getItem('productData');
-      if (stored) productData = JSON.parse(stored);
+      if (stored) data = JSON.parse(stored);
     }
 
-    if (productData) {
-      setModelId(productData.model_id || null);
-      setModelName(productData.model_name || '');
-      setProductDetails(productData.product_details || '');
-      setProductSpecifications(productData.product_specifications || '');
-      setWpDeviceQuantity(productData.wp_device_quantity || 0);
-      
+    if (data) {
+      setProductData(data);
+      setModelId(data.model_id || null);
+      setModelName(data.model_name || '');
+      setProductDetails(data.product_details || '');
+      setProductSpecifications(data.product_specifications || '');
+      setWpDeviceQuantity(data.wp_device_quantity || 0);
+
       // Parse connectivity - could be string "Wifi, Bluetooth" or array
-      const connectivityData = productData.connectivity || '';
-      const connectivityArray = typeof connectivityData === 'string' 
+      const connectivityData = data.connectivity || '';
+      const connectivityArray = typeof connectivityData === 'string'
         ? connectivityData.split(',').map(s => s.trim()).filter(Boolean)
         : Array.isArray(connectivityData) ? connectivityData : [];
       setConnectivity(connectivityArray);
 
       const statusValue =
-        productData.status === 1 || productData.status === '1' || productData.status === true
+        data.status === 1 || data.status === '1' || data.status === true
           ? 'true'
           : 'false';
       setStatus(statusValue);
 
-      const parsedPlans = productData.plans?.length > 0
-        ? productData.plans.map((p, i) => ({
+      const parsedPlans = data.plans?.length > 0
+        ? data.plans.map((p, i) => ({
             ...p,
             plans_id: i + 1,
             label: p.label?.toLowerCase() || ''
@@ -69,8 +71,8 @@ const useEditProducts = (userInfo) => {
         : [{ plans_id: 1, label: '', capacity: '', price: '' }];
       setPlans(parsedPlans);
 
-      const parsedDurations = productData.duration?.length > 0
-        ? productData.duration.map((d, i) => ({
+      const parsedDurations = data.duration?.length > 0
+        ? data.duration.map((d, i) => ({
             ...d,
             duration_id: i + 1
           }))
@@ -84,22 +86,22 @@ const useEditProducts = (userInfo) => {
       setDurations(parsedDurations);
 
       const subImgs = [
-        productData.sub_img_1 || null,
-        productData.sub_img_2 || null,
-        productData.sub_img_3 || null,
-        productData.sub_img_4 || null
+        data.sub_img_1 || null,
+        data.sub_img_2 || null,
+        data.sub_img_3 || null,
+        data.sub_img_4 || null
       ];
-      setMainImage(productData.main_img || null);
+      setMainImage(data.main_img || null);
       setSubImages(subImgs);
 
       // Store original data for change detection
       originalDataRef.current = {
-        modelName: productData.model_name || '',
-        productDetails: productData.product_details || '',
-        productSpecifications: productData.product_specifications || '',
-        wpDeviceQuantity: productData.wp_device_quantity || 0,
+        modelName: data.model_name || '',
+        productDetails: data.product_details || '',
+        productSpecifications: data.product_specifications || '',
+        wpDeviceQuantity: data.wp_device_quantity || 0,
         connectivity: connectivityArray,
-        mainImage: productData.main_img || null,
+        mainImage: data.main_img || null,
         subImages: subImgs,
         plans: parsedPlans.map(p => ({
           label: p.label,
@@ -119,36 +121,7 @@ const useEditProducts = (userInfo) => {
     fetchDataCalled.current = true;
   }, [location]);
 
-  const isDataChanged = () => {
-    const currentData = {
-      modelName,
-      productDetails,
-      productSpecifications,
-      wpDeviceQuantity,
-      connectivity,
-      mainImage,
-      subImages,
-      plans: plans.map(p => ({
-        label: p.label,
-        capacity: p.capacity,
-        price: Number(p.price)
-      })),
-      durations: durations.map(d => ({
-        duration_time_limit: d.duration_time_limit,
-        gst: Number(d.gst),
-        discount: Number(d.discount),
-        security_deposit: Number(d.security_deposit)
-      })),
-      status,
-    };
 
-    const original = originalDataRef.current;
-    if (!original) return true;
-
-    return JSON.stringify(currentData) !== JSON.stringify(original);
-  };
-
-  const isModified = isDataChanged();
 
   const backToManagePage = () => navigate('/superadmin/ManageProducts');
 
@@ -263,8 +236,15 @@ const useEditProducts = (userInfo) => {
     e.preventDefault();
     setLoading(true);
 
-    if (!modelName || !productDetails || !productSpecifications || !mainImage) {
+    if (!modelName || !productDetails || !mainImage) {
       setErrorMessage("All required fields must be filled.");
+      setLoading(false);
+      return;
+    }
+
+    // Validate PDF file if provided
+    if (productSpecifications && productSpecifications.type !== 'application/pdf') {
+      showErrorAlert("Invalid File", "Product Specifications must be a PDF file.");
       setLoading(false);
       return;
     }
@@ -306,7 +286,10 @@ const useEditProducts = (userInfo) => {
     formData.append('model_id', modelId);
     formData.append('model_name', modelName);
     formData.append('product_details', productDetails);
-    formData.append('product_specifications', productSpecifications);
+    if (productSpecifications instanceof File) {
+      formData.append('product_specifications', productSpecifications);
+    }
+    formData.append('existing_product_specifications', originalDataRef.current?.productSpecifications || '');
     formData.append('wp_device_quantity', wpDeviceQuantity);
     formData.append('connectivity', connectivity.join(', '));
     formData.append('main_img', mainImage);
@@ -380,7 +363,6 @@ const useEditProducts = (userInfo) => {
     removePlan,
     status,
     setStatus,
-    isModified,
   };
 };
 

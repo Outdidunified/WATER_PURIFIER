@@ -359,7 +359,7 @@ const AddProductModels = async (req, res) => {
             const sub_img_2 = uploadedFiles['sub_img_2']?.[0]?.filename || product.sub_img_2 || "";
             const sub_img_3 = uploadedFiles['sub_img_3']?.[0]?.filename || product.sub_img_3 || "";
             const sub_img_4 = uploadedFiles['sub_img_4']?.[0]?.filename || product.sub_img_4 || "";
-            const product_specifications = uploadedFiles['spec_pdf']?.[0]?.filename || product.product_specifications || "";
+            const product_specifications = uploadedFiles['product_specifications']?.[0]?.filename || product.product_specifications || "";
 
             // Auto-assign missing plans_id (global across all models)
             const lastPlanIdDoc = await collection.aggregate([
@@ -661,7 +661,7 @@ const UpdateProductModels = async (req, res) => {
             const sub_img_2 = req.files?.['sub_img_2']?.[0]?.filename || product.sub_img_2 || '';
             const sub_img_3 = req.files?.['sub_img_3']?.[0]?.filename || product.sub_img_3 || '';
             const sub_img_4 = req.files?.['sub_img_4']?.[0]?.filename || product.sub_img_4 || '';
-            const product_specifications = req.files?.['spec_pdf']?.[0]?.filename || product.product_specifications || '';
+            const product_specifications = req.files?.['product_specifications']?.[0]?.filename || req.body.existing_product_specifications || '';
 
             // Auto-assign missing plans_id
             const lastPlanIdDoc = await collection.aggregate([
