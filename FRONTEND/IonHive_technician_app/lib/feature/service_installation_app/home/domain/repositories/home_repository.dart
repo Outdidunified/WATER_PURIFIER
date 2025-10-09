@@ -15,7 +15,13 @@ class TaskRepository {
             .map((taskJson) => Task.fromJson(taskJson))
             .toList();
       } else {
-        throw Exception(response['message'] ?? 'Failed to fetch tasks');
+        // If no tasks found (status 402), return empty list instead of throwing
+        final message = response['message'] ?? '';
+        if (message.contains('No tasks found')) {
+          return [];
+        } else {
+          throw Exception(response['message'] ?? 'Failed to fetch tasks');
+        }
       }
     } catch (e) {
       throw Exception('Error fetching tasks: $e');
@@ -50,7 +56,6 @@ class TaskRepository {
     required int taskId,
     required String action,
     String? declineReason,
-    DateTime? estimatedStart,
     DateTime? estimatedEnd,
   }) async {
     try {
@@ -58,7 +63,6 @@ class TaskRepository {
         taskId: taskId,
         action: action,
         declineReason: declineReason,
-        estimatedStart: estimatedStart,
         estimatedEnd: estimatedEnd,
       );
       return TaskUpdateResponse.fromJson(response);

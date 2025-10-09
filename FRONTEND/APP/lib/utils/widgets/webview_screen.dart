@@ -78,7 +78,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   const SizedBox(width: 4),
                   // Title
                   Text(
-                    "AquaPulse",
+                    "IonHive",
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: theme.colorScheme.primary,
                       fontWeight: FontWeight.bold,

@@ -4,6 +4,7 @@ import 'package:ionhive_water_purifier/utils/widgets/error/error_display_widget.
 import 'package:ionhive_water_purifier/utils/widgets/input_field/city_input_fields.dart';
 import 'package:ionhive_water_purifier/utils/widgets/input_field/phonenumber_inputfield.dart';
 import 'package:ionhive_water_purifier/utils/widgets/input_field/username_input_fields.dart';
+import 'package:ionhive_water_purifier/utils/widgets/input_field/password_input_field.dart';
 import 'package:ionhive_water_purifier/utils/widgets/loading/linear_loading_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -40,6 +41,15 @@ class _EditAccountPageState extends State<EditAccountPage> {
     stateFocusNode = FocusNode();
     countryFocusNode = FocusNode();
     pincodeFocusNode = FocusNode();
+    
+    // Initialize form when page is entered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = Get.find<SettingsController>();
+      if (controller.userData.value != null) {
+        controller.initializeEditForm();
+        controller.validateForm();
+      }
+    });
   }
 
   @override
@@ -422,6 +432,22 @@ class _EditAccountPageState extends State<EditAccountPage> {
                               null,
                           onChanged: (_) => controller.validateForm(),
                         ),
+                        SizedBox(height: screenHeight * 0.02),
+
+                        // Password
+                        Obx(() => Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            PasswordInput(
+                              controller: controller.editPasswordController,
+                              hintText: 'Enter 4-digit PIN',
+                              errorText: controller.passwordError.value.isEmpty
+                                  ? null
+                                  : controller.passwordError.value,
+                              onChanged: (_) => controller.validateForm(),
+                            ),
+                          ],
+                        )),
                         SizedBox(height: screenHeight * 0.04),
 
                         // Save Button
@@ -453,6 +479,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
                                             controller.editCountryController.text.trim(),
                                         pincode:
                                             controller.editPincodeController.text.trim(),
+                                        password: controller.editPasswordController.text.trim(),
                                       );
                                     }
                                   : () {},

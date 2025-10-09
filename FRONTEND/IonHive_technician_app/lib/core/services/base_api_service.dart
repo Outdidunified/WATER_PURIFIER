@@ -53,9 +53,9 @@ abstract class BaseApiService {
         throw HttpException(response.statusCode, tokenMessage);
       }
 
-      // ✅ Success case (status 200–299) or specific 400/401 with error: true
+      // ✅ Success case (status 200–299) or specific 400/401/402 with error: true
       if ((response.statusCode >= 200 && response.statusCode < 300) ||
-          ((response.statusCode == 400 || response.statusCode == 401) &&
+          ((response.statusCode == 400 || response.statusCode == 401 || response.statusCode == 402) &&
               responseBody is Map<String, dynamic> &&
               responseBody['error'] == true)) {
         return parser != null ? parser(responseBody) : responseBody as T;
@@ -66,37 +66,16 @@ abstract class BaseApiService {
       if (responseBody is Map<String, dynamic> &&
           responseBody['message'] != null &&
           responseBody['message'].toString().trim().isNotEmpty) {
-        String emoji = '';
-        switch (response.statusCode) {
-          case 400:
-            emoji = '⚠️ ';
-            break;
-          case 401:
-            emoji = '🔒 ';
-            break;
-          case 403:
-            emoji = '🚫 ';
-            break;
-          case 404:
-            emoji = '🔍 ';
-            break;
-          case 500:
-            emoji = '⚠️ ';
-            break;
-          case 503:
-            emoji = '🛠️ ';
-            break;
-          default:
-            emoji = '❗ ';
-            break;
-        }
-        errorMessage = '$emoji ${responseBody['message']}';
+        errorMessage = responseBody['message'].toString();
       } else {
         errorMessage = _getDefaultErrorMessage(response.statusCode);
       }
 
       debugPrint('API Error: $errorMessage (Status: ${response.statusCode})');
       throw HttpException(response.statusCode, errorMessage);
+    } on HttpException catch (e) {
+      debugPrint('API Exception: ${e.message} (Status: ${response.statusCode})');
+      rethrow;
     } catch (e) {
       final errorMessage = _getDefaultErrorMessage(response.statusCode);
       debugPrint('API Exception: $e (Status: ${response.statusCode})');

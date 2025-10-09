@@ -38,7 +38,16 @@ class _EditAccountPageState extends State<EditAccountPage> {
     stateFocusNode = FocusNode();
     countryFocusNode = FocusNode();
     pincodeFocusNode = FocusNode();
+    // Initialize form if data is already available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = Get.find<TechnicianSettingsController>();
+      if (controller.technicianData.value != null) {
+        controller.initializeEditForm();
+        controller.validateForm();
+      }
+    });
   }
+
 
   @override
   void dispose() {
@@ -82,7 +91,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: theme.colorScheme.error, width: 2.0),
       ),
-      prefixIcon: Icon(icon, color: theme.colorScheme.onSurface.withOpacity(0.6)), 
+      prefixIcon: Icon(icon, color: theme.colorScheme.onSurface.withOpacity(0.6)),
     );
   }
 

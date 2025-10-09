@@ -84,6 +84,7 @@ class SettingsRepository {
     required String state,
     required String country,
     required String pincode,
+    required String password,
   }) async {
     try {
       final json = await _api.updateUserDetails(
@@ -98,6 +99,7 @@ class SettingsRepository {
         state: state,
         country: country,
         pincode: pincode,
+        password: password,
       );
 
       final bool error = json['error'] as bool? ?? true;

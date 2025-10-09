@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:ionhive_technician_app/core/controllers/session_controller.dart';
 import 'package:ionhive_technician_app/feature/service_installation_app/auth/domain/repositories/auth_repository.dart';
 import 'package:ionhive_technician_app/feature/service_installation_app/landing_page.dart';
+import 'package:ionhive_technician_app/utils/exception/exception.dart';
 import 'package:ionhive_technician_app/utils/widgets/snackbar/custom_snackbar.dart';
 
 class TechnicianAuthController extends GetxController {
@@ -112,9 +113,11 @@ class TechnicianAuthController extends GetxController {
       } else {
         CustomSnackbar.showError(message: response.message);
       }
+    } on HttpException catch (e) {
+      CustomSnackbar.showError(message: e.message);
+      debugPrint("Login http error: ${e.message}");
     } catch (e) {
-      CustomSnackbar.showError(message: "An error . Please try again.");
-
+      CustomSnackbar.showError(message: "An error occurred. Please try again.");
       debugPrint("Login error: $e");
     } finally {
       isLoading.value = false;

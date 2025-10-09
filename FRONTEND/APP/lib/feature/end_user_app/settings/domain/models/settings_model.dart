@@ -3,6 +3,7 @@ class UserData {
   final String? name;
   final String email;
   final int? phone;
+  final int? password;
 
   // Address fields
   final String? addressline1;
@@ -23,6 +24,7 @@ class UserData {
     required this.name,
     required this.email,
     required this.phone,
+    this.password,
     this.addressline1,
     this.addressline2,
     this.city,
@@ -37,11 +39,29 @@ class UserData {
   });
 
   factory UserData.fromJson(Map<String, dynamic> json) {
+    // Debug: Log raw JSON password value
+    print('🔍 MODEL fromJson - Raw password value: ${json['password']} (type: ${json['password'].runtimeType})');
+    
+    // Handle password - can be int or String from backend
+    int? passwordValue;
+    if (json['password'] != null) {
+      if (json['password'] is int) {
+        passwordValue = json['password'] as int;
+        print('🔍 MODEL fromJson - Parsed as int: $passwordValue');
+      } else if (json['password'] is String) {
+        passwordValue = int.tryParse(json['password'] as String);
+        print('🔍 MODEL fromJson - Parsed from String: $passwordValue');
+      }
+    } else {
+      print('🔍 MODEL fromJson - Password is null');
+    }
+
     return UserData(
       userId: json['user_id'] as int?,
       name: json['name'] as String?,
       email: json['email'] as String,
       phone: json['phone'] as int?,
+      password: passwordValue,
       addressline1: json['addressline1'] as String?,
       addressline2: json['addressline2'] as String?,
       city: json['city'] as String?,
@@ -63,6 +83,7 @@ class UserData {
     String? name,
     String? email,
     int? phone,
+    int? password,
     String? addressline1,
     String? addressline2,
     String? city,
@@ -80,6 +101,7 @@ class UserData {
       name: name ?? this.name,
       email: email ?? this.email,
       phone: phone ?? this.phone,
+      password: password ?? this.password,
       addressline1: addressline1 ?? this.addressline1,
       addressline2: addressline2 ?? this.addressline2,
       city: city ?? this.city,

@@ -10,6 +10,7 @@ class SessionController extends GetxController {
   var userRole = 0.obs;
   var isSubscribed = false.obs; // <-- new field
   var technicianId = ''.obs;
+  var password = ''.obs;
 
   @override
   void onInit() {
@@ -28,6 +29,7 @@ class SessionController extends GetxController {
     userRole.value = prefs.getInt('userRole') ?? 0;
     isSubscribed.value = prefs.getBool('isSubscribed') ?? false; // <-- load
     technicianId.value = prefs.getString('technicianId') ?? '';
+    password.value = prefs.getString('password') ?? '';
   }
 
   Future<void> saveSession({
@@ -38,6 +40,7 @@ class SessionController extends GetxController {
     bool? isSubscribed, // optional for technician
     String? technicianId, // optional for user
     String? username,
+    String? password,
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -71,6 +74,14 @@ class SessionController extends GetxController {
       this.username.value = '';
     }
 
+    if (password != null && password.isNotEmpty) {
+      await prefs.setString('password', password);
+      this.password.value = password;
+    } else {
+      await prefs.remove('password');
+      this.password.value = '';
+    }
+
     isLoggedIn.value = true;
     this.userId.value = userId;
     this.emailId.value = emailId;
@@ -90,5 +101,6 @@ class SessionController extends GetxController {
     userRole.value = 0;
     isSubscribed.value = false; // <-- reset
     technicianId.value = '';
+    password.value = '';
   }
 }

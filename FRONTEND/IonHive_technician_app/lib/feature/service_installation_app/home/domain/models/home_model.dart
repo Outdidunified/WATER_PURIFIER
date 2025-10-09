@@ -1,6 +1,90 @@
 // feature/service_installation_app/home/domain/models/home_model.dart
 import 'package:flutter/material.dart';
 
+class Product {
+  final String? modelName;
+  final String? wpDeviceId;
+  final Map<String, dynamic>? selectedPlan;
+  final Map<String, dynamic>? selectedDuration;
+
+  Product({
+    this.modelName,
+    this.wpDeviceId,
+    this.selectedPlan,
+    this.selectedDuration,
+  });
+
+  factory Product.fromJson(Map<String, dynamic> json) {
+    return Product(
+      modelName: json['model_name'] != null ? json['model_name'].toString() : null,
+      wpDeviceId: json['wp_device_id'] != null ? json['wp_device_id'].toString() : null,
+      selectedPlan: json['selectedPlan'] as Map<String, dynamic>?,
+      selectedDuration: json['selectedDuration'] as Map<String, dynamic>?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'model_name': modelName,
+      'wp_device_id': wpDeviceId,
+      'selectedPlan': selectedPlan,
+      'selectedDuration': selectedDuration,
+    };
+  }
+}
+
+class Address {
+  final String? name;
+  final String? phone;
+  final String? street;
+  final String? landmark;
+  final String? city;
+  final String? district;
+  final String? state;
+  final String? pincode;
+  final String? email;
+
+  Address({
+    this.name,
+    this.phone,
+    this.street,
+    this.landmark,
+    this.city,
+    this.district,
+    this.state,
+    this.pincode,
+    this.email,
+  });
+
+  factory Address.fromJson(Map<String, dynamic> json) {
+    return Address(
+      name: json['name'] != null ? json['name'].toString() : null,
+      phone: json['phone'] != null ? json['phone'].toString() : null,
+      street: json['street'] != null ? json['street'].toString() : null,
+      landmark: json['landmark'] != null ? json['landmark'].toString() : null,
+      city: json['city'] != null ? json['city'].toString() : null,
+      district: json['district'] != null ? json['district'].toString() : null,
+      state: json['state'] != null ? json['state'].toString() : null,
+      pincode: json['pincode'] != null ? json['pincode'].toString() : null,
+      email: json['email'] != null ? json['email'].toString() : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'phone': phone,
+      'street': street,
+      'landmark': landmark,
+      'city': city,
+      'district': district,
+      'state': state,
+      'pincode': pincode,
+      'email': email,
+    };
+  }
+}
+
 class Task {
   final String? id;
   final int? taskId;
@@ -21,6 +105,8 @@ class Task {
   final String? assignedBy;
   final int? otd;
   final String? wpDeviceId;
+  final Address? address;
+  final Product? product;
 
   Task({
     this.id,
@@ -42,6 +128,8 @@ class Task {
     this.assignedBy,
     this.otd,
     this.wpDeviceId,
+    this.address,
+    this.product,
   });
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -133,6 +221,12 @@ class Task {
       wpDeviceId: json['wp_device_id'] != null
           ? safeToString(json['wp_device_id'])
           : null,
+      address: json['address'] != null
+          ? Address.fromJson(json['address'] as Map<String, dynamic>)
+          : null,
+      product: json['product'] != null
+          ? Product.fromJson(json['product'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -159,6 +253,8 @@ class Task {
       'assigned_by': assignedBy,
       'otd': otd,
       'wp_device_id': wpDeviceId,
+      'address': address?.toJson(),
+      'product': product?.toJson(),
     };
   }
 
