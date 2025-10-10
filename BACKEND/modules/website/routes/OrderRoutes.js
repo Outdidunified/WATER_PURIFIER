@@ -10,7 +10,7 @@ const {
   downloadInvoice
 } = require('../controllers/OrderController');
 
-// Use Multer middleware for subscription images
+// Multer middleware for subscription images
 router.post(
   '/orderplace',
   authMiddleware,

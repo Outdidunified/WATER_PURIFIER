@@ -22,16 +22,31 @@ exports.createSubscriptionOrder = async (req, res) => {
     // -----------------------------
     // Handle uploaded files
     // -----------------------------
-    let main_image = '';
+     let main_image = '';
     let sub_images = [];
 
-    if (req.files['main_image'] && req.files['main_image'][0]) {
-      main_image = req.files['main_image'][0].filename;
+    // If files are uploaded via multipart/form-data
+    if (req.files) {
+      if (req.files['main_image'] && req.files['main_image'][0]) {
+        main_image = req.files['main_image'][0].filename;
+      }
+
+      if (req.files['sub_images']) {
+        sub_images = req.files['sub_images'].map(f => f.filename);
+      }
     }
 
-    if (req.files['sub_images']) {
-      sub_images = req.files['sub_images'].map(f => f.filename);
+    // If JSON body has filenames (fallback)
+    if (!main_image && req.body.main_image) {
+      main_image = req.body.main_image;
     }
+
+    if ((!sub_images || sub_images.length === 0) && req.body.sub_images) {
+      sub_images = Array.isArray(req.body.sub_images)
+        ? req.body.sub_images.filter(Boolean)
+        : [];
+    }
+
 
     // -----------------------------
     // Extract other fields from req.body

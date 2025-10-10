@@ -1,4 +1,3 @@
-// middlewares/uploadSubscription.js
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -11,17 +10,15 @@ if (!fs.existsSync(uploadDir)) {
 
 // Multer storage config
 const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => {
         const timestamp = Date.now();
         const ext = path.extname(file.originalname);
         cb(null, `${file.fieldname}-${timestamp}${ext}`);
     }
 });
 
-// Only accept image files
+// Only accept images
 const fileFilter = (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
         cb(null, true);
