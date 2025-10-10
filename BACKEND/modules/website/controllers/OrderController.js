@@ -16,8 +16,26 @@ function generateOrderId() {
 
 
 
+// controllers/OrderController.js
 exports.createSubscriptionOrder = async (req, res) => {
   try {
+    // -----------------------------
+    // Handle uploaded files
+    // -----------------------------
+    let main_image = '';
+    let sub_images = [];
+
+    if (req.files['main_image'] && req.files['main_image'][0]) {
+      main_image = req.files['main_image'][0].filename;
+    }
+
+    if (req.files['sub_images']) {
+      sub_images = req.files['sub_images'].map(f => f.filename);
+    }
+
+    // -----------------------------
+    // Extract other fields from req.body
+    // -----------------------------
     const {
       productModelId,
       selectedPlanId,
@@ -29,9 +47,7 @@ exports.createSubscriptionOrder = async (req, res) => {
       securityDeposit,
       grandTotal,
       priceWithGST,
-      wp_device_id,
-      main_image,       // ✅ main image
-      sub_images = []   // ✅ optional array of sub images
+      wp_device_id
     } = req.body;
 
     const db = await connectToDatabase();
@@ -64,31 +80,29 @@ exports.createSubscriptionOrder = async (req, res) => {
 
     const normalizedAddress = normalizeDeliveryAddress(deliveryAddress);
 
-    // Check deposit condition
+    // Check security deposit
     if (!user.security_deposit_added && (securityDeposit === undefined || securityDeposit === null)) {
       return res.status(400).json({ message: 'Security deposit is required for new users' });
     }
 
-    // Fetch Product Model
+    // Fetch product model
     const productModel = await db.collection('product_models').findOne({ _id: new ObjectId(productModelId) });
     if (!productModel) return res.status(404).json({ message: 'Product model not found' });
 
-    // Validate Device
+    // Validate device
     const device = await db.collection('device_details').findOne({
-      wp_device_id: wp_device_id,
+      wp_device_id,
       model_id: Number(productModel.model_id),
       status: true
     });
-
     if (!device) {
       return res.status(404).json({ message: 'Invalid or unavailable device for this product' });
     }
 
     const deviceUsed = await db.collection('orders').findOne({
-      wp_device_id: wp_device_id,
+      wp_device_id,
       paymentStatus: 'Completed'
     });
-
     if (deviceUsed) {
       return res.status(400).json({
         status: 'failed',
@@ -96,17 +110,15 @@ exports.createSubscriptionOrder = async (req, res) => {
       });
     }
 
-    // Validate selected plan and duration
+    // Validate plan and duration
     const selectedPlan = productModel.plans.find(plan => plan.plans_id === selectedPlanId);
     const selectedDuration = productModel.duration.find(dur => dur.duration_id === selectedDurationId);
-
     if (!selectedPlan || !selectedDuration) {
       return res.status(404).json({ message: 'Selected plan or duration not found' });
     }
 
     const capacityString = selectedPlan?.capacity || "";
     const totalLitre = parseInt(capacityString.match(/\d+/)?.[0] || "0", 10);
-
     const effectiveSecurityDeposit = user.security_deposit_added ? 0 : securityDeposit;
     const totalAmountForRazorpay = grandTotal;
 
@@ -119,15 +131,14 @@ exports.createSubscriptionOrder = async (req, res) => {
 
     const customOrderId = generateOrderId();
 
-    // ✅ Include main and sub images in order
     const newOrder = {
       customOrderId,
       user_id: user.user_id,
       productModelId,
       modelName: productModel.model_name,
       wp_device_id,
-      main_image,  // main image
-      sub_images: Array.isArray(sub_images) ? sub_images.filter(Boolean) : [], // ensure clean array
+      main_image,
+      sub_images,
       selectedPlan,
       selectedDuration,
       grandTotal: totalAmountForRazorpay,
@@ -160,12 +171,12 @@ exports.createSubscriptionOrder = async (req, res) => {
       updatedAt: new Date()
     });
 
+    // Generate Razorpay signature
     const signatureBase = razorpayOrder.id + '|' + orderId.toString();
     const generatedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(signatureBase)
       .digest('hex');
 
-    // ✅ Include sub images in response
     return res.status(200).json({
       status: 'success',
       message: 'Order created and Razorpay payment initiated',
@@ -178,7 +189,7 @@ exports.createSubscriptionOrder = async (req, res) => {
           _id: productModel._id,
           model_name: productModel.model_name,
           main_image,
-          sub_images: Array.isArray(sub_images) ? sub_images.filter(Boolean) : []
+          sub_images
         },
         wp_device_id,
         selectedPlan,
@@ -201,6 +212,7 @@ exports.createSubscriptionOrder = async (req, res) => {
     return res.status(500).json({ message: 'Failed to create order', error: err.message });
   }
 };
+
 
 
 

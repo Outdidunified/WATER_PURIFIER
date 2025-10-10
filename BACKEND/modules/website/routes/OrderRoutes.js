@@ -1,23 +1,28 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware=require('../../../middlewares/authMiddleware')
+const authMiddleware = require('../../../middlewares/authMiddleware');
+const uploadSubscription = require('../../website/middlewares/uploadSubscription');
 
 const {
   createSubscriptionOrder,
   verifyRazorpayPayment,
-  getRechargeHistory, // import this from your controller
+  getRechargeHistory,
   downloadInvoice
 } = require('../controllers/OrderController');
 
-// Place order (requires login)
-router.post('/orderplace', authMiddleware, createSubscriptionOrder);
+// Use Multer middleware for subscription images
+router.post(
+  '/orderplace',
+  authMiddleware,
+  uploadSubscription.fields([
+    { name: 'main_image', maxCount: 1 },
+    { name: 'sub_images', maxCount: 10 }
+  ]),
+  createSubscriptionOrder
+);
 
-router.post('/orderverify', authMiddleware,verifyRazorpayPayment);
-
-// Recharge history - only for authenticated user
+router.post('/orderverify', authMiddleware, verifyRazorpayPayment);
 router.get('/rechargehistory', authMiddleware, getRechargeHistory);
-
-// Invoice download - public access
 router.get('/:orderId/invoice', downloadInvoice);
 
 module.exports = router;
