@@ -321,8 +321,26 @@ exports.verifyRazorpayPayment = async (req, res) => {
 };
 
 
+const PDFDocument = require('pdfkit');
+const path = require('path');
+const fs = require('fs');
 
+// function formatCurrency(value) {
+//     if (value === undefined || value === null || value === '') {
+//         return '₹0.00';
+//     }
+//     const num = Number(value);
+//     if (Number.isNaN(num)) {
+//         return '₹0.00';
+//     }
+//     return `₹${num.toFixed(2)}`;
+// }
 
+// function formatDate(date) {
+//     if (!date) return 'N/A';
+//     const d = new Date(date);
+//     return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+// }
 
 
 // GET /api/recharge-history
@@ -399,7 +417,319 @@ exports.getRechargeHistory = async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch subscription history', error: error.message });
     }
 };
+exports.downloadInvoice = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    if (!orderId)
+      return res.status(400).json({ message: 'orderId is required' });
 
+    const db = await connectToDatabase();
+    const ordersCollection = db.collection('orders');
+    const paymentsCollection = db.collection('payments');
+    const usersCollection = db.collection('users');
+
+    // Fetch order, user, and payment
+    const order = await ordersCollection.findOne({ customOrderId: orderId });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const user = await usersCollection.findOne({ user_id: order.user_id });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const payment = await paymentsCollection.findOne({ orderId: order._id });
+    if (!payment)
+      return res
+        .status(404)
+        .json({ message: 'Payment details not found for this order' });
+
+    console.log('Payment Data for Invoice:', payment);
+
+    const appearedAt = order.createdAt || payment.createdAt || new Date();
+    const subscribedAt = payment.subscribedAt || order.subscribed_at || payment.createdAt || order.updatedAt || null;
+    const subscriptionExpiry = payment.subscriptionExpiryDate || order.subscriptionExpiryDate || null;
+
+    // ✅ Create PDF Document
+    const doc = new PDFDocument({ margin: 40, size: 'A4', autoFirstPage: true });
+
+    const fonts = {
+      regular: 'Helvetica',
+      bold: 'Helvetica-Bold',
+      italic: 'Helvetica-Oblique',
+    };
+
+    try {
+      const fontBasePath = path.join(
+        __dirname,
+        '../../../../FRONTEND/APP/assets/fonts/Poppins'
+      );
+      const regularFontPath = path.join(fontBasePath, 'Poppins-Regular.ttf');
+      const boldFontPath = path.join(fontBasePath, 'Poppins-Bold.ttf');
+      const italicFontPath = path.join(fontBasePath, 'Poppins-Italic.ttf');
+
+      if (fs.existsSync(regularFontPath)) {
+        doc.registerFont('Poppins-Regular', regularFontPath);
+        fonts.regular = 'Poppins-Regular';
+      }
+      if (fs.existsSync(boldFontPath)) {
+        doc.registerFont('Poppins-Bold', boldFontPath);
+        fonts.bold = 'Poppins-Bold';
+      }
+      if (fs.existsSync(italicFontPath)) {
+        doc.registerFont('Poppins-Italic', italicFontPath);
+        fonts.italic = 'Poppins-Italic';
+      }
+    } catch (fontError) {
+      console.warn('Invoice font registration failed:', fontError);
+    }
+
+    const primaryColor = '#0A5EB7';
+    const accentColor = '#E3EEFF';
+    const labelColor = '#3F4C6B';
+    const textColor = '#1F2933';
+    const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+
+    const isValuePrintable = (value) => {
+      if (value === 0) return true;
+      if (typeof value === 'number') return true;
+      if (value instanceof Date) return !Number.isNaN(value.getTime());
+      if (typeof value === 'string') return value.trim() !== '';
+      return Boolean(value);
+    };
+
+    const drawSection = (title, rows = []) => {
+      const validRows = rows.filter((row) => isValuePrintable(row.value));
+      if (!validRows.length) return;
+      const padding = 16;
+      const labelColumnWidth = pageWidth * 0.35;
+      const contentWidth = pageWidth - padding * 2;
+      let sectionTop = doc.y;
+
+      if (sectionTop > 650) {
+        doc.addPage();
+        sectionTop = doc.y;
+      }
+
+      doc.save();
+      doc.roundedRect(doc.page.margins.left, sectionTop, pageWidth, 22)
+        .fillAndStroke('#FFFFFF', accentColor);
+      doc.restore();
+
+      doc.font(fonts.bold)
+        .fontSize(13)
+        .fillColor(primaryColor)
+        .text(title, doc.page.margins.left + 6, sectionTop + 6);
+
+      let currentY = sectionTop + 28;
+
+      validRows.forEach((row) => {
+        const valueText = typeof row.value === 'number' ? row.value.toString() : String(row.value);
+        const labelHeight = doc.heightOfString(row.label, { width: labelColumnWidth });
+        const valueHeight = doc.heightOfString(valueText, { width: contentWidth - labelColumnWidth - padding });
+        const rowHeight = Math.max(labelHeight, valueHeight) + 8;
+
+        if (currentY + rowHeight > 750) {
+          doc.addPage();
+          currentY = doc.y;
+        }
+
+        doc.save();
+        doc.roundedRect(doc.page.margins.left, currentY, pageWidth, rowHeight)
+          .fill('#F8FBFF');
+        doc.restore();
+
+        doc.font(fonts.bold)
+          .fontSize(10)
+          .fillColor(labelColor)
+          .text(row.label, doc.page.margins.left + 12, currentY + 4, {
+            width: labelColumnWidth,
+          });
+
+        doc.font(fonts.regular)
+          .fontSize(10)
+          .fillColor(textColor)
+          .text(valueText, doc.page.margins.left + labelColumnWidth + 12, currentY + 4, {
+            width: contentWidth - labelColumnWidth - padding,
+          });
+
+        currentY += rowHeight + 4;
+      });
+
+      doc.y = currentY + 10;
+    };
+
+    const drawAmountSummary = () => {
+      const metrics = [
+        payment.baseRent != null && { label: 'Base Rent', value: formatCurrency(payment.baseRent) },
+        payment.discount != null && { label: 'Discount', value: formatCurrency(payment.discount) },
+        (payment.totalPrice != null || order.grandTotal != null) && {
+          label: 'Total Payable',
+          value: formatCurrency(payment.totalPrice != null ? payment.totalPrice : order.grandTotal),
+          highlight: true,
+        },
+      ].filter(Boolean);
+
+      if (!metrics.length) {
+        return;
+      }
+
+      const boxGap = 12;
+      const boxWidth = (pageWidth - boxGap * (metrics.length - 1)) / metrics.length;
+      const boxHeight = 90;
+      const startY = doc.y;
+
+      if (doc.y > 680) {
+        doc.addPage();
+      }
+
+      metrics.forEach((metric, i) => {
+        const boxX = doc.page.margins.left + i * (boxWidth + boxGap);
+
+        doc.save();
+        const fillColor = metric.highlight ? primaryColor : '#F5F8FF';
+        const strokeColor = metric.highlight ? primaryColor : accentColor;
+
+        doc.roundedRect(boxX, startY, boxWidth, boxHeight).fillAndStroke(fillColor, strokeColor);
+
+        doc.fillColor(metric.highlight ? '#FFFFFF' : primaryColor)
+          .font(fonts.bold)
+          .fontSize(11)
+          .text(metric.label, boxX + 16, startY + 18, { width: boxWidth - 32 });
+
+        doc.fillColor(metric.highlight ? '#FFFFFF' : textColor)
+          .font(fonts.bold)
+          .fontSize(18)
+          .text(metric.value, boxX + 16, startY + 42, { width: boxWidth - 32 });
+
+        doc.restore();
+      });
+
+      doc.y = startY + boxHeight + 24;
+    };
+
+    // ✅ Response setup
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${order.customOrderId}_invoice.pdf"`
+    );
+    doc.pipe(res);
+
+    // Header
+    const headerTop = doc.y;
+    const headerHeight = 110;
+
+    doc.save();
+    doc.roundedRect(doc.page.margins.left, headerTop, pageWidth, headerHeight).fill(primaryColor);
+    doc.fillColor('#FFFFFF')
+      .font(fonts.bold)
+      .fontSize(22)
+      .text('Water Purifier Invoice', doc.page.margins.left + 24, headerTop + 26, {
+        width: pageWidth - 48,
+      });
+
+    doc.font(fonts.regular)
+      .fontSize(11)
+      .text(`Invoice Date: ${formatDate(appearedAt)}`, doc.page.margins.left + 24, headerTop + 66)
+      .text(`Invoice ID: ${order.customOrderId}`, doc.page.margins.left + 24, headerTop + 86);
+
+    doc.text('Water Purifier Pvt. Ltd.', doc.page.margins.left + pageWidth / 2, headerTop + 30, {
+      width: pageWidth / 2 - 24,
+      align: 'right',
+    })
+      .font(fonts.regular)
+      .text('support@waterpurifier.com', doc.page.margins.left + pageWidth / 2, headerTop + 48, {
+        width: pageWidth / 2 - 24,
+        align: 'right',
+      })
+      .text('+91 98765 43210', doc.page.margins.left + pageWidth / 2, headerTop + 66, {
+        width: pageWidth / 2 - 24,
+        align: 'right',
+      });
+    doc.restore();
+
+    doc.y = headerTop + headerHeight + 28;
+
+    const addressParts = order.deliveryAddress
+      ? [
+          order.deliveryAddress.street,
+          order.deliveryAddress.area,
+          order.deliveryAddress.city,
+          order.deliveryAddress.state,
+          order.deliveryAddress.pincode,
+        ].filter(Boolean)
+      : [];
+
+    // ✅ Sections
+    drawSection('Customer Details', [
+      { label: 'Name', value: user.name },
+      { label: 'Email', value: user.email },
+      { label: 'Phone', value: user.phone },
+      { label: 'User ID', value: user.user_id },
+      { label: 'Address', value: addressParts.join(', ') },
+    ]);
+
+    drawSection('Order Details', [
+      { label: 'Device ID', value: order.wp_device_id },
+      { label: 'Product Model', value: order.modelName || order.productModelId },
+      { label: 'Plan', value: order.selectedPlan?.label },
+      { label: 'Plan Price', value: payment.finalMonthlyPrice != null ? formatCurrency(payment.finalMonthlyPrice) : (payment.baseRent != null ? formatCurrency(payment.baseRent) : null) },
+      { label: 'Duration', value: order.selectedDuration?.duration_time_limit },
+      { label: 'Total Litres', value: order.totalLitre },
+      { label: 'Order Status', value: order.orderStatus },
+    ]);
+
+    drawSection('Subscription Timeline', [
+      { label: 'Subscription Start', value: subscribedAt ? formatDate(subscribedAt) : null },
+      { label: 'Subscription Expiry', value: subscriptionExpiry ? formatDate(subscriptionExpiry) : null },
+    ]);
+
+    drawSection('Payment Summary', [
+      { label: 'Payment Status', value: payment.paymentStatus || order.paymentStatus },
+      { label: 'Payment ID', value: order.razorpayPaymentId || payment.razorpayPaymentId },
+      { label: 'Razorpay Order ID', value: order.razorpayOrderId || payment.razorpayOrderId },
+      { label: 'Security Deposit', value: payment.securityDeposit != null ? formatCurrency(payment.securityDeposit) : null },
+      { label: 'GST Amount', value: payment.gstAmount != null ? formatCurrency(payment.gstAmount) : null },
+      { label: 'Discounted Rent', value: payment.discountedBaseRent != null ? formatCurrency(payment.discountedBaseRent) : null },
+      { label: 'Total Price', value: payment.totalPrice != null ? formatCurrency(payment.totalPrice) : null },
+    ]);
+
+    // ✅ Total Section
+    drawAmountSummary();
+
+    // ✅ Footer
+    doc.font(fonts.italic)
+      .fontSize(10)
+      .fillColor('#6B7280')
+      .text('This is a computer-generated invoice and does not require a signature.', doc.page.margins.left, doc.y, { width: pageWidth, align: 'center' });
+
+    doc.moveDown(0.3);
+    doc.font(fonts.bold)
+      .fontSize(11)
+      .fillColor(primaryColor)
+      .text('Thank you for choosing Water Purifier!', doc.page.margins.left, doc.y, { width: pageWidth, align: 'center' });
+
+    doc.end();
+  } catch (error) {
+    console.error('Error generating invoice PDF:', error);
+    res.status(500).json({ message: 'Failed to generate invoice', error: error.message });
+  }
+};
+// Example helper functions (to be implemented elsewhere)
+function formatDate(date) {
+  return date.toLocaleDateString('en-GB'); // e.g., DD/MM/YYYY
+}
+
+function formatCurrency(amount) {
+  if (amount === undefined || amount === null || amount === '') {
+    return '₹0.00';
+  }
+  const numericAmount = Number(amount);
+  if (Number.isNaN(numericAmount)) {
+    return '₹0.00';
+  }
+  const formatted = numericAmount.toFixed(2);
+  // Ensure currency symbol is a separate string to avoid encoding issues
+  return `₹${formatted}`;
+}
 
 
 

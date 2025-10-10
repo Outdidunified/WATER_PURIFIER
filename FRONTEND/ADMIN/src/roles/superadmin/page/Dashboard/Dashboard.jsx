@@ -11,6 +11,8 @@ const Dashboard = ({ userInfo, handleLogout }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [timeframe, setTimeframe] = useState('daily'); // Default to daily
+    const [districts, setDistricts] = useState([]);
+    const [selectedDistrict, setSelectedDistrict] = useState('all'); // Default to all
 
     const isSeller = Number(userInfo?.role_id) === 4;
 
@@ -26,17 +28,40 @@ const Dashboard = ({ userInfo, handleLogout }) => {
         };
     }, []);
 
+    // Fetch districts for non-sellers
+    useEffect(() => {
+        if (!isSeller) {
+            const fetchDistricts = async () => {
+                try {
+                    const res = await axiosInstance.get('/api/admin/GetDistrictsWithSellers');
+                    if (res.data?.status === 'Success') {
+                        setDistricts(res.data.data);
+                    }
+                } catch (err) {
+                    console.error('Error fetching districts:', err);
+                }
+            };
+            fetchDistricts();
+        }
+    }, [isSeller]);
+
     // Fetch analytics data
     useEffect(() => {
         const loadData = async () => {
             try {
                 setLoading(true);
-                const url = isSeller
-                    ? '/api/admin/analytics/by-district'
-                    : '/api/admin/analytics';
-                const res = isSeller
-                    ? await axiosInstance.get(url, { params: { district: userInfo?.district } })
-                    : await axiosInstance.get(url);
+                let url = '/api/admin/analytics';
+                let params = {};
+
+                if (isSeller) {
+                    url = '/api/admin/analytics/by-district';
+                    params = { district: userInfo?.district };
+                } else if (selectedDistrict !== 'all') {
+                    url = '/api/admin/analytics/by-district';
+                    params = { district: selectedDistrict };
+                }
+
+                const res = await axiosInstance.get(url, { params });
 
                 if (res.data?.status === 'Success') {
                     setAnalyticsData(res.data.data);
@@ -50,7 +75,7 @@ const Dashboard = ({ userInfo, handleLogout }) => {
             }
         };
         loadData();
-    }, [userInfo, isSeller]);
+    }, [userInfo, isSeller, selectedDistrict]);
 
     // Stats cards
     const stats = analyticsData
@@ -146,7 +171,7 @@ const getChartData = () => {
 
     const selected = timeframes[timeframe];
 
-    if (isSeller) {
+    if (isSeller || selectedDistrict !== 'all') {
         selected.districtsData = [];
         selected.modelsData = analyticsData.topModels ? analyticsData.topModels[timeframe === 'daily' ? 'today' : timeframe === 'week' ? 'week' : timeframe === 'month' ? 'month' : 'year'] || [] : [];
     } else {
@@ -689,7 +714,7 @@ const getChartData = () => {
                                     </div>
                                 </div>
 
-                                {/* Timeframe Buttons */}
+                                {/* Timeframe and District Filters */}
                                 <div className="row mb-4">
                                     <div className="col-md-12">
                                         <div style={{
@@ -706,11 +731,13 @@ const getChartData = () => {
                                         }}>
                                             <span style={{ fontSize: '16px', fontWeight: '600', color: '#424242', marginRight: '10px' }}>
                                                 <i className="fas fa-chart-line" style={{ marginRight: '8px', color: '#667eea' }}></i>
-                                                View Analytics:
+                                                View Analytics
                                             </span>
+                                            
+                                            <span style={{ fontSize: '14px', fontWeight: '500', color: '#757575' }}></span>
                                             {['daily', 'week', 'month', 'year'].map(tf => (
-                                                <button 
-                                                    key={tf} 
+                                                <button
+                                                    key={tf}
                                                     onClick={() => setTimeframe(tf)}
                                                     style={{
                                                         padding: '10px 24px',
@@ -740,7 +767,43 @@ const getChartData = () => {
                                                 >
                                                     {tf.charAt(0).toUpperCase() + tf.slice(1)}ly
                                                 </button>
+                                                
                                             ))}
+                                            {!isSeller && (
+                                                <>
+                                                    <span style={{ fontSize: '14px', fontWeight: '500', color: '#757575' }}></span>
+                                                    <select
+                                                        value={selectedDistrict}
+                                                        onChange={(e) => setSelectedDistrict(e.target.value)}
+                                                        style={{
+                                                            padding: '8px 12px',
+                                                            borderRadius: '8px',
+                                                            border: '2px solid #e0e0e0',
+                                                            backgroundColor: 'white',
+                                                            fontSize: '14px',
+                                                            fontWeight: '500',
+                                                            color: '#424242',
+                                                            cursor: 'pointer',
+                                                            minWidth: '150px',
+                                                            transition: 'all 0.3s ease'
+                                                        }}
+                                                        onMouseOver={(e) => {
+                                                            e.target.style.borderColor = '#667eea';
+                                                        }}
+                                                        onMouseOut={(e) => {
+                                                            e.target.style.borderColor = '#e0e0e0';
+                                                        }}
+                                                    >
+                                                        <option value="all">All Districts</option>
+                                                        {districts.map((district, idx) => (
+                                                            <option key={idx} value={district.district}>
+                                                                {district.district} ({district.state})
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <span style={{ fontSize: '14px', fontWeight: '500', color: '#757575', margin: '0 10px' }}></span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -787,7 +850,7 @@ const getChartData = () => {
 
                                 {/* Top Districts & Top Models Charts */}
                                 <div className="row mb-4">
-                                    {!isSeller && (
+                                    {!isSeller && selectedDistrict === 'all' && (
                                         <div className="col-md-6 mb-4">
                                             <div style={{ 
                                                 backgroundColor: 'white', 
@@ -807,7 +870,7 @@ const getChartData = () => {
                                             </div>
                                         </div>
                                     )}
-                                    <div className={isSeller ? "col-md-12 mb-4" : "col-md-6 mb-4"}>
+                                    <div className={isSeller || selectedDistrict !== 'all' ? "col-md-12 mb-4" : "col-md-6 mb-4"}>
                                         <div style={{ 
                                             backgroundColor: 'white', 
                                             borderRadius: '16px', 
