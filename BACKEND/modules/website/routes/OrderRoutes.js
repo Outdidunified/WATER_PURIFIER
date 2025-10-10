@@ -14,10 +14,7 @@ const {
 router.post(
   '/orderplace',
   authMiddleware,
-  uploadSubscription.fields([
-    { name: 'main_image', maxCount: 1 },
-    { name: 'sub_images', maxCount: 10 }
-  ]),
+  
   createSubscriptionOrder
 );
 
