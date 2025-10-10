@@ -30,7 +30,8 @@ exports.createSubscriptionOrder = async (req, res) => {
       grandTotal,
       priceWithGST,
       wp_device_id,
-      main_image // ✅ <-- added this field
+      main_image,       // ✅ main image
+      sub_images = []   // ✅ optional array of sub images
     } = req.body;
 
     const db = await connectToDatabase();
@@ -48,7 +49,7 @@ exports.createSubscriptionOrder = async (req, res) => {
       !productModelId || !selectedPlanId || !selectedDurationId || !deliveryAddress ||
       finalMonthlyPrice === undefined || discountAmount === undefined ||
       priceWithGST === undefined || gstAmount === undefined || grandTotal === undefined ||
-      !wp_device_id || !main_image // ✅ <-- now required
+      !wp_device_id || !main_image
     ) {
       return res.status(400).json({
         message: 'All fields including main_image and wp_device_id are required (except securityDeposit)'
@@ -118,14 +119,15 @@ exports.createSubscriptionOrder = async (req, res) => {
 
     const customOrderId = generateOrderId();
 
-    // ✅ Include image from req.body
+    // ✅ Include main and sub images in order
     const newOrder = {
       customOrderId,
       user_id: user.user_id,
       productModelId,
       modelName: productModel.model_name,
       wp_device_id,
-      main_image, // ✅ added directly from frontend
+      main_image,  // main image
+      sub_images: Array.isArray(sub_images) ? sub_images.filter(Boolean) : [], // ensure clean array
       selectedPlan,
       selectedDuration,
       grandTotal: totalAmountForRazorpay,
@@ -163,6 +165,7 @@ exports.createSubscriptionOrder = async (req, res) => {
       .update(signatureBase)
       .digest('hex');
 
+    // ✅ Include sub images in response
     return res.status(200).json({
       status: 'success',
       message: 'Order created and Razorpay payment initiated',
@@ -174,7 +177,8 @@ exports.createSubscriptionOrder = async (req, res) => {
         product: {
           _id: productModel._id,
           model_name: productModel.model_name,
-          main_image // ✅ returned in response
+          main_image,
+          sub_images: Array.isArray(sub_images) ? sub_images.filter(Boolean) : []
         },
         wp_device_id,
         selectedPlan,
@@ -197,6 +201,7 @@ exports.createSubscriptionOrder = async (req, res) => {
     return res.status(500).json({ message: 'Failed to create order', error: err.message });
   }
 };
+
 
 
 
