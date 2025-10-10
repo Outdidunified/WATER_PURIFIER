@@ -60,13 +60,16 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
     // Fetch products
     useEffect(() => {
+        let hasFetched = false;
+
         const fetchProducts = async () => {
+            if (hasFetched) return; // Prevent duplicate calls in dev Strict Mode
+            hasFetched = true;
+
             try {
                 const response = await axios.get('/api/website/products/productswithplan');
                 const productArray = response.data?.data || [];
-                const filteredProducts = productArray.filter(
-                    (product) => product.status === true
-                );
+                const filteredProducts = productArray.filter(p => p.status === true);
                 setProducts(filteredProducts);
             } catch (err) {
                 setError(err.message || 'Something went wrong');
@@ -74,8 +77,10 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 setLoading(false);
             }
         };
+
         fetchProducts();
     }, []);
+
 
     // Load countries
     useEffect(() => {
@@ -236,6 +241,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 grandTotal: priceDetails.grandTotalWithDeposit,
                 securityDeposit: priceDetails.securityDeposit,
                 wp_device_id: priceDetails.selectedProduct.wp_device_id,
+
                 deliveryAddress: {
                     country,
                     name,
@@ -493,7 +499,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
         fetchDistricts();
     }, []);
 
-    // ✅ Dynamically build map using "country-state-city"
+    // Dynamically build map using "country-state-city"
     const stateNameMap = {};
     const indianStates = State.getStatesOfCountry("IN"); // all states of India
 
@@ -783,83 +789,259 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                     <div ref={durationRef}>
                                         <div className="row mt-4">
                                             <div className="col-lg-12">
-                                                <h3>Flexible Rental Plans</h3>
-                                                <p className="fst-italic">
-                                                    Security deposit of ₹{products[selectedModelIndex]?.duration[selectedDurationIndex]?.security_deposit || 0} will be 100% refundable
-                                                </p>
-
-                                                <h5>Choose Duration</h5>
-                                                <div className="d-flex flex-wrap gap-2 mb-3">
-                                                    {products[selectedModelIndex]?.duration.map((duration, durationIndex) => (
-                                                        <button
-                                                            key={duration.duration_id}
-                                                            className={`btn ${selectedDurationIndex === durationIndex ? 'btn-primary' : 'btn-outline-primary'}`}
-                                                            onClick={() => setSelectedDurationIndex(durationIndex)}
-                                                        >
-                                                            {duration.duration_time_limit}
-                                                        </button>
-                                                    ))}
+                                                <div style={{ textAlign: "center" }}>
+                                                    <h2>Flexible Rental Plans</h2>
+                                                    {/* --- BLUE CENTER BORDER --- */}
+                                                    <div
+                                                        style={{
+                                                            width: "50px", height: "3px",
+                                                            backgroundColor: "#0d6efd",
+                                                            borderRadius: "2px", margin: "10px auto 0 auto",
+                                                        }}
+                                                    ></div>
+                                                    <p className="fst-italic mt-2">
+                                                        Security deposit of ₹{products[selectedModelIndex]?.duration[selectedDurationIndex]?.security_deposit || 0} will be 100% refundable
+                                                    </p>
+                                                    <h5>Choose Duration</h5>
+                                                    <div className="d-flex flex-wrap gap-2 mb-3 justify-content-center" style={{ textAlign: "center" }}>
+                                                        {products[selectedModelIndex]?.duration.map((duration, durationIndex) => (
+                                                            <button
+                                                                key={duration.duration_id}
+                                                                className={`btn ${selectedDurationIndex === durationIndex
+                                                                    ? "btn-primary"
+                                                                    : "btn-outline-primary"
+                                                                    }`}
+                                                                onClick={() => setSelectedDurationIndex(durationIndex)}
+                                                            >
+                                                                {duration.duration_time_limit}
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 </div>
 
-                                                <div className="row">
+                                                <div className="row justify-content-center" style={{ padding: "20px" }}>
                                                     {products[selectedModelIndex]?.plans.map((plan, planIndex) => {
                                                         const priceDetails = calculatePriceDetails();
                                                         if (!priceDetails) return null;
 
+                                                        const selectedDuration = priceDetails.selectedDuration?.duration_time_limit || "N/A";
+                                                        const durationNumber = parseInt(selectedDuration);
+                                                        const isPopular = plan.label.toLowerCase() === "couple";
+                                                        const connectivity = products[selectedModelIndex]?.connectivity?.trim();
+
                                                         return (
                                                             <div className="col-md-3 mb-4" key={plan.plans_id}>
                                                                 <div
-                                                                    className="card h-100"
+                                                                    className="card h-100 shadow-sm position-relative"
                                                                     style={{
-                                                                        position: 'relative',
-                                                                        borderRadius: '20px',
-                                                                        overflow: 'hidden',
-                                                                        border: '3px solid transparent',
-                                                                        boxShadow: '0 0 10px rgba(13, 110, 253, 0.3)',
-                                                                        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                                                                        borderRadius: "20px",
+                                                                        overflow: "visible",
+                                                                        border: isPopular ? "2px solid #0d6efd" : "2px solid #e0e0e0",
+                                                                        transition: "all 0.3s ease-in-out",
+                                                                        transform: "scale(1)",
                                                                     }}
                                                                     onMouseEnter={(e) => {
-                                                                        e.currentTarget.style.transform = 'scale(1.03)';
-                                                                        e.currentTarget.style.boxShadow = '0 0 20px rgba(13, 110, 253, 0.6)';
+                                                                        e.currentTarget.style.transform = "scale(1.05)";
+                                                                        e.currentTarget.style.boxShadow = "0 0 25px rgba(13, 110, 253, 0.3)";
                                                                     }}
                                                                     onMouseLeave={(e) => {
-                                                                        e.currentTarget.style.transform = 'scale(1)';
-                                                                        e.currentTarget.style.boxShadow = '0 0 10px rgba(13, 110, 253, 0.3)';
+                                                                        e.currentTarget.style.transform = "scale(1)";
+                                                                        e.currentTarget.style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.1)";
                                                                     }}
                                                                 >
-                                                                    <div className="card-header bg-light text-center">
-                                                                        <h4 style={{ color: "#0d83fd" }}>{plan.label}</h4>
-                                                                        <p>{plan.capacity}</p>
+                                                                    {/* --- MOST POPULAR BADGE --- */}
+                                                                    {isPopular && (
+                                                                        <div
+                                                                            style={{
+                                                                                position: "absolute",
+                                                                                top: "-14px",
+                                                                                left: "50%",
+                                                                                transform: "translateX(-50%)",
+                                                                                background: "#0d6efd",
+                                                                                color: "#fff",
+                                                                                borderRadius: "20px",
+                                                                                padding: "4px 16px",
+                                                                                fontSize: "13px",
+                                                                                fontWeight: "600",
+                                                                                boxShadow: "0 2px 6px rgba(13,110,253,0.3)",
+                                                                                zIndex: "10",
+                                                                            }}
+                                                                        >
+                                                                            Most Popular
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* HEADER */}
+                                                                    <div className="card-header bg-white text-center pt-4 border-0" style={{ borderRadius: '20px', }}>
+                                                                        <h5
+                                                                            style={{
+                                                                                color: "#000",
+                                                                                textTransform: "capitalize",
+                                                                                fontWeight: "700",
+                                                                                marginBottom: "5px",
+                                                                                fontSize: "20px",
+                                                                            }}
+                                                                        >
+                                                                            {plan.label} Plan
+                                                                        </h5>
+                                                                        <p style={{ fontWeight: "600" }}>
+                                                                            {plan.label?.toLowerCase() === "unlimited" || !plan.capacity ? (
+                                                                                <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
+                                                                            ) : (
+                                                                                <>
+                                                                                    {plan.capacity}/
+                                                                                    <span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
+                                                                                </>
+                                                                            )}
+                                                                        </p>
                                                                     </div>
-                                                                    <div className="card-body text-center">
-                                                                        <h4>
-                                                                            Price:₹{plan.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+
+                                                                    {/* PRICE */}
+                                                                    <div className="text-center mt-2">
+                                                                        <h4
+                                                                            style={{
+                                                                                color: "#000", fontWeight: "700",
+                                                                                fontSize: "32px", marginBottom: "5px",
+                                                                            }}
+                                                                        >
+                                                                            {/* PRICE */}
+                                                                            <div className="text-center mt-2">
+                                                                                {(() => {
+                                                                                    const basePrice = plan.price || 0;
+                                                                                    const durationText = selectedDuration || "28 days";
+
+                                                                                    // Extract number part from duration (e.g. "90 days" → 90)
+                                                                                    const durationDays = parseInt(durationText);
+                                                                                    const baseDays = 28; // base duration for price calculation
+
+                                                                                    // Calculate multiplied total
+                                                                                    const totalPrice = (basePrice / baseDays) * durationDays;
+
+                                                                                    // ✅ Format with Indian comma style and no decimals
+                                                                                    const formattedPrice = new Intl.NumberFormat("en-IN", {
+                                                                                        style: "currency",
+                                                                                        currency: "INR",
+                                                                                        minimumFractionDigits: 0,
+                                                                                        maximumFractionDigits: 0,
+                                                                                    }).format(totalPrice);
+
+                                                                                    return (
+                                                                                        <>
+                                                                                            <span style={{ color: "#0d6efd", fontWeight: "700", fontSize: "32px" }}>
+                                                                                                {formattedPrice}
+                                                                                            </span>
+                                                                                            <p
+                                                                                                style={{
+                                                                                                    color: "#666",
+                                                                                                    fontWeight: "500",
+                                                                                                    fontSize: "15px",
+                                                                                                    marginBottom: "0px",
+                                                                                                }}
+                                                                                            >
+                                                                                                / per {durationText.toLowerCase().includes("day") ? durationText : "month"}
+                                                                                            </p>
+                                                                                        </>
+                                                                                    );
+                                                                                })()}
+                                                                            </div>
+
+                                                                            <p
+                                                                                style={{
+                                                                                    marginTop: "8px", color: "#333",
+                                                                                    fontWeight: "600", fontSize: "13px",
+                                                                                }}
+                                                                            >
+                                                                                {priceDetails.discountRate ? `${priceDetails.discountRate}% OFF` : "No Discount"}
+                                                                                <br />
+                                                                                <span style={{ fontSize: "12px", color: "#777" }}>(Inclusive of GST)</span>
+                                                                            </p>
+                                                                            {/* --- BLUE CENTER BORDER --- */}
+                                                                            <div
+                                                                                style={{
+                                                                                    width: "200px", height: "2px",
+                                                                                    backgroundColor: "#0d6efd",
+                                                                                    borderRadius: "2px", margin: "10px auto 0 auto",
+                                                                                }}
+                                                                            ></div>
                                                                         </h4>
-                                                                        <p>Connectivity: {products[selectedModelIndex].connectivity || 'N/A'}</p>
-                                                                        <p>Total for {priceDetails.selectedDuration.duration_time_limit}</p>
-                                                                        <p className="text-muted">₹{priceDetails.finalMonthlyPrice.toFixed(0)} / Month (28 days basis)</p>
-                                                                        <p>Discount: {priceDetails.discountRate}%</p>
-                                                                        {!userInfo?.security_deposit && (
-                                                                            <p className="text-warning">Includes ₹{priceDetails.securityDeposit || 0} refundable deposit</p>
-                                                                        )}
-                                                                        {userInfo?.security_deposit && (
-                                                                            <p className="text-info">No additional deposit required</p>
-                                                                        )}
                                                                     </div>
-                                                                    <div className="card-footer text-center">
+                                                                    {/* FEATURES */}
+                                                                    <div className="card-body text-left px-4" style={{ paddingTop: "0px" }}>
+                                                                        <ul style={{ listStyle: "none", paddingLeft: "0", margin: "5px 0" }}>
+                                                                            <li className="mb-2">
+                                                                                <span className="text-success">✓</span> Lifetime Maintenance
+                                                                            </li>
+                                                                            <li className="mb-2">
+                                                                                <span className="text-success">✓</span> Security ₹{products[selectedModelIndex]?.duration[selectedDurationIndex]?.security_deposit || 0}
+                                                                            </li>
+                                                                            <li className="mb-2">
+                                                                                <span className="text-success">✓</span> 24–48 Hour Installation
+                                                                            </li>
+                                                                            {durationNumber >= 90 && (
+                                                                                <li className="mb-2">
+                                                                                    <span className="text-success">✓</span> Filter Replacement Every 3 Months
+                                                                                </li>
+                                                                            )}
+
+                                                                            {/* --- CONNECTIVITY --- */}
+                                                                            {connectivity ? (
+                                                                                <li className="mb-2">
+                                                                                    <span className="text-success">✓</span> Connectivity:
+                                                                                    <ul
+                                                                                        style={{
+                                                                                            listStyleType: "disc",
+                                                                                            paddingLeft: "25px",
+                                                                                            marginTop: "5px",
+                                                                                        }}
+                                                                                    >
+                                                                                        {connectivity.split(",").map((conn, i) => (
+                                                                                            <li key={i}>{conn.trim()}</li>
+                                                                                        ))}
+                                                                                    </ul>
+                                                                                </li>
+                                                                            ) : (
+                                                                                <li className="mb-2 text-danger">
+                                                                                    ❌ No Connectivity
+                                                                                </li>
+                                                                            )}
+
+                                                                            <li className="mb-2">
+                                                                                <span className="text-success">✓</span> Discount: {priceDetails.discountRate || 0}%
+                                                                            </li>
+                                                                            <li className="mb-2">
+                                                                                <span className="text-success">✓</span> GST:{" "}
+                                                                                {products[selectedModelIndex]?.duration[selectedDurationIndex]?.gst || 0}%
+                                                                            </li>
+                                                                            <li className="text-warning">
+                                                                                <span className="text-warning">✓</span> Includes ₹
+                                                                                {priceDetails.securityDeposit || 0} refundable deposit
+                                                                            </li>
+                                                                        </ul>
+                                                                    </div>
+
+                                                                    {/* BUTTON */}
+                                                                    <div className="card-footer text-center pb-4 border-0 bg-white" style={{ borderRadius: '20px' }}>
                                                                         {(() => {
                                                                             const product = products[selectedModelIndex];
                                                                             const isOutOfStock = !product?.wp_device_id;
                                                                             if (isOutOfStock) {
                                                                                 return (
-                                                                                    <button className="btn btn-danger" disabled>
+                                                                                    <button className="btn btn-danger px-4 py-2 rounded-pill" disabled>
                                                                                         Out of Stock
                                                                                     </button>
                                                                                 );
                                                                             }
                                                                             return (
                                                                                 <button
-                                                                                    className="btn btn-primary"
+                                                                                    className="btn px-4 py-2 rounded-pill"
+                                                                                    style={{
+                                                                                        background: isPopular ? "#0d6efd" : "#0d6efd",
+                                                                                        border: "none",
+                                                                                        color: "#fff",
+                                                                                        transition: "0.3s",
+                                                                                    }}
+                                                                                    onMouseEnter={(e) => (e.currentTarget.style.background = "#0b5ed7")}
+                                                                                    onMouseLeave={(e) => (e.currentTarget.style.background = "#0d6efd")}
                                                                                     onClick={() => {
                                                                                         setSelectedPlanIndex(planIndex);
                                                                                         handleSubscribeClick();
@@ -875,6 +1057,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                         );
                                                     })}
                                                 </div>
+
                                             </div>
                                         </div>
                                     </div>
@@ -888,43 +1071,174 @@ const Home = ({ userInfo, token, handleLogout }) => {
                     )}
 
                     {showSummaryModal && (
-                        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)", padding: "20px" }}>
-                            <div className="modal-dialog modal-lg">
-                                <div className="modal-content" style={{ marginTop: '20%', border: '2px solid #0d6efd' }}>
+                        <div
+                            className="modal show d-block"
+                            tabIndex="-1"
+                            style={{
+                                backgroundColor: "rgba(0,0,0,0.5)",
+                                padding: "20px",
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                position: "fixed",
+                                top: 0,
+                                left: 0,
+                                width: "100%",
+                                height: "100%",
+                                zIndex: 1050,
+                                paddingTop: '5%'
+                            }}
+                        >
+                            <div
+                                className="modal-dialog modal-lg"
+                                style={{
+                                    maxWidth: "700px",
+                                    width: "60%",
+                                }}
+                            >
+                                <div
+                                    className="modal-content"
+                                    style={{
+                                        border: "2px solid #0d6efd",
+                                        borderRadius: "12px",
+                                        boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+                                    }}
+                                >
                                     <div className="modal-header">
-                                        <h5 className="modal-title" style={{ color: '#0d6efd' }}>Subscription Summary</h5>
-                                        <button type="button" className="btn-close" onClick={() => setShowSummaryModal(false)}></button>
+                                        <h5 className="modal-title" style={{ color: "#0d6efd" }}>
+                                            Subscription Summary
+                                        </h5>
+                                        <button
+                                            type="button"
+                                            className="btn-close"
+                                            onClick={() => setShowSummaryModal(false)}
+                                        ></button>
                                     </div>
-                                    <div className="modal-body">
+
+                                    <div
+                                        className="modal-body"
+                                        style={{
+                                            fontSize: "16px",
+                                            lineHeight: "1.8",
+                                            padding: "20px 30px",
+                                        }}
+                                    >
                                         {(() => {
                                             const priceDetails = calculatePriceDetails();
-                                            if (!priceDetails) return <p>Error loading summary. Please try again.</p>;
+                                            if (!priceDetails)
+                                                return <p>Error loading summary. Please try again.</p>;
+
+                                            const textRow = (label, value, isBold = false, isBlue = false) => (
+                                                <div
+                                                    style={{
+                                                        display: "flex",
+                                                        justifyContent: "space-between",
+                                                        marginBottom: "6px",
+                                                    }}
+                                                >
+                                                    <span style={{ fontWeight: 600, color: "#000" }}>{label}</span>
+                                                    <span
+                                                        style={{
+                                                            fontWeight: isBold ? "700" : "500",
+                                                            color: isBlue ? "#0d6efd" : "#333",
+                                                        }}
+                                                    >
+                                                        {value}
+                                                    </span>
+                                                </div>
+                                            );
+
+                                            const basePrice = priceDetails.basePrice || 0;
+                                            const durationText =
+                                                priceDetails.selectedDuration?.duration_time_limit || "28 days";
+                                            const durationDays = parseInt(durationText) || 28;
+                                            const baseDays = 28;
+                                            const totalPrice = (basePrice / baseDays) * durationDays;
+                                            const formattedPrice = new Intl.NumberFormat("en-IN", {
+                                                style: "currency",
+                                                currency: "INR",
+                                                minimumFractionDigits: 0,
+                                                maximumFractionDigits: 0,
+                                            }).format(totalPrice);
 
                                             return (
                                                 <>
-                                                    <p><strong>Model:</strong> {priceDetails.selectedProduct?.model_name}</p>
-                                                    <p><strong>Plan:</strong> {priceDetails.selectedPlan?.label}</p>
-                                                    <p><strong>Capacity:</strong> {priceDetails.selectedPlan?.capacity}</p>
-                                                    <hr style={{ color: '#0d6efd' }} />
-                                                    <p><strong>Price:</strong> ₹{priceDetails.basePrice.toLocaleString('en-IN')}</p>
-                                                    {/* <p><strong>Base Monthly Price:</strong> ₹{priceDetails.basePrice.toLocaleString('en-IN')}</p> */}
-                                                    <p><strong>GST ({priceDetails.gstRate}%):</strong> ₹{priceDetails.gstAmount.toLocaleString('en-IN')}</p>
-                                                    <p><strong>Price with GST:</strong> ₹{priceDetails.priceWithGST.toLocaleString('en-IN')}</p>
-                                                    <p><strong>Discount ({priceDetails.discountRate}%):</strong> ₹{priceDetails.discountAmount.toLocaleString('en-IN')}</p>
-                                                    <p><strong>Final Monthly Price:</strong> ₹{priceDetails.finalMonthlyPrice.toLocaleString('en-IN')}</p>
-                                                    <p><strong>Duration:</strong> {priceDetails.durationDays} days</p>
-                                                    <hr style={{ color: '#0d6efd' }} />
-                                                    <p><strong>Subtotal:</strong> ₹{priceDetails.grandTotal.toLocaleString('en-IN')}</p>
-                                                    <p><strong>Security Deposit:</strong> ₹{priceDetails.securityDeposit.toLocaleString('en-IN')}</p>
-                                                    <h4 style={{ color: '#0d6efd' }}><strong>Grand Total:</strong> ₹{priceDetails.grandTotalWithDeposit.toLocaleString('en-IN')}</h4>
+                                                    {textRow("Model", priceDetails.selectedProduct?.model_name, false, true)}
+                                                    {textRow("Plan", priceDetails.selectedPlan?.label, false, true)}
+
+                                                    <div
+                                                        style={{
+                                                            display: "flex",
+                                                            justifyContent: "space-between",
+                                                            marginBottom: "6px",
+                                                        }}
+                                                    >
+                                                        <span style={{ fontWeight: "600", color: "#000" }}>Capacity</span>
+                                                        <span style={{ fontWeight: "600" }}>
+                                                            {priceDetails.selectedPlan?.label?.toLowerCase() === "unlimited" ||
+                                                                !priceDetails.selectedPlan?.capacity ? (
+                                                                <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
+                                                            ) : (
+                                                                <>
+                                                                    {priceDetails.selectedPlan?.capacity}/
+                                                                    <span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
+                                                                </>
+                                                            )}
+                                                        </span>
+                                                    </div>
+
+                                                    <hr style={{ color: "#0d6efd" }} />
+
+                                                    {textRow("Price", formattedPrice)}
+                                                    {textRow("Duration", `${durationDays} days`)}
+                                                    {textRow(`GST (${priceDetails.gstRate}%)`, `₹${priceDetails.gstAmount.toLocaleString("en-IN")}`)}
+                                                    {textRow("Price with GST", `₹${priceDetails.priceWithGST.toLocaleString("en-IN")}`)}
+                                                    {textRow(`Discount (${priceDetails.discountRate}%)`, `₹${priceDetails.discountAmount.toLocaleString("en-IN")}`)}
+                                                    {/* {textRow("Final Monthly Price", `₹${priceDetails.finalMonthlyPrice.toLocaleString("en-IN")}`)} */}
+
+                                                    <hr style={{ color: "#0d6efd" }} />
+
+                                                    {textRow("Subtotal", `₹${priceDetails.grandTotal.toLocaleString("en-IN")}`)}
+                                                    {textRow("Security Deposit", `₹${priceDetails.securityDeposit.toLocaleString("en-IN")}`)}
+                                                    {textRow("Grand Total", `₹${priceDetails.grandTotalWithDeposit.toLocaleString("en-IN")}`, true, true)}
                                                 </>
                                             );
                                         })()}
                                     </div>
-                                    <div className="modal-footer">
-                                        <button className="btn btn-secondary" onClick={() => setShowSummaryModal(false)}>Cancel</button>
+
+                                    <div
+                                        className="modal-footer"
+                                        style={{
+                                            display: "flex",
+                                            justifyContent: "center",
+                                            gap: "15px",
+                                            paddingBottom: "20px",
+                                        }}
+                                    >
                                         <button
-                                            className="btn btn-primary"
+                                            className="btn"
+                                            style={{
+                                                background: "#6c757d",
+                                                color: "#fff",
+                                                border: "none",
+                                                padding: "8px 20px",
+                                                borderRadius: "6px",
+                                                fontWeight: "600",
+                                            }}
+                                            onClick={() => setShowSummaryModal(false)}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            className="btn"
+                                            style={{
+                                                background: "#0d6efd",
+                                                color: "#fff",
+                                                border: "none",
+                                                padding: "8px 20px",
+                                                borderRadius: "6px",
+                                                fontWeight: "600",
+                                            }}
                                             onClick={() => {
                                                 setShowSummaryModal(false);
                                                 setShowModal(true);
@@ -938,110 +1252,255 @@ const Home = ({ userInfo, token, handleLogout }) => {
                         </div>
                     )}
 
+
                     {showModal && (
-                        <div className={`modal ${showModal ? "d-block" : "d-none"}`} tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-                            <div className="modal-dialog">
-                                <div className="modal-content" style={{ marginTop: '30%' }}>
-                                    <div className="modal-header" style={{ alignItems: 'center' }}>
-                                        <h5 className="modal-title">Delivery Address</h5>
-                                        <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
+                        <div
+                            className={`modal ${showModal ? "d-block" : "d-none"}`}
+                            tabIndex="-1"
+                            style={{
+                                backgroundColor: "rgba(0,0,0,0.5)",
+                                position: "fixed",
+                                top: 0,
+                                left: 0,
+                                width: "100%",
+                                height: "100%",
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                zIndex: 1050,
+                                padding: "20px",
+                                paddingTop: '5%'
+                            }}
+                        >
+                            <div
+                                className="modal-dialog modal-lg"
+                                style={{
+                                    width: "60%",
+                                    maxWidth: "800px",
+                                }}
+                            >
+                                <div
+                                    className="modal-content"
+                                    style={{
+                                        border: "2px solid #0d6efd",
+                                        borderRadius: "12px",
+                                        boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+                                    }}
+                                >
+                                    <div
+                                        className="modal-header"
+                                        style={{
+                                            alignItems: "center",
+                                            borderBottom: "1px solid #dee2e6",
+                                            padding: "12px 20px",
+                                        }}
+                                    >
+                                        <h5 className="modal-title" style={{ color: "#0d6efd", fontWeight: 600 }}>
+                                            Delivery Address
+                                        </h5>
+                                        <button
+                                            type="button"
+                                            className="btn-close"
+                                            onClick={() => setShowModal(false)}
+                                        ></button>
                                     </div>
-                                    <div className="modal-body" style={{ height: "600px", overflowY: "auto", paddingRight: "10px", padding: '30px' }}>
+
+                                    <div
+                                        className="modal-body"
+                                        style={{
+                                            height: "600px",
+                                            overflowY: "auto",
+                                            padding: "25px 30px",
+                                            fontSize: "15px",
+                                        }}
+                                    >
                                         <form onSubmit={handleSubmit}>
-                                            <div className="mb-3">
-                                                <label>Name</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    required
-                                                    value={name}
-                                                    onChange={(e) => {
-                                                        if (/^[a-zA-Z\s]*$/.test(e.target.value)) setName(e.target.value);
-                                                    }}
-                                                />
+                                            {/* 2-column layout grid */}
+                                            <div
+                                                style={{
+                                                    display: "grid",
+                                                    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+                                                    gap: "20px 30px",
+                                                }}
+                                            >
+                                                {/* Name */}
+                                                <div>
+                                                    <label style={{ fontWeight: 600 }}>Name</label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        required
+                                                        value={name}
+                                                        onChange={(e) => {
+                                                            if (/^[a-zA-Z\s]*$/.test(e.target.value)) setName(e.target.value);
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                {/* Phone */}
+                                                <div>
+                                                    <label style={{ fontWeight: 600 }}>Phone Number</label>
+                                                    <input
+                                                        type="tel"
+                                                        className="form-control"
+                                                        required
+                                                        value={phone}
+                                                        minLength={10}
+                                                        maxLength={10}
+                                                        onChange={(e) => {
+                                                            let input = e.target.value.replace(/\D/g, '');
+                                                            if (input.length === 1 && /^[0-5]$/.test(input)) {
+                                                                input = '';
+                                                            }
+                                                            setPhone(input);
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                {/* Email */}
+                                                <div>
+                                                    <label style={{ fontWeight: 600 }}>Email ID</label>
+                                                    <input
+                                                        type="email"
+                                                        className="form-control"
+                                                        required
+                                                        value={emailID}
+                                                        onChange={(e) => setEmailID(sanitizeEmail(e.target.value))}
+                                                    />
+                                                </div>
+
+                                                {/* Street */}
+                                                <div>
+                                                    <label style={{ fontWeight: 600 }}>Street Address</label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        required
+                                                        value={street}
+                                                        onChange={(e) => setStreet(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                {/* Landmark */}
+                                                <div>
+                                                    <label style={{ fontWeight: 600 }}>Landmark</label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        value={landmark}
+                                                        onChange={(e) => setLandmark(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                {/* Country */}
+                                                <div>
+                                                    <label style={{ fontWeight: 600 }}>Country</label>
+                                                    <select
+                                                        className="form-control"
+                                                        value={country}
+                                                        onChange={(e) => setCountry(e.target.value)}
+                                                    >
+                                                        {countryList.map((c) => (
+                                                            <option key={c.isoCode} value={c.isoCode}>
+                                                                {c.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                {/* State */}
+                                                <div>
+                                                    <label style={{ fontWeight: 600 }}>State</label>
+                                                    <select
+                                                        className="form-control"
+                                                        value={state}
+                                                        onChange={(e) => setState(e.target.value)}
+                                                    >
+                                                        <option>Select State</option>
+                                                        {stateList.map((s) => (
+                                                            <option key={s.isoCode} value={s.isoCode}>
+                                                                {s.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                {/* District */}
+                                                <div>
+                                                    <label style={{ fontWeight: 600 }}>District</label>
+                                                    <select
+                                                        className="form-control"
+                                                        value={district}
+                                                        onChange={(e) => setDistrict(e.target.value)}
+                                                    >
+                                                        <option>Select District</option>
+                                                        {districtList.map((d) => (
+                                                            <option key={d} value={d}>
+                                                                {d}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                {/* City */}
+                                                <div>
+                                                    <label style={{ fontWeight: 600 }}>City</label>
+                                                    <select
+                                                        className="form-control"
+                                                        value={city}
+                                                        onChange={(e) => setCity(e.target.value)}
+                                                    >
+                                                        <option>Select City</option>
+                                                        {cityList.map((c) => (
+                                                            <option key={c.name} value={c.name}>
+                                                                {c.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                {/* Pincode */}
+                                                <div>
+                                                    <label style={{ fontWeight: 600 }}>Pin Code</label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        value={pincode}
+                                                        onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
+                                                        maxLength={6}
+                                                        required
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="mb-3">
-                                                <label>Phone Number</label>
-                                                <input
-                                                    type="tel"
-                                                    className="form-control"
-                                                    required
-                                                    value={phone}
-                                                    minLength={10}
-                                                    maxLength={10}
-                                                    onChange={(e) => {
-                                                        let input = e.target.value.replace(/\D/g, '');
-                                                        if (input.length === 1 && /^[0-5]$/.test(input)) {
-                                                            input = '';
-                                                        }
-                                                        setPhone(input);
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="mb-3">
-                                                <label>Email ID</label>
-                                                <input
-                                                    type="email"
-                                                    className="form-control"
-                                                    required
-                                                    value={emailID}
-                                                    onChange={(e) => setEmailID(sanitizeEmail(e.target.value))}
-                                                />
-                                            </div>
-                                            <div className="mb-3">
-                                                <label>Street Address</label>
-                                                <input type="text" className="form-control" required value={street} onChange={e => setStreet(e.target.value)} />
-                                            </div>
-                                            <div className="mb-3">
-                                                <label>Landmark</label>
-                                                <input type="text" className="form-control" value={landmark} onChange={e => setLandmark(e.target.value)} />
-                                            </div>
-                                            <div className="mb-3">
-                                                <label>Country</label>
-                                                <select className="form-control" value={country} onChange={e => setCountry(e.target.value)}>
-                                                    {countryList.map(c => <option key={c.isoCode} value={c.isoCode}>{c.name}</option>)}
-                                                </select>
-                                            </div>
-                                            <div className="mb-3">
-                                                <label>State</label>
-                                                <select className="form-control" value={state} onChange={e => setState(e.target.value)}>
-                                                    <option>Select State</option>
-                                                    {stateList.map(s => (
-                                                        <option key={s.isoCode} value={s.isoCode}>{s.name}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="mb-3">
-                                                <label>District</label>
-                                                <select className="form-control" value={district} onChange={e => setDistrict(e.target.value)}>
-                                                    <option>Select District</option>
-                                                    {districtList.map(d => <option key={d} value={d}>{d}</option>)}
-                                                </select>
-                                            </div>
-                                            <div className="mb-3">
-                                                <label>City</label>
-                                                <select className="form-control" value={city} onChange={e => setCity(e.target.value)}>
-                                                    <option>Select City</option>
-                                                    {cityList.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                                                </select>
-                                            </div>
-                                            <div className="mb-3">
-                                                <label>Pin Code</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    value={pincode}
-                                                    onChange={e => setPincode(e.target.value.replace(/\D/g, ''))}
-                                                    maxLength={6}
-                                                    required
-                                                />
-                                            </div>
-                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                                                <p>
-                                                    <i className="bi bi-check2-circle" style={{ color: '#0d83fd' }}></i> Lifetime Free Maintenance<br />
-                                                    <i className="bi bi-check2-circle" style={{ color: '#0d83fd' }}></i> 48 Hours Installation
+
+                                            {/* Bottom info & button */}
+                                            <div
+                                                style={{
+                                                    marginTop: "30px",
+                                                    textAlign: "center",
+                                                    display: "flex",
+                                                    flexDirection: "column",
+                                                    alignItems: "center",
+                                                }}
+                                            >
+                                                <p style={{ color: "#0d6efd", lineHeight: "1.6" }}>
+                                                    <i className="bi bi-check2-circle"></i> Lifetime Free Maintenance<br />
+                                                    <i className="bi bi-check2-circle"></i> 24-48 Hours Installation
                                                 </p>
-                                                <button type="submit" className="btn btn-primary mb-2" disabled={subLoading}>
+
+                                                <button
+                                                    type="submit"
+                                                    className="btn"
+                                                    style={{
+                                                        background: "#0d6efd",
+                                                        color: "#fff",
+                                                        border: "none",
+                                                        padding: "10px 25px",
+                                                        borderRadius: "8px",
+                                                        fontWeight: 600,
+                                                    }}
+                                                    disabled={subLoading}
+                                                >
                                                     {subLoading ? "Processing..." : "Subscribe Now"}
                                                 </button>
                                             </div>
@@ -1051,6 +1510,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                             </div>
                         </div>
                     )}
+
                 </section>
                 {/* <!-- /Features Section --> */}
 
