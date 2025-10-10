@@ -29,7 +29,8 @@ exports.createSubscriptionOrder = async (req, res) => {
       securityDeposit,
       grandTotal,
       priceWithGST,
-      wp_device_id
+      wp_device_id,
+      main_image // ✅ <-- added this field
     } = req.body;
 
     const db = await connectToDatabase();
@@ -46,36 +47,32 @@ exports.createSubscriptionOrder = async (req, res) => {
     if (
       !productModelId || !selectedPlanId || !selectedDurationId || !deliveryAddress ||
       finalMonthlyPrice === undefined || discountAmount === undefined ||
-      priceWithGST === undefined || gstAmount === undefined || grandTotal === undefined || !wp_device_id
+      priceWithGST === undefined || gstAmount === undefined || grandTotal === undefined ||
+      !wp_device_id || !main_image // ✅ <-- now required
     ) {
       return res.status(400).json({
-        message: 'All fields including wp_device_id are required (except securityDeposit)'
+        message: 'All fields including main_image and wp_device_id are required (except securityDeposit)'
       });
     }
 
-    // Validate deliveryAddress (district required)
+    // Validate delivery address
     const addrResult = validateDeliveryAddress(deliveryAddress);
     if (!addrResult.valid) {
       return res.status(400).json({ message: addrResult.message });
     }
 
-    // Normalize before storing
     const normalizedAddress = normalizeDeliveryAddress(deliveryAddress);
 
-    // Require security deposit for first-time users
+    // Check deposit condition
     if (!user.security_deposit_added && (securityDeposit === undefined || securityDeposit === null)) {
       return res.status(400).json({ message: 'Security deposit is required for new users' });
     }
 
-    // Check product model
+    // Fetch Product Model
     const productModel = await db.collection('product_models').findOne({ _id: new ObjectId(productModelId) });
     if (!productModel) return res.status(404).json({ message: 'Product model not found' });
 
-    // if (!productModel.wp_device_quantity || productModel.wp_device_quantity <= 0) {
-    //   return res.status(404).json({ message: 'No available devices for this product model' });
-    // }
-
-    // Validate device availability
+    // Validate Device
     const device = await db.collection('device_details').findOne({
       wp_device_id: wp_device_id,
       model_id: Number(productModel.model_id),
@@ -121,13 +118,14 @@ exports.createSubscriptionOrder = async (req, res) => {
 
     const customOrderId = generateOrderId();
 
-    // Insert order
+    // ✅ Include image from req.body
     const newOrder = {
       customOrderId,
       user_id: user.user_id,
       productModelId,
       modelName: productModel.model_name,
       wp_device_id,
+      main_image, // ✅ added directly from frontend
       selectedPlan,
       selectedDuration,
       grandTotal: totalAmountForRazorpay,
@@ -143,7 +141,7 @@ exports.createSubscriptionOrder = async (req, res) => {
     const result = await db.collection('orders').insertOne(newOrder);
     const orderId = result.insertedId;
 
-    // Insert payment details
+    // Payment record
     await db.collection('payments').insertOne({
       user_id: user.user_id,
       orderId,
@@ -160,7 +158,6 @@ exports.createSubscriptionOrder = async (req, res) => {
       updatedAt: new Date()
     });
 
-    // Generate Razorpay signature for frontend verification
     const signatureBase = razorpayOrder.id + '|' + orderId.toString();
     const generatedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(signatureBase)
@@ -176,7 +173,8 @@ exports.createSubscriptionOrder = async (req, res) => {
         razorpaySignature: generatedSignature,
         product: {
           _id: productModel._id,
-          model_name: productModel.model_name
+          model_name: productModel.model_name,
+          main_image // ✅ returned in response
         },
         wp_device_id,
         selectedPlan,
@@ -199,6 +197,7 @@ exports.createSubscriptionOrder = async (req, res) => {
     return res.status(500).json({ message: 'Failed to create order', error: err.message });
   }
 };
+
 
 
 
