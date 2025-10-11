@@ -2,7 +2,6 @@ const mqtt = require('mqtt');
 const { connectToDatabase } = require('../../../config/db');
 const { ObjectId } = require('mongodb'); // add at top if not already
 
-
 // MQTT Connection Config
 const clientId = `server_${Math.random().toString(16).substr(2, 8)}`;
 const mqttClient = mqtt.connect('mqtt://172.232.109.123:1883', {
@@ -141,157 +140,162 @@ mqttClient.on('message', async (topic, payload) => {
     }
 
     // Telemetry Frame
-   else if (topicType === 'telemetry') {
-  Object.assign(record, data); // include telemetry fields
-  record.is_alert = null;
-  record.is_ack = null;
+    else if (topicType === 'telemetry') {
+      Object.assign(record, data); // include telemetry fields
+      record.is_alert = null;
+      record.is_ack = null;
 
-  // ✅ Check is_subscribed_wp and handle accordingly
-  // ✅ Check is_subscribed_wp and handle accordingly
-if (data.is_subscribed_wp === false) {
-  const user = await usersCollection.findOne({
-    assigned_device_ids: deviceId
-  });
-
-  if (user) {
-    const currentStatus = await deviceStatusCollection.findOne({ deviceId });
-    const isLocked = currentStatus?.is_locked === true;
-
-    if (user.is_subscribed === true && user.active_order_id) {
-      const order = await ordersCollection.findOne({
-        _id: new ObjectId(user.active_order_id),
-        wp_device_id: { $regex: new RegExp(`^${deviceId}$`, 'i') }
-      });
-
-      if (order) {
-        // ✅ Send UNLOCK_DEVICE if currently locked
-        if (isLocked) {
-          const unlockPayload = {
-            command: 'UNLOCK_DEVICE',
-            reason: 'Plan renewed',
-            timestamp: new Date().toISOString()
-          };
-
-          const commandTopic = `waterpurifier/${deviceId}/command`;
-          mqttClient.publish(commandTopic, JSON.stringify(unlockPayload), (err) => {
-            if (err) {
-              console.error(`❌ Failed to publish UNLOCK_DEVICE for ${deviceId}:`, err.message);
-            } else {
-              console.log(`🔓 Sent UNLOCK_DEVICE to ${commandTopic}`);
-            }
-          });
-
-          // ✅ Update lock status
-          await deviceStatusCollection.updateOne(
-            { deviceId },
-            { $set: { is_locked: false } }
-          );
-        }
-
-        // ✅ Then proceed with SET_PLAN
-        const planType = order.selectedPlan?.label || 'BASIC';
-        const totalWaterLimit = order.totalLitre || 500;
-        const durationText = order.selectedDuration?.duration_time_limit || '30 days';
-        const subscriptionDuration = parseInt(durationText) || 30;
-        const startDate = new Date(order.createdAt).toISOString().split('T')[0];
-        const endDate = new Date(order.subscriptionExpiryDate).toISOString().split('T')[0];
-
-        const commandPayload = {
-          command: 'SET_PLAN',
-          planType,
-          subscriptionDuration,
-          totalWaterLimit,
-          startDate,
-          endDate
-        };
-
-        const commandTopic = `waterpurifier/${deviceId}/command`;
-        mqttClient.publish(commandTopic, JSON.stringify(commandPayload), (err) => {
-          if (err) {
-            console.error(`❌ Failed to publish SET_PLAN for ${deviceId}:`, err.message);
-          } else {
-            console.log(`📤 Sent SET_PLAN to ${commandTopic}`);
-          }
+      // ✅ Check is_subscribed_wp and handle accordingly
+      if (data.is_subscribed_wp === false) {
+        const user = await usersCollection.findOne({
+          assigned_device_ids: deviceId,
         });
-      } else {
-        console.warn(`⚠️ No active order found for user ${user._id} & device ${deviceId}`);
+
+        if (user) {
+          const currentStatus = await deviceStatusCollection.findOne({ deviceId });
+          const isLocked = currentStatus?.is_locked === true;
+
+          if (user.is_subscribed === true && user.active_order_id) {
+            const order = await ordersCollection.findOne({
+              _id: new ObjectId(user.active_order_id),
+              wp_device_id: { $regex: new RegExp(`^${deviceId}$`, 'i') },
+            });
+
+            if (order) {
+              if (isLocked) {
+                const unlockPayload = {
+                  command: 'UNLOCK_DEVICE',
+                  reason: 'Plan renewed',
+                  timestamp: new Date().toISOString(),
+                };
+
+                const commandTopic = `waterpurifier/${deviceId}/command`;
+                mqttClient.publish(commandTopic, JSON.stringify(unlockPayload), (err) => {
+                  if (err) {
+                    console.error(`❌ Failed to publish UNLOCK_DEVICE for ${deviceId}:`, err.message);
+                  } else {
+                    console.log(`🔓 Sent UNLOCK_DEVICE to ${commandTopic}`);
+                  }
+                });
+
+                await deviceStatusCollection.updateOne(
+                  { deviceId },
+                  { $set: { is_locked: false } }
+                );
+              }
+
+              const planType = order.selectedPlan?.label || 'BASIC';
+              const totalWaterLimit = order.totalLitre || 500;
+              const durationText = order.selectedDuration?.duration_time_limit || '30 days';
+              const subscriptionDuration = parseInt(durationText) || 30;
+              const startDate = new Date(order.createdAt).toISOString().split('T')[0];
+              const endDate = new Date(order.subscriptionExpiryDate).toISOString().split('T')[0];
+
+              const commandPayload = {
+                command: 'SET_PLAN',
+                planType,
+                subscriptionDuration,
+                totalWaterLimit,
+                startDate,
+                endDate,
+              };
+
+              const commandTopic = `waterpurifier/${deviceId}/command`;
+              mqttClient.publish(commandTopic, JSON.stringify(commandPayload), (err) => {
+                if (err) {
+                  console.error(`❌ Failed to publish SET_PLAN for ${deviceId}:`, err.message);
+                } else {
+                  console.log(`📤 Sent SET_PLAN to ${commandTopic}`);
+                }
+              });
+            } else {
+              console.warn(`⚠️ No active order found for user ${user._id} & device ${deviceId}`);
+            }
+          } else {
+            const lockPayload = {
+              command: 'LOCK_DEVICE',
+              reason: 'Subscription expired',
+              timestamp: new Date().toISOString(),
+            };
+
+            const commandTopic = `waterpurifier/${deviceId}/command`;
+            mqttClient.publish(commandTopic, JSON.stringify(lockPayload), (err) => {
+              if (err) {
+                console.error(`❌ Failed to publish LOCK_DEVICE for ${deviceId}:`, err.message);
+              } else {
+                console.log(`🔒 Sent LOCK_DEVICE to ${commandTopic}`);
+              }
+            });
+
+            await deviceStatusCollection.updateOne(
+              { deviceId },
+              { $set: { is_locked: true } },
+              { upsert: true }
+            );
+          }
+        } else {
+          console.warn(`🚫 No user found for device ${deviceId}`);
+        }
       }
 
-    } else {
-      // ❌ is_subscribed is false → send LOCK_DEVICE
-      const lockPayload = {
-        command: 'LOCK_DEVICE',
-        reason: 'Subscription expired',
-        timestamp: new Date().toISOString()
-      };
+      // ✅ Dynamic auto-alert detection
+      const alerts = [];
+      const minPressure = device.minPressure || 1.5;
+      const tdsOutHigh = device.tdsOutHigh || 100;
+      const tdsOutLow = device.tdsOutLow || 30;
 
-      const commandTopic = `waterpurifier/${deviceId}/command`;
-      mqttClient.publish(commandTopic, JSON.stringify(lockPayload), (err) => {
-        if (err) {
-          console.error(`❌ Failed to publish LOCK_DEVICE for ${deviceId}:`, err.message);
-        } else {
-          console.log(`🔒 Sent LOCK_DEVICE to ${commandTopic}`);
+      if (data.totalWaterUsed >= data.totalWaterLimit) {
+        alerts.push({ alertType: 'LIMIT_EXCEEDED', message: `Water limit exceeded: ${data.totalWaterUsed} / ${data.totalWaterLimit} L` });
+      }
+      if (data.pressure < minPressure) {
+        alerts.push({ alertType: 'PRESSURE_LOW', message: `Pressure is low: ${data.pressure} bar (min ${minPressure})` });
+      }
+      if (data.tdsOut > tdsOutHigh) {
+        alerts.push({ alertType: 'TDS_OUT_HIGH', message: `TDS output high: ${data.tdsOut} ppm (max ${tdsOutHigh})` });
+      }
+      if (data.tdsOut < tdsOutLow) {
+        alerts.push({ alertType: 'TDS_OUT_LOW', message: `TDS output low: ${data.tdsOut} ppm (min ${tdsOutLow})` });
+      }
+      if (data.tankLevel === 'EMPTY') {
+        alerts.push({ alertType: 'TANK_EMPTY', message: 'Water tank is empty' });
+      }
+      if (data.tankLevel === 'FULL') {
+        alerts.push({ alertType: 'TANK_FULL', message: 'Water tank is full' });
+      }
+      if (data.customAlerts && Array.isArray(data.customAlerts)) {
+        for (const ca of data.customAlerts) {
+          alerts.push({ alertType: ca.alertType, message: ca.message });
         }
+      }
+
+      for (const alert of alerts) {
+        await alertCollection.insertOne({
+          deviceId,
+          alertType: alert.alertType,
+          message: alert.message,
+          timestamp: record.timestamp,
+        });
+        console.log(`🚨 [Dynamic Alert] ${alert.alertType} for ${deviceId}: ${alert.message}`);
+      }
+
+      // ✅ Insert telemetry/history record
+      await featureValuesCollection.insertOne({
+        ...data,
+        deviceId,
+        topicType,
+        timestamp: record.timestamp,
       });
 
-      // ✅ Update lock status
+      // ✅ Update latest device status
+      delete record._id;
       await deviceStatusCollection.updateOne(
         { deviceId },
-        { $set: { is_locked: true } },
+        { $set: record },
         { upsert: true }
       );
+
+      console.log(`📦 [TELEMETRY] Updated device_status for ${deviceId}`);
     }
-
-  } else {
-    console.warn(`🚫 No user found for device ${deviceId}`);
-  }
-}
-
-
-  // ✅ Auto-alert detection (as usual)
-  const alerts = [];
-
-  if (data.totalWaterUsed >= data.totalWaterLimit)
-    alerts.push({ alertType: 'LIMIT_EXCEEDED', message: 'Water limit exceeded' });
-
-  if (data.pressure < 1.5)
-    alerts.push({ alertType: 'PRESSURE_LOW', message: 'Pressure is low' });
-
-  if (data.tdsOut > 100)
-    alerts.push({ alertType: 'TDS_OUT_HIGH', message: 'TDS output > 100 ppm' });
-
-  if (data.tdsOut < 30)
-    alerts.push({ alertType: 'TDS_OUT_LOW', message: 'TDS output < 30 ppm' });
-
-  for (const alert of alerts) {
-    await alertCollection.insertOne({
-      deviceId,
-      alertType: alert.alertType,
-      message: alert.message,
-      timestamp: record.timestamp
-    });
-    console.log(`🚨 [Auto-Alert] ${alert.alertType} for ${deviceId}`);
-  }
-}
-
-
-    // ✅ Always insert telemetry/history record
-    await featureValuesCollection.insertOne({
-      ...data,
-      deviceId,
-      topicType,
-      timestamp: record.timestamp,
-    });
-
-    // ✅ Update or insert current status
-    delete record._id;
-    await deviceStatusCollection.updateOne(
-      { deviceId },
-      { $set: record },
-      { upsert: true }
-    );
-
-    console.log(`📦 [${topicType.toUpperCase()}] Updated device_status for ${deviceId}`);
   } catch (e) {
     console.error('❌ JSON parse error or processing failure:', e.message);
     console.log('🚫 Payload:', payloadString);
