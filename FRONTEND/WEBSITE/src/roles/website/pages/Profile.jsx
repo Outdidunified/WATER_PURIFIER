@@ -297,13 +297,6 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
         }
     };
 
-    if (loadingProfile) {
-        return <p>Loading user details...</p>;
-    }
-    if (error) {
-        return <p>{error}</p>;
-    }
-
     return (
         <div>
             <Header userInfo={userInfo} handleLogout={handleLogout} />
@@ -352,6 +345,11 @@ const Profile = ({ userInfo: propUserInfo, token: propToken, handleLogout }) => 
                                     data-aos-delay="300"
                                 >
                                     <h3>Edit Profile</h3>
+                                    {loadingProfile && (
+                                        <div style={{ textAlign: "center", marginBottom: "1rem", color: "#007bff" }}>
+                                            <span className="spinner" /> Loading profile details...
+                                        </div>
+                                    )}
                                     <form onSubmit={handleUpdate}>
                                         <div className="row gy-4">
                                             <div className="col-md-6">
