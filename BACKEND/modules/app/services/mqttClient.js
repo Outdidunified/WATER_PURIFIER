@@ -1,14 +1,24 @@
+require('dotenv').config();
 const mqtt = require('mqtt');
 const { connectToDatabase } = require('../../../config/db');
 const { ObjectId } = require('mongodb'); // add at top if not already
 
 // MQTT Connection Config
 const clientId = `server_${Math.random().toString(16).substr(2, 8)}`;
-const mqttClient = mqtt.connect('mqtt://172.232.109.123:1883', {
+const brokerUrl = process.env.MQTT_BROKER || 'mqtt://127.0.0.1:1883';
+const mqttOptions = {
   clientId,
-  username: '1',
-  password: '1',
-});
+  username: process.env.MQTT_USERNAME,
+  password: process.env.MQTT_PASSWORD,
+  clean: true,
+};
+
+const parsedPort = parseInt(process.env.MQTT_PORT, 10);
+if (!Number.isNaN(parsedPort)) {
+  mqttOptions.port = parsedPort;
+}
+
+const mqttClient = mqtt.connect(brokerUrl, mqttOptions);
 
 // MongoDB Collections
 let db;

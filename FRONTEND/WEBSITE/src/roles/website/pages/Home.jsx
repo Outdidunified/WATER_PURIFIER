@@ -138,40 +138,58 @@ const Home = ({ userInfo, token, handleLogout }) => {
         const selectedPlan = selectedProduct?.plans[selectedPlanIndex];
         const selectedDuration = selectedProduct?.duration[selectedDurationIndex];
 
-        if (!selectedProduct || !selectedPlan || !selectedDuration) {
-            return null;
-        }
+        if (!selectedProduct || !selectedPlan || !selectedDuration) return null;
 
+        // Base values
         const basePrice = selectedPlan?.price || 0;
         const gstRate = selectedDuration?.gst || 0;
         const discountRate = selectedDuration?.discount || 0;
 
-        const gstAmount = (basePrice * gstRate) / 100;
-        const priceWithGST = basePrice + gstAmount;
-        const discountAmount = (priceWithGST * discountRate) / 100;
-        const finalMonthlyPrice = priceWithGST - discountAmount;
+        // Duration
+        const durationText = selectedDuration?.duration_time_limit || "28 days";
+        const durationDays = parseInt(durationText.replace(/[^\d]/g, ""), 10) || 28;
+        const baseDays = 28;
 
-        const durationDays = parseInt(selectedDuration?.duration_time_limit?.replace(/[^\d]/g, ""), 10) || 0;
-        const perDayPrice = finalMonthlyPrice / 28;
-        const grandTotal = parseFloat((perDayPrice * durationDays).toFixed(2));
+        // Step — Base total for duration
+        const totalPrice = (basePrice / baseDays) * durationDays;
+
+        // Step — GST
+        const gstAmount = (totalPrice * gstRate) / 100;
+        const priceWithGST = totalPrice + gstAmount;
+
+        // Step — Discount
+        const discountAmount = (priceWithGST * discountRate) / 100;
+        const subtotal = priceWithGST - discountAmount;
+
+        // Step — Security Deposit
         const securityDeposit = !userInfo?.security_deposit ? selectedDuration?.security_deposit || 0 : 0;
-        const grandTotalWithDeposit = parseFloat((grandTotal + securityDeposit).toFixed(2));
+
+        // Step — Final total
+        const grandTotal = subtotal + securityDeposit;
+
+        // Step — Monthly equivalent (for display only)
+        const finalMonthlyPrice = (subtotal / durationDays) * 28;
 
         return {
             selectedProduct,
             selectedPlan,
             selectedDuration,
+
+            // Base fields
             basePrice,
             gstRate,
+            discountRate,
+
+            // Calculated breakdown
+            totalPrice, // base * days
             gstAmount,
             priceWithGST,
-            discountRate,
             discountAmount,
+            subtotal,
+            securityDeposit,
+            grandTotal,
             finalMonthlyPrice,
             durationDays,
-            grandTotal,
-            securityDeposit,
-            grandTotalWithDeposit,
         };
     };
 
@@ -231,28 +249,36 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
         try {
             const payload = {
-                productModelId: priceDetails.selectedProduct._id,
-                selectedPlanId: priceDetails.selectedPlan?.plans_id || 0,
-                selectedDurationId: priceDetails.selectedDuration.duration_id,
-                priceWithGST: parseFloat(priceDetails.priceWithGST.toFixed(2)),
-                gstAmount: parseFloat(priceDetails.gstAmount.toFixed(2)),
-                discountAmount: parseFloat(priceDetails.discountAmount.toFixed(2)),
-                finalMonthlyPrice: parseFloat(priceDetails.finalMonthlyPrice.toFixed(2)),
-                grandTotal: priceDetails.grandTotalWithDeposit,
-                securityDeposit: priceDetails.securityDeposit,
-                wp_device_id: priceDetails.selectedProduct.wp_device_id,
+                productModelId: String(priceDetails.selectedProduct._id),
+                selectedPlanId: Number(priceDetails.selectedPlan?.plans_id || 0),
+                selectedDurationId: Number(priceDetails.selectedDuration?.duration_id || 0),
+
+                // Full price breakdown (same as Subscription Summary)
+                gstRate: Number(priceDetails.gstRate),
+                gstAmount: Number(priceDetails.gstAmount.toFixed(2)),
+                discountRate: Number(priceDetails.discountRate),
+                discountAmount: Number(priceDetails.discountAmount.toFixed(2)),
+                priceWithGST: Number(priceDetails.priceWithGST.toFixed(2)),
+                finalMonthlyPrice: Number(priceDetails.finalMonthlyPrice.toFixed(2)),
+                subtotal: Number(priceDetails.subtotal.toFixed(2)),
+                grandTotal: Number(priceDetails.grandTotal.toFixed(2)),
+                securityDeposit: Number(priceDetails.securityDeposit.toFixed(2)),
+
+                wp_device_id: String(priceDetails.selectedProduct.wp_device_id || ""),
+                durationDays: Number(priceDetails.durationDays),
+                price: Number(priceDetails.totalPrice.toFixed(2)),
 
                 deliveryAddress: {
-                    country,
-                    name,
-                    street,
-                    landmark,
-                    district,
-                    city,
-                    state,
-                    phone: phone.trim(),
-                    pincode: pincode.trim(),
-                    email: emailID,
+                    country: country || "IN",
+                    name: name?.trim() || "",
+                    street: street?.trim() || "",
+                    landmark: landmark?.trim() || "",
+                    district: district?.trim() || "",
+                    city: city?.trim() || "",
+                    state: state?.trim() || "",
+                    phone: phone?.trim() || "",
+                    pincode: pincode?.trim() || "",
+                    email: emailID?.trim() || "",
                 },
             };
 
@@ -711,25 +737,38 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                     <h2>Select Model</h2>
                                                 </div>
                                                 <ul className="nav nav-tabs flex-wrap" style={{ justifyContent: 'center' }}>
-                                                    {products.map((product, index) => (
-                                                        <li key={product._id} className="nav-item">
-                                                            <button
-                                                                className={`nav-link ${selectedModelIndex === index ? 'active' : ''} text-center`}
-                                                                onClick={() => {
-                                                                    setSelectedModelIndex(index);
-                                                                    setSelectedPlanIndex(0);
-                                                                    setSelectedDurationIndex(0);
-                                                                    setTimeout(() => {
-                                                                        durationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                                                                    }, 100);
-                                                                }}
-                                                                style={{ minWidth: '150px', margin: '5px' }}
-                                                            >
-                                                                <h4>{product.model_name}</h4>
-                                                            </button>
-                                                        </li>
-                                                    ))}
+                                                    {products.map((product, index) => {
+                                                        const isSelected = selectedModelIndex === index;
+                                                        return (
+                                                            <li key={product._id} className="nav-item">
+                                                                <button
+                                                                    className={`nav-link text-center ${isSelected ? 'active' : ''}`}
+                                                                    onClick={() => {
+                                                                        setSelectedModelIndex(index);
+                                                                        setSelectedPlanIndex(0);
+                                                                        setSelectedDurationIndex(0);
+                                                                        setTimeout(() => {
+                                                                            durationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                                                        }, 100);
+                                                                    }}
+                                                                    style={{
+                                                                        minWidth: '150px',
+                                                                        margin: '5px',
+                                                                        backgroundColor: isSelected ? '#0d6efd' : '#e8f1ff', // 💠 blue for active, light-blue for others
+                                                                        color: isSelected ? '#fff' : '#0d6efd',              // white text for active, blue text for others
+                                                                        border: '1px solid #0d6efd',
+                                                                        borderRadius: '15px',
+                                                                        fontWeight: '600',
+                                                                        transition: 'all 0.3s ease'
+                                                                    }}
+                                                                >
+                                                                    <h4 style={{ margin: 0, fontSize: '16px' }}>{product.model_name}</h4>
+                                                                </button>
+                                                            </li>
+                                                        );
+                                                    })}
                                                 </ul>
+
                                             </div>
                                         </div>
 
@@ -1148,18 +1187,33 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 </div>
                                             );
 
+                                            // ✅ Base price (₹7,714)
                                             const basePrice = priceDetails.basePrice || 0;
-                                            const durationText =
-                                                priceDetails.selectedDuration?.duration_time_limit || "28 days";
+                                            const durationText = priceDetails.selectedDuration?.duration_time_limit || "28 days";
                                             const durationDays = parseInt(durationText) || 28;
                                             const baseDays = 28;
                                             const totalPrice = (basePrice / baseDays) * durationDays;
-                                            const formattedPrice = new Intl.NumberFormat("en-IN", {
-                                                style: "currency",
-                                                currency: "INR",
-                                                minimumFractionDigits: 0,
-                                                maximumFractionDigits: 0,
-                                            }).format(totalPrice);
+
+                                            // ✅ GST Calculation based on Price
+                                            const gstRate = priceDetails.gstRate || 0;
+                                            const gstAmount = (totalPrice * gstRate) / 100;
+                                            const priceWithGST = totalPrice + gstAmount;
+
+                                            // ✅ Discount & totals
+                                            const discountRate = priceDetails.discountRate || 0;
+                                            const discountAmount = (priceWithGST * discountRate) / 100;
+                                            const subtotal = priceWithGST - discountAmount;
+                                            const securityDeposit = priceDetails.securityDeposit || 0;
+                                            const grandTotal = subtotal + securityDeposit;
+
+                                            // ✅ Formatting
+                                            const formatINR = (val) =>
+                                                `₹${val.toLocaleString("en-IN", {
+                                                    minimumFractionDigits: 0,
+                                                    maximumFractionDigits: 2,
+                                                })}`;
+
+                                            const formattedPrice = formatINR(totalPrice);
 
                                             return (
                                                 <>
@@ -1191,19 +1245,19 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                                                     {textRow("Price", formattedPrice)}
                                                     {textRow("Duration", `${durationDays} days`)}
-                                                    {textRow(`GST (${priceDetails.gstRate}%)`, `₹${priceDetails.gstAmount.toLocaleString("en-IN")}`)}
-                                                    {textRow("Price with GST", `₹${priceDetails.priceWithGST.toLocaleString("en-IN")}`)}
-                                                    {textRow(`Discount (${priceDetails.discountRate}%)`, `₹${priceDetails.discountAmount.toLocaleString("en-IN")}`)}
-                                                    {/* {textRow("Final Monthly Price", `₹${priceDetails.finalMonthlyPrice.toLocaleString("en-IN")}`)} */}
+                                                    {textRow(`GST (${gstRate}%)`, formatINR(gstAmount))}
+                                                    {textRow("Price with GST", formatINR(priceWithGST))}
+                                                    {textRow(`Discount (${discountRate}%)`, formatINR(discountAmount))}
 
                                                     <hr style={{ color: "#0d6efd" }} />
 
-                                                    {textRow("Subtotal", `₹${priceDetails.grandTotal.toLocaleString("en-IN")}`)}
-                                                    {textRow("Security Deposit", `₹${priceDetails.securityDeposit.toLocaleString("en-IN")}`)}
-                                                    {textRow("Grand Total", `₹${priceDetails.grandTotalWithDeposit.toLocaleString("en-IN")}`, true, true)}
+                                                    {textRow("Subtotal", formatINR(subtotal))}
+                                                    {textRow("Security Deposit", formatINR(securityDeposit))}
+                                                    {textRow("Grand Total", formatINR(grandTotal), true, true)}
                                                 </>
                                             );
                                         })()}
+
                                     </div>
 
                                     <div
