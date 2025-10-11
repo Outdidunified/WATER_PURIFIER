@@ -279,7 +279,7 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                     </tr>
                                                                     <tr>
                                                                         <td style={{ fontWeight: "600", color: "#333" }}>Price</td>
-                                                                        <td style={{ textAlign: "right" }}>₹{selectedPlan.price || "N/A"}</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{payment.price || "N/A"}</td>
                                                                     </tr>
                                                                     <tr>
                                                                         <td style={{ fontWeight: "600", color: "#333" }}>Duration</td>
@@ -299,7 +299,7 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                     </tr>
                                                                     <tr>
                                                                         <td style={{ fontWeight: "600", color: "#333" }}>Subtotal</td>
-                                                                        <td style={{ textAlign: "right" }}>₹{payment.totalPrice || "N/A"}</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{payment.subtotal || "N/A"}</td>
                                                                     </tr>
                                                                     <tr>
                                                                         <td style={{ fontWeight: "600", color: "#333" }}>Security Deposit</td>
