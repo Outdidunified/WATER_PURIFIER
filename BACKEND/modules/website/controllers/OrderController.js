@@ -31,12 +31,7 @@ exports.createSubscriptionOrder = async (req, res) => {
       grandTotal,
       priceWithGST,
       wp_device_id,
-<<<<<<< HEAD
       paymentType // <-- "COD" or "ONLINE" (any case)
-=======
-      price,
-      subtotal
->>>>>>> 679b68e9d2f8f607ba1c7ead03070159677acbbc
     } = req.body;
 
     if (!paymentType) {
@@ -132,8 +127,6 @@ exports.createSubscriptionOrder = async (req, res) => {
       orderStatus: 'Created',
       razorpayOrderId: razorpayOrder?.id || null,
       totalLitre,
-      price,
-      subtotal,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -153,8 +146,6 @@ exports.createSubscriptionOrder = async (req, res) => {
       securityDeposit: effectiveSecurityDeposit,
       totalPrice: grandTotal,
       totalLitre,
-       price,
-      subtotal,
       paymentStatus: 'Pending',
       paymentType,
       createdAt: new Date(),
@@ -204,6 +195,7 @@ exports.createSubscriptionOrder = async (req, res) => {
     return res.status(500).json({ message: 'Failed to create order', error: err.message });
   }
 };
+
 
 
 
