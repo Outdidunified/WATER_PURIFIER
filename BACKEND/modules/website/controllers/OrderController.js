@@ -31,7 +31,10 @@ exports.createSubscriptionOrder = async (req, res) => {
       grandTotal,
       priceWithGST,
       wp_device_id,
-      paymentType // <-- "COD" or "ONLINE" (any case)
+      paymentType, // <-- "COD" or "ONLINE" (any case)
+      price,
+      subtotal
+
     } = req.body;
 
     if (!paymentType) {
@@ -127,6 +130,8 @@ exports.createSubscriptionOrder = async (req, res) => {
       orderStatus: 'Created',
       razorpayOrderId: razorpayOrder?.id || null,
       totalLitre,
+              price,
+      subtotal,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -148,6 +153,8 @@ exports.createSubscriptionOrder = async (req, res) => {
       totalLitre,
       paymentStatus: 'Pending',
       paymentType,
+            price,
+      subtotal,
       createdAt: new Date(),
       updatedAt: new Date()
     });
