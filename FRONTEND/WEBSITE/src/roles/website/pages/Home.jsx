@@ -55,6 +55,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
     const [districtList, setDistrictList] = useState([]);
     const [cityList, setCityList] = useState([]);
     const [subLoading, setSubLoading] = useState(false);
+    const [selectedPaymentType, setSelectedPaymentType] = useState("online");
 
     const RAZORPAY_KEY = "rzp_test_oHoZ3Q1fF6pYEI";
 
@@ -248,12 +249,17 @@ const Home = ({ userInfo, token, handleLogout }) => {
         setSubLoading(true);
 
         try {
+            //  Base calculations
+            const codFee = paymentType === "cod" ? 100 : 0; // Add ₹100 only if COD
+            const updatedGrandTotal = Number(priceDetails.grandTotal.toFixed(2)) + codFee;
+
+            //  Construct payload
             const payload = {
                 productModelId: String(priceDetails.selectedProduct._id),
                 selectedPlanId: Number(priceDetails.selectedPlan?.plans_id || 0),
                 selectedDurationId: Number(priceDetails.selectedDuration?.duration_id || 0),
 
-                // Full price breakdown (same as Subscription Summary)
+                // Full price breakdown
                 gstRate: Number(priceDetails.gstRate),
                 gstAmount: Number(priceDetails.gstAmount.toFixed(2)),
                 discountRate: Number(priceDetails.discountRate),
@@ -261,16 +267,22 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 priceWithGST: Number(priceDetails.priceWithGST.toFixed(2)),
                 finalMonthlyPrice: Number(priceDetails.finalMonthlyPrice.toFixed(2)),
                 subtotal: Number(priceDetails.subtotal.toFixed(2)),
-                grandTotal: Number(priceDetails.grandTotal.toFixed(2)),
                 securityDeposit: Number(priceDetails.securityDeposit.toFixed(2)),
+
+                //  Include updated grand total
+                grandTotal: updatedGrandTotal,
 
                 wp_device_id: String(priceDetails.selectedProduct.wp_device_id || ""),
                 durationDays: Number(priceDetails.durationDays),
                 price: Number(priceDetails.totalPrice.toFixed(2)),
 
-                // 👇 Add this line to differentiate payment types
+                //  Include COD fee only if applicable
+                codFee: codFee > 0 ? codFee : undefined,
+
+                //  Payment Type
                 paymentType: paymentType, // "online" or "cod"
 
+                //  Delivery details
                 deliveryAddress: {
                     country: country || "IN",
                     name: name?.trim() || "",
@@ -299,7 +311,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
             const data = await res.json();
             console.log("Orderplace response:", data);
 
-            // ✅ COD Flow
+            //  COD Flow
             if (paymentType === "cod") {
                 if (data.status === "success") {
                     Swal.fire({
@@ -325,7 +337,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 } else {
                     Swal.fire("Error", data.message || "COD order failed", "error");
                 }
-                return; // ⛔ Stop Razorpay flow for COD
+                return; //  Stop Razorpay flow for COD
             }
 
             if (data.status !== "success" || !data.data?.razorpayOrder?.id) {
@@ -500,7 +512,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 body: JSON.stringify({ name, email, subject, message }),
             });
 
-            const data = await response.json(); // 🔥 Parse server response
+            const data = await response.json(); //  Parse server response
 
             if (response.ok) {
                 Swal.fire("Success", data.message || "Your message has been sent.", "success");
@@ -786,7 +798,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                     style={{
                                                                         minWidth: '150px',
                                                                         margin: '5px',
-                                                                        backgroundColor: isSelected ? '#0d6efd' : '#e8f1ff', // 💠 blue for active, light-blue for others
+                                                                        backgroundColor: isSelected ? '#0d6efd' : '#e8f1ff', // blue for active, light-blue for others
                                                                         color: isSelected ? '#fff' : '#0d6efd',              // white text for active, blue text for others
                                                                         border: '1px solid #0d6efd',
                                                                         borderRadius: '15px',
@@ -988,7 +1000,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                                     // Calculate multiplied total
                                                                                     const totalPrice = (basePrice / baseDays) * durationDays;
 
-                                                                                    // ✅ Format with Indian comma style and no decimals
+                                                                                    //  Format with Indian comma style and no decimals
                                                                                     const formattedPrice = new Intl.NumberFormat("en-IN", {
                                                                                         style: "currency",
                                                                                         currency: "INR",
@@ -1219,26 +1231,26 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 </div>
                                             );
 
-                                            // ✅ Base price (₹7,714)
+                                            //  Price Calculations
                                             const basePrice = priceDetails.basePrice || 0;
                                             const durationText = priceDetails.selectedDuration?.duration_time_limit || "28 days";
                                             const durationDays = parseInt(durationText) || 28;
                                             const baseDays = 28;
                                             const totalPrice = (basePrice / baseDays) * durationDays;
 
-                                            // ✅ GST Calculation based on Price
                                             const gstRate = priceDetails.gstRate || 0;
                                             const gstAmount = (totalPrice * gstRate) / 100;
                                             const priceWithGST = totalPrice + gstAmount;
 
-                                            // ✅ Discount & totals
                                             const discountRate = priceDetails.discountRate || 0;
                                             const discountAmount = (priceWithGST * discountRate) / 100;
                                             const subtotal = priceWithGST - discountAmount;
                                             const securityDeposit = priceDetails.securityDeposit || 0;
-                                            const grandTotal = subtotal + securityDeposit;
 
-                                            // ✅ Formatting
+                                            //  COD Fee Logic
+                                            const codFee = selectedPaymentType === "cod" ? 100 : 0;
+                                            const grandTotal = subtotal + securityDeposit + codFee;
+
                                             const formatINR = (val) =>
                                                 `₹${val.toLocaleString("en-IN", {
                                                     minimumFractionDigits: 0,
@@ -1252,6 +1264,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                     {textRow("Model", priceDetails.selectedProduct?.model_name, false, true)}
                                                     {textRow("Plan", priceDetails.selectedPlan?.label, false, true)}
 
+                                                    {/* Capacity */}
                                                     <div
                                                         style={{
                                                             display: "flex",
@@ -1285,55 +1298,69 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                                                     {textRow("Subtotal", formatINR(subtotal))}
                                                     {textRow("Security Deposit", formatINR(securityDeposit))}
+                                                    {selectedPaymentType === "cod" && textRow("COD Fee", formatINR(codFee))}
                                                     {textRow("Grand Total", formatINR(grandTotal), true, true)}
                                                 </>
                                             );
                                         })()}
-
                                     </div>
 
+                                    {/* Footer Section */}
                                     <div
                                         className="modal-footer"
                                         style={{
                                             display: "flex",
-                                            justifyContent: "center",
+                                            flexDirection: "column",
+                                            alignItems: "center",
                                             gap: "15px",
                                             paddingBottom: "20px",
                                         }}
                                     >
-                                        <button
-                                            className="btn"
-                                            style={{
-                                                background: "#6c757d",
-                                                color: "#fff",
-                                                border: "none",
-                                                padding: "8px 20px",
-                                                borderRadius: "6px",
-                                                fontWeight: "600",
-                                            }}
-                                            onClick={() => setShowSummaryModal(false)}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            className="btn"
-                                            style={{
-                                                background: "#0d6efd",
-                                                color: "#fff",
-                                                border: "none",
-                                                padding: "8px 20px",
-                                                borderRadius: "6px",
-                                                fontWeight: "600",
-                                            }}
-                                            onClick={() => {
-                                                setShowSummaryModal(false);
-                                                setShowModal(true);
-                                            }}
-                                        >
-                                            Checkout
-                                        </button>
+                                        {/* Payment Selection */}
+                                        <div style={{ display: "flex", gap: "10px" }}>
+                                            <button
+                                                className={`btn ${selectedPaymentType === "online" ? "btn-primary" : "btn-outline-primary"}`}
+                                                onClick={() => setSelectedPaymentType("online")}
+                                            >
+                                                Online Payment
+                                            </button>
+                                            <button
+                                                className={`btn ${selectedPaymentType === "cod" ? "btn-success" : "btn-outline-success"}`}
+                                                onClick={() => setSelectedPaymentType("cod")}
+                                            >
+                                                Cash on Delivery
+                                            </button>
+                                        </div>
+
+                                        {/* COD Fee Info */}
+                                        {selectedPaymentType === "cod" && (
+                                            <div style={{ marginTop: "10px", color: "#198754", fontWeight: 600 }}>
+                                                ₹100 COD Fee added to your total.
+                                            </div>
+                                        )}
+
+                                        {/* Action Buttons */}
+                                        <div style={{ marginTop: "15px", display: "flex", gap: "15px" }}>
+                                            <button
+                                                className="btn btn-secondary"
+                                                onClick={() => setShowSummaryModal(false)}
+                                            >
+                                                Cancel
+                                            </button>
+
+                                            <button
+                                                className="btn btn-primary"
+                                                onClick={() => {
+                                                    setShowSummaryModal(false);
+                                                    setShowModal(true);
+                                                }}
+                                            >
+                                                Checkout
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
+
                             </div>
                         </div>
                     )}
@@ -1590,6 +1617,23 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                     </p>
 
                                                     <div style={{ display: "flex", gap: "15px", marginTop: "10px" }}>
+                                                        <button
+                                                            className="btn"
+                                                            style={{
+                                                                background: "#6c757d",
+                                                                color: "#fff",
+                                                                border: "none",
+                                                                padding: "8px 20px",
+                                                                borderRadius: "6px",
+                                                                fontWeight: "600",
+                                                            }}
+                                                            onClick={() => {
+                                                                setShowSummaryModal(true);
+                                                                setShowModal(false);
+                                                            }}
+                                                        >
+                                                            Back
+                                                        </button>
                                                         {/* Online Pay button */}
                                                         <button
                                                             type="button"
@@ -1601,6 +1645,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                 padding: "10px 25px",
                                                                 borderRadius: "8px",
                                                                 fontWeight: 600,
+                                                                display: selectedPaymentType === "online" ? "inline-block" : "none",
                                                             }}
                                                             disabled={subLoading}
                                                             onClick={(e) => handleSubmit(e, "online")}
@@ -1619,6 +1664,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                 padding: "10px 25px",
                                                                 borderRadius: "8px",
                                                                 fontWeight: 600,
+                                                                display: selectedPaymentType === "cod" ? "inline-block" : "none",
                                                             }}
                                                             disabled={subLoading}
                                                             onClick={(e) => handleSubmit(e, "cod")}

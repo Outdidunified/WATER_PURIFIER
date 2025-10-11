@@ -310,6 +310,12 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                         <td style={{ fontWeight: "600", color: "#333" }}>Security Deposit</td>
                                                                         <td style={{ textAlign: "right" }}>₹{selectedDuration.security_deposit || "N/A"}</td>
                                                                     </tr>
+                                                                    {payment.paymentType === "COD" &&
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "600", color: "#333" }}>COD Fee</td>
+                                                                            <td style={{ textAlign: "right" }}>₹{payment.codFee || "N/A"}</td>
+                                                                        </tr>
+                                                                    }
                                                                     <tr>
                                                                         <td style={{ fontWeight: "700", color: "#000" }}>Grand Total</td>
                                                                         <td style={{ textAlign: "right", color: "#0d6efd", fontWeight: "700" }}>
