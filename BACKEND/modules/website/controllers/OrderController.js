@@ -30,7 +30,9 @@ exports.createSubscriptionOrder = async (req, res) => {
       securityDeposit,
       grandTotal,
       priceWithGST,
-      wp_device_id
+      wp_device_id,
+      price,
+      subtotal
     } = req.body;
 
     const db = await connectToDatabase();
@@ -142,6 +144,8 @@ exports.createSubscriptionOrder = async (req, res) => {
       orderStatus: 'Created',
       razorpayOrderId: razorpayOrder.id,
       totalLitre,
+      price,
+      subtotal,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -161,6 +165,8 @@ exports.createSubscriptionOrder = async (req, res) => {
       securityDeposit: effectiveSecurityDeposit,
       totalPrice: totalAmountForRazorpay,
       totalLitre,
+       price,
+      subtotal,
       paymentStatus: 'Pending',
       createdAt: new Date(),
       updatedAt: new Date()
