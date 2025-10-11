@@ -277,6 +277,11 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                             )}
                                                                         </td>
                                                                     </tr>
+                                                                    <hr style={{ textAlign: 'center', color: '#0d6efd' }}></hr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Payment Type</td>
+                                                                        <td style={{ textAlign: "right" }}>{payment.paymentType || "N/A"}</td>
+                                                                    </tr>
                                                                     <tr>
                                                                         <td style={{ fontWeight: "600", color: "#333" }}>Price</td>
                                                                         <td style={{ textAlign: "right" }}>₹{payment.price || "N/A"}</td>

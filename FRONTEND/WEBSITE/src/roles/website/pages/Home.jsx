@@ -214,7 +214,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
     };
 
     // Handle form submission for subscription
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e, paymentType = "online") => {
         e.preventDefault();
 
         const phoneRegex = /^[1-9][0-9]{9}$/;
@@ -268,6 +268,9 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 durationDays: Number(priceDetails.durationDays),
                 price: Number(priceDetails.totalPrice.toFixed(2)),
 
+                // 👇 Add this line to differentiate payment types
+                paymentType: paymentType, // "online" or "cod"
+
                 deliveryAddress: {
                     country: country || "IN",
                     name: name?.trim() || "",
@@ -295,6 +298,35 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
             const data = await res.json();
             console.log("Orderplace response:", data);
+
+            // ✅ COD Flow
+            if (paymentType === "cod") {
+                if (data.status === "success") {
+                    Swal.fire({
+                        icon: "success",
+                        title: "Order Placed Successfully",
+                        text: "Your Cash on Delivery order has been placed successfully!",
+                        iconHtml: '<i class="bi bi-bag-check-fill"></i>',
+                        timer: 3000,
+                        showConfirmButton: false,
+                    }).then(() => {
+                        setShowModal(false);
+                        setName("");
+                        setPhone("");
+                        setEmailID("");
+                        setStreet("");
+                        setLandmark("");
+                        setPincode("");
+                        setCity("");
+                        setDistrict("");
+                        setState("");
+                        window.location.href = "/";
+                    });
+                } else {
+                    Swal.fire("Error", data.message || "COD order failed", "error");
+                }
+                return; // ⛔ Stop Razorpay flow for COD
+            }
 
             if (data.status !== "success" || !data.data?.razorpayOrder?.id) {
                 return Swal.fire("Error", data.message || "Order failed", "error");
@@ -337,7 +369,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                 icon: "success",
                                 title: "Payment Successful",
                                 text: "Subscription activated! Please log in to continue.",
-                                iconHtml: '<i class="fas fa-sign-in-alt"></i>', // Font Awesome login icon
+                                iconHtml: '<i class="bi bi-bag-check-fill"></i>',
                                 timer: 3000,
                                 showConfirmButton: false,
                             }).then(() => {
@@ -1537,26 +1569,64 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                     alignItems: "center",
                                                 }}
                                             >
-                                                <p style={{ color: "#0d6efd", lineHeight: "1.6" }}>
+                                                {/* <p style={{ color: "#0d6efd", lineHeight: "1.6" }}>
                                                     <i className="bi bi-check2-circle"></i> Lifetime Free Maintenance<br />
                                                     <i className="bi bi-check2-circle"></i> 24-48 Hours Installation
-                                                </p>
+                                                </p> */}
 
-                                                <button
-                                                    type="submit"
-                                                    className="btn"
+                                                {/* Bottom info & button */}
+                                                <div
                                                     style={{
-                                                        background: "#0d6efd",
-                                                        color: "#fff",
-                                                        border: "none",
-                                                        padding: "10px 25px",
-                                                        borderRadius: "8px",
-                                                        fontWeight: 600,
+                                                        marginTop: "30px",
+                                                        textAlign: "center",
+                                                        display: "flex",
+                                                        flexDirection: "column",
+                                                        alignItems: "center",
                                                     }}
-                                                    disabled={subLoading}
                                                 >
-                                                    {subLoading ? "Processing..." : "Subscribe Now"}
-                                                </button>
+                                                    <p style={{ color: "#0d6efd", lineHeight: "1.6" }}>
+                                                        <i className="bi bi-check2-circle"></i> Lifetime Free Maintenance<br />
+                                                        <i className="bi bi-check2-circle"></i> 24-48 Hours Installation
+                                                    </p>
+
+                                                    <div style={{ display: "flex", gap: "15px", marginTop: "10px" }}>
+                                                        {/* Online Pay button */}
+                                                        <button
+                                                            type="button"
+                                                            className="btn"
+                                                            style={{
+                                                                background: "#0d6efd",
+                                                                color: "#fff",
+                                                                border: "none",
+                                                                padding: "10px 25px",
+                                                                borderRadius: "8px",
+                                                                fontWeight: 600,
+                                                            }}
+                                                            disabled={subLoading}
+                                                            onClick={(e) => handleSubmit(e, "online")}
+                                                        >
+                                                            {subLoading ? "Processing..." : "Online Pay"}
+                                                        </button>
+
+                                                        {/* COD button */}
+                                                        <button
+                                                            type="button"
+                                                            className="btn"
+                                                            style={{
+                                                                background: "#198754",
+                                                                color: "#fff",
+                                                                border: "none",
+                                                                padding: "10px 25px",
+                                                                borderRadius: "8px",
+                                                                fontWeight: 600,
+                                                            }}
+                                                            disabled={subLoading}
+                                                            onClick={(e) => handleSubmit(e, "cod")}
+                                                        >
+                                                            {subLoading ? "Processing..." : "Cash on Delivery"}
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </form>
                                     </div>
