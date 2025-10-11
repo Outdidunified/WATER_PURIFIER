@@ -94,6 +94,32 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
         }
     };
 
+    // Download invoice PDF
+    const handleDownloadInvoice = async (orderId) => {
+        try {
+            const url = `/api/website/orders/${orderId}/invoice`;
+
+            const response = await axios.get(url, {
+                responseType: "blob", // Important for binary PDF data
+            });
+
+            // Create a blob link to download
+            const blob = new Blob([response.data], { type: "application/pdf" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Invoice_${orderId}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+
+            // Cleanup
+            URL.revokeObjectURL(link.href);
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error("Error downloading invoice:", error);
+            alert("Failed to download invoice. Please try again.");
+        }
+    };
+
     return (
         <div>
             {/* Header */}
@@ -106,7 +132,7 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                         <p>View your order history and subscription details</p>
                     </div>
 
-                    <div className="container" data-aos="fade-up" data-aos-delay="100">
+                    <div className="container" data-aos="fade-up" data-aos-delay="100" style={{ padding: '20px' }}>
                         {loading ? (
                             <div className="loader">Loading...</div>
                         ) : (
@@ -131,11 +157,50 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                         >
                                             {/* List view summary */}
                                             <div className="d-flex justify-content-between align-items-center">
-                                                <div>
-                                                    <h5 style={{ color: "#0d83fd" }}>Order ID: {order.customOrderId || payment.orderId || "N/A"}</h5>
-                                                    <p><strong>Model Name:</strong> {order.modelName || "N/A"}</p>
-                                                    <p><strong>WP Device ID:</strong> {order.wp_device_id || "N/A"}</p>
+                                                <div className="d-flex align-items-center" style={{ gap: "15px" }}>
+                                                    {/* Product Image */}
+                                                    {order.main_image || order.product_model_images?.main_img ? (
+                                                        <img
+                                                            src={`/upload/img/${order.main_image || order.product_model_images?.main_img}`}
+                                                            alt={order.modelName}
+                                                            style={{
+                                                                width: "100px",
+                                                                height: "100px",
+                                                                borderRadius: "8px",
+                                                                border: "2px solid #0d6efd",
+                                                                objectFit: "cover",
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <div
+                                                            style={{
+                                                                width: "50px",
+                                                                height: "50px",
+                                                                borderRadius: "8px",
+                                                                border: "2px solid #0d6efd",
+                                                                display: "flex",
+                                                                alignItems: "center",
+                                                                justifyContent: "center",
+                                                                color: "#0d6efd",
+                                                                fontWeight: "bold",
+                                                                fontSize: "14px",
+                                                            }}
+                                                        >
+                                                            N/A
+                                                        </div>
+                                                    )}
+
+                                                    {/* Order Info */}
+                                                    <div>
+                                                        <h5 style={{ color: "#0d83fd" }}>
+                                                            Order ID: {order.customOrderId || payment.orderId || "N/A"}
+                                                        </h5>
+                                                        <p><strong>Model Name:</strong> {order.modelName || "N/A"}</p>
+                                                        <p><strong>WP Device ID:</strong> {order.wp_device_id || "N/A"}</p>
+                                                    </div>
                                                 </div>
+
+                                                {/* Status Info (Right Side) */}
                                                 <div style={{ textAlign: "right" }}>
                                                     <p>
                                                         <strong>Order Status: </strong>
@@ -160,53 +225,170 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
 
                                             {/* Expanded details */}
                                             {isExpanded && (
-                                                <div className="mt-3" style={{ borderTop: "1px solid #ddd", paddingTop: "10px" }}>
-                                                    <div className="row">
-                                                        {/* Selected Plan Details */}
-                                                        <div className="col-12 col-md-4 mb-3">
-                                                            <h5 style={{ color: "#0d83fd" }}><b>Selected Plan Details</b></h5>
-                                                            <p><strong>Label:</strong> {selectedPlan.label || "N/A"}</p>
-                                                            <p><strong>Capacity:</strong> {selectedPlan.capacity || "N/A"}</p>
-                                                            <p><strong>Price:</strong> ₹{selectedPlan.price || "N/A"}</p>
-                                                        </div>
+                                                <div className="row" style={{ gap: "20px", width: "110%", padding: '10px' }}>
+                                                    {/* Left Column: Plan & Payment Details */}
+                                                    <div className="col-md-6">
+                                                        <div
+                                                            style={{
+                                                                borderTop: "1px solid #0d6efd",
+                                                                padding: "20px",
+                                                                backgroundColor: "#fff",
+                                                                borderRadius: "10px",
+                                                                height: "100%",
+                                                            }}
+                                                        >
+                                                            <h5
+                                                                style={{
+                                                                    color: "#0d6efd",
+                                                                    fontWeight: "700",
+                                                                    fontSize: "16px",
+                                                                    borderBottom: "2px solid #0d6efd",
+                                                                    display: "inline-block",
+                                                                    marginBottom: "15px",
+                                                                }}
+                                                            >
+                                                                Plan & Payment Details
+                                                            </h5>
 
-                                                        {/* Selected Duration Details */}
-                                                        <div className="col-12 col-md-4 mb-3">
-                                                            <h5 style={{ color: "#0d83fd" }}><b>Selected Duration Details</b></h5>
-                                                            <p><strong>Duration:</strong> {selectedDuration.duration_time_limit || "N/A"}</p>
-                                                            <p><strong>Discount:</strong> {selectedDuration.discount || "N/A"}%</p>
-                                                            <p><strong>GST:</strong> {selectedDuration.gst || "N/A"}%</p>
-                                                            <p><strong>Security Deposit:</strong> ₹{selectedDuration.security_deposit || "N/A"}</p>
-                                                        </div>
-
-                                                        {/* Delivery Address */}
-                                                        <div className="col-12 col-md-4 mb-3">
-                                                            <h5 style={{ color: "#0d83fd" }}><b>Delivery Address</b></h5>
-                                                            <p><strong>Name: </strong> {address.name || "N/A"}<br /></p>
-                                                            <p><strong>Phone: </strong> {address.phone || "N/A"}<br /></p>
-                                                            <p><strong>Email: </strong> {address.email || "N/A"}<br /></p>
-                                                            <p><strong>Address: </strong>{address.street || "N/A"}, {address.landmark || "N/A"}<br />
-                                                                {address.city || "N/A"}, {address.district || "N/A"}, {address.state || "N/A"} - {address.pincode || "N/A"}<br />
-                                                            </p>
+                                                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Model</td>
+                                                                        <td style={{ textAlign: "right", color: "#0d6efd", fontWeight: "600" }}>
+                                                                            {order.modelName || "N/A"}
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Plan</td>
+                                                                        <td style={{ textAlign: "right", color: "#0d6efd", fontWeight: "600" }}>
+                                                                            {selectedPlan.label || "N/A"}
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Capacity</td>
+                                                                        <td style={{ textAlign: "right" }}>
+                                                                            {selectedPlan.label?.toLowerCase() === "unlimited" ? (
+                                                                                <span style={{ color: "#0d6efd", fontWeight: "600" }}>Unlimited</span>
+                                                                            ) : (
+                                                                                <>
+                                                                                    {selectedPlan.capacity}/
+                                                                                    <span style={{ color: "#0d6efd", fontWeight: "600" }}>Ltr</span>
+                                                                                </>
+                                                                            )}
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Price</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{selectedPlan.price || "N/A"}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Duration</td>
+                                                                        <td style={{ textAlign: "right" }}>{selectedDuration.duration_time_limit || "N/A"}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>GST ({selectedDuration.gst || 0}%)</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{payment.gstAmount || "N/A"}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Price with GST</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{payment.priceWithGST || "N/A"}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Discount ({selectedDuration.discount || 0}%)</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{payment.discountAmount || "N/A"}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Subtotal</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{payment.totalPrice || "N/A"}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Security Deposit</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{selectedDuration.security_deposit || "N/A"}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "700", color: "#000" }}>Grand Total</td>
+                                                                        <td style={{ textAlign: "right", color: "#0d6efd", fontWeight: "700" }}>
+                                                                            ₹{order.grandTotal || payment.totalPrice || "N/A"}
+                                                                        </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
                                                         </div>
                                                     </div>
 
-                                                    {/* Payment Details */}
-                                                    <div style={{ borderTop: "1px solid #ddd", paddingTop: "10px" }}>
-                                                        <h5 style={{ color: "#0d83fd" }}><b>Payment Details</b></h5>
-                                                        <p><strong>Total Litre:</strong> {payment.totalLitre || "N/A"}</p>
-                                                        <p><strong>Price with GST:</strong> ₹{payment.priceWithGST || "N/A"}</p>
-                                                        <p><strong>Discount Amount:</strong> ₹{payment.discountAmount || "N/A"}</p>
-                                                        <p><strong>GST Amount:</strong> ₹{payment.gstAmount || "N/A"}</p>
-                                                        <p><strong>Security Deposit:</strong> ₹{payment.securityDeposit || "N/A"}</p>
-                                                        <p><strong>Total Price:</strong> ₹{payment.totalPrice || order.grandTotal || "N/A"}</p>
-                                                        <p><strong>Razorpay Order ID:</strong> {payment.razorpayOrderId || "N/A"}</p>
-                                                        <p><strong>Razorpay Payment ID:</strong> {payment.razorpayPaymentId || "N/A"}</p>
-                                                        <p><strong>Subscribed At:</strong> {formatDateToIST(order.subscribed_at || payment.createdAt)}</p>
-                                                        <p><strong>Subscription Expiry:</strong> {formatDateToIST(order.subscriptionExpiryDate)}</p>
+                                                    {/* Right Column: Delivery Address */}
+                                                    <div className="col-md-5">
+                                                        <div
+                                                            style={{
+                                                                borderTop: "1px solid #0d6efd",
+                                                                padding: "20px",
+                                                                backgroundColor: "#fff",
+                                                                borderRadius: "10px",
+                                                                height: "100%",
+                                                            }}
+                                                        >
+                                                            <h5
+                                                                style={{
+                                                                    color: "#0d6efd",
+                                                                    fontWeight: "700",
+                                                                    fontSize: "16px",
+                                                                    borderBottom: "2px solid #0d6efd",
+                                                                    display: "inline-block",
+                                                                    marginBottom: "15px",
+                                                                }}
+                                                            >
+                                                                Delivery Address
+                                                            </h5>
+
+                                                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Name</td>
+                                                                        <td style={{ textAlign: "right", color: "#333" }}>{address.name || "N/A"}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Phone</td>
+                                                                        <td style={{ textAlign: "right", color: "#333" }}>{address.phone || "N/A"}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Email</td>
+                                                                        <td style={{ textAlign: "right", color: "#333" }}>{address.email || "N/A"}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Address</td>
+                                                                        <td style={{ textAlign: "right", color: "#333" }}>
+                                                                            {address.street || "N/A"}, {address.landmark || ""}<br />
+                                                                            {address.city || ""}, {address.district || ""}, {address.state || ""} - {address.pincode || ""}
+                                                                        </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+
+                                                            {/* Download Invoice Button */}
+                                                            <div style={{ textAlign: "center", marginTop: "20px" }}>
+                                                                <button
+                                                                    className="btn btn-primary"
+                                                                    style={{
+                                                                        background: "#0d6efd",
+                                                                        border: "none",
+                                                                        padding: "8px 20px",
+                                                                        borderRadius: "6px",
+                                                                        fontWeight: "600",
+                                                                    }}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDownloadInvoice(order.customOrderId);
+                                                                    }}
+                                                                >
+                                                                    <i className="bi bi-download" style={{ marginRight: "5px" }}></i>
+                                                                    Download Invoice
+                                                                </button>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             )}
+
                                         </div>
                                     );
                                 })}
