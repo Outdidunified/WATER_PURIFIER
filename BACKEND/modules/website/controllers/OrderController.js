@@ -31,41 +31,28 @@ exports.createSubscriptionOrder = async (req, res) => {
       grandTotal,
       priceWithGST,
       wp_device_id,
-      paymentType, // <-- "COD" or "ONLINE" (any case)
+      paymentType,
       price,
       subtotal,
       codFee
-
     } = req.body;
 
-    if (!paymentType) {
-      return res.status(400).json({ message: 'paymentType is required' });
-    }
-
-    // ✅ Case-insensitive support
+    if (!paymentType) return res.status(400).json({ message: 'paymentType is required' });
     paymentType = paymentType.toUpperCase();
-
-    if (!['COD', 'ONLINE'].includes(paymentType)) {
-      return res.status(400).json({ message: 'Invalid paymentType. Must be "COD" or "ONLINE"' });
-    }
+    if (!['COD', 'ONLINE'].includes(paymentType)) return res.status(400).json({ message: 'Invalid paymentType. Must be "COD" or "ONLINE"' });
 
     const db = await connectToDatabase();
     const user = await db.collection('users').findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ message: 'User not found' });
+    if (Number(user.role_id) !== 3) return res.status(403).json({ message: 'Only End Users can create subscriptions' });
 
-    if (Number(user.role_id) !== 3) {
-      return res.status(403).json({ status: 'failed', message: 'Only End Users are allowed to create subscriptions' });
-    }
-
-    if (
-      !productModelId || !selectedPlanId || !selectedDurationId || !deliveryAddress ||
+    if (!productModelId || !selectedPlanId || !selectedDurationId || !deliveryAddress ||
       finalMonthlyPrice === undefined || discountAmount === undefined ||
-      priceWithGST === undefined || gstAmount === undefined || grandTotal === undefined || !wp_device_id
-    ) {
-      return res.status(400).json({ message: 'All fields including wp_device_id are required (except securityDeposit)' });
+      priceWithGST === undefined || gstAmount === undefined || grandTotal === undefined || !wp_device_id) {
+      return res.status(400).json({ message: 'All required fields missing' });
     }
 
-    // Validate deliveryAddress
+    // Validate address
     const addrResult = validateDeliveryAddress(deliveryAddress);
     if (!addrResult.valid) return res.status(400).json({ message: addrResult.message });
     const normalizedAddress = normalizeDeliveryAddress(deliveryAddress);
@@ -74,37 +61,32 @@ exports.createSubscriptionOrder = async (req, res) => {
       return res.status(400).json({ message: 'Security deposit is required for new users' });
     }
 
-    // Fetch product model
     const productModel = await db.collection('product_models').findOne({ _id: new ObjectId(productModelId) });
     if (!productModel) return res.status(404).json({ message: 'Product model not found' });
 
     const main_image = productModel.main_img || '';
     const sub_images = [productModel.sub_img_1, productModel.sub_img_2, productModel.sub_img_3, productModel.sub_img_4].filter(Boolean);
 
-    // Validate device availability
+    // Check device availability
     const device = await db.collection('device_details').findOne({
       wp_device_id,
       model_id: Number(productModel.model_id),
       status: true
     });
-    if (!device) return res.status(404).json({ message: 'Invalid or unavailable device for this product' });
+    if (!device) return res.status(404).json({ message: 'Device not available' });
 
     const deviceUsed = await db.collection('orders').findOne({ wp_device_id, paymentStatus: 'Completed' });
-    if (deviceUsed) {
-      return res.status(400).json({ status: 'failed', message: 'This device has already been used in a completed order. Please choose another device.' });
-    }
+    if (deviceUsed) return res.status(400).json({ message: 'Device already used in completed order' });
 
     const selectedPlan = productModel.plans.find(plan => plan.plans_id === selectedPlanId);
     const selectedDuration = productModel.duration.find(dur => dur.duration_id === selectedDurationId);
-    if (!selectedPlan || !selectedDuration) return res.status(404).json({ message: 'Selected plan or duration not found' });
+    if (!selectedPlan || !selectedDuration) return res.status(404).json({ message: 'Plan or duration not found' });
 
-    const capacityString = selectedPlan?.capacity || "";
-    const totalLitre = parseInt(capacityString.match(/\d+/)?.[0] || "0", 10);
     const effectiveSecurityDeposit = user.security_deposit_added ? 0 : securityDeposit;
+    const totalLitre = parseInt(selectedPlan.capacity.match(/\d+/)?.[0] || "0", 10);
 
     let razorpayOrder = null;
     if (paymentType === 'ONLINE') {
-      // Create Razorpay order only for online payment
       razorpayOrder = await razorpay.orders.create({
         amount: Math.round(grandTotal * 100),
         currency: 'INR',
@@ -113,6 +95,10 @@ exports.createSubscriptionOrder = async (req, res) => {
     }
 
     const customOrderId = generateOrderId();
+
+    // ✅ COD: Confirm order immediately, payment pending
+    const orderStatus = 'Confirmed';
+    const paymentStatus = paymentType === 'ONLINE' ? 'Pending' : 'Pending'; // COD is Pending until collection, ONLINE is also Pending until paid
 
     const newOrder = {
       customOrderId,
@@ -126,15 +112,14 @@ exports.createSubscriptionOrder = async (req, res) => {
       selectedDuration,
       grandTotal,
       deliveryAddress: normalizedAddress,
-      paymentType, // Store normalized payment type
-      paymentStatus: 'Pending', // COD: collected later, ONLINE: pending until payment success
-      orderStatus: 'Created',
+      paymentType,
+      paymentStatus,
+      orderStatus,
       razorpayOrderId: razorpayOrder?.id || null,
       totalLitre,
-              price,
+      price,
       subtotal,
       codFee,
-      
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -142,7 +127,6 @@ exports.createSubscriptionOrder = async (req, res) => {
     const result = await db.collection('orders').insertOne(newOrder);
     const orderId = result.insertedId;
 
-    // Insert payment details
     await db.collection('payments').insertOne({
       user_id: user.user_id,
       orderId,
@@ -154,16 +138,18 @@ exports.createSubscriptionOrder = async (req, res) => {
       securityDeposit: effectiveSecurityDeposit,
       totalPrice: grandTotal,
       totalLitre,
-      paymentStatus: 'Pending',
+      paymentStatus,
       paymentType,
-            price,
+      price,
       subtotal,
       codFee,
       createdAt: new Date(),
       updatedAt: new Date()
     });
 
-    // Generate Razorpay signature for frontend (only ONLINE)
+    // Auto-assign installation for ONLINE or COD orders
+    await autoAssignInstallation(newOrder);
+
     const generatedSignature = razorpayOrder
       ? crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
           .update(`${razorpayOrder.id}|${orderId.toString()}`)
@@ -197,7 +183,9 @@ exports.createSubscriptionOrder = async (req, res) => {
           totalPrice: grandTotal
         },
         deliveryAddress: normalizedAddress,
-        totalLitre
+        totalLitre,
+        orderStatus,
+        paymentStatus
       }
     });
 
