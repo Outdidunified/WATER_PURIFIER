@@ -343,11 +343,6 @@ async function autoAssignInstallation(order) {
                 selectedPlan: order.selectedPlan,
                 selectedDuration: order.selectedDuration
             },
-            order: {
-                customOrderId: order.customOrderId,
-                user_id: order.user_id
-            },
-            order_details: orderDetailsForRecord,
             order_snapshot: orderSnapshot,
             payment_snapshot: paymentSnapshot
         };
@@ -427,7 +422,10 @@ async function autoAssignPendingInstallations() {
         // Find all confirmed and paid orders
         const confirmedOrders = await ordersCollection.find({
             orderStatus: 'Confirmed',
-            paymentStatus: 'Completed'
+            $or: [
+                { paymentStatus: 'Completed' },
+                { paymentType: { $regex: /^cod$/i } }
+            ]
         }).toArray();
 
         for (const order of confirmedOrders) {
