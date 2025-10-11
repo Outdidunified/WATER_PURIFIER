@@ -19,7 +19,7 @@ function generateOrderId() {
 // controllers/OrderController.js
 exports.createSubscriptionOrder = async (req, res) => {
   try {
-    const {
+    let {
       productModelId,
       selectedPlanId,
       selectedDurationId,
@@ -30,18 +30,27 @@ exports.createSubscriptionOrder = async (req, res) => {
       securityDeposit,
       grandTotal,
       priceWithGST,
-      wp_device_id
+      wp_device_id,
+      paymentType // <-- "COD" or "ONLINE" (any case)
     } = req.body;
+
+    if (!paymentType) {
+      return res.status(400).json({ message: 'paymentType is required' });
+    }
+
+    // ✅ Case-insensitive support
+    paymentType = paymentType.toUpperCase();
+
+    if (!['COD', 'ONLINE'].includes(paymentType)) {
+      return res.status(400).json({ message: 'Invalid paymentType. Must be "COD" or "ONLINE"' });
+    }
 
     const db = await connectToDatabase();
     const user = await db.collection('users').findOne({ _id: new ObjectId(req.userId) });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     if (Number(user.role_id) !== 3) {
-      return res.status(403).json({
-        status: 'failed',
-        message: 'Only End Users are allowed to create subscriptions'
-      });
+      return res.status(403).json({ status: 'failed', message: 'Only End Users are allowed to create subscriptions' });
     }
 
     if (
@@ -49,17 +58,12 @@ exports.createSubscriptionOrder = async (req, res) => {
       finalMonthlyPrice === undefined || discountAmount === undefined ||
       priceWithGST === undefined || gstAmount === undefined || grandTotal === undefined || !wp_device_id
     ) {
-      return res.status(400).json({
-        message: 'All fields including wp_device_id are required (except securityDeposit)'
-      });
+      return res.status(400).json({ message: 'All fields including wp_device_id are required (except securityDeposit)' });
     }
 
     // Validate deliveryAddress
     const addrResult = validateDeliveryAddress(deliveryAddress);
-    if (!addrResult.valid) {
-      return res.status(400).json({ message: addrResult.message });
-    }
-
+    if (!addrResult.valid) return res.status(400).json({ message: addrResult.message });
     const normalizedAddress = normalizeDeliveryAddress(deliveryAddress);
 
     if (!user.security_deposit_added && (securityDeposit === undefined || securityDeposit === null)) {
@@ -70,14 +74,8 @@ exports.createSubscriptionOrder = async (req, res) => {
     const productModel = await db.collection('product_models').findOne({ _id: new ObjectId(productModelId) });
     if (!productModel) return res.status(404).json({ message: 'Product model not found' });
 
-    // Extract images
     const main_image = productModel.main_img || '';
-    const sub_images = [
-      productModel.sub_img_1 || '',
-      productModel.sub_img_2 || '',
-      productModel.sub_img_3 || '',
-      productModel.sub_img_4 || ''
-    ].filter(img => img);
+    const sub_images = [productModel.sub_img_1, productModel.sub_img_2, productModel.sub_img_3, productModel.sub_img_4].filter(Boolean);
 
     // Validate device availability
     const device = await db.collection('device_details').findOne({
@@ -85,62 +83,49 @@ exports.createSubscriptionOrder = async (req, res) => {
       model_id: Number(productModel.model_id),
       status: true
     });
+    if (!device) return res.status(404).json({ message: 'Invalid or unavailable device for this product' });
 
-    if (!device) {
-      return res.status(404).json({ message: 'Invalid or unavailable device for this product' });
-    }
-
-    const deviceUsed = await db.collection('orders').findOne({
-      wp_device_id,
-      paymentStatus: 'Completed'
-    });
-
+    const deviceUsed = await db.collection('orders').findOne({ wp_device_id, paymentStatus: 'Completed' });
     if (deviceUsed) {
-      return res.status(400).json({
-        status: 'failed',
-        message: 'This device has already been used in a completed order. Please choose another device.'
-      });
+      return res.status(400).json({ status: 'failed', message: 'This device has already been used in a completed order. Please choose another device.' });
     }
 
-    // Validate selected plan and duration
     const selectedPlan = productModel.plans.find(plan => plan.plans_id === selectedPlanId);
     const selectedDuration = productModel.duration.find(dur => dur.duration_id === selectedDurationId);
-
-    if (!selectedPlan || !selectedDuration) {
-      return res.status(404).json({ message: 'Selected plan or duration not found' });
-    }
+    if (!selectedPlan || !selectedDuration) return res.status(404).json({ message: 'Selected plan or duration not found' });
 
     const capacityString = selectedPlan?.capacity || "";
     const totalLitre = parseInt(capacityString.match(/\d+/)?.[0] || "0", 10);
-
     const effectiveSecurityDeposit = user.security_deposit_added ? 0 : securityDeposit;
-    const totalAmountForRazorpay = grandTotal;
 
-    // Create Razorpay order
-    const razorpayOrder = await razorpay.orders.create({
-      amount: Math.round(totalAmountForRazorpay * 100),
-      currency: 'INR',
-      receipt: `order_rcptid_${Math.floor(Math.random() * 1000000)}`
-    });
+    let razorpayOrder = null;
+    if (paymentType === 'ONLINE') {
+      // Create Razorpay order only for online payment
+      razorpayOrder = await razorpay.orders.create({
+        amount: Math.round(grandTotal * 100),
+        currency: 'INR',
+        receipt: `order_rcptid_${Math.floor(Math.random() * 1000000)}`
+      });
+    }
 
     const customOrderId = generateOrderId();
 
-    // Insert order
     const newOrder = {
       customOrderId,
       user_id: user.user_id,
       productModelId,
       modelName: productModel.model_name,
-      main_image,           // main image stored
-      sub_images,           // sub images stored
+      main_image,
+      sub_images,
       wp_device_id,
       selectedPlan,
       selectedDuration,
-      grandTotal: totalAmountForRazorpay,
+      grandTotal,
       deliveryAddress: normalizedAddress,
-      paymentStatus: 'Pending',
+      paymentType, // Store normalized payment type
+      paymentStatus: 'Pending', // COD: collected later, ONLINE: pending until payment success
       orderStatus: 'Created',
-      razorpayOrderId: razorpayOrder.id,
+      razorpayOrderId: razorpayOrder?.id || null,
       totalLitre,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -153,33 +138,36 @@ exports.createSubscriptionOrder = async (req, res) => {
     await db.collection('payments').insertOne({
       user_id: user.user_id,
       orderId,
-      razorpayOrderId: razorpayOrder.id,
+      razorpayOrderId: razorpayOrder?.id || null,
       finalMonthlyPrice,
       discountAmount,
       priceWithGST,
       gstAmount,
       securityDeposit: effectiveSecurityDeposit,
-      totalPrice: totalAmountForRazorpay,
+      totalPrice: grandTotal,
       totalLitre,
       paymentStatus: 'Pending',
+      paymentType,
       createdAt: new Date(),
       updatedAt: new Date()
     });
 
-    // Generate Razorpay signature for frontend verification
-    const signatureBase = razorpayOrder.id + '|' + orderId.toString();
-    const generatedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-      .update(signatureBase)
-      .digest('hex');
+    // Generate Razorpay signature for frontend (only ONLINE)
+    const generatedSignature = razorpayOrder
+      ? crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+          .update(`${razorpayOrder.id}|${orderId.toString()}`)
+          .digest('hex')
+      : null;
 
     return res.status(200).json({
       status: 'success',
-      message: 'Order created and Razorpay payment initiated',
+      message: 'Order created successfully',
       data: {
         orderId: customOrderId,
         userId: user.user_id,
         razorpayOrder,
         razorpaySignature: generatedSignature,
+        paymentType,
         product: {
           _id: productModel._id,
           model_name: productModel.model_name,
@@ -195,7 +183,7 @@ exports.createSubscriptionOrder = async (req, res) => {
           priceWithGST,
           gstAmount,
           securityDeposit: effectiveSecurityDeposit,
-          totalPrice: totalAmountForRazorpay
+          totalPrice: grandTotal
         },
         deliveryAddress: normalizedAddress,
         totalLitre
@@ -207,6 +195,7 @@ exports.createSubscriptionOrder = async (req, res) => {
     return res.status(500).json({ message: 'Failed to create order', error: err.message });
   }
 };
+
 
 
 
