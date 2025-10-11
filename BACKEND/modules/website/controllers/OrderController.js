@@ -75,8 +75,18 @@ exports.createSubscriptionOrder = async (req, res) => {
     });
     if (!device) return res.status(404).json({ message: 'Device not available' });
 
-    const deviceUsed = await db.collection('orders').findOne({ wp_device_id, paymentStatus: 'Completed' });
-    if (deviceUsed) return res.status(400).json({ message: 'Device already used in completed order' });
+   // Check if device is already used in another order
+const deviceUsed = await db.collection('orders').findOne({
+  wp_device_id,
+  $or: [
+    { paymentStatus: 'Completed' },
+    { orderStatus: 'Confirmed' }  // Covers COD confirmed orders
+  ]
+});
+if (deviceUsed) {
+  return res.status(400).json({ message: 'This device is already assigned to another order. Please choose another device.' });
+}
+
 
     const selectedPlan = productModel.plans.find(plan => plan.plans_id === selectedPlanId);
     const selectedDuration = productModel.duration.find(dur => dur.duration_id === selectedDurationId);

@@ -95,17 +95,16 @@ exports.updateTaskDetails = async (req, res) => {
     const technicianCollection = db.collection('technician_details');
     const usersCollection = db.collection('users');
     const ordersCollection = db.collection('orders');
+    const paymentsCollection = db.collection('payments');
 
     const task = await serviceRecordsCollection.findOne({
       task_id: parseInt(task_id),
       assigned_technician_id: technician_id
     });
 
-    if (!task) {
-      return res.status(404).json({ error: true, message: 'No task found assigned to this technician' });
-    }
+    if (!task) return res.status(404).json({ error: true, message: 'No task found assigned to this technician' });
 
-    const allowedFields = ['task_status', 'pending_reason', 'modified_by', 'modified_date'];
+    const allowedFields = ['task_status', 'pending_reason', 'modified_by', 'modified_date', 'collectPayment', 'paymentMethod'];
     const updateData = {};
 
     for (let key in updates) {
@@ -114,83 +113,59 @@ exports.updateTaskDetails = async (req, res) => {
 
     const status = updates.task_status || task.task_status;
 
-    // ✅ Validate Pending Reason
-    if (status === 'Pending') {
-      if (!updates.pending_reason?.trim()) {
-        return res.status(400).json({
-          error: true,
-          message: 'pending_reason is required when task_status is "Pending"',
-        });
-      }
-    } else {
+    // Validate Pending Reason
+    if (status === 'Pending' && !updates.pending_reason?.trim()) {
+      return res.status(400).json({ error: true, message: 'pending_reason is required when task_status is "Pending"' });
+    } else if (status !== 'Pending') {
       updateData.pending_reason = null;
     }
 
-    // ✅ OTP check for Completed status
+    // OTP check for Completed status
     if (status === 'Completed') {
       const parsedOtp = parseInt(otp);
       if (!parsedOtp || parsedOtp !== task.otp) {
         return res.status(400).json({ error: true, message: 'Invalid OTP. Cannot complete task.' });
       }
-
-      // ✅ Add completed_date
       updateData.completed_date = new Date(); // store in UTC
     }
 
-    // ✅ Handle uploaded images
+    // Handle uploaded images
     const files = req.files;
-
     if (files) {
       if (files.image_before_service && files.image_before_service.length > 0) {
         const beforeImagePath = `/upload/technician/before/${path.basename(files.image_before_service[0].path)}`;
         const existingBeforeImages = task.image_before_service || [];
-
         if (existingBeforeImages.length >= 5) {
-          return res.status(400).json({
-            error: true,
-            message: 'Maximum of 5 images already uploaded for image_before_service',
-          });
+          return res.status(400).json({ error: true, message: 'Maximum of 5 images already uploaded for image_before_service' });
         }
-
         updateData.image_before_service = [...existingBeforeImages, beforeImagePath];
       }
 
       if (files.image_after_service && files.image_after_service.length > 0) {
         const afterImagePath = `/upload/technician/after/${path.basename(files.image_after_service[0].path)}`;
         const existingAfterImages = task.image_after_service || [];
-
         if (existingAfterImages.length >= 5) {
-          return res.status(400).json({
-            error: true,
-            message: 'Maximum of 5 images already uploaded for image_after_service',
-          });
+          return res.status(400).json({ error: true, message: 'Maximum of 5 images already uploaded for image_after_service' });
         }
-
         updateData.image_after_service = [...existingAfterImages, afterImagePath];
       }
     }
 
     if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({
-        error: true,
-        message: 'No valid fields provided for update',
-      });
+      return res.status(400).json({ error: true, message: 'No valid fields provided for update' });
     }
 
-    // ✅ Update task in DB
+    // Update task in DB
     const result = await serviceRecordsCollection.updateOne(
       { task_id: parseInt(task_id), assigned_technician_id: technician_id },
       { $set: updateData }
     );
 
     if (result.modifiedCount === 0) {
-      return res.status(400).json({
-        error: true,
-        message: 'No changes were made to the task',
-      });
+      return res.status(400).json({ error: true, message: 'No changes were made to the task' });
     }
 
-    // ✅ Technician stats + Subscription expiry updates if completed
+    // Technician stats + Subscription expiry updates if completed
     if (status === 'Completed') {
       const technician = await technicianCollection.findOne({ technician_id });
       if (technician) {
@@ -200,11 +175,8 @@ exports.updateTaskDetails = async (req, res) => {
         );
       }
 
-      // ✅ Update subscription expiry only (do NOT touch is_subscribed)
-      const order = await ordersCollection.findOne({
-        customOrderId: task.order?.customOrderId || task.customOrderId
-      });
-
+      // Update subscription expiry
+      const order = await ordersCollection.findOne({ customOrderId: task.order?.customOrderId || task.customOrderId });
       if (order) {
         const subscribedAt = new Date();
         const durationStr = order.selectedDuration?.duration_time_limit || '30 days';
@@ -213,25 +185,13 @@ exports.updateTaskDetails = async (req, res) => {
         subscriptionExpiryDate.setDate(subscriptionExpiryDate.getDate() + durationInDays);
 
         const userId = parseInt(task.task_created_by_user_id);
-
-        await usersCollection.updateOne(
-          { user_id: userId },
-          {
-            $set: {
-              subscription_expiry_date: subscriptionExpiryDate
-            }
-          }
-        );
-
-        await ordersCollection.updateOne(
-          { customOrderId: order.customOrderId },
-          { $set: { subscriptionExpiryDate, updatedAt: new Date() } }
-        );
+        await usersCollection.updateOne({ user_id: userId }, { $set: { subscription_expiry_date: subscriptionExpiryDate } });
+        await ordersCollection.updateOne({ customOrderId: order.customOrderId }, { $set: { subscriptionExpiryDate, updatedAt: new Date() } });
 
         console.log(`🟢 Subscription expiry updated for user ${userId}`);
       }
 
-      // ✅ Send completion email
+      // Send completion email
       const mailOptions = {
         from: 'your_email@gmail.com',
         to: task.task_created_by_user_email,
@@ -242,11 +202,26 @@ exports.updateTaskDetails = async (req, res) => {
           <p>Subscription expiry has been updated. 🎉</p>
         `
       };
-
       transporter.sendMail(mailOptions, (error, info) => {
         if (error) console.error('Error sending mail:', error);
         else console.log('Email sent:', info.response);
       });
+
+      // ✅ Handle COD payment collection
+      if (order.paymentType === 'COD' && updates.collectPayment === true) {
+        const paymentRecord = await paymentsCollection.findOne({ orderId: order._id });
+        if (paymentRecord && paymentRecord.paymentStatus !== 'Completed') {
+          await ordersCollection.updateOne(
+            { customOrderId: order.customOrderId },
+            { $set: { paymentStatus: 'Completed', paymentCollectedAt: new Date(), paymentCollectedBy: technician_id, updatedAt: new Date() } }
+          );
+          await paymentsCollection.updateOne(
+            { orderId: order._id },
+            { $set: { paymentStatus: 'Completed', paymentCollectedAt: new Date(), paymentMethod: updates.paymentMethod || 'Cash', updatedAt: new Date() } }
+          );
+          console.log(`💵 COD payment collected for order ${order.customOrderId}`);
+        }
+      }
     }
 
     return res.status(200).json({ error: false, message: 'Task updated successfully' });
@@ -256,10 +231,6 @@ exports.updateTaskDetails = async (req, res) => {
     return res.status(500).json({ error: true, message: 'Server error while updating task' });
   }
 };
-
-
-
-
 
 
   
