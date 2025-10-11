@@ -33,7 +33,8 @@ exports.createSubscriptionOrder = async (req, res) => {
       wp_device_id,
       paymentType, // <-- "COD" or "ONLINE" (any case)
       price,
-      subtotal
+      subtotal,
+      codFee
 
     } = req.body;
 
@@ -132,6 +133,8 @@ exports.createSubscriptionOrder = async (req, res) => {
       totalLitre,
               price,
       subtotal,
+      codFee,
+      
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -155,6 +158,7 @@ exports.createSubscriptionOrder = async (req, res) => {
       paymentType,
             price,
       subtotal,
+      codFee,
       createdAt: new Date(),
       updatedAt: new Date()
     });
