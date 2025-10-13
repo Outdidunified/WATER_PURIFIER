@@ -65,7 +65,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                   serviceRecord.releasedDate;
                 const completedDate =
                   task.task_completed_date ||
-                  serviceRecord.completed_at ||
+                  serviceRecord.completed_date ||
                   serviceRecord.completedAt;
                 const subscriptionExpiry =
                   task.subscriptionExpiryDate ||
@@ -139,7 +139,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                   delivery.addressLine1 || delivery.address1 || delivery.address || '';
                 const addressLine2 =
                   delivery.addressLine2 || delivery.address2 || delivery.landmark || '';
-                const fullAddress = [addressLine1, addressLine2].filter(Boolean).join(' ');
+                const fullAddress = [addressLine1, addressLine2].filter(Boolean).join(' ')|| delivery.street;
                 const city = delivery.city || delivery.town || delivery.city_town || '';
                 const district =
                   delivery.district || delivery.state_district || task.district || '';
@@ -161,6 +161,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                   serviceRecord.created_at ||
                   serviceRecord.createdAt;
                 const imageAfterService = task.image_after_service || serviceRecord.image_after_service || [];
+                
 
                 return (
                   <div
@@ -351,9 +352,9 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                             <div className="col-md-4">
                               <strong>Completion Date</strong> {formatDateTime(completedDate)}
                             </div>
-                            <div className="col-md-4">
+                            {/* <div className="col-md-4">
                               <strong>Completion Notes</strong> {completionNotes || '-'}
-                            </div>
+                            </div> */}
                             <div className="col-md-4">
                               <strong>Task Status</strong> {taskStatus || '-'}
                             </div>
