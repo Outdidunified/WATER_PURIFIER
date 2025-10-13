@@ -1635,8 +1635,26 @@ const FetchSelectUserOrders = async (req, res) => {
         const enrichedOrders = await ordersCollection.aggregate([
             {
                 $match: {
-                    orderStatus: "Confirmed",
-                    paymentStatus: "Completed"
+                    $expr: {
+                        $and: [
+                            { $eq: ["$orderStatus", "Confirmed"] },
+                            {
+                                $or: [
+                                    {
+                                        $eq: [
+                                            {
+                                                $toUpper: {
+                                                    $ifNull: ["$paymentType", ""]
+                                                }
+                                            },
+                                            "COD"
+                                        ]
+                                    },
+                                    { $eq: ["$paymentStatus", "Completed"] }
+                                ]
+                            }
+                        ]
+                    }
                 }
             },
             {
@@ -2675,7 +2693,29 @@ const GetInstallationsByDistrict = async (req, res) => {
     const db = await database.connectToDatabase();
     const ordersCollection = db.collection("orders");
 
-    const matchStage = { paymentStatus: "Completed", orderStatus: "Confirmed" };
+    const matchStage = {
+      $expr: {
+        $and: [
+          { $eq: ["$orderStatus", "Confirmed"] },
+          {
+            $or: [
+              {
+                $eq: [
+                  {
+                    $toUpper: {
+                      $ifNull: ["$paymentType", ""]
+                    }
+                  },
+                  "COD"
+                ]
+              },
+              { $eq: ["$paymentStatus", "Completed"] }
+            ]
+          }
+        ]
+      }
+    };
+
     if (district && String(district).trim() !== '') {
       // Case-insensitive regex
       matchStage["deliveryAddress.district"] = new RegExp(`^${String(district).trim()}$`, "i");
@@ -4007,4 +4047,5 @@ module.exports = {
     AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchEndUserDevices, FetchOrdersByUserId, FetchTechnicianTasksByUserId, GetAnalytics,
     GetAnalyticsByDistrict,GetDistrictsWithSellers
     // UpdateOrdersStatus,
+
 };
