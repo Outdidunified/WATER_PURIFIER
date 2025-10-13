@@ -114,10 +114,10 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                       <hr />
                       <div className="row viewDataCss">
                         <div className="col-md-4">
-                          <strong>Status:</strong> <span>{task.task_status || '-'}</span>
+                          <strong>Status</strong> <span>{task.task_status || '-'}</span>
                         </div>
                         <div className="col-md-4">
-                          <strong>Type:</strong>{' '}
+                          <strong>Type</strong>{' '}
                           <span>
                             {{
                               1: 'Installation',
@@ -127,7 +127,7 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                           </span>
                         </div>
                         <div className="col-md-4">
-                          <strong>Pending Reason:</strong>{' '}
+                          <strong>Pending Reason</strong>{' '}
                           <span>{resolvePendingReason(task)}</span>
                         </div>
                       </div>
@@ -140,28 +140,28 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                           <hr />
                         </div>
                         <div className="col-md-4">
-                          <strong>Name:</strong> <span>{resolveTechnicianName(task)}</span>
+                          <strong>Name</strong> <span>{resolveTechnicianName(task)}</span>
                         </div>
                         <div className="col-md-4">
-                          <strong>Technician ID:</strong> <span>{resolveTechnicianId(task)}</span>
+                          <strong>Technician ID</strong> <span>{resolveTechnicianId(task)}</span>
                         </div>
                         <div className="col-md-4">
-                          <strong>Email:</strong>{' '}
+                          <strong>Email</strong>{' '}
                           <span>{resolveTechnicianEmail(task)}</span>
                         </div>
                       </div>
 
                       <div className="row viewDataCss mt-2">
                         <div className="col-md-4">
-                          <strong>Phone:</strong>{' '}
+                          <strong>Phone</strong>{' '}
                           <span>{resolveTechnicianPhone(task)}</span>
                         </div>
                         <div className="col-md-4">
-                          <strong>Assigned Date:</strong>{' '}
+                          <strong>Assigned Date</strong>{' '}
                           <span>{resolveAssignedDate(task)}</span>
                         </div>
                         <div className="col-md-4">
-                          <strong>Assigned By:</strong>{' '}
+                          <strong>Assigned By</strong>{' '}
                           <span>{resolveAssignedBy(task)}</span>
                         </div>
                       </div>
@@ -174,41 +174,41 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                           <hr />
                         </div>
                         <div className="col-md-4">
-                          <strong>Device ID:</strong> <span>{resolveDeviceId(task)}</span>
+                          <strong>Device ID</strong> <span>{resolveDeviceId(task)}</span>
                         </div>
                         <div className="col-md-4">
-                          <strong>Created By:</strong>{' '}
+                          <strong>Created By</strong>{' '}
                           <span>{task.task_created_by_user_email || '-'}</span>
                         </div>
                         <div className="col-md-4">
-                          <strong>OTP:</strong> <span>{task.otp || '-'}</span>
+                          <strong>OTP</strong> <span>{task.otp || '-'}</span>
                         </div>
                       </div>
 
                       <div className="row viewDataCss mt-2">
                         <div className="col-md-4">
-                          <strong>Created Date:</strong>{' '}
+                          <strong>Created Date</strong>{' '}
                           <span>{resolveCreatedDate(task)}</span>
                         </div>
                         <div className="col-md-4">
-                          <strong>Modified Date:</strong>{' '}
+                          <strong>Modified Date</strong>{' '}
                           <span>{resolveModifiedDate(task)}</span>
                         </div>
                         <div className="col-md-4">
-                          <strong>Modified By:</strong> <span>{task.modified_by || '-'}</span>
+                          <strong>Modified By</strong> <span>{task.modified_by || '-'}</span>
                         </div>
                       </div>
                       <div className="row viewDataCss mt-2">
                          <div className="col-md-4">
-                          <strong>City:</strong>{' '}
+                          <strong>City</strong>{' '}
                           <span>{task.city || '-'}</span>
                         </div>
                         <div className="col-md-4">
-                          <strong>District:</strong>{' '}
+                          <strong>District</strong>{' '}
                           <span>{task.district || '-'}</span>
                         </div>
                         <div className="col-md-4">
-                          <strong>State:</strong>{' '}
+                          <strong>State</strong>{' '}
                           <span>{task.state || '-'}</span>
                         </div>
 
@@ -216,15 +216,15 @@ const ViewServices = ({ userInfo, handleLogout }) => {
 
                       <div className="row viewDataCss mt-2">
                         <div className="col-md-4">
-                          <strong>Pincode:</strong>{' '}
+                          <strong>Pincode</strong>{' '}
                           <span>{task.pincode || '-'}</span>
                         </div>
                         <div className="col-md-4">
-                          <strong>Modified Date:</strong>{' '}
+                          <strong>Modified Date</strong>{' '}
                           <span>{resolveModifiedDate(task)}</span>
                         </div>
                         <div className="col-md-4">
-                          <strong>Modified By:</strong> <span>{task.modified_by || '-'}</span>
+                          <strong>Modified By</strong> <span>{task.modified_by || '-'}</span>
                         </div>
                       </div>
 
@@ -234,7 +234,7 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                       {task.image_before_service?.length > 0 && (
                         <div className="row viewDataCss mt-3">
                           <div className="col-md-12">
-                            <strong>Before Service Images:</strong>
+                            <strong>Before Service Images</strong>
                             <div className="row mt-2">
                               {task.image_before_service.map((img, idx) => (
                                 <div className="col-md-3 mb-2" key={idx}>
@@ -255,7 +255,7 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                       {task.image_after_service?.length > 0 && (
                         <div className="row viewDataCss mt-3">
                           <div className="col-md-12">
-                            <strong>After Service Images:</strong>
+                            <strong>After Service Images</strong>
                             <div className="row mt-2">
                               {task.image_after_service.map((img, idx) => (
                                 <div className="col-md-3 mb-2" key={idx}>

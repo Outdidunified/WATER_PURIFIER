@@ -244,6 +244,7 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                                 if (e.target.value === 'unlimited') handlePlanChange(index, 'capacity', '');
                               }}
                               required
+
                             >
                               <option value="">Select Plan</option>
                               {availableOptions.map((opt) => (
@@ -255,9 +256,9 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                           {plan.label !== 'unlimited' && (
                             <div className="col-md-4">
                               <InputField
-                                placeholder="Capacity"
+                                placeholder="Capacity (per 28 days)"
                                 value={plan.capacity}
-                                onChange={(e) => handlePlanChange(index, 'capacity', e.target.value)}
+                                onChange={(e) => handlePlanChange(index, 'capacity', e.target.value.replace(/[^0-9]/g, ''))}
                                 required
                               />
                             </div>
@@ -265,7 +266,7 @@ const EditProducts = ({ userInfo, handleLogout }) => {
 
                           <div className="col-md-3">
                             <InputField
-                              placeholder="Price"
+                              placeholder="Price (per 28 days)"
                               value={plan.price}
                               onChange={(e) => handlePlanChange(index, 'price', e.target.value)}
                               required

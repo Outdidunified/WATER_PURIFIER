@@ -354,7 +354,7 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
         <div className="col-md-3">
           <InputField
             type="text"
-            placeholder="Price"
+            placeholder="Price Per 28 Days"
             value={plan.price || ""}
             maxLength={10}
             title="Enter a valid price (up to 2 decimal places)."

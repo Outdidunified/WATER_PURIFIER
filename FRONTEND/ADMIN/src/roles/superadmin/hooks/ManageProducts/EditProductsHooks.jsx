@@ -190,20 +190,44 @@ const useEditProducts = (userInfo) => {
     setPlans([...plans, { plans_id: Date.now(), label: '', capacity: '', price: '' }]);
   };
 
-  const handlePlanChange = (index, field, value) => {
-    if (field === 'price') {
-      if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
-        const updated = plans.map((plan, i) =>
-          i === index ? { ...plan, [field]: value } : plan
-        );
-        setPlans(updated);
-      }
-    } else {
-      const updated = plans.map((plan, i) =>
-        i === index ? { ...plan, [field]: value } : plan
-      );
-      setPlans(updated);
-    }
+  const handlePlanChange = (index, field, rawValue) => {
+    const value = field === 'price'
+      ? rawValue.replace(/[^0-9.]/g, '') // allow only digits and decimal
+      : rawValue;
+
+    setPlans(prevPlans =>
+      prevPlans.map((plan, i) => {
+        if (i !== index) return plan;
+
+        if (field === 'price' && value !== '' && !/^[0-9]*\.?[0-9]*$/.test(value)) {
+          return plan;
+        }
+
+        const updatedPlan = { ...plan, [field]: value };
+
+        if (field === 'label') {
+          switch (value) {
+            case 'solo':
+              updatedPlan.capacity = '1';
+              break;
+            case 'couple':
+              updatedPlan.capacity = '2';
+              break;
+            case 'family':
+              updatedPlan.capacity = '4';
+              break;
+            case 'unlimited':
+              updatedPlan.capacity = '';
+              break;
+            default:
+              updatedPlan.capacity = '';
+              break;
+          }
+        }
+
+        return updatedPlan;
+      })
+    );
   };
 
   const addDuration = () => {
@@ -262,8 +286,17 @@ const useEditProducts = (userInfo) => {
     }
 
     for (let plan of plans) {
-      if (!plan.label || !plan.capacity || plan.price === '' || isNaN(Number(plan.price))) {
-        showErrorAlert("Invalid Plan", "Each plan must have label, capacity, and numeric price.");
+      const requiresCapacity = plan.label !== 'unlimited';
+      if (
+        !plan.label ||
+        (requiresCapacity && !plan.capacity) ||
+        plan.price === '' ||
+        isNaN(Number(plan.price))
+      ) {
+        showErrorAlert(
+          "Invalid Plan",
+          "Each plan must have a label, numeric price, and capacity when applicable."
+        );
         setLoading(false);
         return;
       }

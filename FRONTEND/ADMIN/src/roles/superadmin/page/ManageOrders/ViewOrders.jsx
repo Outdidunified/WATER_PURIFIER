@@ -43,49 +43,49 @@ const ViewOrders = ({ userInfo, handleLogout }) => {
                     <hr />
 
                     <div className="row viewDataCss">
-                      <div className="col-md-4"><strong>Order ID:</strong> <span>{order.customOrderId || '-'}</span></div>
-                      <div className="col-md-4"><strong>Model Name:</strong> <span>{order.modelName || '-'}</span></div>
-                      <div className="col-md-4"><strong>Device ID:</strong> <span>{order.wp_device_id || '-'}</span></div>
+                      <div className="col-md-4"><strong>Order ID</strong> <span>{order.customOrderId || '-'}</span></div>
+                      <div className="col-md-4"><strong>Model Name</strong> <span>{order.modelName || '-'}</span></div>
+                      <div className="col-md-4"><strong>Device ID</strong> <span>{order.wp_device_id || '-'}</span></div>
                     </div>
 
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4"><strong>Plan:</strong> <span>{order.selectedPlan?.label || '-'}</span></div>
-                      <div className="col-md-4"><strong>Capacity:</strong> <span>{order.selectedPlan?.capacity || '-'}</span></div>
-                      <div className="col-md-4"><strong>Duration:</strong> <span>{order.selectedDuration?.duration_time_limit || '-'}</span></div>
+                      <div className="col-md-4"><strong>Plan</strong> <span>{order.selectedPlan?.label || '-'}</span></div>
+                      <div className="col-md-4"><strong>Capacity</strong> <span>{order.selectedPlan?.capacity || '-'}</span></div>
+                      <div className="col-md-4"><strong>Duration</strong> <span>{order.selectedDuration?.duration_time_limit || '-'}</span></div>
                     </div>
 
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4"><strong>Price:</strong> ₹{order.grandTotal || '-'}</div>
-                      <div className="col-md-4"><strong>Security Deposit:</strong> ₹{order.selectedDuration?.security_deposit || '-'}</div>
-                      <div className="col-md-4"><strong>Discount:</strong> {order.selectedDuration?.discount || '-'}%</div>
+                      <div className="col-md-4"><strong>Price</strong> ₹{order.grandTotal || '-'}</div>
+                      <div className="col-md-4"><strong>Security Deposit</strong> ₹{order.selectedDuration?.security_deposit || '-'}</div>
+                      <div className="col-md-4"><strong>Discount</strong> {order.selectedDuration?.discount || '-'}%</div>
                     </div>
 
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4"><strong>Payment Status:</strong> <span>{order.paymentStatus || '-'}</span></div>
-                      <div className="col-md-4"><strong>Order Status:</strong> <span>{order.orderStatus || '-'}</span></div>
-                      <div className="col-md-4"><strong>Installation Status:</strong> <span>{order.installation_status || '-'}</span></div>
+                      <div className="col-md-4"><strong>Payment Status</strong> <span>{order.paymentStatus || '-'}</span></div>
+                      <div className="col-md-4"><strong>Order Status</strong> <span>{order.orderStatus || '-'}</span></div>
+                      <div className="col-md-4"><strong>Installation Status</strong> <span>{order.installation_status || '-'}</span></div>
                     </div>
 
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4"><strong>Created At:</strong> <span>{order.createdAt ? formatTimestamp(order.createdAt) : '-'}</span></div>
-                      <div className="col-md-4"><strong>Updated At:</strong> <span>{order.updatedAt ? formatTimestamp(order.updatedAt) : '-'}</span></div>
-                      <div className="col-md-4"><strong>Subscription Expiry:</strong> <span>{order.subscriptionExpiryDate ? formatTimestamp(order.subscriptionExpiryDate) : '-'}</span></div>
+                      <div className="col-md-4"><strong>Created At</strong> <span>{order.createdAt ? formatTimestamp(order.createdAt) : '-'}</span></div>
+                      <div className="col-md-4"><strong>Updated At</strong> <span>{order.updatedAt ? formatTimestamp(order.updatedAt) : '-'}</span></div>
+                      <div className="col-md-4"><strong>Subscription Expiry</strong> <span>{order.subscriptionExpiryDate ? formatTimestamp(order.subscriptionExpiryDate) : '-'}</span></div>
                     </div>
 
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4"><strong>Razorpay Order ID:</strong> <span>{order.razorpayOrderId || '-'}</span></div>
-                      <div className="col-md-4"><strong>Razorpay Payment ID:</strong> <span>{order.razorpayPaymentId || '-'}</span></div>
-                      <div className="col-md-4"><strong>Total Litre:</strong> <span>{order.totalLitre || '-'}</span></div>
+                      <div className="col-md-4"><strong>Razorpay Order ID</strong> <span>{order.razorpayOrderId || '-'}</span></div>
+                      <div className="col-md-4"><strong>Razorpay Payment ID</strong> <span>{order.razorpayPaymentId || '-'}</span></div>
+                      <div className="col-md-4"><strong>Total Litre</strong> <span>{order.totalLitre || '-'}</span></div>
                     </div>
 
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4"><strong>Customer Name:</strong> <span>{order.deliveryAddress?.name || '-'}</span></div>
-                      <div className="col-md-4"><strong>Phone:</strong> <span>{order.deliveryAddress?.phone || '-'}</span></div>
-                      <div className="col-md-4"><strong>Address:</strong> <span>{order.deliveryAddress?.addressLine1 || '-'}, {order.deliveryAddress?.city || '-'}, {order.deliveryAddress?.state || '-'} - {order.deliveryAddress?.pincode || '-'}</span></div>
+                      <div className="col-md-4"><strong>Customer Name</strong> <span>{order.deliveryAddress?.name || '-'}</span></div>
+                      <div className="col-md-4"><strong>Phone</strong> <span>{order.deliveryAddress?.phone || '-'}</span></div>
+                      <div className="col-md-4"><strong>Address</strong> <span>{order.deliveryAddress?.addressLine1 || '-'}, {order.deliveryAddress?.city || '-'}, {order.deliveryAddress?.state || '-'} - {order.deliveryAddress?.pincode || '-'}</span></div>
                     </div>
 <div className="row viewDataCss mt-3">
-  <div className="col-md-4"><strong>Address Line 2:</strong> <span>{order.deliveryAddress?.addressLine2 || '-'}</span></div>
-  <div className="col-md-4"><strong>Email:</strong> <span>{order.deliveryAddress?.email || '-'}</span></div>
+  <div className="col-md-4"><strong>Address Line 2</strong> <span>{order.deliveryAddress?.addressLine2 || '-'}</span></div>
+  <div className="col-md-4"><strong>Email</strong> <span>{order.deliveryAddress?.email || '-'}</span></div>
 </div>
 
                   </div>
