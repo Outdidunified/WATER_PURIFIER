@@ -26,20 +26,46 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
       return res.status(404).json({ error: true, message: 'User not found' });
     }
 
+    // ✅ Fallback: If not subscribed, check for COD confirmed orders
     if (!user.is_subscribed || !user.active_order_id) {
-      return res.status(200).json({
-        error: false,
-        message: 'User is not subscribed',
-        data: { subscription: null }
+      const codOrder = await ordersCollection.findOne({
+        user_id: parseInt(user_id),
+        orderStatus: 'Confirmed',
+        paymentType: 'COD'
       });
+
+      if (codOrder) {
+        // ✅ Auto-update user
+        const now = new Date();
+        await usersCollection.updateOne(
+          { user_id: parseInt(user_id) },
+          {
+            $set: {
+              is_subscribed: true,
+              subscribed_at: now,
+              active_order_id: codOrder._id.toString(),
+              active_label: codOrder.selectedPlan?.label || null,
+              active_plan_id: codOrder.selectedPlan?.plans_id || null,
+              active_duration_id: codOrder.selectedDuration?.duration_time_limit || null
+            },
+            $addToSet: { assigned_device_ids: codOrder.wp_device_id },
+            $unset: { assigned_device_id: "" }
+          }
+        );
+      } else {
+        return res.status(200).json({
+          error: false,
+          message: 'User is not subscribed',
+          data: { subscription: null }
+        });
+      }
     }
 
-    // Fetch all orders for this user
+    // ✅ Fetch all orders
     const orders = await ordersCollection.find({ user_id: parseInt(user_id) })
-                                         .sort({ createdAt: -1 })
-                                         .toArray();
+      .sort({ createdAt: -1 })
+      .toArray();
 
-    // Optional: if no orders, you can return a message
     if (!orders.length) {
       return res.status(200).json({
         error: false,
@@ -53,7 +79,6 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
       message: `Found ${orders.length} order(s) for user`,
       data: orders
     });
-
   } catch (error) {
     console.error('Error in getActiveSubscriptionDetails:', error);
     return res.status(500).json({ error: true, message: 'Server error' });

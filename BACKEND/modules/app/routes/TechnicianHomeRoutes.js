@@ -8,7 +8,6 @@ const upload = require('../middlewares/multer');
 router.post('/getassignedtaskdetails', techhome.getAssignedTaskDetails); // ✅ FIXED: Use the correct controller function name
 router.post(
     '/updateTaskDetails', 
-    authMiddleware, 
     upload.fields([
         { name: 'image_before_service', maxCount: 1 },  // Limit to 1 image per upload
         { name: 'image_after_service', maxCount: 1 }    // Limit to 1 image per upload

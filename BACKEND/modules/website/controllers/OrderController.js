@@ -1,3 +1,4 @@
+// controllers/OrderController.js
 const razorpay = require('../../../services/Razorpay');
 const crypto = require('crypto');
 const { connectToDatabase } = require('../../../config/db');
@@ -6,17 +7,12 @@ const { sendSubscriptionConfirmationEmail } = require('../controllers/Email');
 const { validateDeliveryAddress, normalizeDeliveryAddress } = require('../models/DeliveryAddress');
 const { autoAssignInstallation } = require('../../admin/services/autoAssignmentService');
 
-
 function generateOrderId() {
-    const date = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // e.g. 20250526
-    const random = Math.random().toString(36).substr(2, 6).toUpperCase(); // 6-char random
-    return `ORD-${date}-${random}`;
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // e.g. 20250526
+  const random = Math.random().toString(36).substr(2, 6).toUpperCase();
+  return `ORD-${date}-${random}`;
 }
 
-
-
-
-// controllers/OrderController.js
 exports.createSubscriptionOrder = async (req, res) => {
   try {
     let {
@@ -52,7 +48,6 @@ exports.createSubscriptionOrder = async (req, res) => {
       return res.status(400).json({ message: 'All required fields missing' });
     }
 
-    // Validate address
     const addrResult = validateDeliveryAddress(deliveryAddress);
     if (!addrResult.valid) return res.status(400).json({ message: addrResult.message });
     const normalizedAddress = normalizeDeliveryAddress(deliveryAddress);
@@ -75,18 +70,17 @@ exports.createSubscriptionOrder = async (req, res) => {
     });
     if (!device) return res.status(404).json({ message: 'Device not available' });
 
-   // Check if device is already used in another order
-const deviceUsed = await db.collection('orders').findOne({
-  wp_device_id,
-  $or: [
-    { paymentStatus: 'Completed' },
-    { orderStatus: 'Confirmed' }  // Covers COD confirmed orders
-  ]
-});
-if (deviceUsed) {
-  return res.status(400).json({ message: 'This device is already assigned to another order. Please choose another device.' });
-}
-
+    // Prevent assigning same device again
+    const deviceUsed = await db.collection('orders').findOne({
+      wp_device_id,
+      $or: [
+        { paymentStatus: 'Completed' },
+        { orderStatus: 'Confirmed' }
+      ]
+    });
+    if (deviceUsed) {
+      return res.status(400).json({ message: 'This device is already assigned to another order. Please choose another device.' });
+    }
 
     const selectedPlan = productModel.plans.find(plan => plan.plans_id === selectedPlanId);
     const selectedDuration = productModel.duration.find(dur => dur.duration_id === selectedDurationId);
@@ -105,10 +99,8 @@ if (deviceUsed) {
     }
 
     const customOrderId = generateOrderId();
-
-    // ✅ COD: Confirm order immediately, payment pending
     const orderStatus = 'Confirmed';
-    const paymentStatus = paymentType === 'ONLINE' ? 'Pending' : 'Pending'; // COD is Pending until collection, ONLINE is also Pending until paid
+    const paymentStatus = 'Pending'; // COD and ONLINE both start Pending
 
     const newOrder = {
       customOrderId,
@@ -157,7 +149,26 @@ if (deviceUsed) {
       updatedAt: new Date()
     });
 
-    // Auto-assign installation for ONLINE or COD orders
+    // ✅ Immediately mark user subscribed for COD
+    if (paymentType === 'COD') {
+      const now = new Date();
+      await db.collection('users').updateOne(
+        { user_id: user.user_id },
+        {
+          $set: {
+            is_subscribed: true,
+            subscribed_at: now,
+            active_order_id: orderId.toString(),
+            active_label: selectedPlan.label,
+            active_plan_id: selectedPlan.plans_id,
+            active_duration_id: selectedDuration.duration_time_limit
+          },
+          $addToSet: { assigned_device_ids: wp_device_id },
+          $unset: { assigned_device_id: "" }
+        }
+      );
+    }
+
     await autoAssignInstallation(newOrder);
 
     const generatedSignature = razorpayOrder
@@ -198,12 +209,12 @@ if (deviceUsed) {
         paymentStatus
       }
     });
-
   } catch (err) {
     console.error('Error in createSubscriptionOrder:', err);
     return res.status(500).json({ message: 'Failed to create order', error: err.message });
   }
 };
+
 
 
 
