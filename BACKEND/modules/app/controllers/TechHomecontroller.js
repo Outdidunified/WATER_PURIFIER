@@ -179,34 +179,13 @@ exports.updateTaskDetails = async (req, res) => {
     }
 
     // Generate QR code if payment method is QR for COD orders
-   let qrCode = null;
-    let seller = null;
-
-    if (order && order.paymentType === 'COD') {
-      const orderDistrict = (order.deliveryAddress?.district || order.district || task.district || '').trim();
-
-      // Case-insensitive search for seller role and district
-      seller = await usersCollection.findOne({
-        role_name: { $regex: /^seller$/i },
-        assigned_district: orderDistrict,
-        status: true,
-        upiId: { $exists: true, $ne: '' },
-        merchantName: { $exists: true, $ne: '' },
-      });
-
-      if (!seller) {
-        return res.status(400).json({
-          error: true,
-          message: 'No seller found for this district with valid UPI/merchant info',
-        });
-      }
-
-      if (updates.paymentMethod === 'QR') {
-        const upiString = `upi://pay?pa=${seller.upiId}&pn=${encodeURIComponent(seller.merchantName)}&am=${order.grandTotal}&cu=INR`;
-        qrCode = await qrcode.toDataURL(upiString);
-        updateData.qrCode = qrCode;
-        updateData.sellerName = seller.name || seller.email;
-      }
+    let qrCode = null;
+    if (order && order.paymentType === 'COD' && updates.paymentMethod === 'QR') {
+      const upiId = process.env.UPI_ID;
+      const amount = order.grandTotal;
+      const merchantName = process.env.MERCHANT_NAME || 'Water Purifier Service';
+      const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amount}&cu=INR`;
+      qrCode = await qrcode.toDataURL(upiString);
     }
 
     // Handle COD payment collection
@@ -318,8 +297,6 @@ exports.updateTaskDetails = async (req, res) => {
     return res.status(500).json({ error: true, message: 'Server error while updating task' });
   }
 };
-
-
 
   
  exports.acceptDeclineTask = async (req, res) => {
