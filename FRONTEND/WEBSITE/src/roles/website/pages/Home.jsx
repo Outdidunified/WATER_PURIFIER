@@ -380,7 +380,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                             Swal.fire({
                                 icon: "success",
                                 title: "Payment Successful",
-                                text: "Subscription activated! Please log in to continue.",
+                                text: "Subscription activated!",
                                 iconHtml: '<i class="bi bi-bag-check-fill"></i>',
                                 timer: 3000,
                                 showConfirmButton: false,
@@ -1187,7 +1187,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                         boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
                                     }}
                                 >
-                                    <div className="modal-header">
+                                    <div className="modal-header" style={{ backgroundColor: 'aliceblue' }}>
                                         <h5 className="modal-title" style={{ color: "#0d6efd" }}>
                                             Subscription Summary
                                         </h5>
@@ -1217,13 +1217,23 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                         display: "flex",
                                                         justifyContent: "space-between",
                                                         marginBottom: "6px",
+                                                        alignItems: "baseline",
                                                     }}
                                                 >
-                                                    <span style={{ fontWeight: 600, color: "#000" }}>{label}</span>
+                                                    <span
+                                                        style={{
+                                                            fontWeight: 600,
+                                                            color: "#000",
+                                                            fontSize: "15px",
+                                                        }}
+                                                    >
+                                                        {label}
+                                                    </span>
                                                     <span
                                                         style={{
                                                             fontWeight: isBold ? "700" : "500",
                                                             color: isBlue ? "#0d6efd" : "#333",
+                                                            fontSize: "14px", // smaller than label
                                                         }}
                                                     >
                                                         {value}
@@ -1273,14 +1283,16 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                         }}
                                                     >
                                                         <span style={{ fontWeight: "600", color: "#000" }}>Capacity</span>
-                                                        <span style={{ fontWeight: "600" }}>
+                                                        <span style={{ fontWeight: "500" }}>
                                                             {priceDetails.selectedPlan?.label?.toLowerCase() === "unlimited" ||
                                                                 !priceDetails.selectedPlan?.capacity ? (
                                                                 <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
                                                             ) : (
                                                                 <>
                                                                     {priceDetails.selectedPlan?.capacity}/
-                                                                    <span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
+                                                                    <span style={{
+                                                                        color: "rgb(13, 110, 253)"
+                                                                    }}>Ltr</span>
                                                                 </>
                                                             )}
                                                         </span>
@@ -1306,6 +1318,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                     </div>
 
                                     {/* Footer Section */}
+                                    {/* Footer Section */}
                                     <div
                                         className="modal-footer"
                                         style={{
@@ -1314,33 +1327,79 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             alignItems: "center",
                                             gap: "15px",
                                             paddingBottom: "20px",
+                                            backgroundColor: "aliceblue",
                                         }}
                                     >
-                                        {/* Payment Selection */}
-                                        <div style={{ display: "flex", gap: "10px" }}>
-                                            <button
-                                                className={`btn ${selectedPaymentType === "online" ? "btn-primary" : "btn-outline-primary"}`}
-                                                onClick={() => setSelectedPaymentType("online")}
-                                            >
-                                                Online Payment
-                                            </button>
-                                            <button
-                                                className={`btn ${selectedPaymentType === "cod" ? "btn-success" : "btn-outline-success"}`}
-                                                onClick={() => setSelectedPaymentType("cod")}
-                                            >
-                                                Cash on Delivery
-                                            </button>
+                                        {/* Payment Type Selection */}
+                                        <div style={{ display: "flex", gap: "20px", justifyContent: "center" }}>
+                                            {["online", "cod"].map((type) => (
+                                                <label
+                                                    key={type}
+                                                    style={{
+                                                        cursor: "pointer",
+                                                        padding: "12px 20px",
+                                                        border: selectedPaymentType === type
+                                                            ? type === "online"
+                                                                ? "2px solid #0d6efd"
+                                                                : "2px solid #198754"
+                                                            : "1px solid #ccc",
+                                                        borderRadius: "10px",
+                                                        backgroundColor:
+                                                            selectedPaymentType === type
+                                                                ? type === "online"
+                                                                    ? "#e7f1ff"
+                                                                    : "#e9f9ee"
+                                                                : "#fff",
+                                                        boxShadow:
+                                                            selectedPaymentType === type
+                                                                ? "0 0 10px rgba(13,110,253,0.3)"
+                                                                : "none",
+                                                        transition: "all 0.2s ease-in-out",
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: "10px",
+                                                        minWidth: "200px",
+                                                        justifyContent: "center",
+                                                        fontWeight: "600",
+                                                        color:
+                                                            selectedPaymentType === type
+                                                                ? type === "online"
+                                                                    ? "#0d6efd"
+                                                                    : "#198754"
+                                                                : "#333",
+                                                    }}
+                                                    onClick={() => setSelectedPaymentType(type)}
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        name="paymentType"
+                                                        value={type}
+                                                        checked={selectedPaymentType === type}
+                                                        onChange={() => setSelectedPaymentType(type)}
+                                                        style={{ accentColor: type === "online" ? "#0d6efd" : "#198754" }}
+                                                    />
+                                                    {type === "online" ? "Online Payment" : "Cash on Delivery"}
+                                                </label>
+                                            ))}
                                         </div>
 
-                                        {/* COD Fee Info */}
-                                        {selectedPaymentType === "cod" && (
-                                            <div style={{ marginTop: "10px", color: "#198754", fontWeight: 600 }}>
-                                                ₹100 COD Fee added to your total.
+                                        {/* Dynamic Message */}
+                                        {selectedPaymentType && (
+                                            <div
+                                                style={{
+                                                    marginTop: "10px",
+                                                    fontWeight: 600,
+                                                    color: selectedPaymentType === "cod" ? "#198754" : "#0d6efd",
+                                                }}
+                                            >
+                                                {selectedPaymentType === "cod"
+                                                    ? "Cash on Delivery selected — ₹100 COD fee will be added to your total."
+                                                    : "Online Payment selected — proceed to secure checkout."}
                                             </div>
                                         )}
 
                                         {/* Action Buttons */}
-                                        <div style={{ marginTop: "15px", display: "flex", gap: "15px" }}>
+                                        <div style={{ marginTop: "20px", display: "flex", gap: "15px" }}>
                                             <button
                                                 className="btn btn-secondary"
                                                 onClick={() => setShowSummaryModal(false)}
@@ -1349,18 +1408,30 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             </button>
 
                                             <button
-                                                className="btn btn-primary"
+                                                className={`btn ${selectedPaymentType ? "btn-primary" : "btn-outline-primary"}`}
+                                                style={{
+                                                    padding: "10px 30px",
+                                                    fontWeight: "700",
+                                                    opacity: selectedPaymentType ? 1 : 0.7,
+                                                    cursor: selectedPaymentType ? "pointer" : "not-allowed",
+                                                    boxShadow: selectedPaymentType ? "0 0 10px rgba(13,110,253,0.4)" : "none",
+                                                    transition: "all 0.3s ease",
+                                                }}
+                                                disabled={!selectedPaymentType}
                                                 onClick={() => {
                                                     setShowSummaryModal(false);
                                                     setShowModal(true);
                                                 }}
                                             >
-                                                Checkout
+                                                {selectedPaymentType === "cod"
+                                                    ? "Proceed to COD Checkout"
+                                                    : selectedPaymentType === "online"
+                                                        ? "Proceed to Online Checkout"
+                                                        : "Select Payment Type"}
                                             </button>
                                         </div>
                                     </div>
                                 </div>
-
                             </div>
                         </div>
                     )}
@@ -1406,6 +1477,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             alignItems: "center",
                                             borderBottom: "1px solid #dee2e6",
                                             padding: "12px 20px",
+                                            backgroundColor: 'aliceblue'
                                         }}
                                     >
                                         <h5 className="modal-title" style={{ color: "#0d6efd", fontWeight: 600 }}>
@@ -1596,10 +1668,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                     alignItems: "center",
                                                 }}
                                             >
-                                                {/* <p style={{ color: "#0d6efd", lineHeight: "1.6" }}>
-                                                    <i className="bi bi-check2-circle"></i> Lifetime Free Maintenance<br />
-                                                    <i className="bi bi-check2-circle"></i> 24-48 Hours Installation
-                                                </p> */}
 
                                                 {/* Bottom info & button */}
                                                 <div
