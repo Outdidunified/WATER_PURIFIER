@@ -73,18 +73,7 @@ exports.updateTaskDetails = async (req, res) => {
   console.log('➡️ Files:', req.files);
   console.log('---------------------------------------------------');
 
-  const {
-    task_id,
-    user_id,
-    role_id,
-    email,
-    technician_id,
-    otp,
-    updates: updatesJSON,
-    razorpay_payment_id,
-    razorpay_signature
-  } = req.body;
-
+  const { task_id, user_id, role_id, email, technician_id, otp, updates: updatesJSON } = req.body;
   const updates = typeof updatesJSON === 'string' ? JSON.parse(updatesJSON) : updatesJSON;
 
   if (!task_id || !user_id || !role_id || !email || !technician_id || !updates || typeof updates !== 'object') {
@@ -95,7 +84,10 @@ exports.updateTaskDetails = async (req, res) => {
   }
 
   if (parseInt(role_id) !== 2) {
-    return res.status(403).json({ error: true, message: 'Access denied: Only technicians can update tasks' });
+    return res.status(403).json({
+      error: true,
+      message: 'Access denied: Only technicians can update tasks',
+    });
   }
 
   try {
@@ -106,39 +98,49 @@ exports.updateTaskDetails = async (req, res) => {
     const ordersCollection = db.collection('orders');
     const paymentsCollection = db.collection('payments');
 
+    // Find the task assigned to the technician
     const task = await serviceRecordsCollection.findOne({
       task_id: parseInt(task_id),
-      assigned_technician_id: technician_id
+      assigned_technician_id: technician_id,
     });
 
-    if (!task) return res.status(404).json({ error: true, message: 'No task found assigned to this technician' });
+    if (!task)
+      return res.status(404).json({ error: true, message: 'No task found assigned to this technician' });
 
     // Fetch order to check payment type
-    const order = await ordersCollection.findOne({ customOrderId: task.customOrderId || task.order_snapshot?.customOrderId || task.order?.customOrderId });
+    const order = await ordersCollection.findOne({
+      customOrderId: task.customOrderId || task.order_snapshot?.customOrderId || task.order?.customOrderId,
+    });
 
+    // Allowed fields to update
     const allowedFields = ['task_status', 'pending_reason', 'modified_by', 'modified_date', 'collectPayment', 'paymentMethod'];
     const updateData = {};
-
     for (let key in updates) {
       if (allowedFields.includes(key)) updateData[key] = updates[key];
     }
 
-    let status = updates.task_status || task.task_status;
+    const status = updates.task_status || task.task_status;
 
     // Validate Pending Reason
     if (status === 'Pending' && !updates.pending_reason?.trim()) {
-      return res.status(400).json({ error: true, message: 'pending_reason is required when task_status is "Pending"' });
+      return res.status(400).json({
+        error: true,
+        message: 'pending_reason is required when task_status is "Pending"',
+      });
     } else if (status !== 'Pending') {
       updateData.pending_reason = null;
     }
 
     // OTP check for Completed status
-    if (status === 'Completed' && !razorpay_payment_id) {
+    if (status === 'Completed') {
       // For COD orders, require payment to be already collected before completing
       if (order && order.paymentType === 'COD') {
         const paymentRecord = await paymentsCollection.findOne({ orderId: order._id });
         if (!paymentRecord || paymentRecord.paymentStatus !== 'Completed') {
-          return res.status(400).json({ error: true, message: 'For COD orders, payment must be collected before completing the task.' });
+          return res.status(400).json({
+            error: true,
+            message: 'For COD orders, payment must be collected before completing the task.',
+          });
         }
       }
 
@@ -146,6 +148,7 @@ exports.updateTaskDetails = async (req, res) => {
       if (!parsedOtp || parsedOtp !== task.otp) {
         return res.status(400).json({ error: true, message: 'Invalid OTP. Cannot complete task.' });
       }
+
       updateData.completed_date = new Date(); // store in UTC
     }
 
@@ -175,90 +178,77 @@ exports.updateTaskDetails = async (req, res) => {
       return res.status(400).json({ error: true, message: 'No valid fields provided for update' });
     }
 
-    // ------------------ RAZORPAY QR FLOW ------------------
-    let qrCode = null;
+    // Generate QR code if payment method is QR for COD orders
+   let qrCode = null;
+    let seller = null;
 
-    if (order && order.paymentType === 'COD' && updates.paymentMethod === 'QR') {
-      let razorpayOrderId = order.razorpay_order_id;
+    if (order && order.paymentType === 'COD') {
+      const orderDistrict = (order.deliveryAddress?.district || order.district || task.district || '').trim();
 
-      if (!razorpayOrderId) {
-        // Create Razorpay order
-        const options = {
-          amount: Math.round(order.grandTotal * 100), // in paise
-          currency: 'INR',
-          receipt: `order_rcptid_${order.customOrderId}`,
-          payment_capture: 1,
-        };
-        try {
-          const razorpayOrder = await razorpayInstance.orders.create(options);
-          razorpayOrderId = razorpayOrder.id;
+      // Case-insensitive search for seller role and district
+      seller = await usersCollection.findOne({
+        role_name: { $regex: /^seller$/i },
+        assigned_district: orderDistrict,
+        status: true,
+        upiId: { $exists: true, $ne: '' },
+        merchantName: { $exists: true, $ne: '' },
+      });
 
-          await ordersCollection.updateOne(
-            { customOrderId: order.customOrderId },
-            { $set: { razorpay_order_id: razorpayOrderId, paymentStatus: 'Pending', updatedAt: new Date() } }
-          );
-        } catch (err) {
-          console.error('Razorpay order creation failed:', err);
-          return res.status(500).json({ error: true, message: 'Failed to create Razorpay order' });
-        }
+      if (!seller) {
+        return res.status(400).json({
+          error: true,
+          message: 'No seller found for this district with valid UPI/merchant info',
+        });
       }
 
-      // Generate UPI QR code
-      const upiId = process.env.UPI_ID;
-      const merchantName = process.env.MERCHANT_NAME || 'Water Purifier Service';
-      const amount = order.grandTotal;
-      const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amount}&cu=INR&tid=${razorpayOrderId}`;
-      qrCode = await qrcode.toDataURL(upiString);
-
-      // If frontend sends payment confirmation
-      if (razorpay_payment_id && razorpay_signature) {
-        const generatedSignature = crypto
-          .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-          .update(razorpayOrderId + '|' + razorpay_payment_id)
-          .digest('hex');
-
-        if (generatedSignature !== razorpay_signature) {
-          return res.status(400).json({ error: true, message: 'Invalid Razorpay payment signature' });
-        }
-
-        // Update payment and order status
-        await ordersCollection.updateOne(
-          { razorpay_order_id: razorpayOrderId },
-          { $set: { paymentStatus: 'Completed', paymentCollectedAt: new Date(), paymentCollectedBy: technician_id, updatedAt: new Date() } }
-        );
-
-        await paymentsCollection.updateOne(
-          { orderId: order._id },
-          { $set: { paymentStatus: 'Completed', paymentMethod: 'QR', qrCode: null, updatedAt: new Date() } },
-          { upsert: true }
-        );
-
-        // Mark task as completed
-        status = 'Completed';
-        updateData.task_status = 'Completed';
-        updateData.completed_date = new Date();
+      if (updates.paymentMethod === 'QR') {
+        const upiString = `upi://pay?pa=${seller.upiId}&pn=${encodeURIComponent(seller.merchantName)}&am=${order.grandTotal}&cu=INR`;
+        qrCode = await qrcode.toDataURL(upiString);
+        updateData.qrCode = qrCode;
+        updateData.sellerName = seller.name || seller.email;
       }
     }
 
-    // ------------------ MANUAL COD FLOW ------------------
+    // Handle COD payment collection
     if (updates.collectPayment == true && order && order.paymentType === 'COD') {
       const paymentRecord = await paymentsCollection.findOne({ orderId: order._id });
       if (paymentRecord && paymentRecord.paymentStatus !== 'Completed') {
         let qrCodeData = null;
         if (updates.paymentMethod === 'QR') qrCodeData = qrCode;
+
         await ordersCollection.updateOne(
           { customOrderId: order.customOrderId },
-          { $set: { paymentStatus: 'Completed', paymentCollectedAt: new Date(), paymentCollectedBy: technician_id, qrCode: qrCodeData, updatedAt: new Date() } }
-        );
-        await paymentsCollection.updateOne(
-          { orderId: order._id },
-          { $set: { paymentStatus: 'Completed', paymentMethod: updates.paymentMethod, qrCode: qrCodeData, updatedAt: new Date() } }
+          {
+            $set: {
+              paymentStatus: 'Completed',
+              paymentCollectedAt: new Date(),
+              paymentCollectedBy: technician_id,
+              qrCode: qrCodeData,
+              updatedAt: new Date(),
+            },
+          }
         );
 
+        await paymentsCollection.updateOne(
+          { orderId: order._id },
+          {
+            $set: {
+              paymentStatus: 'Completed',
+              paymentCollectedAt: new Date(),
+              paymentMethod: updates.paymentMethod,
+              qrCode: qrCodeData,
+              updatedAt: new Date(),
+            },
+          }
+        );
+
+        // Update snapshots in the task document
         const updatedOrder = await ordersCollection.findOne({ customOrderId: order.customOrderId });
         const updatedPayment = await paymentsCollection.findOne({ orderId: order._id });
         if (updatedOrder) updateData.order_snapshot = updatedOrder;
         if (updatedPayment) updateData.payment_snapshot = updatedPayment;
+
+        console.log(`💵 COD payment collected for order ${order.customOrderId}`);
       }
     }
 
@@ -287,45 +277,50 @@ exports.updateTaskDetails = async (req, res) => {
         const subscribedAt = new Date();
         const durationStr = order.selectedDuration?.duration_time_limit || '30 days';
         const durationInDays = parseInt(durationStr.split(' ')[0], 10) || 30;
+
         const subscriptionExpiryDate = new Date(subscribedAt);
         subscriptionExpiryDate.setDate(subscriptionExpiryDate.getDate() + durationInDays);
 
         const userId = parseInt(task.task_created_by_user_id);
         await usersCollection.updateOne({ user_id: userId }, { $set: { subscription_expiry_date: subscriptionExpiryDate } });
-        await ordersCollection.updateOne({ customOrderId: order.customOrderId }, { $set: { subscriptionExpiryDate, updatedAt: new Date() } });
+        await ordersCollection.updateOne(
+          { customOrderId: order.customOrderId },
+          { $set: { subscriptionExpiryDate, updatedAt: new Date() } }
+        );
+
+        console.log(`🟢 Subscription expiry updated for user ${userId}`);
       }
 
       // Send completion email
       const mailOptions = {
-        from: process.env.SMTP_EMAIL,
+        from: 'your_email@gmail.com',
         to: task.task_created_by_user_email,
         subject: 'Task Completed Successfully',
-        html: `
-          <h3>Hello,</h3>
-          <p>Your service task <strong>#${task.task_id}</strong> has been <span style="color: green;">successfully completed</span>.</p>
-          <p>Subscription expiry has been updated. 🎉</p>
-        `
+        html: `<h3>Hello,</h3>
+               <p>Your service task <strong>#${task.task_id}</strong> has been <span style="color: green;">successfully completed</span>.</p>
+               <p>Subscription expiry has been updated. 🎉</p>`,
       };
+
       transporter.sendMail(mailOptions, (error, info) => {
         if (error) console.error('Error sending mail:', error);
         else console.log('Email sent:', info.response);
       });
     }
 
+    // Final response
     let message = 'Task updated successfully';
-    if (updates.collectPayment == true) {
-      message = 'Payment collected successfully';
-    } else if (status === 'Completed') {
-      message = 'Task completed successfully';
-    }
+    if (updates.collectPayment == true) message = 'Payment collected successfully';
+    else if (status === 'Completed') message = 'Task completed successfully';
 
     return res.status(200).json({ error: false, message, qrCode });
-
   } catch (error) {
     console.error('Error updating task:', error);
     return res.status(500).json({ error: true, message: 'Server error while updating task' });
   }
 };
+
+
+
   
  exports.acceptDeclineTask = async (req, res) => {
   const {

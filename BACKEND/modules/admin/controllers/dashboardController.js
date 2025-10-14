@@ -1236,6 +1236,7 @@ const AddUsers = async (req, res) => {
         const db = await database.connectToDatabase();
         const collection = db.collection("users");
         const technicianCollection = db.collection("technician_details");
+        const rolesColl = db.collection('user_roles');
 
         const docsToInsert = [];
 
@@ -1288,24 +1289,20 @@ const AddUsers = async (req, res) => {
                 });
             }
 
-            const rolesColl = db.collection('user_roles');
-
-            // Determine role: prefer role_id if provided; else role_name; else ensure EndUser exists
+            // Determine role
             let role_name = (user.role_name || '').trim();
             let role_id = user.role_id != null ? Number(user.role_id) : null;
 
             if (role_id != null && !Number.isNaN(role_id)) {
-                // Resolve by role_id, do not auto-create by id
                 const existingRole = await rolesColl.findOne({ role_id });
                 if (!existingRole) {
                     return res.status(400).json({
                         status: 'Failed',
-                        message: `Role with role_id ${role_id} does not exist. Provide a valid role_id or a role_name to auto-create.`
+                        message: `Role with role_id ${role_id} does not exist.`
                     });
                 }
                 role_name = existingRole.role_name;
             } else if (role_name) {
-                // Resolve by role_name; auto-create if missing with audit fields
                 let existingRole = await rolesColl.findOne({ role_name });
                 if (!existingRole) {
                     const lastRole = await rolesColl.find().sort({ role_id: -1 }).limit(1).toArray();
@@ -1324,7 +1321,7 @@ const AddUsers = async (req, res) => {
                     role_id = existingRole.role_id;
                 }
             } else {
-                // Neither provided: ensure EndUser exists (auto-create if missing)
+                // Default role: EndUser
                 role_name = 'EndUser';
                 let existingRole = await rolesColl.findOne({ role_name });
                 if (!existingRole) {
@@ -1345,12 +1342,12 @@ const AddUsers = async (req, res) => {
                 }
             }
 
-            // Check for duplicate email for the same role
+            // Check duplicate email for the role
             const existingUser = await collection.findOne({ role_id, email });
             if (existingUser) {
                 return res.status(400).json({
                     status: 'Failed',
-                    message: `This email is already used under this user role. Use a different email or user role.`,
+                    message: `This email is already used under this user role. Use a different email or role.`,
                 });
             }
 
@@ -1366,7 +1363,7 @@ const AddUsers = async (req, res) => {
                 phone: parseInt(user.phone),
                 password: parseInt(user.password),
                 addressline1,
-                addressline2, // optional
+                addressline2,
                 city,
                 district,
                 state,
@@ -1374,30 +1371,44 @@ const AddUsers = async (req, res) => {
                 pincode
             };
 
-            // Assign technician_id if role_name === Technician (or role_id == 2)
+            // Assign technician_id if Technician
             if (role_name === 'Technician' || role_id === 2) {
                 newUser.technician_id = await getNextTechnicianId();
             }
 
+            // Assign UPI ID and Merchant Name if Seller
+            if (role_name === 'Seller' || role_id === 4) {
+                if (!user.upiId || !user.merchantName) {
+                    return res.status(400).json({
+                        status: 'Failed',
+                        message: 'Seller must have upiId and merchantName',
+                    });
+                }
+                newUser.upiId = user.upiId;
+                newUser.merchantName = user.merchantName;
+            }
+
             docsToInsert.push(newUser);
-            technicianCollection.insertOne({user_id: newUser.user_id,email: newUser.email, technician_id: newUser.technician_id || null, status: true,total_assigned_services:0,total_completed_services:0});
+
+            // Insert into technician_collection if technician
+            if (newUser.technician_id) {
+                technicianCollection.insertOne({
+                    user_id: newUser.user_id,
+                    email: newUser.email,
+                    technician_id: newUser.technician_id,
+                    status: true,
+                    total_assigned_services: 0,
+                    total_completed_services: 0
+                });
+            }
         }
 
         await collection.insertMany(docsToInsert);
 
-        // Send email to users with role Technician or Seller
+        // Send credentials email to Technicians and Sellers
         for (const user of docsToInsert) {
             if (user.role_name === 'Technician' || user.role_name === 'Seller') {
-                const emailSent = await sendUserCredentialsEmail(
-                    user.email,
-                    user.user_id,
-                    user.password,
-                    user.role_name
-                );
-                if (!emailSent) {
-                    console.warn(`Failed to send credentials email to ${user.email}`);
-                    // Optionally, you could collect failed emails and include in response
-                }
+                await sendUserCredentialsEmail(user.email, user.user_id, user.password, user.role_name);
             }
         }
 
@@ -1414,6 +1425,7 @@ const AddUsers = async (req, res) => {
         });
     }
 };
+
 
 // FetchUsers
 const FetchUsers = async (req, res) => {
@@ -1449,6 +1461,8 @@ const UpdateUsers = async (req, res) => {
             state,
             country,
             pincode,
+            upiId, // seller-specific
+            merchantName, // seller-specific
             modifiedBy,
             status
         } = req.body;
@@ -1460,7 +1474,7 @@ const UpdateUsers = async (req, res) => {
             });
         }
 
-        // REQUIRED address fields validation for update (without 'address')
+        // REQUIRED address fields validation
         const missingFields = [];
         if (!addressline1) missingFields.push('addressline1');
         if (!city) missingFields.push('city');
@@ -1468,6 +1482,13 @@ const UpdateUsers = async (req, res) => {
         if (!state) missingFields.push('state');
         if (!country) missingFields.push('country');
         if (!pincode) missingFields.push('pincode');
+
+        // If seller, upiId and merchantName are required
+        if (parseInt(role_id) === 4) {
+            if (!upiId) missingFields.push('upiId');
+            if (!merchantName) missingFields.push('merchantName');
+        }
+
         if (missingFields.length) {
             return res.status(400).json({
                 status: 'Failed',
@@ -1479,7 +1500,7 @@ const UpdateUsers = async (req, res) => {
         const db = await database.connectToDatabase();
         const collection = db.collection("users");
 
-        // Check if the user exists with given role_id and user_id
+        // Check if the user exists
         const existingUser = await collection.findOne({ role_id, user_id });
 
         if (!existingUser) {
@@ -1491,8 +1512,9 @@ const UpdateUsers = async (req, res) => {
 
         const updatedData = {
             name,
-            password: parseInt(password),
-            phone: parseInt(phone),
+            email,
+            password: password ? parseInt(password) : undefined,
+            phone: phone ? parseInt(phone) : undefined,
             addressline1,
             addressline2, // optional
             city,
@@ -1500,12 +1522,14 @@ const UpdateUsers = async (req, res) => {
             state,
             country,
             pincode,
+            upiId: role_id === 4 ? upiId : undefined,
+            merchantName: role_id === 4 ? merchantName : undefined,
             modifiedBy,
             status,
             modifiedDate: new Date()
         };
 
-        // If profile state/district changed, deactivate seller assignment
+        // Deactivate seller assignment if state/district changed
         try {
             const incomingState = state != null ? String(state).trim() : undefined;
             const incomingDistrict = district != null ? String(district).trim() : undefined;
@@ -1518,14 +1542,12 @@ const UpdateUsers = async (req, res) => {
                 updatedData.assigned_status = false;
             }
         } catch (e) {
-            // noop: do not block updates if comparison fails
+            // noop
         }
 
-        // Remove any undefined fields
+        // Remove undefined fields
         Object.keys(updatedData).forEach(key => {
-            if (updatedData[key] === undefined) {
-                delete updatedData[key];
-            }
+            if (updatedData[key] === undefined) delete updatedData[key];
         });
 
         const result = await collection.updateOne(
@@ -1547,6 +1569,7 @@ const UpdateUsers = async (req, res) => {
         });
     }
 };
+
 
 //10.InstallationService, 
 // FetchInstallationService
