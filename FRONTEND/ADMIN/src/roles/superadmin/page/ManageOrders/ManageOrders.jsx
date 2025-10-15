@@ -1,4 +1,5 @@
 //ManageOrders
+import { useEffect, useState } from 'react';
 import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
 import Footer from '../../components/Footer';
@@ -27,6 +28,12 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
     closeEditModal,
     updateOrderStatus,
   } = useManageOrders(userInfo);
+
+  const [codConfirmation, setCodConfirmation] = useState({});
+
+  useEffect(() => {
+    setCodConfirmation({});
+  }, [filteredOrders]);
 
   const ORDER_STATUSES = ['Confirmed', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
   const getStatusBadgeClass = (status) => {
@@ -186,13 +193,14 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                             <th>Payment</th>
                             <th>Created At</th>
                             <th>Actions</th>
+                            <th>Money Received</th>
                           </tr>
                         </thead>
                         <tbody style={{ textAlign: 'center' }}>
                           {loading ? (
-                            <tr><td colSpan="11">Loading...</td></tr>
+                            <tr><td colSpan="13">Loading...</td></tr>
                           ) : error ? (
-                            <tr><td colSpan="11">Error: {error}</td></tr>
+                            <tr><td colSpan="13">Error: {error}</td></tr>
                           ) : (
                             (filteredOrders || []).length > 0 ? (
                               filteredOrders.map((order, index) => (
@@ -212,7 +220,29 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
 
 
                                   </td>
-                                  <td>{order.paymentStatus}</td>
+                                  <td className="align-middle">
+                                    <div className="d-flex flex-column align-items-center gap-2">
+                                      <span>{order.paymentStatus}</span>
+                                      {/* <div className="form-check">
+                                        <input
+                                          className="form-check-input"
+                                          type="checkbox"
+                                          id={`cod-confirm-${order._id}`}
+                                          disabled={(order.paymentType || '').toUpperCase() !== 'COD'}
+                                          checked={Boolean(codConfirmation[order._id])}
+                                          onChange={(event) => {
+                                            setCodConfirmation((previousState) => ({
+                                              ...previousState,
+                                              [order._id]: event.target.checked,
+                                            }));
+                                          }}
+                                        />
+                                        <label className="form-check-label" htmlFor={`cod-confirm-${order._id}`}>
+                                          COD Collected
+                                        </label>
+                                      </div> */}
+                                    </div>
+                                  </td>
                                   <td>{formatTimestamp(order.createdAt)}</td>
                                   <td>
                                     <button
@@ -225,11 +255,31 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                                     </button>
                                    
                                   </td>
+                                  <td className="align-middle">
+                                    <div className="form-check d-flex justify-content-center">
+                                      <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        id={`money-received-${order._id}`}
+                                        disabled={(order.paymentType || '').toUpperCase() !== 'COD'}
+                                        checked={Boolean(codConfirmation[`${order._id}-money`])}
+                                        onChange={(event) => {
+                                          setCodConfirmation((previousState) => ({
+                                            ...previousState,
+                                            [`${order._id}-money`]: event.target.checked,
+                                          }));
+                                        }}
+                                      />
+                                      {/* <label className="form-check-label ms-2" htmlFor={`money-received-${order._id}`}>
+                                        Money Received
+                                      </label> */}
+                                    </div>
+                                  </td>
                                 </tr>
                               ))
                             ) : (
                               <tr>
-                                <td colSpan="11">No orders found</td>
+                                <td colSpan="13">No orders found</td>
                               </tr>
                             )
                           )}
