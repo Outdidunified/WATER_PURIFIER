@@ -1,6 +1,41 @@
 const { connectToDatabase } = require('../../../config/db');
 const { normalizeDeliveryAddress, normalizeState } = require('../../../modules/website/models/DeliveryAddress');
 const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
+
+const fsPromises = fs.promises;
+const overdueLogsDirectory = path.resolve(__dirname, '../../../logs');
+const overdueLogsFilePath = path.join(overdueLogsDirectory, 'overdue_reassignment.log');
+
+async function persistOverdueLog(message, metadata) {
+    try {
+        await fsPromises.mkdir(overdueLogsDirectory, { recursive: true });
+        const timestamp = new Date().toISOString();
+        const sanitizedMessage = typeof message === 'string' ? message : JSON.stringify(message);
+        let serializedMetadata = '';
+        if (metadata !== undefined && metadata !== null) {
+            if (typeof metadata === 'string') {
+                serializedMetadata = metadata;
+            } else {
+                try {
+                    serializedMetadata = JSON.stringify(metadata);
+                } catch (serializationError) {
+                    serializedMetadata = `Could not serialize metadata: ${serializationError.message}`;
+                }
+            }
+        }
+        const suffix = serializedMetadata ? ` ${serializedMetadata}` : '';
+        await fsPromises.appendFile(overdueLogsFilePath, `${timestamp} ${sanitizedMessage}${suffix}\n`);
+    } catch (error) {
+        console.error('Failed to persist overdue reassignment log:', error);
+    }
+}
+
+async function logOverdueEvent(message, metadata) {
+    console.log(message);
+    await persistOverdueLog(message, metadata);
+}
 
 // Email transporter setup
 const transporter = nodemailer.createTransport({
@@ -746,17 +781,30 @@ async function autoReassignOverdueTasks() {
         const now = new Date();
         const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
 
-        const candidateTasksCursor = serviceRecords.find({
-            task_type: { $in: [1, 2] },
-            assigned_technician_id: { $ne: null },
-            task_status: { $in: ["Pending", "Initiated", "In Progress"] }
-        }).limit(50);
+        const candidateTasks = await serviceRecords
+            .find({
+                task_type: { $in: [1, 2] },
+                assigned_technician_id: { $ne: null },
+                task_status: { $in: ["Pending", "Initiated", "In Progress"] },
+                $or: [
+                    { estimated_end: { $lt: now } },
+                    { estimated_start: { $ne: null, $lte: threeDaysAgo } },
+                    { assigned_date: { $ne: null, $lte: threeDaysAgo } },
+                    { created_date: { $ne: null, $lte: threeDaysAgo } }
+                ]
+            })
+            .sort({ assigned_date: 1, task_id: 1 })
+            .limit(50)
+            .toArray();
 
-        for await (const task of candidateTasksCursor) {
+        await logOverdueEvent(`Found ${candidateTasks.length} overdue reassignment candidates`);
+
+        for (const task of candidateTasks) {
             const estimatedStart = task.estimated_start ? new Date(task.estimated_start) : null;
             const estimatedEnd = task.estimated_end ? new Date(task.estimated_end) : null;
             const assignedDate = task.assigned_date ? new Date(task.assigned_date) : null;
             const createdDate = task.created_date ? new Date(task.created_date) : null;
+            const taskTypeLabel = task.task_type === 1 ? 'Installation' : 'Service';
 
             const isStartValid = estimatedStart && !Number.isNaN(estimatedStart.getTime());
             const isAssignedValid = assignedDate && !Number.isNaN(assignedDate.getTime());
@@ -780,7 +828,16 @@ async function autoReassignOverdueTasks() {
             const isStartOverdue = effectiveStart && effectiveStart <= threeDaysAgo;
             const isEndOverdue = isEndValid && estimatedEnd < now;
 
+            await logOverdueEvent(
+                `Overdue evaluation for ${taskTypeLabel} task ${task.task_id}: ` +
+                `effectiveStart=${effectiveStart ? effectiveStart.toISOString() : 'null'} ` +
+                `(threshold=${threeDaysAgo.toISOString()}, field=${effectiveStartLabel || 'n/a'}), ` +
+                `estimatedEnd=${estimatedEnd ? estimatedEnd.toISOString() : 'null'} ` +
+                `(now=${now.toISOString()})`
+            );
+
             if (!isStartOverdue && !isEndOverdue) {
+                await logOverdueEvent(`Skipping ${taskTypeLabel} task ${task.task_id} - not overdue (trigger field: ${effectiveStartLabel || 'n/a'})`);
                 continue;
             }
 
@@ -798,6 +855,8 @@ async function autoReassignOverdueTasks() {
                     : effectiveStartLabel === 'created_date'
                         ? 'Created date overdue'
                         : 'Estimated start overdue';
+
+            await logOverdueEvent(`Processing overdue ${taskTypeLabel} task ${task.task_id} for technician ${currentTechnicianIdStr || 'N/A'} (trigger: ${unassignedReason})`);
 
             if (currentTechnicianIdStr) {
                 for (let i = assignmentHistory.length - 1; i >= 0; i -= 1) {
@@ -885,9 +944,12 @@ async function autoReassignOverdueTasks() {
                         }
                     }
                 );
-                console.log(`Overdue task ${task.task_id} unassigned due to missing address`);
+                await logOverdueEvent(`Overdue ${taskTypeLabel} task ${task.task_id} unassigned due to missing address`);
                 continue;
             }
+
+            const locationSummary = `${normalizedAddress.city || 'N/A'}, ${normalizedAddress.district || 'N/A'}, ${normalizedAddress.state || 'N/A'}`;
+            await logOverdueEvent(`Searching technicians for overdue ${taskTypeLabel} task ${task.task_id} at ${locationSummary}`);
 
             const technician = await findBestTechnician(normalizedAddress, historyTechnicianIds);
             if (!technician) {
@@ -903,7 +965,7 @@ async function autoReassignOverdueTasks() {
                         }
                     }
                 );
-                console.log(`Overdue task ${task.task_id} left unassigned - no technicians available`);
+                await logOverdueEvent(`Overdue ${taskTypeLabel} task ${task.task_id} left unassigned - no technicians available for ${locationSummary}`);
                 continue;
             }
 
@@ -962,12 +1024,16 @@ async function autoReassignOverdueTasks() {
                 normalizedAddress
             });
 
-            console.log(`Overdue task ${task.task_id} reassigned to technician ${technician.technician_id}`);
+            await logOverdueEvent(`Overdue ${taskTypeLabel} task ${task.task_id} reassigned to technician ${technician.technician_id} at ${locationSummary}`);
         }
 
-        console.log('Finished processing overdue task reassignment');
+        await logOverdueEvent('Finished processing overdue task reassignment');
     } catch (err) {
         console.error("Error in autoReassignOverdueTasks:", err);
+        await persistOverdueLog('Error in autoReassignOverdueTasks', {
+            message: err?.message,
+            stack: err?.stack
+        });
     }
 }
 
