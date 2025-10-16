@@ -27,8 +27,25 @@ const useManageOrders = (userInfo) => {
               ? await axiosInstance.get(url, { params: { district: userInfo?.district } })
               : await axiosInstance.post(url);
             if (res.data.status === 'Success') {
-                setOrders(res.data.data);
-                setFilteredOrders(res.data.data);
+                const sortedOrders = [...res.data.data].sort((a, b) => {
+                    const toTimestamp = (order) => {
+                        const rawDate =
+                            order?.createdAt ||
+                            order?.createddate ||
+                            order?.orderDate ||
+                            order?.order_snapshot?.createdAt ||
+                            order?.order_snapshot?.orderDate;
+
+                        if (!rawDate) return 0;
+                        const date = new Date(rawDate);
+                        return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+                    };
+
+                    return toTimestamp(b) - toTimestamp(a);
+                });
+
+                setOrders(sortedOrders);
+                setFilteredOrders(sortedOrders);
             } else {
                 showErrorAlert('Error', 'Failed to fetch orders');
             }

@@ -1037,7 +1037,7 @@ const ConfirmCodPayment = async (req, res) => {
 
         return res.status(400).json({
             status: "failure",
-            message: "Condition not met (either not COD or collectPayment is false)",
+            message: "Payment not yet confirmed by technician",
         });
     } catch (error) {
         console.error("Error confirming COD payment:", error);
@@ -1634,6 +1634,15 @@ const FetchInstallationService = async (req, res) => {
 
         const installations = await ordersCollection.aggregate([
             {
+                $match: {
+                    orderStatus: "Confirmed",
+                    $or: [
+                        { paymentType: "COD" },
+                        { $and: [{ paymentType: "Online" }, { paymentStatus: "Completed" }] }
+                    ]
+                }
+            },
+            {
                 $lookup: {
                     from: "service_records",
                     let: { deviceId: "$wp_device_id" },
@@ -1643,7 +1652,7 @@ const FetchInstallationService = async (req, res) => {
                                 $expr: {
                                     $and: [
                                         { $eq: ["$wp_device_id", "$$deviceId"] },
-                                        { $eq: ["$task_type", 1] }
+                                        { $eq: ["$task_type", 1] } // installation task only
                                     ]
                                 }
                             }
@@ -1684,6 +1693,9 @@ const FetchInstallationService = async (req, res) => {
             },
             {
                 $project: { user: 0 }
+            },
+            {
+                $sort: { createdAt: -1 }
             }
         ]).toArray();
 
@@ -1701,6 +1713,7 @@ const FetchInstallationService = async (req, res) => {
         });
     }
 };
+
 
 // FetchSelectUserOrders
 const FetchSelectUserOrders = async (req, res) => {

@@ -41,15 +41,29 @@ const fetchTechnicians = async () => {
         ? techs.filter((tech) => tech?.district?.trim().toLowerCase() === sellerDistrict)
         : techs;
 
-      setTechnicians(filteredTechnicians);
-      setServiceTasks(tasks);
+      const toTimestamp = (task) => {
+        const rawDate =
+          task?.task_assigned_date ||
+          task?.assigned_date ||
+          task?.createdAt ||
+          task?.updatedAt ||
+          task?.completed_at ||
+          task?.createddate;
 
-      const enriched = tasks.map(task => {
+        if (!rawDate) return 0;
+        const date = new Date(rawDate);
+        return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+      };
+
+      const sortedTasks = [...tasks].sort((a, b) => toTimestamp(b) - toTimestamp(a));
+
+      const enriched = sortedTasks.map((task) => {
         const assignedTechnician = filteredTechnicians.find(
-          tech => tech.technician_id === task.assigned_technician_id
+          (tech) => tech.technician_id === task.assigned_technician_id
         );
 
-        const isAssignable = task.task_status?.toLowerCase() !== 'completed';
+        const statusValue = (task.task_status || '').toString().toLowerCase();
+        const isAssignable = statusValue ? statusValue !== 'completed' : true;
 
         return {
           ...task,
@@ -58,6 +72,8 @@ const fetchTechnicians = async () => {
         };
       });
 
+      setTechnicians(filteredTechnicians);
+      setServiceTasks(enriched);
       setDisplayTasks(enriched);
     } catch (err) {
       console.error('Fetch error:', err);

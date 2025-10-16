@@ -77,23 +77,47 @@ const useManageInstallation = (userInfo) => {
         return acc;
       }, {});
 
-      // Filter orders to only include paid and confirmed ones
-      const filteredOrds = ords.filter(order =>
-        order.paymentStatus?.toLowerCase() === 'completed' &&
-        order.orderStatus?.toLowerCase() === 'confirmed'
-      );
+      const orderMap = ords.reduce((acc, order) => {
+        if (order?.wp_device_id) {
+          acc[order.wp_device_id] = order;
+        }
+        return acc;
+      }, {});
 
-      const enrichedTasks = filteredOrds.map((order) => {
-        const matchingTask = tasks.find(
-          (task) => task.wp_device_id === order.wp_device_id
-        );
+      const toPrimaryRecord = (item) =>
+        Array.isArray(item?.service_records) && item.service_records.length > 0
+          ? item.service_records[0]
+          : null;
+
+      const toTimestamp = (item) => {
+        const primaryRecord = toPrimaryRecord(item);
+        const rawDate =
+          primaryRecord?.assigned_date ||
+          primaryRecord?.createdAt ||
+          item?.task_assigned_date ||
+          item?.createdAt ||
+          item?.updatedAt ||
+          primaryRecord?.updatedAt;
+
+        if (!rawDate) return 0;
+        const date = new Date(rawDate);
+        return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+      };
+
+      const sortedTasks = [...tasks].sort((a, b) => toTimestamp(b) - toTimestamp(a));
+
+      const enrichedTasks = sortedTasks.map((task) => {
+        const relatedOrder = orderMap[task?.wp_device_id] || null;
 
         const serviceRecords =
-          matchingTask?.service_records?.length
-            ? matchingTask.service_records
-            : order.service_records || [];
+          Array.isArray(task?.service_records) && task.service_records.length > 0
+            ? task.service_records
+            : Array.isArray(relatedOrder?.service_records)
+            ? relatedOrder.service_records
+            : [];
 
-        const primaryRecord = serviceRecords?.[0];
+        const primaryRecord =
+          serviceRecords?.[0] || toPrimaryRecord(task) || toPrimaryRecord(relatedOrder) || null;
 
         const technicianFromMap = primaryRecord?.technician_device_map_id
           ? technicianMap[primaryRecord.technician_device_map_id]
@@ -106,43 +130,72 @@ const useManageInstallation = (userInfo) => {
               )
             : null;
 
+        const existingTechnician =
+          task?.assignedTechnician ||
+          task?.technicianDetails ||
+          relatedOrder?.assignedTechnician ||
+          null;
+
         const normalizedTechnician =
           technicianFromMap ||
-          (fallbackTechnician
+          fallbackTechnician ||
+          (existingTechnician
             ? {
-                technician_name: fallbackTechnician.name,
-                technician_email: fallbackTechnician.email,
-                technician_id: fallbackTechnician.technician_id,
-                technician_user_id: fallbackTechnician.user_id,
-                technician_role_id: fallbackTechnician.role_id,
+                technician_name:
+                  existingTechnician.technician_name ||
+                  existingTechnician.name ||
+                  existingTechnician.technicianName ||
+                  '',
+                technician_email: existingTechnician.technician_email || existingTechnician.email || '',
+                technician_id: existingTechnician.technician_id || existingTechnician.technicianId || '',
+                technician_user_id:
+                  existingTechnician.technician_user_id || existingTechnician.user_id || '',
+                technician_role_id: existingTechnician.technician_role_id || existingTechnician.role_id || '',
                 technician_phone:
-                  fallbackTechnician.phone || fallbackTechnician.mobile || '',
+                  existingTechnician.technician_phone ||
+                  existingTechnician.phone ||
+                  existingTechnician.mobile ||
+                  '',
               }
             : null);
 
-        const taskStatus = matchingTask?.task_status || order.task_status || primaryRecord?.task_status || '';
-        const isAssignable = taskStatus.toLowerCase() !== 'completed';
+        const statusValue = (
+          task?.task_status ||
+          primaryRecord?.task_status ||
+          relatedOrder?.task_status ||
+          ''
+        ).toString();
+        const statusLower = statusValue.toLowerCase();
+        const isAssignable = statusLower ? statusLower !== 'completed' : true;
 
         return {
-          ...order,
-          task_status: taskStatus,
+          ...(relatedOrder || {}),
+          ...task,
+          task_status: statusValue,
           pending_reason:
-            matchingTask?.pending_reason ||
+            task?.pending_reason ||
             primaryRecord?.pending_reason ||
             primaryRecord?.pending_reason_text ||
             '',
           service_records: serviceRecords,
-          task_id: primaryRecord?.task_id || null,
-          task_assigned_date: primaryRecord?.assigned_date || null,
-          task_released_date: primaryRecord?.released_date || null,
-          task_assigned_by: primaryRecord?.assigned_by || '',
-          task_released_by: primaryRecord?.released_by || '',
-          task_completed_date: primaryRecord?.completed_at || null,
-          task_completion_notes: primaryRecord?.remarks || '',
+          task_id: primaryRecord?.task_id || task?.task_id || null,
+          task_assigned_date: primaryRecord?.assigned_date || task?.task_assigned_date || null,
+          task_released_date: primaryRecord?.released_date || task?.task_released_date || null,
+          task_assigned_by: primaryRecord?.assigned_by || task?.task_assigned_by || '',
+          task_released_by: primaryRecord?.released_by || task?.task_released_by || '',
+          task_completed_date: primaryRecord?.completed_at || task?.task_completed_date || null,
+          task_completion_notes: primaryRecord?.remarks || task?.task_completion_notes || '',
           assignedTechnician: normalizedTechnician,
-          assigned_technician_id: primaryRecord?.assigned_technician_id || null,
-          order_user_id: order.user_id || '',
-          customOrderId: order.customOrderId || '',
+          assigned_technician_id:
+            primaryRecord?.assigned_technician_id ||
+            task?.assigned_technician_id ||
+            normalizedTechnician?.technician_id ||
+            null,
+          order_user_id: relatedOrder?.user_id || task?.order_user_id || '',
+          customOrderId: relatedOrder?.customOrderId || task?.customOrderId || '',
+          deliveryAddress: relatedOrder?.deliveryAddress || task?.deliveryAddress || {},
+          modelName: relatedOrder?.modelName || task?.modelName || '',
+          email: relatedOrder?.email || task?.email || '',
           isAssignable,
         };
       });
