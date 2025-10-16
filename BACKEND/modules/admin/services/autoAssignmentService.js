@@ -243,6 +243,24 @@ async function findBestTechnician(normalizedAddress, excludedTechnicianIds = [])
     return availableTechs[0];
 }
 
+function isTechnicianMatchingDistrict(technician, normalizedAddress) {
+    if (!technician || !normalizedAddress) {
+        return false;
+    }
+
+    const targetState = normalizeState(normalizedAddress.state || '');
+    const targetDistrict = normalizeDeliveryAddress({ district: normalizedAddress.district || '' }).district;
+    const technicianState = normalizeState(technician.state || '');
+    const technicianDistrict = normalizeDeliveryAddress({ district: technician.district || '' }).district;
+
+    if (!targetState || !targetDistrict || !technicianState || !technicianDistrict) {
+        return false;
+    }
+
+    return technicianState.toLowerCase() === targetState.toLowerCase()
+        && technicianDistrict.toLowerCase() === targetDistrict.toLowerCase();
+}
+
 // Auto assign installation after order confirmation
 async function autoAssignInstallation(order) {
     try {
@@ -387,7 +405,12 @@ async function autoAssignInstallation(order) {
 
         // Find best technician
         const technician = await findBestTechnician(normalizedAddress);
-        if (technician) {
+
+        if (!technician) {
+            console.log(`No available technician for installation, task created as unassigned`);
+        } else if (!isTechnicianMatchingDistrict(technician, normalizedAddress)) {
+            console.log(`Found technician ${technician.technician_id} for installation but district mismatch, leaving task unassigned`);
+        } else {
             const otp = Math.floor(100000 + Math.random() * 900000);
 
             // Assign the task
@@ -438,8 +461,6 @@ async function autoAssignInstallation(order) {
             });
 
             console.log(`Installation auto-assigned to technician ${technician.technician_id}`);
-        } else {
-            console.log(`No available technician for installation, task created as unassigned`);
         }
 
     } catch (err) {
@@ -531,6 +552,11 @@ async function autoAssignService(taskId) {
 
         // Find best technician
         const technician = await findBestTechnician(normalizedAddress, historyTechnicianIds);
+        if (technician && !isTechnicianMatchingDistrict(technician, normalizedAddress)) {
+            console.log(`Found technician ${technician.technician_id} for service task ${taskId} but district mismatch, leaving task unassigned`);
+            return;
+        }
+
         if (!technician) {
             console.log('No available technician for service');
             return;
@@ -641,6 +667,35 @@ async function autoAssignPendingTasks() {
                 continue;
             }
 
+            // Handle tasks already assigned but with mismatched district
+            if (task.assigned_technician_id) {
+                const currentTechnician = await usersCollection.findOne({ technician_id: task.assigned_technician_id });
+                if (currentTechnician && !isTechnicianMatchingDistrict(currentTechnician, normalizedAddress)) {
+                    await serviceRecords.updateOne(
+                        { task_id: task.task_id },
+                        {
+                            $set: {
+                                assigned_technician_id: null,
+                                task_status: "Unassigned",
+                                pending_reason: "Technician district mismatch",
+                                otp: null,
+                                modified_by: 'system',
+                                modified_date: new Date()
+                            },
+                            $push: {
+                                assignment_history: {
+                                    technician_id: currentTechnician.technician_id,
+                                    unassigned_date: new Date(),
+                                    unassigned_by: 'system',
+                                    unassigned_reason: 'Technician district mismatch'
+                                }
+                            }
+                        }
+                    );
+                    console.log(`Cleared assignment for task ${task.task_id} due to technician district mismatch`);
+                }
+            }
+
             // Find best technician
             const assignmentHistoryIds = (task.assignment_history || [])
                 .map(entry => (entry?.technician_id !== undefined && entry?.technician_id !== null)
@@ -651,6 +706,11 @@ async function autoAssignPendingTasks() {
             const technician = await findBestTechnician(normalizedAddress, assignmentHistoryIds);
             if (!technician) {
                 console.log(`No available technician for task ${task.task_id}`);
+                continue;
+            }
+
+            if (!isTechnicianMatchingDistrict(technician, normalizedAddress)) {
+                console.log(`Found technician ${technician.technician_id} for pending task ${task.task_id} but district mismatch, skipping assignment`);
                 continue;
             }
 
@@ -952,20 +1012,26 @@ async function autoReassignOverdueTasks() {
             await logOverdueEvent(`Searching technicians for overdue ${taskTypeLabel} task ${task.task_id} at ${locationSummary}`);
 
             const technician = await findBestTechnician(normalizedAddress, historyTechnicianIds);
-            if (!technician) {
+            if (!technician || !isTechnicianMatchingDistrict(technician, normalizedAddress)) {
                 await serviceRecords.updateOne(
                     { task_id: task.task_id },
                     {
                         $set: {
                             assigned_technician_id: null,
                             task_status: "Unassigned",
-                            pending_reason: "No technicians available for overdue reassignment",
+                            pending_reason: !technician
+                                ? "No technicians available for overdue reassignment"
+                                : "Technician district mismatch during overdue reassignment",
                             otp: null,
                             ...commonSet
                         }
                     }
                 );
-                await logOverdueEvent(`Overdue ${taskTypeLabel} task ${task.task_id} left unassigned - no technicians available for ${locationSummary}`);
+                await logOverdueEvent(
+                    !technician
+                        ? `Overdue ${taskTypeLabel} task ${task.task_id} left unassigned - no technicians available for ${locationSummary}`
+                        : `Overdue ${taskTypeLabel} task ${task.task_id} left unassigned - technician district mismatch for ${locationSummary}`
+                );
                 continue;
             }
 
