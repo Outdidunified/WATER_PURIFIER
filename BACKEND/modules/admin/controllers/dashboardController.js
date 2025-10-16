@@ -2118,7 +2118,21 @@ const FetchSelectInstallationTask = async (req, res) => {
             {
                 $match: {
                     orderStatus: "Confirmed",
-                    paymentStatus: "Completed"
+                    $or: [
+                        { paymentStatus: "Completed" },
+                        {
+                            $expr: {
+                                $eq: [
+                                    {
+                                        $toUpper: {
+                                            $ifNull: ["$paymentType", ""]
+                                        }
+                                    },
+                                    "COD"
+                                ]
+                            }
+                        }
+                    ]
                 }
             },
             {
@@ -2771,26 +2785,11 @@ const GetInstallationsByDistrict = async (req, res) => {
     const ordersCollection = db.collection("orders");
 
     const matchStage = {
-      $expr: {
-        $and: [
-          { $eq: ["$orderStatus", "Confirmed"] },
-          {
-            $or: [
-              {
-                $eq: [
-                  {
-                    $toUpper: {
-                      $ifNull: ["$paymentType", ""]
-                    }
-                  },
-                  "COD"
-                ]
-              },
-              { $eq: ["$paymentStatus", "Completed"] }
-            ]
-          }
-        ]
-      }
+      orderStatus: "Confirmed",
+      $or: [
+        { paymentStatus: "Completed" },
+        { paymentType: { $regex: /^cod$/i } }
+      ]
     };
 
     if (district && String(district).trim() !== '') {

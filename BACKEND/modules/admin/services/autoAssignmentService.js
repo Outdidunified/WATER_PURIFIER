@@ -755,10 +755,29 @@ async function autoReassignOverdueTasks() {
         for await (const task of candidateTasksCursor) {
             const estimatedStart = task.estimated_start ? new Date(task.estimated_start) : null;
             const estimatedEnd = task.estimated_end ? new Date(task.estimated_end) : null;
+            const assignedDate = task.assigned_date ? new Date(task.assigned_date) : null;
+            const createdDate = task.created_date ? new Date(task.created_date) : null;
 
             const isStartValid = estimatedStart && !Number.isNaN(estimatedStart.getTime());
+            const isAssignedValid = assignedDate && !Number.isNaN(assignedDate.getTime());
+            const isCreatedValid = createdDate && !Number.isNaN(createdDate.getTime());
+            const effectiveStart = isStartValid
+                ? estimatedStart
+                : isAssignedValid
+                    ? assignedDate
+                    : isCreatedValid
+                        ? createdDate
+                        : null;
+            const effectiveStartLabel = isStartValid
+                ? 'estimated_start'
+                : isAssignedValid
+                    ? 'assigned_date'
+                    : isCreatedValid
+                        ? 'created_date'
+                        : null;
+
             const isEndValid = estimatedEnd && !Number.isNaN(estimatedEnd.getTime());
-            const isStartOverdue = isStartValid && estimatedStart <= threeDaysAgo;
+            const isStartOverdue = effectiveStart && effectiveStart <= threeDaysAgo;
             const isEndOverdue = isEndValid && estimatedEnd < now;
 
             if (!isStartOverdue && !isEndOverdue) {
@@ -774,7 +793,11 @@ async function autoReassignOverdueTasks() {
             let historyUpdated = false;
             const unassignedReason = isEndOverdue
                 ? 'Estimated end date exceeded'
-                : 'Estimated start overdue';
+                : effectiveStartLabel === 'assigned_date'
+                    ? 'Assigned date overdue'
+                    : effectiveStartLabel === 'created_date'
+                        ? 'Created date overdue'
+                        : 'Estimated start overdue';
 
             if (currentTechnicianIdStr) {
                 for (let i = assignmentHistory.length - 1; i >= 0; i -= 1) {
