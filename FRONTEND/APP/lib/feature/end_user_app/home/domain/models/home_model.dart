@@ -65,6 +65,8 @@ class Subscription extends Equatable {
   final String productModelId;
   final String modelName;
   final String wpDeviceId;
+  final String mainImage;
+  final List<String> subImages;
   final SelectedPlan selectedPlan;
   final SelectedDuration selectedDuration;
   final double price;
@@ -85,6 +87,8 @@ class Subscription extends Equatable {
     required this.productModelId,
     required this.modelName,
     required this.wpDeviceId,
+    required this.mainImage,
+    required this.subImages,
     required this.selectedPlan,
     required this.selectedDuration,
     required this.price,
@@ -107,6 +111,8 @@ class Subscription extends Equatable {
       productModelId: json['productModelId'] as String? ?? '',
       modelName: json['modelName'] as String? ?? '',
       wpDeviceId: json['wp_device_id'] as String? ?? '',
+      mainImage: json['main_image'] as String? ?? '',
+      subImages: (json['sub_images'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
       selectedPlan:
           SelectedPlan.fromJson(json['selectedPlan'] as Map<String, dynamic>),
       selectedDuration: SelectedDuration.fromJson(
@@ -133,6 +139,8 @@ class Subscription extends Equatable {
       'productModelId': productModelId,
       'modelName': modelName,
       'wp_device_id': wpDeviceId,
+      'main_image': mainImage,
+      'sub_images': subImages,
       'selectedPlan': selectedPlan.toJson(),
       'selectedDuration': selectedDuration.toJson(),
       'grandTotal': price,
@@ -156,6 +164,8 @@ class Subscription extends Equatable {
         productModelId,
         modelName,
         wpDeviceId,
+        mainImage,
+        subImages,
         selectedPlan,
         selectedDuration,
         price,

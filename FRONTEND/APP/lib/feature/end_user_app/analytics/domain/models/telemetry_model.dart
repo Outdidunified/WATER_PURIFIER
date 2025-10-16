@@ -60,6 +60,10 @@ class TelemetryData extends Equatable {
   final String deviceId;
   final String topicType;
   final WaterUsage waterUsage;
+  final double voltage;
+  final double current;
+  final double filterLifeUsed;
+  final bool leakDetected;
 
   const TelemetryData({
     required this.wpDeviceId,
@@ -80,6 +84,10 @@ class TelemetryData extends Equatable {
     required this.deviceId,
     required this.topicType,
     required this.waterUsage,
+    required this.voltage,
+    required this.current,
+    required this.filterLifeUsed,
+    required this.leakDetected,
   });
 
   factory TelemetryData.fromJson(Map<String, dynamic> json) {
@@ -109,6 +117,10 @@ class TelemetryData extends Equatable {
         monthly: WaterUsagePeriod(records: [], count: 0, totalWaterUsed: 0.0, timeline: ''),
         yearly: WaterUsagePeriod(records: [], count: 0, totalWaterUsed: 0.0, timeline: ''),
       ),
+      voltage: (json['voltage'] as num?)?.toDouble() ?? 0.0,
+      current: (json['current'] as num?)?.toDouble() ?? 0.0,
+      filterLifeUsed: (json['filterLifeUsed'] as num?)?.toDouble() ?? 0.0,
+      leakDetected: json['leakDetected'] as bool? ?? false,
     );
   }
 
@@ -132,6 +144,10 @@ class TelemetryData extends Equatable {
       'deviceId': deviceId,
       'topicType': topicType,
       'waterUsage': waterUsage.toJson(),
+      'voltage': voltage,
+      'current': current,
+      'filterLifeUsed': filterLifeUsed,
+      'leakDetected': leakDetected,
     };
   }
 
@@ -154,7 +170,11 @@ class TelemetryData extends Equatable {
     totalWaterLimit,
     deviceId,
     topicType,
-    waterUsage
+    waterUsage,
+    voltage,
+    current,
+    filterLifeUsed,
+    leakDetected,
   ];
 }
 

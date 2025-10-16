@@ -484,7 +484,7 @@ class SettingsController extends GetxController {
       );
 
       CustomSnackbar.showSuccess(message: 'User details updated successfully');
-      await Future.delayed(const Duration(seconds: 2));
+      // Navigate back immediately after showing success message
       Get.back();
     } else {
       CustomSnackbar.showError(

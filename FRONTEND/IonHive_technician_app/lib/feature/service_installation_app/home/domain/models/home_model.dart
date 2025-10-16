@@ -85,6 +85,76 @@ class Address {
   }
 }
 
+class PaymentInfo {
+  final String? paymentType;
+  final String? paymentStatus;
+  final double? totalPrice;
+  final double? subtotal;
+  final double? securityDeposit;
+  final double? gstAmount;
+  final String? paymentMethod;
+  final DateTime? paymentCollectedAt;
+  final String? qrCode; // QR code for UPI payment
+
+  const PaymentInfo({
+    this.paymentType,
+    this.paymentStatus,
+    this.totalPrice,
+    this.subtotal,
+    this.securityDeposit,
+    this.gstAmount,
+    this.paymentMethod,
+    this.paymentCollectedAt,
+    this.qrCode,
+  });
+
+  factory PaymentInfo.fromJson(Map<String, dynamic> json) {
+    double? parseDouble(dynamic value) {
+      if (value == null) return null;
+      if (value is num) return value.toDouble();
+      return double.tryParse(value.toString());
+    }
+
+    DateTime? parseDate(dynamic value) {
+      if (value == null) return null;
+      try {
+        return DateTime.parse(value.toString());
+      } catch (_) {
+        return null;
+      }
+    }
+
+    final dynamic qrValue = json['qrCode'] ?? json['qr_code'];
+
+    return PaymentInfo(
+      paymentType: json['paymentType']?.toString(),
+      paymentStatus: json['paymentStatus']?.toString(),
+      totalPrice: parseDouble(json['totalPrice']),
+      subtotal: parseDouble(json['subtotal']),
+      securityDeposit: parseDouble(json['securityDeposit']),
+      gstAmount: parseDouble(json['gstAmount']),
+      paymentMethod: json['paymentMethod']?.toString(),
+      paymentCollectedAt:
+          parseDate(json['paymentCollectedAt'] ?? json['payment_collected_at']),
+      qrCode: qrValue?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'paymentType': paymentType,
+      'paymentStatus': paymentStatus,
+      'totalPrice': totalPrice,
+      'subtotal': subtotal,
+      'securityDeposit': securityDeposit,
+      'gstAmount': gstAmount,
+      'paymentMethod': paymentMethod,
+      'paymentCollectedAt': paymentCollectedAt?.toIso8601String(),
+      if (qrCode != null) 'qrCode': qrCode,
+    };
+  }
+}
+
 class Task {
   final String? id;
   final int? taskId;
@@ -107,6 +177,10 @@ class Task {
   final String? wpDeviceId;
   final Address? address;
   final Product? product;
+  final PaymentInfo? paymentSnapshot;
+  final String? orderPaymentStatus;
+  final bool? paymentCollected;
+  final String? paymentMethod;
 
   Task({
     this.id,
@@ -130,6 +204,10 @@ class Task {
     this.wpDeviceId,
     this.address,
     this.product,
+    this.paymentSnapshot,
+    this.orderPaymentStatus,
+    this.paymentCollected,
+    this.paymentMethod,
   });
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -227,6 +305,20 @@ class Task {
       product: json['product'] != null
           ? Product.fromJson(json['product'] as Map<String, dynamic>)
           : null,
+      paymentSnapshot: json['payment_snapshot'] != null
+          ? PaymentInfo.fromJson(json['payment_snapshot'] as Map<String, dynamic>)
+          : null,
+      orderPaymentStatus: json['order_snapshot'] != null && json['order_snapshot']['paymentStatus'] != null
+          ? safeToString(json['order_snapshot']['paymentStatus'])
+          : null,
+      paymentCollected: json['paymentCollected'] is bool
+          ? json['paymentCollected'] as bool?
+          : json['collectPayment'] is bool
+              ? json['collectPayment'] as bool?
+              : null,
+      paymentMethod: json['paymentMethod'] != null
+          ? safeToString(json['paymentMethod'])
+          : null,
     );
   }
 
@@ -255,6 +347,7 @@ class Task {
       'wp_device_id': wpDeviceId,
       'address': address?.toJson(),
       'product': product?.toJson(),
+      'payment_snapshot': paymentSnapshot?.toJson(),
     };
   }
 
@@ -279,16 +372,19 @@ class Task {
 class TaskUpdateResponse {
   final bool error;
   final String message;
+  final String? qrCode;
 
   TaskUpdateResponse({
     required this.error,
     required this.message,
+    this.qrCode,
   });
 
   factory TaskUpdateResponse.fromJson(Map<String, dynamic> json) {
     return TaskUpdateResponse(
       error: json['error'] as bool? ?? true,
       message: json['message']?.toString() ?? 'Unknown error',
+      qrCode: json['qrCode']?.toString(),
     );
   }
 
@@ -296,6 +392,7 @@ class TaskUpdateResponse {
     return {
       'error': error,
       'message': message,
+      'qrCode': qrCode,
     };
   }
 }

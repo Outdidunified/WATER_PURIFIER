@@ -60,7 +60,7 @@ class SubscriptionPromptPage extends StatelessWidget {
                             FadeInDown(
                               duration: const Duration(milliseconds: 800),
                               child: Text(
-                                "Dive into AquaPulse Premium!",
+                                "Dive into IonHive!",
                                 style: GoogleFonts.poppins(
                                   fontSize: 32,
                                   fontWeight: FontWeight.bold,

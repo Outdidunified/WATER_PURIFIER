@@ -5,11 +5,13 @@ import 'package:ionhive_water_purifier/core/controllers/session_controller.dart'
 import 'package:ionhive_water_purifier/utils/widgets/error/error_display_widget.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
-import 'package:shimmer/shimmer.dart';
+
+
 
 class AnalyticsPage extends StatefulWidget {
   const AnalyticsPage({super.key});
@@ -26,7 +28,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   final SessionController sessionController = Get.find<SessionController>();
 
   String? selectedDeviceId;
-  String selectedPeriod = 'weekly'; // Default to weekly
+  String selectedPeriod = 'monthly'; // Default to weekly
+  Timer? _telemetryTimer;
 
   @override
   void initState() {
@@ -37,6 +40,26 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         sessionController.emailId.value,
       );
     });
+  }
+
+  @override
+  void dispose() {
+    _telemetryTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startTelemetryTimer() {
+    _telemetryTimer?.cancel(); // Cancel existing timer if any
+    _telemetryTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (selectedDeviceId != null && mounted) {
+        telemetryController.fetchTelemetry(selectedDeviceId!, isInitialLoad: false);
+      }
+    });
+  }
+
+  void _stopTelemetryTimer() {
+    _telemetryTimer?.cancel();
+    _telemetryTimer = null;
   }
 
   @override
@@ -92,7 +115,14 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           // Set default selected device if not set
           if (selectedDeviceId == null) {
             selectedDeviceId = deviceIds.first;
-            telemetryController.fetchTelemetry(selectedDeviceId!);
+            telemetryController.fetchTelemetry(selectedDeviceId!, isInitialLoad: true);
+            _startTelemetryTimer(); // Start auto-refresh timer
+          }
+
+          // Sort device IDs to show recently selected device first
+          if (selectedDeviceId != null && deviceIds.contains(selectedDeviceId)) {
+            deviceIds.remove(selectedDeviceId);
+            deviceIds.insert(0, selectedDeviceId!);
           }
 
           // Now check telemetry loading
@@ -107,7 +137,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 child: ErrorDisplayWidget(
               errorMessage: telemetryController.errorMessage.value,
               onRetry: () {
-                telemetryController.fetchTelemetry(selectedDeviceId!);
+                telemetryController.fetchTelemetry(selectedDeviceId!, isInitialLoad: true);
               },
             ));
           }
@@ -178,53 +208,64 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     ],
                   ),
                 ),
-                // Device Selection Dropdown
+                // Device Selection Cards
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04, vertical: screenWidth * 0.02),
+                  height: screenHeight * 0.06,
                   margin: EdgeInsets.only(bottom: screenHeight * 0.02),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: DropdownButton<String>(
-                    value: selectedDeviceId,
-                    isExpanded: true,
-                    hint: Text('Select Device'),
-                    dropdownColor: Colors.white,
-                    style: TextStyle(
-                      color: Colors.black87,
-                      fontSize: screenWidth * 0.04,
-                    ),
-                    items: deviceIds.map((deviceId) {
-                      return DropdownMenuItem<String>(
-                        value: deviceId,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: deviceIds.length,
+                    itemBuilder: (context, index) {
+                      final deviceId = deviceIds[index];
+                      final isSelected = selectedDeviceId == deviceId;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedDeviceId = deviceId;
+                          });
+                          telemetryController.fetchTelemetry(deviceId, isInitialLoad: true);
+                          _startTelemetryTimer(); // Restart timer for new device
+                        },
                         child: Container(
-                          padding: EdgeInsets.symmetric(vertical: screenHeight * 0.01),
-                          child: Text(
-                            'Device: $deviceId',
-                            style: TextStyle(
-                              color: Colors.black87,
-                              fontSize: screenWidth * 0.04,
-                            ),
+                          width: screenWidth * 0.3,
+                          margin: EdgeInsets.only(right: screenWidth * 0.02),
+                          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.02, vertical: screenHeight * 0.005),
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.blue.shade600 : Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: isSelected ? Colors.blue.shade600 : Colors.grey.shade400),
+                            boxShadow: isSelected ? [
+                              BoxShadow(
+                                color: Colors.blue.shade200.withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ] : null,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.devices,
+                                color: isSelected ? Colors.white : Colors.blue.shade600,
+                                size: screenWidth * 0.04,
+                              ),
+                              SizedBox(height: screenHeight * 0.003),
+                              Text(
+                                deviceId,
+                                style: TextStyle(
+                                  color: isSelected ? Colors.white : Colors.black87,
+                                  fontSize: screenWidth * 0.025,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
                         ),
                       );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          selectedDeviceId = value;
-                        });
-                        telemetryController.fetchTelemetry(value);
-                      }
                     },
                   ),
                 ),
@@ -235,9 +276,28 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: Colors.blue.shade800,
-                      fontSize: screenWidth * 0.06,
+                      fontSize: screenWidth * 0.05,
                     ),
                   ),
+                ),
+                Builder(
+                  builder: (context) {
+                    final modelName = telemetryData?.data?.modelName;
+                    if (modelName != null && modelName.isNotEmpty) {
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: screenHeight * 0.01),
+                        child: Text(
+                          'Model: $modelName',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey.shade600,
+                            fontSize: screenWidth * 0.035,
+                            fontWeight: FontWeight.w200,
+                          ),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
                 ),
                 _buildTelemetryDashboardHeader(
                     theme, telemetryData, screenWidth, screenHeight),
@@ -253,93 +313,101 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
   Widget _buildShimmerLoading(
       ThemeData theme, double screenWidth, double screenHeight) {
-    final isSmallScreen = screenWidth < 600;
-
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(screenWidth * 0.05),
-      child: Shimmer.fromColors(
-        baseColor: Colors.white,
-        highlightColor: Colors.grey.shade200,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              height: screenHeight * 0.15,
-              margin: EdgeInsets.only(bottom: screenHeight * 0.03),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-            Container(
-              width: screenWidth * 0.5,
-              height: screenHeight * 0.035,
-              margin: EdgeInsets.symmetric(vertical: screenHeight * 0.015),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            isSmallScreen
-                ? Column(
-                    children: List.generate(3, (_) {
-                      return Container(
-                        width: double.infinity,
-                        height: screenHeight * 0.12,
-                        margin: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.015,
-                            vertical: screenHeight * 0.01),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      );
-                    }),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: List.generate(3, (_) {
-                      return Expanded(
-                        child: Container(
-                          height: screenHeight * 0.12,
-                          margin: EdgeInsets.symmetric(
-                              horizontal: screenWidth * 0.015),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      );
-                    }),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Container(
+          padding: EdgeInsets.all(screenWidth * 0.08),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Water drop animation container
+              Container(
+                width: screenWidth * 0.25,
+                height: screenWidth * 0.25,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Colors.blue.shade300, Colors.blue.shade600],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-            SizedBox(height: screenHeight * 0.04),
-            ...List.generate(3, (_) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: screenWidth * 0.4,
-                    height: screenHeight * 0.025,
-                    margin: EdgeInsets.only(bottom: screenHeight * 0.02),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blue.shade200.withOpacity(0.3),
+                      blurRadius: 20,
+                      spreadRadius: 5,
                     ),
-                  ),
-                  Container(
-                    width: double.infinity,
-                    height: screenHeight * 0.3,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                  ],
+                ),
+                child: Icon(
+                  Icons.water_drop,
+                  color: Colors.white,
+                  size: screenWidth * 0.12,
+                ),
+              ),
+              SizedBox(height: screenHeight * 0.03),
+              // Loading text
+              Text(
+                'Loading Analytics',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: Colors.blue.shade800,
+                  fontWeight: FontWeight.bold,
+                  fontSize: screenWidth * 0.055,
+                ),
+              ),
+              SizedBox(height: screenHeight * 0.015),
+              // Subtitle
+              Text(
+                'Fetching your water usage data...',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey.shade600,
+                  fontSize: screenWidth * 0.04,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: screenHeight * 0.04),
+              // Progress indicator
+              Container(
+                width: screenWidth * 0.6,
+                child: LinearProgressIndicator(
+                  backgroundColor: Colors.blue.shade100,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade600),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              SizedBox(height: screenHeight * 0.03),
+              // Additional info
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth * 0.04,
+                  vertical: screenHeight * 0.015,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.blue.shade600,
+                      size: screenWidth * 0.045,
                     ),
-                  ),
-                  SizedBox(height: screenHeight * 0.04),
-                ],
-              );
-            }),
-          ],
+                    SizedBox(width: screenWidth * 0.02),
+                    Text(
+                      'Please wait...',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.blue.shade700,
+                        fontSize: screenWidth * 0.035,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -353,107 +421,527 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     }
 
     final data = telemetryData.data!;
-    final summaries = [
-      {
-        "title": "Total Water Used",
-        "value": "${data.totalWaterUsed.toStringAsFixed(2)} L",
-        "icon": Icons.water_drop,
-        "color": Colors.blue.shade50,
-      },
-      {
-        "title": "TDS In/Out",
-        "value": "${data.tdsIn}/${data.tdsOut}",
-        "icon": Icons.science,
-        "color": Colors.green.shade50,
-      },
-   {
-  "title": "Tank Level",
-  "value": data.tankLevel,
-  "icon": MdiIcons.barrel, // ✅ closest match to a water tank
-"color": Colors.orange.shade50,},
-
-
-    ];
-
-    // Build a single card widget
-    Widget buildCard(Map<String, dynamic> summary, double cardWidth) {
-      return Container(
-        width: cardWidth,
-        padding: EdgeInsets.symmetric(
-          vertical: screenHeight * 0.02,
-          horizontal: screenWidth * 0.03,
-        ),
-        decoration: BoxDecoration(
-          color: summary["color"] as Color?,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade300),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              summary["icon"] as IconData,
-              size: screenWidth * 0.06,
-              color: Colors.black87,
-            ),
-            SizedBox(height: screenHeight * 0.01),
-            Text(
-              summary["value"].toString(),
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-                fontSize: screenWidth * 0.045,
-              ),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-            SizedBox(height: screenHeight * 0.007),
-            Text(
-              summary["title"].toString(),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: Colors.black54,
-                fontSize: screenWidth * 0.03,
-              ),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Calculate the width for the cards in the first row
-// Minimum width for each card
-    final int cardsPerRowFirstRow = 2; // Fixed to 2 columns in the first row
-    final double firstRowCardWidth = (screenWidth - (screenWidth * 0.09)) /
-        cardsPerRowFirstRow; // Adjusted for padding and spacing
 
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: screenWidth * 0.03,
+        horizontal: screenWidth * 0.01,
         vertical: screenHeight * 0.015,
       ),
       child: Column(
         children: [
-          // First Row: 2 columns
+          // Tank Level Status Bar
+          _buildTankLevelBar(data, screenWidth, screenHeight),
+          SizedBox(height: screenHeight * 0.02),
+          
+          // Water Usage Progress Bar
+          _buildWaterUsageProgress(data, screenWidth, screenHeight),
+          SizedBox(height: screenHeight * 0.02),
+          
+          // Telemetry Data Box (Home Page Style)
+          Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.fromBorderSide(
+                BorderSide(
+                  color: theme.colorScheme.primary.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(screenWidth * 0.04),
+              child: Column(
+                children: [
+                  // Row 1: TDS Level
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _buildStatItem(
+                          theme,
+                          icon: Icons.science,
+                          label: "TDS Level",
+                          value: "In: ${data.tdsIn} | Out: ${data.tdsOut} ppm",
+                          screenWidth: screenWidth,
+                          statusColor: data.tdsOut < 50
+                              ? Colors.blue
+                              : data.tdsOut < 150
+                              ? Colors.yellow[700]
+                              : Colors.red,
+                          tooltip: "Total Dissolved Solids (ideal: <50 ppm)",
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: screenHeight * 0.02),
+                  Divider(
+                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    thickness: 1,
+                  ),
+                  SizedBox(height: screenHeight * 0.02),
+                  
+                  // Row 2: Pressure & Temperature
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: _buildStatItem(
+                          theme,
+                          icon: MdiIcons.gauge,
+                          label: "Pressure",
+                          value: "${data.pressure} bar",
+                          screenWidth: screenWidth,
+                          statusColor: Colors.deepOrange,
+                          tooltip: "Water pressure",
+                        ),
+                      ),
+                      SizedBox(width: screenWidth * 0.02),
+                      Expanded(
+                        child: _buildStatItem(
+                          theme,
+                          icon: Icons.thermostat,
+                          label: "Temperature",
+                          value: "${data.temperature} °C",
+                          screenWidth: screenWidth,
+                          statusColor: Colors.red,
+                          tooltip: "Water temperature",
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: screenHeight * 0.02),
+                  Divider(
+                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    thickness: 1,
+                  ),
+                  SizedBox(height: screenHeight * 0.02),
+                  
+                  // Row 3: Valve Status & Power Status
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: _buildStatItem(
+                          theme,
+                          icon: MdiIcons.valve,
+                          label: "Valve Status",
+                          value: data.valveStatus,
+                          screenWidth: screenWidth,
+                          statusColor: Colors.indigo,
+                          tooltip: "Current valve state",
+                        ),
+                      ),
+                      SizedBox(width: screenWidth * 0.02),
+                      Expanded(
+                        child: _buildStatItem(
+                          theme,
+                          icon: Icons.power,
+                          label: "Power Status",
+                          value: data.powerStatus,
+                          screenWidth: screenWidth,
+                          statusColor: Colors.amber[700],
+                          tooltip: "Device power state",
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: screenHeight * 0.02),
+                  Divider(
+                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    thickness: 1,
+                  ),
+                  SizedBox(height: screenHeight * 0.02),
+                  
+                  // Row 4: Voltage & Current
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: _buildStatItem(
+                          theme,
+                          icon: Icons.electric_bolt,
+                          label: "Voltage",
+                          value: "${data.voltage.toStringAsFixed(1)} V",
+                          screenWidth: screenWidth,
+                          statusColor: Colors.yellow[700],
+                          tooltip: "Supply voltage",
+                        ),
+                      ),
+                      SizedBox(width: screenWidth * 0.02),
+                      Expanded(
+                        child: _buildStatItem(
+                          theme,
+                          icon: MdiIcons.currentAc,
+                          label: "Current",
+                          value: "${data.current.toStringAsFixed(2)} A",
+                          screenWidth: screenWidth,
+                          statusColor: Colors.teal,
+                          tooltip: "Current consumption",
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: screenHeight * 0.02),
+                  Divider(
+                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    thickness: 1,
+                  ),
+                  SizedBox(height: screenHeight * 0.02),
+                  
+                  // Row 5: Filter Life & Leak Status
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: _buildStatItem(
+                          theme,
+                          icon: Icons.filter_alt,
+                          label: "Filter Life Used",
+                          value: "${(data.filterLifeUsed * 100).toStringAsFixed(1)}%",
+                          screenWidth: screenWidth,
+                          statusColor: Colors.pink,
+                          tooltip: "Filter replacement indicator",
+                        ),
+                      ),
+                      SizedBox(width: screenWidth * 0.02),
+                      Expanded(
+                        child: _buildStatItem(
+                          theme,
+                          icon: data.leakDetected ? Icons.warning : Icons.check_circle,
+                          label: "Leak Status",
+                          value: data.leakDetected ? "Detected" : "No Leak",
+                          screenWidth: screenWidth,
+                          statusColor: data.leakDetected ? Colors.red : Colors.lightGreen,
+                          tooltip: "Leak detection status",
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(ThemeData theme,
+      {required IconData icon,
+        required String label,
+        required String value,
+        required double screenWidth,
+        Color? statusColor,
+        String? tooltip}) {
+    final gradientColors = statusColor != null
+        ? [statusColor.withOpacity(0.2), statusColor.withOpacity(0.4)]
+        : [
+      theme.colorScheme.primary.withOpacity(0.2),
+      theme.colorScheme.primary.withOpacity(0.4)
+    ];
+
+    return Tooltip(
+      message: tooltip ?? '',
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(screenWidth * 0.015),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: gradientColors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Icon(
+              icon,
+              color: statusColor ?? theme.colorScheme.primary,
+              size: screenWidth * 0.05,
+            ),
+          ),
+          SizedBox(width: screenWidth * 0.02),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    fontSize: screenWidth * 0.03,
+                    fontWeight: FontWeight.w500,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  maxLines: 1,
+                ),
+                SizedBox(height: screenWidth * 0.005),
+                Text(
+                  value,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: statusColor ?? theme.colorScheme.primary,
+                    fontSize: screenWidth * 0.028,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  maxLines: 1,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Tank Level Status Bar Widget - Simplified
+  Widget _buildTankLevelBar(dynamic data, double screenWidth, double screenHeight) {
+    final tankLevel = data.tankLevel.toString().toUpperCase();
+    Color levelColor;
+    double fillPercentage;
+    
+    // Determine color and fill based on tank level
+    switch (tankLevel) {
+      case 'FULL':
+        levelColor = Colors.green;
+        fillPercentage = 1.0;
+        break;
+      case 'HALF':
+        levelColor = Colors.orange;
+        fillPercentage = 0.5;
+        break;
+      case 'LOW':
+        levelColor = Colors.red;
+        fillPercentage = 0.25;
+        break;
+      case 'EMPTY':
+        levelColor = Colors.red.shade900;
+        fillPercentage = 0.0;
+        break;
+      default:
+        levelColor = Colors.grey;
+        fillPercentage = 0.0;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.04,
+        vertical: screenHeight * 0.025,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title and Status
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: buildCard(summaries[0], firstRowCardWidth),
+              Row(
+                children: [
+                  Icon(
+                    MdiIcons.barrel,
+                    size: screenWidth * 0.04,
+                    color: Colors.blue.shade600,
+                  ),
+                  SizedBox(width: screenWidth * 0.02),
+                  Text(
+                    'Tank Level',
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.032,
+                      color: Colors.blue.shade700,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(
-                  width: screenWidth * 0.03), // Spacing between the two cards
-              Expanded(
-                child: buildCard(summaries[1], firstRowCardWidth),
+              Text(
+                tankLevel,
+                style: TextStyle(
+                  fontSize: screenWidth * 0.032,
+                  fontWeight: FontWeight.bold,
+                  color: levelColor,
+                ),
               ),
             ],
           ),
-          SizedBox(
-              height: screenHeight * 0.015), // Vertical spacing between rows
-          // Second Row: 1 column spanning the width of the first row
-          buildCard(summaries[2],
-              screenWidth - (screenWidth * 0.06)), // Adjusted for padding
+          SizedBox(height: screenHeight * 0.012),
+          
+          // Simple progress bar aligned to left
+          Container(
+            height: screenHeight * 0.008,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: fillPercentage,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: levelColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Water Usage Progress Bar Widget - Simplified
+  Widget _buildWaterUsageProgress(dynamic data, double screenWidth, double screenHeight) {
+    final double waterUsed = data.totalWaterUsed.toDouble();
+    final double waterLimit = data.totalWaterLimit.toDouble();
+    final double waterRemaining = waterLimit - waterUsed;
+    final double usagePercentage = waterLimit > 0 ? (waterUsed / waterLimit).clamp(0.0, 1.0) : 0.0;
+    
+    // Determine color based on usage percentage
+    Color progressColor;
+    if (usagePercentage < 0.5) {
+      progressColor = Colors.green;
+    } else if (usagePercentage < 0.8) {
+      progressColor = Colors.orange;
+    } else {
+      progressColor = Colors.red;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.04,
+        vertical: screenHeight * 0.015,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title and Percentage
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.water_drop,
+                    size: screenWidth * 0.04,
+                    color: Colors.blue.shade600,
+                  ),
+                  SizedBox(width: screenWidth * 0.02),
+                  Text(
+                    'Water Usage',
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.032,
+                      color: Colors.blue.shade700,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                '${(usagePercentage * 100).toStringAsFixed(1)}%',
+                style: TextStyle(
+                  fontSize: screenWidth * 0.032,
+                  fontWeight: FontWeight.bold,
+                  color: progressColor,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: screenHeight * 0.012),
+          
+          // Usage Details - Simple 3 column layout
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Used
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Used',
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.026,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.003),
+                    Text(
+                      '${waterUsed.toStringAsFixed(2)} L',
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.03,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Limit
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Limit',
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.026,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.003),
+                    Text(
+                      '${waterLimit.toStringAsFixed(0)} L',
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.03,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Remaining
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Remaining',
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.026,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.003),
+                    Text(
+                      '${waterRemaining.toStringAsFixed(2)} L',
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.03,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -514,7 +1002,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     List<Map<String, dynamic>> data;
     String title;
     Color color;
-    bool isBarChart;
+    String chartType; // Different chart types for each period
 
     switch (selectedPeriod) {
       case 'daily':
@@ -523,7 +1011,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             .toList();
         title = "📅 Daily Usage";
         color = Colors.blue.shade600;
-        isBarChart = true;
+        chartType = 'bar'; // Bar chart for daily
         break;
       case 'weekly':
         data = telemetryData.data!.waterUsage.weekly.records
@@ -531,7 +1019,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             .toList();
         title = "📈 Weekly Usage";
         color = Colors.green.shade600;
-        isBarChart = true; // Changed to bar chart
+        chartType = 'line_curved'; // Line chart for weekly
         break;
       case 'monthly':
         data = telemetryData.data!.waterUsage.monthly.records
@@ -539,7 +1027,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             .toList();
         title = "📊 Monthly Usage";
         color = Colors.orange.shade600;
-        isBarChart = true; // Changed to bar chart
+        chartType = 'line_area'; // Area chart for monthly
         break;
       case 'yearly':
         data = telemetryData.data!.waterUsage.yearly.records
@@ -547,13 +1035,13 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             .toList();
         title = "📈 Yearly Usage";
         color = Colors.purple.shade600;
-        isBarChart = true; // Changed to bar chart
+        chartType = 'line_gradient'; // Line chart with gradient for yearly
         break;
       default:
         data = [];
         title = "Usage Data";
         color = Colors.blue.shade600;
-        isBarChart = true;
+        chartType = 'line_curved';
     }
 
     return Container(
@@ -668,7 +1156,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           SizedBox(height: screenHeight * 0.02),
           if (data.isEmpty)
             SizedBox(
-              height: screenHeight * 0.3,
+              height: screenHeight * 0.28,
               child: Center(
                 child: Text(
                   'No ${selectedPeriod} data available for this device',
@@ -681,10 +1169,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             )
           else
             SizedBox(
-              height: screenHeight * 0.3,
-              child: isBarChart
+              height: screenHeight * 0.28,
+              child: chartType == 'bar' 
                   ? _buildBarChart(data, "date", "total", color, screenWidth)
-                  : _buildLineChart(data, "date", "total", color, screenWidth),
+                  : _buildCustomLineChart(data, "date", "total", color, screenWidth, chartType),
             ),
         ],
       ),
@@ -823,13 +1311,23 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           topTitles: const AxisTitles(),
           rightTitles: const AxisTitles(),
         ),
-        gridData: FlGridData(show: true, drawVerticalLine: false),
+        gridData: FlGridData(
+          show: true, 
+          drawVerticalLine: false,
+          horizontalInterval: 50,
+          getDrawingHorizontalLine: (value) {
+            return FlLine(
+              color: Colors.grey.withOpacity(0.2),
+              strokeWidth: 1,
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildLineChart(List data, String labelKey, String valueKey,
-      Color color, double screenWidth) {
+      Color color, double screenWidth, {bool showArea = true}) {
     return LineChart(
       LineChartData(
         minY: 0,
@@ -840,7 +1338,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             color: color,
             dotData: FlDotData(show: true),
             belowBarData: BarAreaData(
-              show: true,
+              show: showArea,
               gradient: LinearGradient(
                 colors: [color.withOpacity(0.3), Colors.transparent],
                 begin: Alignment.topCenter,
@@ -890,7 +1388,166 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           rightTitles: const AxisTitles(),
         ),
         borderData: FlBorderData(show: false),
-        gridData: FlGridData(show: true, drawVerticalLine: false),
+        gridData: FlGridData(
+          show: true, 
+          drawVerticalLine: false,
+          horizontalInterval: 50,
+          getDrawingHorizontalLine: (value) {
+            return FlLine(
+              color: Colors.grey.withOpacity(0.2),
+              strokeWidth: 1,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomLineChart(List data, String labelKey, String valueKey,
+      Color color, double screenWidth, String chartType) {
+    // Common spots data
+    final spots = data.asMap().entries.map((entry) {
+      int index = entry.key;
+      final item = entry.value;
+      double value = (item[valueKey] as num?)?.toDouble() ?? 0.0;
+      return FlSpot(index.toDouble(), value);
+    }).toList();
+
+    // Different configurations based on chart type
+    LineChartBarData lineBarData;
+    switch (chartType) {
+      case 'line_curved':
+        lineBarData = LineChartBarData(
+          isCurved: true,
+          barWidth: screenWidth * 0.008,
+          color: color,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+              radius: screenWidth * 0.015,
+              color: color,
+              strokeWidth: screenWidth * 0.003,
+              strokeColor: Colors.white,
+            ),
+          ),
+          belowBarData: BarAreaData(show: false),
+          spots: spots,
+        );
+        break;
+      case 'line_area':
+        lineBarData = LineChartBarData(
+          isCurved: true,
+          barWidth: screenWidth * 0.008,
+          color: color,
+          dotData: FlDotData(show: false),
+          belowBarData: BarAreaData(
+            show: true,
+            gradient: LinearGradient(
+              colors: [color.withOpacity(0.4), color.withOpacity(0.1), Colors.transparent],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          spots: spots,
+        );
+        break;
+      case 'line_stepped':
+        lineBarData = LineChartBarData(
+          isCurved: false,
+          barWidth: screenWidth * 0.008,
+          color: color,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+              radius: screenWidth * 0.012,
+              color: Colors.white,
+              strokeWidth: screenWidth * 0.003,
+              strokeColor: color,
+            ),
+          ),
+          belowBarData: BarAreaData(show: false),
+          spots: spots,
+        );
+        break;
+      case 'line_gradient':
+        lineBarData = LineChartBarData(
+          isCurved: true,
+          barWidth: screenWidth * 0.01,
+          gradient: LinearGradient(
+            colors: [color.withOpacity(0.8), color, color.withOpacity(0.6)],
+          ),
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+              radius: screenWidth * 0.018,
+              color: color,
+              strokeWidth: 0,
+            ),
+          ),
+          belowBarData: BarAreaData(show: false),
+          spots: spots,
+        );
+        break;
+      default:
+        lineBarData = LineChartBarData(
+          isCurved: true,
+          barWidth: screenWidth * 0.008,
+          color: color,
+          dotData: FlDotData(show: true),
+          belowBarData: BarAreaData(show: false),
+          spots: spots,
+        );
+    }
+
+    return LineChart(
+      LineChartData(
+        minY: 0,
+        lineBarsData: [lineBarData],
+        titlesData: FlTitlesData(
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: screenWidth * 0.07,
+              getTitlesWidget: (value, _) {
+                int index = value.toInt();
+                if (index < data.length) {
+                  final item = data[index];
+                  String label = (item[labelKey] as String?)?.split('-')[2] ?? '';
+                  return Text(
+                    label,
+                    style: TextStyle(fontSize: screenWidth * 0.025),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: screenWidth * 0.08,
+              interval: 50,
+              getTitlesWidget: (value, _) => Text(
+                value.toInt().toString(),
+                style: TextStyle(fontSize: screenWidth * 0.025),
+              ),
+            ),
+          ),
+          topTitles: const AxisTitles(),
+          rightTitles: const AxisTitles(),
+        ),
+        borderData: FlBorderData(show: false),
+        gridData: FlGridData(
+          show: true, 
+          drawVerticalLine: false,
+          horizontalInterval: 50,
+          getDrawingHorizontalLine: (value) {
+            return FlLine(
+              color: Colors.grey.withOpacity(0.2),
+              strokeWidth: 1,
+            );
+          },
+        ),
       ),
     );
   }

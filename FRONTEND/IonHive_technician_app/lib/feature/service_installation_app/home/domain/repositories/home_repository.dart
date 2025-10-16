@@ -35,6 +35,10 @@ class TaskRepository {
     String? otp,
     File? beforeImage,
     File? afterImage,
+    bool collectPayment = false,
+    String? paymentMethod,
+    String? razorpayPaymentId,
+    String? razorpaySignature,
   }) async {
     try {
       final response = await _api.updateTaskDetails(
@@ -44,6 +48,10 @@ class TaskRepository {
         otp: otp,
         beforeImage: beforeImage,
         afterImage: afterImage,
+        collectPayment: collectPayment,
+        paymentMethod: paymentMethod,
+        razorpayPaymentId: razorpayPaymentId,
+        razorpaySignature: razorpaySignature,
       );
       return TaskUpdateResponse.fromJson(response);
     } catch (e) {

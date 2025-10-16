@@ -79,6 +79,7 @@ flutter:
     - assets/Image/
     - assets/icons/
     - .env
+    - stateDistricts.json
 
 flutter_native_splash:
   color: "#000000"

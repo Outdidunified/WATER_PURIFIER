@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:ionhive_technician_app/utils/widgets/snackbar/custom_snackbar.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +28,12 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   bool _accepted = false;
   bool _declined = false;
   String _declineReason = '';
+  bool _codCollected = false;
+  bool _isPaymentCollecting = false;
+  String _selectedPaymentMethod = 'Cash';
+  String? _qrCode;
+  bool _isGeneratingQR = false;
+  late Task _currentTask;
 
   final TextEditingController _pendingReasonController =
       TextEditingController();
@@ -36,13 +43,21 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   @override
   void initState() {
     super.initState();
-    _selectedStatus = widget.task.taskStatus ?? 'Pending';
-    if (widget.task.taskStatus == 'In Progress') {
+    _currentTask = widget.task;
+    _selectedStatus = _currentTask.taskStatus ?? 'Pending';
+    if (_currentTask.taskStatus == 'In Progress') {
       _accepted = true;
-      _selectedStatus = 'Completed';
-    } else if (widget.task.taskStatus == 'Pending' && widget.task.pendingReason != null) {
+      _selectedStatus = 'In Progress';
+    } else if (_currentTask.taskStatus == 'Pending' && _currentTask.pendingReason != null) {
       _declined = true;
-      _declineReason = widget.task.pendingReason!;
+      _declineReason = _currentTask.pendingReason!;
+    }
+    // Initialize payment collected status
+    _codCollected = _currentTask.orderPaymentStatus?.toLowerCase() == 'completed' || _currentTask.paymentCollected == true;
+    
+    // Initialize payment method if already collected
+    if (_codCollected && _currentTask.paymentMethod != null) {
+      _selectedPaymentMethod = _currentTask.paymentMethod!;
     }
   }
 
@@ -501,9 +516,23 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         estimatedEnd: estimatedEnd!.toUtc(),
       );
 
+      // ✅ Refresh task data from controller after acceptance
+      final updatedTask = controller.allTasks.firstWhere(
+        (task) => task.taskId == widget.task.taskId,
+        orElse: () => widget.task,
+      );
+
       setState(() {
+        _currentTask = updatedTask;
         _accepted = true;
-        _selectedStatus = 'Completed';
+        _selectedStatus = updatedTask.taskStatus ?? 'In Progress';
+        
+        // Update payment status if changed
+        _codCollected = updatedTask.orderPaymentStatus?.toLowerCase() == 'completed' || 
+                       updatedTask.paymentCollected == true;
+        if (_codCollected && updatedTask.paymentMethod != null) {
+          _selectedPaymentMethod = updatedTask.paymentMethod!;
+        }
       });
     } catch (e) {
       CustomSnackbar.showError(message: e.toString());
@@ -626,9 +655,18 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         action: 'decline',
         declineReason: reason,
       );
+      
+      // ✅ Refresh task data from controller after declining
+      final updatedTask = controller.allTasks.firstWhere(
+        (task) => task.taskId == widget.task.taskId,
+        orElse: () => widget.task,
+      );
+      
       setState(() {
+        _currentTask = updatedTask;
         _declined = true;
         _declineReason = reason;
+        _selectedStatus = updatedTask.taskStatus ?? 'Pending';
       });
     } catch (e) {
       CustomSnackbar.showError(message: 'Failed to decline task: $e');
@@ -638,17 +676,20 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   }
 
   Future<void> _updateTask() async {
-    if (_selectedStatus == 'Pending' && _pendingReason.trim().isEmpty) {
+    // ✅ When task is accepted (In Progress), force status to "Completed"
+    String statusToSend = _accepted ? 'Completed' : _selectedStatus;
+    
+    if (statusToSend == 'Pending' && _pendingReason.trim().isEmpty) {
       CustomSnackbar.showError(message: 'Pending reason is required');
       return;
     }
-    if (_selectedStatus == 'Completed' && _otp.trim().isEmpty) {
+    if (statusToSend == 'Completed' && _otp.trim().isEmpty) {
       CustomSnackbar.showError(message: 'OTP is required to mark as completed');
       return;
     }
 
     // Validate images based on task type when completing task
-    if (_selectedStatus == 'Completed') {
+    if (statusToSend == 'Completed') {
       if (widget.task.taskType == 2) {
         // Service task - require both before and after images
         if (_beforeImage == null) {
@@ -666,6 +707,18 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           return;
         }
       }
+
+      // Ensure COD payment has been collected when required
+      final paymentInfo = widget.task.paymentSnapshot;
+      if (paymentInfo != null &&
+          paymentInfo.paymentType != null &&
+          paymentInfo.paymentType!.toUpperCase() == 'COD' &&
+          paymentInfo.paymentStatus != null &&
+          paymentInfo.paymentStatus!.toLowerCase() == 'pending' &&
+          !_codCollected) {
+        CustomSnackbar.showError(message: 'Please collect COD payment before completing the task');
+        return;
+      }
     }
 
     if (widget.task.taskId == null) {
@@ -677,16 +730,24 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     try {
       await controller.updateTask(
         taskId: widget.task.taskId!,
-        taskStatus: _selectedStatus,
-        pendingReason: _selectedStatus == 'Pending' ? _pendingReason : null,
-        otp: _selectedStatus == 'Completed' ? _otp : null,
-        beforeImage: widget.task.taskType == 2 ? _beforeImage : null, // Only send before image for service tasks
+        taskStatus: statusToSend,  // ✅ Send "Completed" when accepted
+        pendingReason: statusToSend == 'Pending' ? _pendingReason : null,
+        otp: statusToSend == 'Completed' ? _otp : null,
+        beforeImage:
+            widget.task.taskType == 2 ? _beforeImage : null, // Only send before image for service tasks
         afterImage: _afterImage,
+        collectPayment: false,
+        paymentMethod: null,
       );
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     } catch (e) {
       CustomSnackbar.showError(message: 'Failed to update task: $e');
-    } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -711,6 +772,32 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           Text(value ?? 'N/A',
               style:
                   const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactInfoItem(String title, String? value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey)),
+          const SizedBox(height: 2),
+          Text(value ?? 'N/A',
+              style:
+                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -746,9 +833,21 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   }
 
   Widget _buildDropdown() {
-    List<String> statusOptions = _accepted ? ['Completed'] : ['Pending', 'In Progress', 'Completed'];
+    List<String> statusOptions;
+    String displayValue;
+    
+    if (_accepted) {
+      // ✅ Task is already "In Progress", only show "Completed" option
+      statusOptions = ['Completed'];
+      displayValue = 'Completed';
+    } else {
+      // Task is not accepted yet, show all options
+      statusOptions = ['Pending', 'In Progress', 'Completed'];
+      displayValue = _selectedStatus;
+    }
+    
     return DropdownButtonFormField<String>(
-      value: _selectedStatus,
+      value: displayValue,
       dropdownColor: Colors.white,
       decoration: InputDecoration(
         filled: true,
@@ -849,10 +948,263 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     );
   }
 
+  Widget _buildCodCollectionCard(ThemeData theme, Task task) {
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _codCollected ? Colors.green.shade50 : Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _codCollected ? Colors.green.shade200 : Colors.orange.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _codCollected ? Icons.check_circle_outline : Icons.payments_outlined, 
+                color: _codCollected ? Colors.green.shade800 : Colors.orange.shade800,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _codCollected ? 'COD Payment Collected' : 'Collect COD Payment',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: _codCollected ? Colors.green.shade900 : Colors.orange.shade900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _codCollected 
+                ? 'Payment has been collected successfully.'
+                : 'Select collection mode and mark payment as received before completing the task.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: _codCollected ? Colors.green.shade700 : null,
+              fontWeight: _codCollected ? FontWeight.w500 : null,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ToggleButtons(
+            isSelected: [
+              _selectedPaymentMethod == 'Cash',
+              _selectedPaymentMethod == 'QR',
+            ],
+            onPressed: _codCollected ? null : (index) async {
+              final newMethod = index == 0 ? 'Cash' : 'QR';
+              if (newMethod == _selectedPaymentMethod) return;
+              setState(() {
+                _selectedPaymentMethod = newMethod;
+              });
+              if (newMethod == 'QR' && _qrCode == null) {
+                await _generateQR(widget.task);
+              }
+            },
+            borderRadius: BorderRadius.circular(10),
+            selectedColor: Colors.white,
+            fillColor: _codCollected ? Colors.grey : Colors.orange,
+            color: _codCollected ? Colors.grey.shade600 : Colors.orange.shade800,
+            disabledColor: Colors.grey.shade400,
+            constraints: const BoxConstraints(minHeight: 40, minWidth: 90),
+            children: const [
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text('Cash'),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text('QR'),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+          if (_selectedPaymentMethod == 'QR') ...[
+            if (_isGeneratingQR) ...[
+              const Center(child: CircularProgressIndicator()),
+            ] else if (_qrCode != null) ...[
+              Center(
+                child: Image.memory(
+                  base64Decode(_qrCode!),
+                  width: 200,
+                  height: 200,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Center(
+                child: Text(
+                  'Scan this QR code to pay',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ] else if (_codCollected) ...[
+              const Center(
+                child: Text(
+                  'Payment already collected via QR.',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ] else ...[
+              const Center(child: Text('Failed to generate QR code')),
+            ],
+            const SizedBox(height: 16),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: _codCollected ? Colors.green : Colors.orange,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: _isPaymentCollecting || _codCollected
+                  ? null
+                  : () => _markCodCollected(task, theme),
+              child: _isPaymentCollecting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(_codCollected ? 'Payment Collected' : 'Mark Payment Collected'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentSummaryPending(ThemeData theme, PaymentInfo paymentInfo, Task task) {
+    List<Widget> paymentWidgets = [];
+    if (paymentInfo.paymentType != null) paymentWidgets.add(_buildCompactInfoItem('Type', paymentInfo.paymentType!));
+    if (paymentInfo.paymentStatus != null) paymentWidgets.add(_buildCompactInfoItem('Status', paymentInfo.paymentStatus!));
+    if (paymentInfo.totalPrice != null) paymentWidgets.add(_buildCompactInfoItem('Total', '₹${paymentInfo.totalPrice!.toStringAsFixed(2)}'));
+    if (paymentInfo.subtotal != null) paymentWidgets.add(_buildCompactInfoItem('Subtotal', '₹${paymentInfo.subtotal!.toStringAsFixed(2)}'));
+    if (paymentInfo.securityDeposit != null) paymentWidgets.add(_buildCompactInfoItem('Deposit', '₹${paymentInfo.securityDeposit!.toStringAsFixed(2)}'));
+    if (paymentInfo.gstAmount != null) paymentWidgets.add(_buildCompactInfoItem('GST', '₹${paymentInfo.gstAmount!.toStringAsFixed(2)}'));
+    if (paymentInfo.paymentMethod != null) paymentWidgets.add(_buildCompactInfoItem('Method', paymentInfo.paymentMethod!));
+    if (paymentInfo.paymentCollectedAt != null) paymentWidgets.add(_buildCompactInfoItem('Collected', DateFormat('MMM dd, yyyy').format(paymentInfo.paymentCollectedAt!.toLocal())));
+
+    // Group payment into rows of 2
+    List<Widget> paymentRows = [];
+    for (int i = 0; i < paymentWidgets.length; i += 2) {
+      paymentRows.add(Row(
+        children: [
+          Expanded(child: paymentWidgets[i]),
+          if (i + 1 < paymentWidgets.length) Expanded(child: paymentWidgets[i + 1]) else const SizedBox.shrink(),
+        ],
+      ));
+      if (i + 2 < paymentWidgets.length) paymentRows.add(const SizedBox(height: 6));
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 16, bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Payment Details',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...paymentRows,
+        ],
+      ),
+    );
+  }
+
+  Future<void> _generateQR(Task task) async {
+    setState(() => _isGeneratingQR = true);
+    try {
+      // ✅ Use _selectedStatus to ensure correct status is sent when generating QR
+      final qr = await controller.generateQR(task.taskId!, _selectedStatus);
+      
+      // ✅ Strip the data URL prefix if present (e.g., "data:image/png;base64,")
+      String base64String = qr ?? '';
+      if (base64String.contains(',')) {
+        base64String = base64String.split(',').last;
+      }
+      
+      setState(() {
+        _qrCode = base64String;
+      });
+    } catch (e) {
+      CustomSnackbar.showError(message: 'Failed to generate QR: $e');
+      setState(() {
+        _selectedPaymentMethod = 'Cash'; // revert
+      });
+    } finally {
+      setState(() => _isGeneratingQR = false);
+    }
+  }
+
+  Future<void> _markCodCollected(Task task, ThemeData theme) async {
+    if (_selectedPaymentMethod.isEmpty) {
+      CustomSnackbar.showError(message: 'Please select a payment method');
+      return;
+    }
+
+    setState(() => _isPaymentCollecting = true);
+    try {
+      // ✅ Use _selectedStatus instead of task.taskStatus to ensure correct status is sent
+      // When task is accepted, _selectedStatus will be "In Progress"
+      await controller.updateTask(
+        taskId: task.taskId!,
+        taskStatus: _selectedStatus,
+        pendingReason: _selectedStatus == 'Pending' ? task.pendingReason : null,
+        otp: null,
+        collectPayment: true,
+        paymentMethod: _selectedPaymentMethod,
+      );
+
+      // ✅ Refresh task data from controller after payment collection
+      final updatedTask = controller.allTasks.firstWhere(
+        (t) => t.taskId == task.taskId,
+        orElse: () => task,
+      );
+
+      setState(() {
+        _codCollected = true;
+        _currentTask = updatedTask;
+        
+        // Update payment status from refreshed task
+        _codCollected = updatedTask.orderPaymentStatus?.toLowerCase() == 'completed' || 
+                       updatedTask.paymentCollected == true;
+        if (_codCollected && updatedTask.paymentMethod != null) {
+          _selectedPaymentMethod = updatedTask.paymentMethod!;
+        }
+      });
+
+      CustomSnackbar.showSuccess(message: 'Payment collected successfully');
+    } catch (e) {
+      CustomSnackbar.showError(message: 'Failed to mark payment collected: $e');
+    } finally {
+      setState(() => _isPaymentCollecting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final task = widget.task;
+    final task = _currentTask;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -882,6 +1234,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                   _buildInfoItem('WP Device ID', task.wpDeviceId),
                 if (task.product?.modelName != null)
                   _buildInfoItem('Model Name', task.product!.modelName),
+                if (task.paymentSnapshot != null) ...[
+                  _buildPaymentSummaryPending(theme, task.paymentSnapshot!, task),
+                ],
                 if (task.address != null) ...[
                   _buildInfoItem('Delivery Address', _formatAddress(task.address!)),
                 ],
@@ -927,6 +1282,11 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                   ),
                   const SizedBox(height: 30),
                 ] else if (_accepted) ...[
+                  if (task.paymentSnapshot != null &&
+                      task.paymentSnapshot!.paymentType != null &&
+                      task.paymentSnapshot!.paymentType!.toUpperCase() == 'COD')
+                    _buildCodCollectionCard(theme, task),
+                  const SizedBox(height: 24),
                   Text('Update Task Status',
                       style: theme.textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.w600)),

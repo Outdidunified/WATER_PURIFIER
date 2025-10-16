@@ -36,6 +36,10 @@ class TaskApiService extends BaseApiService {
     String? otp,
     File? beforeImage,
     File? afterImage,
+    bool collectPayment = false,
+    String? paymentMethod,
+    String? razorpayPaymentId,
+    String? razorpaySignature,
   }) async {
     final userId = _sessionController.userId.value;
     final email = _sessionController.emailId.value;
@@ -43,9 +47,22 @@ class TaskApiService extends BaseApiService {
     const int roleId =
         2; // Hardcoded as per the backend requirement, now as int
 
-    // Parse userId to int for the backend
-
     // Prepare form fields (all values must be strings)
+    final Map<String, dynamic> updatesPayload = {
+      'task_status': taskStatus,
+      'pending_reason': pendingReason ?? '',
+      'modified_by': technicianId,
+      'modified_date': DateTime.now().toUtc().toIso8601String(),
+    };
+
+    if (paymentMethod != null) {
+      updatesPayload['paymentMethod'] = paymentMethod;
+    }
+
+    if (collectPayment) {
+      updatesPayload['collectPayment'] = true;
+    }
+
     final fields = {
       'task_id': taskId.toString(),
       'user_id': userId.toString(),
@@ -53,13 +70,10 @@ class TaskApiService extends BaseApiService {
       'email': email,
       'technician_id': technicianId,
       if (otp != null) 'otp': otp,
+      if (razorpayPaymentId != null) 'razorpay_payment_id': razorpayPaymentId,
+      if (razorpaySignature != null) 'razorpay_signature': razorpaySignature,
       // Convert updates map to a JSON string
-      'updates': jsonEncode({
-        'task_status': taskStatus,
-        'pending_reason': pendingReason ?? '',
-        'modified_by': technicianId,
-        'modified_date': DateTime.now().toUtc().toIso8601String(),
-      }),
+      'updates': jsonEncode(updatesPayload),
     };
 
     // Prepare files

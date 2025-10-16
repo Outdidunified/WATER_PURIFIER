@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:34783787568:android:a09f9e24ad0618d6078bf5",
+        "mobilesdk_app_id": "1:34783787568:android:146998a6e984e0a8078bf5",
         "android_client_info": {
-          "package_name": "com.anish.fcm_demo"
+          "package_name": "com.outdid.ionhive_technician"
         }
       },
       "oauth_client": [],
@@ -26,9 +26,9 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:34783787568:android:e233dc10f5d8de78078bf5",
+        "mobilesdk_app_id": "1:34783787568:android:5bf0042df7f23a26078bf5",
         "android_client_info": {
-          "package_name": "com.outdid.aquapulse_technician"
+          "package_name": "com.outdid.ionhive_water_purifier"
         }
       },
       "oauth_client": [],

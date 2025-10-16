@@ -26,4 +26,9 @@ class SettingsUrl {
     url: '${Core.baseUrl}/api/app/settings/fetchpaymenthistory',
     method: 'POST',
   );
+
+  static final Endpoint downloadInvoice = Endpoint(
+    url: '${Core.baseUrl}/api/website/orders/',
+    method: 'GET',
+  );
 }

@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart'; // For formatting the date
+import 'dart:convert'; // For JSON parsing
 
 class EditAccountPage extends StatefulWidget {
   const EditAccountPage({super.key});
@@ -29,6 +30,12 @@ class _EditAccountPageState extends State<EditAccountPage> {
   late final FocusNode countryFocusNode;
   late final FocusNode pincodeFocusNode;
 
+  // State and District data
+  Map<String, List<String>> stateDistrictData = {};
+  String? selectedState;
+  String? selectedDistrict;
+  List<String> availableDistricts = [];
+
   @override
   void initState() {
     super.initState();
@@ -42,14 +49,59 @@ class _EditAccountPageState extends State<EditAccountPage> {
     countryFocusNode = FocusNode();
     pincodeFocusNode = FocusNode();
     
-    // Initialize form when page is entered
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final controller = Get.find<SettingsController>();
-      if (controller.userData.value != null) {
-        controller.initializeEditForm();
-        controller.validateForm();
-      }
-    });
+    // Load state-district data and then initialize form
+    _loadStateDistrictData();
+  }
+
+  // Load state-district data from JSON file
+  Future<void> _loadStateDistrictData() async {
+    try {
+      final String jsonString = await rootBundle.loadString('stateDistricts.json');
+      final Map<String, dynamic> jsonData = json.decode(jsonString);
+      
+      setState(() {
+        stateDistrictData = jsonData.map((key, value) => 
+          MapEntry(key, List<String>.from(value))
+        );
+      });
+      
+      // After loading data, initialize form values
+      _initializeFormValues();
+    } catch (e) {
+      debugPrint('Error loading state-district data: $e');
+    }
+  }
+
+  // Initialize form values after data is loaded
+  void _initializeFormValues() {
+    final controller = Get.find<SettingsController>();
+    if (controller.userData.value != null) {
+      controller.initializeEditForm();
+      controller.validateForm();
+      
+      // Set initial state and district from controller
+      setState(() {
+        final stateFromController = controller.editStateController.text.trim();
+        final districtFromController = controller.editDistrictController.text.trim();
+        
+        // Only set selectedState if it exists in the dropdown items
+        if (stateFromController.isNotEmpty && stateDistrictData.containsKey(stateFromController)) {
+          selectedState = stateFromController;
+          availableDistricts = stateDistrictData[selectedState!]!;
+          
+          // Only set selectedDistrict if it exists in the available districts
+          if (districtFromController.isNotEmpty && availableDistricts.contains(districtFromController)) {
+            selectedDistrict = districtFromController;
+          } else {
+            selectedDistrict = null;
+          }
+        } else {
+          selectedState = null;
+          selectedDistrict = null;
+          availableDistricts = [];
+        }
+      });
+    }
   }
 
   @override
@@ -283,17 +335,6 @@ class _EditAccountPageState extends State<EditAccountPage> {
                           focusNode: usernameFocusNode,
                           onChanged: (value) => controller.validateForm(),
                           onSubmitted: (_) {
-                            FocusScope.of(context).requestFocus(cityFocusNode);
-                          },
-                        ),
-                        SizedBox(height: screenHeight * 0.02),
-
-                        // City
-                        CityInput(
-                          controller: controller.editCityController,
-                          focusNode: cityFocusNode,
-                          onChanged: (value) => controller.validateForm(),
-                          onSubmitted: (_) {
                             FocusScope.of(context).requestFocus(phoneFocusNode);
                           },
                         ),
@@ -360,39 +401,18 @@ class _EditAccountPageState extends State<EditAccountPage> {
                           textInputAction: TextInputAction.next,
                           onChanged: (_) => controller.validateForm(),
                           onSubmitted: (_) =>
-                              FocusScope.of(context).requestFocus(districtFocusNode),
+                              FocusScope.of(context).requestFocus(cityFocusNode),
                         ),
                         SizedBox(height: screenHeight * 0.02),
 
-                        // District
-                        TextField(
-                          controller: controller.editDistrictController,
-                          focusNode: districtFocusNode,
-                          decoration: _styledDecoration(
-                            context: context,
-                            label: 'District',
-                            icon: Icons.map_outlined,
-                          ),
-                          textInputAction: TextInputAction.next,
-                          onChanged: (_) => controller.validateForm(),
-                          onSubmitted: (_) =>
-                              FocusScope.of(context).requestFocus(stateFocusNode),
-                        ),
-                        SizedBox(height: screenHeight * 0.02),
-
-                        // State
-                        TextField(
-                          controller: controller.editStateController,
-                          focusNode: stateFocusNode,
-                          decoration: _styledDecoration(
-                            context: context,
-                            label: 'State',
-                            icon: Icons.flag_outlined,
-                          ),
-                          textInputAction: TextInputAction.next,
-                          onChanged: (_) => controller.validateForm(),
-                          onSubmitted: (_) =>
-                              FocusScope.of(context).requestFocus(countryFocusNode),
+                        // City
+                        CityInput(
+                          controller: controller.editCityController,
+                          focusNode: cityFocusNode,
+                          onChanged: (value) => controller.validateForm(),
+                          onSubmitted: (_) {
+                            FocusScope.of(context).requestFocus(countryFocusNode);
+                          },
                         ),
                         SizedBox(height: screenHeight * 0.02),
 
@@ -408,7 +428,84 @@ class _EditAccountPageState extends State<EditAccountPage> {
                           textInputAction: TextInputAction.next,
                           onChanged: (_) => controller.validateForm(),
                           onSubmitted: (_) =>
-                              FocusScope.of(context).requestFocus(pincodeFocusNode),
+                              FocusScope.of(context).requestFocus(stateFocusNode),
+                        ),
+                        SizedBox(height: screenHeight * 0.02),
+
+                        // State Dropdown
+                        DropdownButtonFormField<String>(
+                          value: selectedState,
+                          focusNode: stateFocusNode,
+                          decoration: _styledDecoration(
+                            context: context,
+                            label: 'State',
+                            icon: Icons.flag_outlined,
+                          ),
+                          hint: Text(stateDistrictData.isEmpty ? 'Loading...' : 'Select State'),
+                          isExpanded: true,
+                          dropdownColor: Colors.white,
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: 16,
+                          ),
+                          items: stateDistrictData.isEmpty
+                              ? []
+                              : stateDistrictData.keys.map((String state) {
+                                  return DropdownMenuItem<String>(
+                                    value: state,
+                                    child: Text(state),
+                                  );
+                                }).toList(),
+                          onChanged: stateDistrictData.isEmpty ? null : (String? newValue) {
+                            setState(() {
+                              selectedState = newValue;
+                              selectedDistrict = null; // Reset district when state changes
+                              availableDistricts = newValue != null 
+                                  ? stateDistrictData[newValue]! 
+                                  : [];
+                              
+                              // Update controller
+                              controller.editStateController.text = newValue ?? '';
+                              controller.editDistrictController.text = '';
+                              controller.validateForm();
+                            });
+                          },
+                        ),
+                        SizedBox(height: screenHeight * 0.02),
+
+                        // District Dropdown
+                        DropdownButtonFormField<String>(
+                          value: selectedDistrict,
+                          focusNode: districtFocusNode,
+                          decoration: _styledDecoration(
+                            context: context,
+                            label: 'District',
+                            icon: Icons.map_outlined,
+                          ),
+                          hint: Text(selectedState == null ? 'Select State First' : 'Select District'),
+                          isExpanded: true,
+                          dropdownColor: Colors.white,
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: 16,
+                          ),
+                          items: availableDistricts.isEmpty 
+                              ? []
+                              : availableDistricts.map((String district) {
+                                  return DropdownMenuItem<String>(
+                                    value: district,
+                                    child: Text(district),
+                                  );
+                                }).toList(),
+                          onChanged: selectedState == null || availableDistricts.isEmpty ? null : (String? newValue) {
+                            setState(() {
+                              selectedDistrict = newValue;
+                              
+                              // Update controller
+                              controller.editDistrictController.text = newValue ?? '';
+                              controller.validateForm();
+                            });
+                          },
                         ),
                         SizedBox(height: screenHeight * 0.02),
 

@@ -2,6 +2,8 @@ import 'package:ionhive_water_purifier/core/controllers/session_controller.dart'
 import 'package:ionhive_water_purifier/feature/end_user_app/home/presentation/controllers/home_controller.dart';
 import 'package:ionhive_water_purifier/utils/widgets/webview_screen.dart';
 import 'package:ionhive_water_purifier/utils/widgets/card/water_usage_card.dart';
+import 'dart:async';
+import 'dart:math' as Math;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -10,6 +12,8 @@ import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/models/h
 import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/models/device_model.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:ionhive_water_purifier/core/core.dart';
+
 
 class CustomAppBar extends StatelessWidget {
   final DeviceData? deviceData;
@@ -46,7 +50,7 @@ class CustomAppBar extends StatelessWidget {
           Image.asset(
             'assets/Image/aquapulse_logo.png',
             width:
-                MediaQuery.of(context).size.width * 0.07, // Smaller logo width
+            MediaQuery.of(context).size.width * 0.07, // Smaller logo width
             height: 40,
             fit: BoxFit.contain,
           ),
@@ -187,6 +191,10 @@ class _HomePageState extends State<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         ConnectionBanner(deviceData: deviceData),
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+                        WaterPurifierShowcase(),
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+                        FeatureCardsSection(),
                         SizedBox(
                             height: MediaQuery.of(context).size.height * 0.02),
                         DeviceSelector(),
@@ -297,47 +305,47 @@ class ShimmerLoading extends StatelessWidget {
                 final isSmallScreen = screenWidth < 600;
                 return isSmallScreen
                     ? Column(
-                        children: [
-                          Container(
-                            height: screenHeight * 0.15,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          SizedBox(height: screenHeight * 0.015),
-                          Container(
-                            height: screenHeight * 0.15,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ],
-                      )
+                  children: [
+                    Container(
+                      height: screenHeight * 0.15,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.015),
+                    Container(
+                      height: screenHeight * 0.15,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ],
+                )
                     : Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              height: screenHeight * 0.15,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: screenWidth * 0.03),
-                          Expanded(
-                            child: Container(
-                              height: screenHeight * 0.15,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: screenHeight * 0.15,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: screenWidth * 0.03),
+                    Expanded(
+                      child: Container(
+                        height: screenHeight * 0.15,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
               },
             ),
             SizedBox(height: screenHeight * 0.025),
@@ -370,7 +378,7 @@ class ConnectionBanner extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(screenWidth * 0.035),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.1),
+        color: const Color(0xFFE3F2FD).withOpacity(0.7),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -391,7 +399,7 @@ class ConnectionBanner extends StatelessWidget {
                       : "Water purifier not Synced",
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color:
-                        isConnected ? theme.colorScheme.onSurface : Colors.grey,
+                    isConnected ? theme.colorScheme.onSurface : Colors.grey,
                     fontSize: screenWidth * 0.035,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -453,7 +461,749 @@ class ConnectionBanner extends StatelessWidget {
   }
 }
 
-class DeviceSelector extends StatelessWidget {
+class WaterPurifierShowcase extends StatefulWidget {
+  const WaterPurifierShowcase({super.key});
+
+  @override
+  State<WaterPurifierShowcase> createState() => _WaterPurifierShowcaseState();
+}
+
+class _WaterPurifierShowcaseState extends State<WaterPurifierShowcase>
+    with TickerProviderStateMixin {
+  late AnimationController _floatController;
+  late AnimationController _rotateController;
+  late AnimationController _waveController;
+  late Animation<double> _floatAnimation;
+  late Animation<double> _rotateAnimation;
+  late Animation<double> _waveAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    _floatController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _rotateController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    )..repeat();
+
+    _waveController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat();
+
+    _floatAnimation = Tween<double>(begin: -8, end: 8).animate(
+      CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
+    );
+
+    _rotateAnimation = Tween<double>(begin: 0, end: 2 * 3.14159).animate(_rotateController);
+    _waveAnimation = Tween<double>(begin: 0, end: 1).animate(_waveController);
+  }
+
+  @override
+  void dispose() {
+    _floatController.dispose();
+    _rotateController.dispose();
+    _waveController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Container(
+      height: screenHeight * 0.28,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1565C0), // Lighter dark blue (reduced intensity)
+            Color(0xFF1976D2),
+            Color(0xFF42A5F5),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.shade900.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Animated wave pattern background
+          AnimatedBuilder(
+            animation: _waveAnimation,
+            builder: (context, child) {
+              return CustomPaint(
+                size: Size(screenWidth, screenHeight * 0.28),
+                painter: WavePainter(_waveAnimation.value),
+              );
+            },
+          ),
+
+          // Main content
+          Padding(
+            padding: EdgeInsets.all(screenWidth * 0.05),
+            child: Row(
+              children: [
+                // Left side - Text content
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.water_drop,
+                            color: Colors.white,
+                            size: screenWidth * 0.08,
+                          ),
+                          SizedBox(width: screenWidth * 0.02),
+                          Text(
+                            'IonHive',
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontSize: screenWidth * 0.05,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: screenHeight * 0.015),
+                      Text(
+                        'Smart Water\nPurification',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontSize: screenWidth * 0.05,
+                          height: 1.2,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      SizedBox(height: screenHeight * 0.01),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: screenWidth * 0.03,
+                          vertical: screenHeight * 0.008,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          '99.9% Pure Water',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.white,
+                            fontSize: screenWidth * 0.028,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Right side - Additional features text
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildFeatureItem(
+                        icon: Icons.filter_alt_outlined,
+                        text: 'Advanced Filtration',
+                        screenWidth: screenWidth,
+                      ),
+                      SizedBox(height: screenHeight * 0.012),
+                      _buildFeatureItem(
+                        icon: Icons.wifi,
+                        text: 'IoT Enabled',
+                        screenWidth: screenWidth,
+                      ),
+                      SizedBox(height: screenHeight * 0.012),
+                      _buildFeatureItem(
+                        icon: Icons.speed,
+                        text: 'Real-time Monitoring',
+                        screenWidth: screenWidth,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem({
+    required IconData icon,
+    required String text,
+    required double screenWidth,
+  }) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          color: Colors.white.withOpacity(0.9),
+          size: screenWidth * 0.045,
+        ),
+        SizedBox(width: screenWidth * 0.02),
+        Flexible(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.95),
+              fontSize: screenWidth * 0.032,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _build3DPurifier(double screenWidth, double screenHeight) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Outer glow effect
+        Container(
+          width: screenWidth * 0.4,
+          height: screenWidth * 0.4,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                Colors.cyan.withOpacity(0.3),
+                Colors.blue.withOpacity(0.1),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
+
+        // Main purifier with internal flowing water
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Top water tank with animated water inside
+            Container(
+              width: screenWidth * 0.2,
+              height: screenHeight * 0.08,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withOpacity(0.9),
+                    Colors.blue.shade50.withOpacity(0.8),
+                    Colors.cyan.shade100.withOpacity(0.7),
+                  ],
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+                border: Border.all(color: Colors.white.withOpacity(0.6), width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 12,
+                    offset: Offset(4, 4),
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.8),
+                    blurRadius: 6,
+                    offset: Offset(-2, -2),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  // Animated water level with wave effect
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: AnimatedBuilder(
+                      animation: _waveAnimation,
+                      builder: (context, child) {
+                        return Container(
+                          height: screenHeight * 0.05,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.blue.shade200.withOpacity(0.5),
+                                Colors.blue.shade400.withOpacity(0.7),
+                                Colors.cyan.shade300.withOpacity(0.8),
+                              ],
+                            ),
+                          ),
+                          child: Stack(
+                            children: [
+                              // Water particles/bubbles inside
+                              ...List.generate(3, (index) {
+                                double offset = (index * 0.33);
+                                double animValue = (_waveAnimation.value + offset) % 1.0;
+                                return Positioned(
+                                  left: screenWidth * 0.03 + (index * screenWidth * 0.04),
+                                  bottom: animValue * screenHeight * 0.03,
+                                  child: Container(
+                                    width: 3,
+                                    height: 3,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white.withOpacity(0.7),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  // Status LED
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: AnimatedBuilder(
+                      animation: _waveAnimation,
+                      builder: (context, child) {
+                        return Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.green,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.green.withOpacity(0.6 + _waveAnimation.value * 0.4),
+                                blurRadius: 8,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Middle filter chamber with water flowing through
+            Container(
+              width: screenWidth * 0.24,
+              height: screenHeight * 0.09,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.grey.shade50.withOpacity(0.95),
+                    Colors.white.withOpacity(0.9),
+                    Colors.grey.shade100.withOpacity(0.95),
+                  ],
+                ),
+                border: Border.all(color: Colors.blue.shade100, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 15,
+                    offset: Offset(5, 5),
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.9),
+                    blurRadius: 8,
+                    offset: Offset(-3, -3),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  // Animated water streams flowing through filter
+                  AnimatedBuilder(
+                    animation: _waveAnimation,
+                    builder: (context, child) {
+                      return Stack(
+                        children: List.generate(4, (index) {
+                          double offset = (index * 0.25);
+                          double animValue = (_waveAnimation.value + offset) % 1.0;
+                          return Positioned(
+                            top: animValue * screenHeight * 0.09,
+                            left: screenWidth * 0.04 + (index * screenWidth * 0.04),
+                            child: Container(
+                              width: 2,
+                              height: screenHeight * 0.015,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.cyan.shade300.withOpacity(0.6),
+                                    Colors.blue.shade400.withOpacity(0.8),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(1),
+                              ),
+                            ),
+                          );
+                        }),
+                      );
+                    },
+                  ),
+                  // Rotating filter icon
+                  Center(
+                    child: AnimatedBuilder(
+                      animation: _rotateAnimation,
+                      builder: (context, child) {
+                        return Transform.rotate(
+                          angle: _rotateAnimation.value,
+                          child: Icon(
+                            Icons.filter_alt_outlined,
+                            color: Colors.blue.shade600.withOpacity(0.8),
+                            size: screenWidth * 0.09,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Bottom outlet/tap with water flowing out
+            Container(
+              width: screenWidth * 0.18,
+              height: screenHeight * 0.045,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.blue.shade200,
+                    Colors.blue.shade400,
+                    Colors.blue.shade600,
+                  ],
+                ),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+                border: Border.all(color: Colors.white.withOpacity(0.5), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 10,
+                    offset: Offset(3, 5),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  // Water stream inside outlet
+                  Center(
+                    child: AnimatedBuilder(
+                      animation: _waveAnimation,
+                      builder: (context, child) {
+                        return Container(
+                          width: 3,
+                          height: screenHeight * 0.03,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.cyan.shade200.withOpacity(0.8),
+                                Colors.blue.shade300.withOpacity(0.9),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(1.5),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  // Tap icon
+                  Center(
+                    child: Icon(
+                      Icons.water_drop_outlined,
+                      color: Colors.white.withOpacity(0.9),
+                      size: screenWidth * 0.06,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// Custom painter for wave effect
+class WavePainter extends CustomPainter {
+  final double animationValue;
+
+  WavePainter(this.animationValue);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.1)
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    path.moveTo(0, size.height * 0.7);
+
+    for (double i = 0; i < size.width; i++) {
+      path.lineTo(
+        i,
+        size.height * 0.7 +
+            20 * Math.sin((i / size.width * 2 * Math.pi) + (animationValue * 2 * Math.pi)),
+      );
+    }
+
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(WavePainter oldDelegate) => true;
+}
+
+class AnimatedWaterDrop extends StatefulWidget {
+  final double delay;
+  final double left;
+  final double top;
+
+  const AnimatedWaterDrop({
+    super.key,
+    required this.delay,
+    required this.left,
+    required this.top,
+  });
+
+  @override
+  State<AnimatedWaterDrop> createState() => _AnimatedWaterDropState();
+}
+
+class _AnimatedWaterDropState extends State<AnimatedWaterDrop>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
+
+    _animation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+
+    Future.delayed(Duration(milliseconds: (widget.delay * 1000).toInt()), () {
+      if (mounted) {
+        _controller.repeat(reverse: true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: widget.left,
+      top: widget.top,
+      child: AnimatedBuilder(
+        animation: _animation,
+        builder: (context, child) {
+          return Opacity(
+            opacity: 0.3 * _animation.value,
+            child: Icon(
+              Icons.water_drop,
+              size: 20 + (10 * _animation.value),
+              color: Colors.blue.shade300,
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+
+class FeatureCardsSection extends StatelessWidget {
+  const FeatureCardsSection({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery
+        .of(context)
+        .size
+        .width;
+
+    final List<Map<String, dynamic>> features = [
+      {
+        'icon': Icons.analytics_outlined,
+        'title': 'Water Tracking',
+        'image': 'assets/Image/g1.png',
+      },
+      {
+        'icon': Icons.notifications_active_outlined,
+        'title': 'Plans Starting ₹299/month',
+        'image': 'assets/Image/Rupees.jpg',
+      },
+      {
+        'icon': Icons.support_agent_outlined,
+        'title': 'Priority Support',
+        'image': 'assets/Image/g3.png',
+      },
+      {
+        'icon': Icons.build_circle_outlined,
+        'title': 'Lifetime Free Maintenance',
+        'image': 'assets/Image/Wp.png',
+      },
+    ];
+
+
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.01,
+        vertical: screenWidth * 0.02,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Services We Offer",
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.primary,
+              fontSize: screenWidth * 0.035,
+            ),
+          ),
+          SizedBox(height: screenWidth * 0.02),
+          GridView.count(
+            crossAxisCount: 2,
+            crossAxisSpacing: screenWidth * 0.025,
+            mainAxisSpacing: screenWidth * 0.025,
+            childAspectRatio: 2.6,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            children: features.map((feature) {
+              return _buildFeatureCard(
+                context,
+                icon: feature['icon'] as IconData,
+                title: feature['title'] as String,
+                imagePath: feature['image'] as String,
+                theme: theme,
+                fontSize: screenWidth * 0.03,
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureCard(
+      BuildContext context, {
+        required IconData icon,
+        required String title,
+        required String imagePath,
+        required ThemeData theme,
+        double fontSize = 14,
+      }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 400),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: child,
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: screenWidth * 0.025,
+          vertical: screenWidth * 0.022,
+        ),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE3F2FD).withOpacity(0.7), // lighter/faded blue
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.06), // reduced opacity
+              blurRadius: 4, // smaller blur
+              offset: const Offset(0, 2), // subtle shadow
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
+                  fontSize: fontSize,
+                ),
+              ),
+            ),
+            SizedBox(width: screenWidth * 0.02),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.asset(
+                imagePath,
+                height: screenWidth * 0.07,
+                width: screenWidth * 0.07,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+}
+
+  class DeviceSelector extends StatelessWidget {
   const DeviceSelector({super.key});
 
   @override
@@ -467,7 +1217,7 @@ class DeviceSelector extends StatelessWidget {
       final activeSubscription = homeController.activeSubscription.value;
 
       if (orders.isEmpty || orders.length <= 1) {
-        return SizedBox.shrink(); // Don't show if only one or no devices
+        return SizedBox.shrink(); // Hide if only one or no devices
       }
 
       return Container(
@@ -477,10 +1227,10 @@ class DeviceSelector extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 3,
-              offset: const Offset(0, 2),
+              color: Colors.grey.withOpacity(0.05), // lighter shadow
+              spreadRadius: 0.5, // reduced spread
+              blurRadius: 2, // reduced blur
+              offset: const Offset(0, 1), // smaller offset
             ),
           ],
         ),
@@ -492,6 +1242,7 @@ class DeviceSelector extends StatelessWidget {
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: theme.colorScheme.primary,
+                fontSize: screenWidth * 0.035,
               ),
             ),
             SizedBox(height: screenWidth * 0.02),
@@ -504,7 +1255,7 @@ class DeviceSelector extends StatelessWidget {
                 ),
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: screenWidth * 0.03,
-                  vertical: screenWidth * 0.02,
+                  vertical: screenWidth * 0.015,
                 ),
               ),
               items: orders.map((order) {
@@ -514,7 +1265,7 @@ class DeviceSelector extends StatelessWidget {
                     "${order.modelName} (${order.wpDeviceId})",
                     style: TextStyle(
                       color: Colors.black,
-                      fontSize: screenWidth * 0.035,
+                      fontSize: screenWidth * 0.03,
                     ),
                   ),
                 );
@@ -532,205 +1283,327 @@ class DeviceSelector extends StatelessWidget {
   }
 }
 
-class PlanDetails extends StatelessWidget {
+
+
+
+class PlanDetails extends StatefulWidget {
   final Subscription? subscription;
   final DeviceData? deviceData;
 
   const PlanDetails({super.key, this.subscription, this.deviceData});
 
   @override
+  State<PlanDetails> createState() => _PlanDetailsState();
+}
+
+class _PlanDetailsState extends State<PlanDetails> {
+  int currentPage = 0;
+  Timer? _timer;
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    _startAutoSlide();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoSlide() {
+    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (mounted) {
+        setState(() {
+          // Calculate next page index
+          final List<String> imageUrls = [];
+          if (widget.subscription != null) {
+            if (widget.subscription!.mainImage.isNotEmpty) {
+              imageUrls.add('${Core.baseUrl}/upload/img/${widget.subscription!.mainImage}');
+            }
+            for (var subImg in widget.subscription!.subImages) {
+              imageUrls.add('${Core.baseUrl}/upload/img/$subImg');
+            }
+          }
+
+          if (imageUrls.length > 1) {
+            currentPage = (currentPage + 1) % imageUrls.length;
+            _pageController.animateToPage(
+              currentPage,
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeInOut,
+            );
+          }
+        });
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final isSmallScreen = screenWidth < 600;
 
-    final double waterUsed = deviceData?.waterConsumed ?? 0.0;
-    final int waterLimit = deviceData?.totalWaterLimit ?? 500;
+    final double waterUsed = widget.deviceData?.waterConsumed ?? 0.0;
+    final int waterLimit = widget.deviceData?.totalWaterLimit ?? 500;
     final String capacityStr = "${waterLimit}L";
-    final planName = subscription?.selectedPlan.label ?? "Silver";
-    final model = subscription?.modelName ?? "Bolt";
+    final planName = widget.subscription?.selectedPlan.label ?? "Silver";
+    final model = widget.subscription?.modelName ?? "Bolt";
     final planAmount =
-    subscription != null ? "₹ ${subscription!.selectedPlan.price.toString()}" : "₹ 425";
-    final planStart = subscription != null
-        ? _formatDate(subscription!.createdAt)
+    widget.subscription != null
+        ? "₹ ${widget.subscription!.selectedPlan.price}"
+        : "₹ 425";
+    final planStart = widget.subscription != null
+        ? _formatDate(widget.subscription!.createdAt)
         : "25/08/2022";
+
+    // ---------------- Image URLs ----------------
+    List<String> imageUrls = [];
+    if (widget.subscription != null) {
+      if (widget.subscription!.mainImage.isNotEmpty) {
+        final mainImageUrl = '${Core.baseUrl}/upload/img/${widget.subscription!.mainImage}';
+        imageUrls.add(mainImageUrl);
+        debugPrint('🖼️ Main image URL: $mainImageUrl');
+      }
+      for (var subImg in widget.subscription!.subImages) {
+        final subImageUrl = '${Core.baseUrl}/upload/img/$subImg';
+        imageUrls.add(subImageUrl);
+        debugPrint('🖼️ Sub image URL: $subImageUrl');
+      }
+      debugPrint('🖼️ Total images to display: ${imageUrls.length}');
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          "Plan Details",
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
-            fontSize: screenWidth * 0.05,
-          ),
-        ),
-        SizedBox(height: screenHeight * 0.015),
-        Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-              color: theme.colorScheme.primary.withOpacity(0.2),
-              width: 1,
+        // ---------------- Image Slider ----------------
+        if (imageUrls.isNotEmpty) ...[
+          SizedBox(
+            height: screenHeight * 0.3,
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: imageUrls.length,
+              onPageChanged: (index) => setState(() => currentPage = index),
+              itemBuilder: (context, index) {
+                String fullUrl = imageUrls[index];
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Center(
+                    child: AspectRatio(
+                      aspectRatio: 4 / 3,
+                      child: Image.network(
+                        fullUrl,
+                        fit: BoxFit.contain,
+                        width: screenWidth * 0.9,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const Center(child: CircularProgressIndicator());
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          debugPrint('❌ Image load error: $error');
+                          return Container(
+                            color: Colors.grey[200],
+                            child: const Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                                  SizedBox(height: 8),
+                                  Text('Image not available', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
-          child: Padding(
-            padding: EdgeInsets.all(screenWidth * 0.04),
-            child: isSmallScreen
-                ? Column(
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              imageUrls.length,
+                  (index) => AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: currentPage == index ? 8 : 6,
+                height: currentPage == index ? 8 : 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: currentPage == index
+                      ? theme.colorScheme.primary
+                      : Colors.grey.withOpacity(0.5),
+                ),
+              ),
+            ),
+          ),
+        ],
+
+        SizedBox(height: screenHeight * 0.03),
+
+        // ---------------- Plan Details Title ----------------
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.03),
+          child: Text(
+            "Plan Details",
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.primary,
+              fontSize: screenWidth * 0.035,
+            ),
+          ),
+        ),
+
+        SizedBox(height: screenHeight * 0.015),
+
+        // ---------------- Plan Details Card ----------------
+        Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 5,
+          shadowColor: Colors.blue.withOpacity(0.2),
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(screenWidth * 0.05),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF1565C0), // Lighter dark blue (reduced intensity)
+                  Color(0xFF1976D2), // Medium blue
+                  Color(0xFF42A5F5), // Light blue
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: EdgeInsets.all(screenWidth * 0.03),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(8),
+                // Plan Name & Model
+                Text(
+                  planName,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: screenWidth * 0.05,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildDetailRow(
-                        theme,
-                        label: "Plan Name",
-                        value: planName,
-                        screenWidth: screenWidth,
-                      ),
-                      SizedBox(height: screenHeight * 0.01),
-                      _buildDetailRow(
-                        theme,
-                        label: "Model",
-                        value: model,
-                        screenWidth: screenWidth,
-                      ),
-                      SizedBox(height: screenHeight * 0.01),
-                      _buildDetailRow(
-                        theme,
-                        label: "Water Limit",
-                        value: capacityStr,
-                        screenWidth: screenWidth,
-                      ),
-                      SizedBox(height: screenHeight * 0.01),
-                      _buildDetailRow(
-                        theme,
-                        label: "Plan Amount",
-                        value: planAmount,
-                        screenWidth: screenWidth,
-                      ),
-                      SizedBox(height: screenHeight * 0.01),
-                      _buildDetailRow(
-                        theme,
-                        label: "Plan Start",
-                        value: planStart,
-                        screenWidth: screenWidth,
-                      ),
-                    ],
+                ),
+                SizedBox(height: screenHeight * 0.005),
+                Text(
+                  model,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.white70,
+                    fontSize: screenWidth * 0.035,
                   ),
                 ),
                 SizedBox(height: screenHeight * 0.02),
-                Center(
-                  child: WaterUsageCard(
-                    waterUsed: waterUsed,
-                    waterLimit: waterLimit,
-                    width: screenWidth * 0.9, // Adjusted width for small screens
-                  ),
-                ),
-              ],
-            )
-                : Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: EdgeInsets.all(screenWidth * 0.03),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
+
+                // Water Limit & Plan Start
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildDetailRow(
-                          theme,
-                          label: "Plan Name",
-                          value: planName,
-                          screenWidth: screenWidth,
+                        Text(
+                          "Water Limit",
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.white70,
+                            fontSize: screenWidth * 0.03,
+                          ),
                         ),
-                        SizedBox(height: screenHeight * 0.01),
-                        _buildDetailRow(
-                          theme,
-                          label: "Model",
-                          value: model,
-                          screenWidth: screenWidth,
-                        ),
-                        SizedBox(height: screenHeight * 0.01),
-                        _buildDetailRow(
-                          theme,
-                          label: "Water Limit",
-                          value: capacityStr,
-                          screenWidth: screenWidth,
-                        ),
-                        SizedBox(height: screenHeight * 0.01),
-                        _buildDetailRow(
-                          theme,
-                          label: "Plan Amount",
-                          value: planAmount,
-                          screenWidth: screenWidth,
-                        ),
-                        SizedBox(height: screenHeight * 0.01),
-                        _buildDetailRow(
-                          theme,
-                          label: "Plan Start",
-                          value: planStart,
-                          screenWidth: screenWidth,
+                        const SizedBox(height: 4),
+                        Text(
+                          capacityStr,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: screenWidth * 0.035,
+                          ),
                         ),
                       ],
                     ),
-                  ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          "Plan Start",
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.white70,
+                            fontSize: screenWidth * 0.03,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          planStart,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: screenWidth * 0.035,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                Padding(
-                  padding: EdgeInsets.only(left: screenWidth * 0.04),
-                  child: WaterUsageCard(
-                    waterUsed: waterUsed,
-                    waterLimit: waterLimit,
-                    width: screenWidth * 0.3, // Adjusted width for larger screens
+                SizedBox(height: screenHeight * 0.02),
+
+                // Plan Amount
+                Container(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth * 0.03, vertical: screenHeight * 0.008),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    planAmount,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: screenWidth * 0.04,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
         ),
-      ],
-    );
-  }
 
-  Widget _buildDetailRow(
-      ThemeData theme, {
-        required String label,
-        required String value,
-        required double screenWidth,
-      }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "$label:",
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.5), // Neutral muted color
-            fontSize: screenWidth * 0.035,
-          ),
-        ),
-        SizedBox(width: screenWidth * 0.02),
-        Flexible(
-          fit: FlexFit.loose,
+        SizedBox(height: screenHeight * 0.03),
+
+        // ---------------- Water Usage Title ----------------
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.03),
           child: Text(
-            value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface, // Default text color
-              fontWeight: FontWeight.w500,
+            "Water Usage",
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.primary,
               fontSize: screenWidth * 0.035,
             ),
+          ),
+        ),
+
+        SizedBox(height: screenHeight * 0.015),
+
+        // ---------------- Water Usage Card ----------------
+        Center(
+          child: WaterUsageCard(
+            waterUsed: waterUsed,
+            waterLimit: waterLimit,
+            width: screenWidth * 0.95,
           ),
         ),
       ],
@@ -742,6 +1615,9 @@ class PlanDetails extends StatelessWidget {
     return "${dateTime.day}/${dateTime.month}/${dateTime.year}";
   }
 }
+
+
+
 
 class DeviceStatsSection extends StatefulWidget {
   final DeviceData? deviceData;
@@ -853,8 +1729,8 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
                     statusColor: tdsOut < 50
                         ? Colors.blue
                         : tdsOut < 150
-                            ? Colors.yellow[700]
-                            : Colors.red,
+                        ? Colors.yellow[700]
+                        : Colors.red,
                     tooltip: "Total Dissolved Solids (ideal: <50 ppm)",
                   ),
                 ),
@@ -877,7 +1753,7 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
                     value: temperature == 0.0 ? "-" : "${temperature.toStringAsFixed(1)}°C",
                     screenWidth: screenWidth,
                     statusColor:
-                        temperature < 30 ? Colors.green : Colors.orange,
+                    temperature < 30 ? Colors.green : Colors.orange,
                     tooltip: "Current water temperature",
                   ),
                 ),
@@ -910,13 +1786,13 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
                     icon: Icons.storage,
                     label: "Tank Level",
                     value:
-                        "$tankLevelStatus (${tankLevel == 0.0 ? '-' : tankLevel.toStringAsFixed(0)}%)",
+                    "$tankLevelStatus (${tankLevel == 0.0 ? '-' : tankLevel.toStringAsFixed(0)}%)",
                     screenWidth: screenWidth,
                     statusColor: tankLevelStatus == "FULL"
                         ? Colors.green
                         : tankLevelStatus == "MEDIUM"
-                            ? Colors.orange
-                            : Colors.red,
+                        ? Colors.orange
+                        : Colors.red,
                     showProgress: true,
                     progressValue: tankLevel / 100,
                     tooltip: "Remaining water in the tank",
@@ -939,7 +1815,7 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
                     icon: Icons.speed,
                     label: "Flow Rate",
                     value:
-                        flowRate == 0.0 ? "-" : "${flowRate.toStringAsFixed(1)} L/min",
+                    flowRate == 0.0 ? "-" : "${flowRate.toStringAsFixed(1)} L/min",
                     screenWidth: screenWidth,
                     statusColor: flowRate > 1.0
                         ? Colors.green
@@ -957,19 +1833,19 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
 
   Widget _buildStatItem(ThemeData theme,
       {required IconData icon,
-      required String label,
-      required String value,
-      required double screenWidth,
-      Color? statusColor,
-      bool showProgress = false,
-      double? progressValue,
-      String? tooltip}) {
+        required String label,
+        required String value,
+        required double screenWidth,
+        Color? statusColor,
+        bool showProgress = false,
+        double? progressValue,
+        String? tooltip}) {
     final gradientColors = statusColor != null
         ? [statusColor.withOpacity(0.2), statusColor.withOpacity(0.4)]
         : [
-            theme.colorScheme.primary.withOpacity(0.2),
-            theme.colorScheme.primary.withOpacity(0.4)
-          ];
+      theme.colorScheme.primary.withOpacity(0.2),
+      theme.colorScheme.primary.withOpacity(0.4)
+    ];
 
     return AnimatedOpacity(
       opacity: 1.0,
@@ -1028,7 +1904,7 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
                               color: statusColor ?? theme.colorScheme.primary,
                               fontSize: screenWidth * 0.035,
                               overflow:
-                                  TextOverflow.ellipsis, // Prevent overflow
+                              TextOverflow.ellipsis, // Prevent overflow
                             ),
                             maxLines: 1,
                           ),
@@ -1176,7 +2052,7 @@ class _SmartFeatureSectionState extends State<SmartFeatureSection> {
                         title: "Valve Status",
                         subtitle: valveStatus,
                         color:
-                            valveStatus == "OPEN" ? Colors.blue : Colors.grey,
+                        valveStatus == "OPEN" ? Colors.blue : Colors.grey,
                         screenWidth: screenWidth,
                       ),
                     ),
@@ -1189,7 +2065,7 @@ class _SmartFeatureSectionState extends State<SmartFeatureSection> {
                 children: List.generate(5, (index) {
                   return Container(
                     margin:
-                        EdgeInsets.symmetric(horizontal: screenWidth * 0.008),
+                    EdgeInsets.symmetric(horizontal: screenWidth * 0.008),
                     width: _currentPage == index
                         ? screenWidth * 0.02
                         : screenWidth * 0.01,
@@ -1349,13 +2225,14 @@ class RechargeChangeSection extends StatelessWidget {
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = screenWidth < 600;
 
-    final currentDate = DateTime.now();
-    final expiryDate = subscription != null
-        ? DateTime.parse(subscription!.subscriptionExpiryDate)
-        : DateTime(2022, 9, 25);
-    final formattedExpiryDate = _formatDate(expiryDate);
-    const changePlanMessage = "Get Unlimited water";
+    if (subscription == null || subscription!.subscriptionExpiryDate.isEmpty) {
+      // Don't show anything until expiry date is available
+      return SizedBox.shrink();
+    }
 
+    final currentDate = DateTime.now();
+    final expiryDate = DateTime.parse(subscription!.subscriptionExpiryDate);
+    final formattedExpiryDate = _formatDate(expiryDate);
     final bool isExpired = currentDate.isAfter(expiryDate);
 
     Widget buildCard({
@@ -1364,7 +2241,6 @@ class RechargeChangeSection extends StatelessWidget {
       required String subtitle,
       required String buttonText,
       required VoidCallback? onPressed,
-      String? tagText,
     }) {
       return SizedBox(
         width: double.infinity,
@@ -1402,46 +2278,15 @@ class RechargeChangeSection extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  title,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: theme.colorScheme.primary,
-                                    fontSize: screenWidth * 0.035,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  maxLines: 1,
-                                ),
-                              ),
-                              if (tagText != null)
-                                Container(
-                                  constraints: BoxConstraints(
-                                    maxWidth: screenWidth * 0.25,
-                                  ),
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: screenWidth * 0.01,
-                                    vertical: screenWidth * 0.005,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    tagText,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: screenWidth * 0.025,
-                                      fontWeight: FontWeight.bold,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    maxLines: 1,
-                                  ),
-                                ),
-                            ],
+                          Text(
+                            title,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.primary,
+                              fontSize: screenWidth * 0.035,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            maxLines: 1,
                           ),
                           SizedBox(height: screenWidth * 0.005),
                           Text(
@@ -1449,7 +2294,7 @@ class RechargeChangeSection extends StatelessWidget {
                             style: theme.textTheme.bodySmall?.copyWith(
                               fontSize: screenWidth * 0.03,
                               color:
-                                  theme.colorScheme.onSurface.withOpacity(0.6),
+                              theme.colorScheme.onSurface.withOpacity(0.6),
                               overflow: TextOverflow.ellipsis,
                             ),
                             maxLines: 1,
@@ -1494,80 +2339,28 @@ class RechargeChangeSection extends StatelessWidget {
       );
     }
 
-    return isSmallScreen
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              buildCard(
-                icon: Icons.monetization_on_outlined,
-                title: "Recharge Plan",
-                subtitle: "Expires on: $formattedExpiryDate",
-                buttonText: "Recharge",
-                onPressed: isExpired
-                    ? () {
-                        Get.to(
-                          () => WebViewScreen(
-                            controller: webViewController,
-                          ),
-                          transition: Transition.rightToLeft,
-                          duration: const Duration(milliseconds: 300),
-                        );
-                      }
-                    : null,
-              ),
-              SizedBox(height: screenHeight * 0.015),
-              buildCard(
-                icon: Icons.sync_alt,
-                title: "Change Plan",
-                subtitle: changePlanMessage,
-                buttonText: "Change Plan",
-                onPressed: null, // Disabled as per "Coming Soon"
-                tagText: "Coming Soon",
-              ),
-            ],
-          )
-        : Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: buildCard(
-                  icon: Icons.monetization_on_outlined,
-                  title: "Recharge Plan",
-                  subtitle: "Expires on: $formattedExpiryDate",
-                  buttonText: "Recharge",
-                  onPressed: isExpired
-                      ? () {
-                          Get.to(
-                            () => WebViewScreen(
-                              controller: webViewController,
-                            ),
-                            transition: Transition.rightToLeft,
-                            duration: const Duration(milliseconds: 300),
-                          );
-                        }
-                      : null,
-                ),
-              ),
-              SizedBox(width: screenWidth * 0.03),
-              Expanded(
-                child: buildCard(
-                  icon: Icons.sync_alt,
-                  title: "Change Plan",
-                  subtitle: changePlanMessage,
-                  buttonText: "Change Plan",
-                  onPressed: null, // Disabled as per "Coming Soon"
-                  tagText: "Coming Soon",
-                ),
-              ),
-            ],
-          );
+    return buildCard(
+      icon: Icons.monetization_on_outlined,
+      title: "Recharge Plan",
+      subtitle: "Expires on: $formattedExpiryDate",
+      buttonText: "Recharge",
+      onPressed: () {
+        Get.to(
+              () => WebViewScreen(
+            controller: webViewController,
+          ),
+          transition: Transition.rightToLeft,
+          duration: const Duration(milliseconds: 300),
+        );
+      },
+    );
   }
 
   String _formatDate(DateTime dateTime) {
     return "${dateTime.day}/${dateTime.month}/${dateTime.year}";
   }
 }
+
 
 class ReferralBanner extends StatelessWidget {
   const ReferralBanner({super.key});

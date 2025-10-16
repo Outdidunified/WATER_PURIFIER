@@ -64,6 +64,24 @@ class TechnicianController extends GetxController {
     }
   }
 
+  Future<String?> generateQR(int taskId, String taskStatus) async {
+    try {
+      final response = await taskRepository.updateTaskDetails(
+        taskId: taskId,
+        taskStatus: taskStatus,
+        paymentMethod: 'QR',
+      );
+      if (!response.error) {
+        return response.qrCode;
+      } else {
+        throw Exception(response.message);
+      }
+    } catch (e) {
+      debugPrint('Error generating QR: $e');
+      rethrow;
+    }
+  }
+
   Future<void> updateTask({
     required int taskId,
     required String taskStatus,
@@ -71,6 +89,10 @@ class TechnicianController extends GetxController {
     String? otp,
     File? beforeImage,
     File? afterImage,
+    bool collectPayment = false,
+    String? paymentMethod,
+    String? razorpayPaymentId,
+    String? razorpaySignature,
   }) async {
     try {
       isRefreshing.value = true;
@@ -81,10 +103,14 @@ class TechnicianController extends GetxController {
         otp: otp,
         beforeImage: beforeImage,
         afterImage: afterImage,
+        collectPayment: collectPayment,
+        paymentMethod: paymentMethod,
+        razorpayPaymentId: razorpayPaymentId,
+        razorpaySignature: razorpaySignature,
       );
 
       if (!response.error) {
-        Get.back();
+        if (Get.isDialogOpen ?? false) Get.back();
         CustomSnackbar.showSuccess(message: response.message);
         await loadTasks();
       } else {
