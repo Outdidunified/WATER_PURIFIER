@@ -61,48 +61,48 @@ const ViewManageDevice = ({ userInfo, handleLogout }) => {
 
                     <div className="row viewDataCss">
                       <div className="col-md-4">
-                        <strong>Device ID:</strong> <span>{device.wp_device_id || '-'}</span>
+                        <strong>Device ID</strong> <span>{device.wp_device_id || '-'}</span>
                       </div>
                       <div className="col-md-4">
-                        <strong>Model Name:</strong> <span>{device.model_name || '-'}</span>
+                        <strong>Model Name</strong> <span>{device.model_name || '-'}</span>
                       </div>
                       <div className="col-md-4">
-                        <strong>Model ID:</strong> <span>{device.model_id || '-'}</span>
+                        <strong>Model ID</strong> <span>{device.model_id || '-'}</span>
                       </div>
                     </div>
 
                     <div className="row viewDataCss" style={{ marginTop: '10px' }}>
                       <div className="col-md-4">
-                        <strong>Status:</strong>{' '}
+                        <strong>Status</strong>{' '}
                         <span className={device.status === true ? 'text-success' : device.status === false ? 'text-danger' : ''}>
                           {device.status === true ? 'Active' : device.status === false ? 'Inactive' : '-'}
                         </span>
                       </div>
                       <div className="col-md-4">
-                        <strong>Created By:</strong> <span>{device.createdby || '-'}</span>
+                        <strong>Created By</strong> <span>{device.createdby || '-'}</span>
                       </div>
                       <div className="col-md-4">
-                        <strong>Model Assigned By:</strong> <span>{device.model_assigned_by || '-'}</span>
+                        <strong>Model Assigned By</strong> <span>{device.model_assigned_by || '-'}</span>
                       </div>
                     </div>
 
                     <div className="row viewDataCss" style={{ marginTop: '10px' }}>
                       <div className="col-md-4">
-                        <strong>Modified By:</strong> <span>{device.modifiedby || '-'}</span>
+                        <strong>Modified By</strong> <span>{device.modifiedby || '-'}</span>
                       </div>
                       <div className="col-md-4">
-                        <strong>Created Date:</strong>{' '}
+                        <strong>Created Date</strong>{' '}
                         <span>{device.createddate ? formatTimestamp(device.createddate) : '-'}</span>
                       </div>
                       <div className="col-md-4">
-                        <strong>Modified Date:</strong>{' '}
+                        <strong>Modified Date</strong>{' '}
                         <span>{device.modifieddate ? formatTimestamp(device.modifieddate) : '-'}</span>
                       </div>
                     </div>
 
                     <div className="row viewDataCss" style={{ marginTop: '10px' }}>
                       <div className="col-md-4">
-                        <strong>Model Assigned Date:</strong>{' '}
+                        <strong>Model Assigned Date</strong>{' '}
                         <span>{device.model_assigned_date ? formatTimestamp(device.model_assigned_date) : '-'}</span>
                       </div>
                     </div>

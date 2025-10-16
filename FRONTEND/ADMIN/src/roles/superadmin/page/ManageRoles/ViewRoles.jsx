@@ -56,10 +56,10 @@ const ViewRoles = ({ userInfo, handleLogout }) => {
                     <hr />
 
                     <div className="row col-12 viewDataCss">
-                      <div className="col-md-4"><strong>Role ID:</strong> {role.role_id || '-'}</div>
-                      <div className="col-md-4"><strong>Role Name:</strong> {role.role_name || '-'}</div>
+                      <div className="col-md-4"><strong>Role ID</strong> {role.role_id || '-'}</div>
+                      <div className="col-md-4"><strong>Role Name</strong> {role.role_name || '-'}</div>
                       <div className="col-md-4">
-                        <strong>Status:</strong>{' '}
+                        <strong>Status</strong>{' '}
                         {role.status ? (
                           <span className="text-success">Active</span>
                         ) : (
@@ -69,13 +69,13 @@ const ViewRoles = ({ userInfo, handleLogout }) => {
                     </div>
 
                     <div className="row col-12 viewDataCss">
-                      <div className="col-md-4"><strong>Created By:</strong> {role.created_by || '-'}</div>
-                      <div className="col-md-4"><strong>Created Date:</strong> {role.created_date ? formatTimestamp(role.created_date) : '-'}</div>
-                      <div className="col-md-4"><strong>Modified By:</strong> {role.modified_by || '-'}</div>
+                      <div className="col-md-4"><strong>Created By</strong> {role.created_by || '-'}</div>
+                      <div className="col-md-4"><strong>Created Date</strong> {role.created_date ? formatTimestamp(role.created_date) : '-'}</div>
+                      <div className="col-md-4"><strong>Modified By</strong> {role.modified_by || '-'}</div>
                     </div>
 
                     <div className="row col-12 viewDataCss">
-                      <div className="col-md-4"><strong>Modified Date:</strong> {role.modified_date ? formatTimestamp(role.modified_date) : '-'}</div>
+                      <div className="col-md-4"><strong>Modified Date</strong> {role.modified_date ? formatTimestamp(role.modified_date) : '-'}</div>
                     </div>
 
                   </div>

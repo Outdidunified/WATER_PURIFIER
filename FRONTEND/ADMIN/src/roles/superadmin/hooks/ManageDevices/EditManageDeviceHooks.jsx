@@ -35,20 +35,17 @@ const useEditDevice = (userInfo) => {
     }
   }, [dataItem]);
 
-  const isModified = (
-    wpDeviceId !== (dataItem?.wp_device_id || '') ||
-    modelId !== (dataItem?.model_id?.toString() || '') ||
-    modelName !== (dataItem?.model_name || '') ||
-    status !== (dataItem?.status === true ? 'active' : 'inactive')
-  );
+
 
   const goBackToManageDevices = () => {
     navigate('/superadmin/ManageDevice');
   };
 
   const updateDevice = async (e) => {
+
     e.preventDefault();
     setLoading(true);
+    alert("update")
     setErrorMessage('');
 
     if (!wpDeviceId || !modelId || !modelName) {

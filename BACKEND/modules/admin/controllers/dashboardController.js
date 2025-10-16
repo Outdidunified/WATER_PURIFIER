@@ -359,7 +359,7 @@ const AddProductModels = async (req, res) => {
             const sub_img_2 = uploadedFiles['sub_img_2']?.[0]?.filename || product.sub_img_2 || "";
             const sub_img_3 = uploadedFiles['sub_img_3']?.[0]?.filename || product.sub_img_3 || "";
             const sub_img_4 = uploadedFiles['sub_img_4']?.[0]?.filename || product.sub_img_4 || "";
-            const product_specifications = uploadedFiles['spec_pdf']?.[0]?.filename || product.product_specifications || "";
+            const product_specifications = uploadedFiles['product_specifications']?.[0]?.filename || product.product_specifications || "";
 
             // Auto-assign missing plans_id (global across all models)
             const lastPlanIdDoc = await collection.aggregate([
@@ -661,7 +661,7 @@ const UpdateProductModels = async (req, res) => {
             const sub_img_2 = req.files?.['sub_img_2']?.[0]?.filename || product.sub_img_2 || '';
             const sub_img_3 = req.files?.['sub_img_3']?.[0]?.filename || product.sub_img_3 || '';
             const sub_img_4 = req.files?.['sub_img_4']?.[0]?.filename || product.sub_img_4 || '';
-            const product_specifications = req.files?.['spec_pdf']?.[0]?.filename || product.product_specifications || '';
+            const product_specifications = req.files?.['product_specifications']?.[0]?.filename || req.body.existing_product_specifications || '';
 
             // Auto-assign missing plans_id
             const lastPlanIdDoc = await collection.aggregate([
@@ -1635,8 +1635,26 @@ const FetchSelectUserOrders = async (req, res) => {
         const enrichedOrders = await ordersCollection.aggregate([
             {
                 $match: {
-                    orderStatus: "Confirmed",
-                    paymentStatus: "Completed"
+                    $expr: {
+                        $and: [
+                            { $eq: ["$orderStatus", "Confirmed"] },
+                            {
+                                $or: [
+                                    {
+                                        $eq: [
+                                            {
+                                                $toUpper: {
+                                                    $ifNull: ["$paymentType", ""]
+                                                }
+                                            },
+                                            "COD"
+                                        ]
+                                    },
+                                    { $eq: ["$paymentStatus", "Completed"] }
+                                ]
+                            }
+                        ]
+                    }
                 }
             },
             {
@@ -2675,7 +2693,29 @@ const GetInstallationsByDistrict = async (req, res) => {
     const db = await database.connectToDatabase();
     const ordersCollection = db.collection("orders");
 
-    const matchStage = { paymentStatus: "Completed", orderStatus: "Confirmed" };
+    const matchStage = {
+      $expr: {
+        $and: [
+          { $eq: ["$orderStatus", "Confirmed"] },
+          {
+            $or: [
+              {
+                $eq: [
+                  {
+                    $toUpper: {
+                      $ifNull: ["$paymentType", ""]
+                    }
+                  },
+                  "COD"
+                ]
+              },
+              { $eq: ["$paymentStatus", "Completed"] }
+            ]
+          }
+        ]
+      }
+    };
+
     if (district && String(district).trim() !== '') {
       // Case-insensitive regex
       matchStage["deliveryAddress.district"] = new RegExp(`^${String(district).trim()}$`, "i");
@@ -4007,4 +4047,5 @@ module.exports = {
     AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchEndUserDevices, FetchOrdersByUserId, FetchTechnicianTasksByUserId, GetAnalytics,
     GetAnalyticsByDistrict,GetDistrictsWithSellers
     // UpdateOrdersStatus,
+
 };

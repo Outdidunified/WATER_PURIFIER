@@ -88,7 +88,8 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
                         placeholder="Device Quantity"
                         value={wpDeviceQuantity}
                         onChange={(e) => {
-                          const value = e.target.value.replace(/[^0-9]/g, '');
+                          let value = e.target.value.replace(/[^0-9]/g, '');
+                          value = value.replace(/^0+(?=\d)/, '');
                           setWpDeviceQuantity(value);
                         }}
                         maxLength={20}
@@ -163,15 +164,12 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="input-label">Product Specifications</label>
-                      <textarea
+                      <label className="input-label">Product Specifications (PDF)</label>
+                      <input
+                        type="file"
+                        accept="application/pdf"
                         className="form-control"
-                              style={{ minHeight: '130px' }}
-
-                        value={productSpecifications}
-                        onChange={(e) => setProductSpecifications(e.target.value.trimStart())}
-                        required
-                        maxLength={500}
+                        onChange={(e) => setProductSpecifications(e.target.files[0])}
                       />
                     </div>
                   </div>
@@ -356,7 +354,7 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
         <div className="col-md-3">
           <InputField
             type="text"
-            placeholder="Price"
+            placeholder="Price Per 28 Days"
             value={plan.price || ""}
             maxLength={10}
             title="Enter a valid price (up to 2 decimal places)."
@@ -422,6 +420,7 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
   onChange={(e) => handleDurationChange(index, 'duration_time_limit', e.target.value)}
   required
 >
+  <option value="">Select Duration</option>
   <option value="28 days">28 days</option>
   <option value="60 days">60 days</option>
   <option value="90 days">90 days</option>

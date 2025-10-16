@@ -65,7 +65,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                   serviceRecord.releasedDate;
                 const completedDate =
                   task.task_completed_date ||
-                  serviceRecord.completed_at ||
+                  serviceRecord.completed_date ||
                   serviceRecord.completedAt;
                 const subscriptionExpiry =
                   task.subscriptionExpiryDate ||
@@ -139,7 +139,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                   delivery.addressLine1 || delivery.address1 || delivery.address || '';
                 const addressLine2 =
                   delivery.addressLine2 || delivery.address2 || delivery.landmark || '';
-                const fullAddress = [addressLine1, addressLine2].filter(Boolean).join(' ');
+                const fullAddress = [addressLine1, addressLine2].filter(Boolean).join(' ')|| delivery.street;
                 const city = delivery.city || delivery.town || delivery.city_town || '';
                 const district =
                   delivery.district || delivery.state_district || task.district || '';
@@ -161,6 +161,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                   serviceRecord.created_at ||
                   serviceRecord.createdAt;
                 const imageAfterService = task.image_after_service || serviceRecord.image_after_service || [];
+                
 
                 return (
                   <div
@@ -177,13 +178,13 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
 
                           <div className="row viewDataCss">
                             <div className="col-md-4">
-                              <strong>Model Name:</strong> {task.modelName || '-'}
+                              <strong>Model Name</strong>&nbsp;&nbsp; {task.modelName || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Device ID:</strong> {task.wp_device_id || '-'}
+                              <strong>Device ID</strong> {task.wp_device_id || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Plan:</strong> {planLabel || '-'}
+                              <strong>Plan</strong> {planLabel || '-'}
                               {planCapacity ? ` (${planCapacity})` : ''}
                             </div>
 
@@ -192,13 +193,13 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                           <div className="row viewDataCss mt-2">
                             
                             <div className="col-md-4">
-                              <strong>Duration:</strong> {durationLabel || '-'}
+                              <strong>Duration</strong> {durationLabel || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Total Litre:</strong> {totalLitre ?? '-'}
+                              <strong>Total Litre</strong> {totalLitre ?? '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Grand Total:</strong>{' '}
+                              <strong>Grand Total</strong>{' '}
                               {grandTotal !== undefined && grandTotal !== null
                                 ? `₹${Number(grandTotal).toLocaleString()}`
                                 : '-'}
@@ -208,25 +209,25 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                           <div className="row viewDataCss mt-2">
                             
                             <div className="col-md-4">
-                                 <strong>Created At:</strong> {formatDateTime(createdAt)}
+                                 <strong>Created At</strong> {formatDateTime(createdAt)}
                             </div>
                              <div className="col-md-4">
-                              <strong>Order User ID:</strong> {task.order_user_id || task.user_id || '-'}
+                              <strong>Order User ID</strong> {task.order_user_id || task.user_id || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Payment Status:</strong>{' '}
+                              <strong>Payment Status</strong>{' '}
                               {task.paymentStatus || paymentDetails.status || '-'}
                             </div>
                           </div>
                           <div className="row viewDataCss mt-2">                           
                             <div className="col-md-4">
-                              <strong>Order Status:</strong> {task.orderStatus || '-'}
+                              <strong>Order Status</strong> {task.orderStatus || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Razorpay Order ID:</strong> {razorpayOrderId || '-'}
+                              <strong>Razorpay Order ID</strong> {razorpayOrderId || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Razorpay Payment ID:</strong> {razorpayPaymentId || '-'}
+                              <strong>Razorpay Payment ID</strong> {razorpayPaymentId || '-'}
                             </div>
                           </div>
                           <div className="row viewDataCss mt-4">
@@ -237,37 +238,37 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                               <hr />
                             </div>
                             <div className="col-md-4">
-                              <strong>Name:</strong> {delivery.name || '-'}
+                              <strong>Name</strong> {delivery.name || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Email:</strong> {customerEmail || '-'}
+                              <strong>Email</strong> {customerEmail || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Phone:</strong> {customerPhone || '-'}
-                            </div>
-                          </div>
-
-                          <div className="row viewDataCss mt-2">
-                            <div className="col-md-4">
-                              <strong>Address:</strong> {fullAddress || '-'}
-                            </div>
-                            <div className="col-md-4">
-                              <strong>City:</strong> {city || '-'}
-                            </div>
-                            <div className="col-md-4">
-                              <strong>District:</strong> {district || '-'}
+                              <strong>Phone</strong> {customerPhone || '-'}
                             </div>
                           </div>
 
                           <div className="row viewDataCss mt-2">
                             <div className="col-md-4">
-                              <strong>State:</strong> {state || '-'}
+                              <strong>Address</strong> {fullAddress || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Country:</strong> {country || '-'}
+                              <strong>City</strong> {city || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Pincode:</strong> {pincode || '-'}
+                              <strong>District</strong> {district || '-'}
+                            </div>
+                          </div>
+
+                          <div className="row viewDataCss mt-2">
+                            <div className="col-md-4">
+                              <strong>State</strong> {state || '-'}
+                            </div>
+                            <div className="col-md-4">
+                              <strong>Country</strong> {country || '-'}
+                            </div>
+                            <div className="col-md-4">
+                              <strong>Pincode</strong> {pincode || '-'}
                             </div>
                           </div>
 
@@ -279,14 +280,14 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                               <hr />
                             </div>
                             <div className="col-md-4">
-                              <strong>Payment Status:</strong>{' '}
+                              <strong>Payment Status</strong>{' '}
                               {task.paymentStatus || paymentDetails.status || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Order Status:</strong> {task.orderStatus || '-'}
+                              <strong>Order Status</strong> {task.orderStatus || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Grand Total:</strong>{' '}
+                              <strong>Grand Total</strong>{' '}
                               {grandTotal !== undefined && grandTotal !== null
                                 ? `₹${Number(grandTotal).toLocaleString()}`
                                 : '-'}
@@ -295,13 +296,13 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
 
                           <div className="row viewDataCss mt-2">
                             <div className="col-md-4">
-                              <strong>Razorpay Order ID:</strong> {razorpayOrderId || '-'}
+                              <strong>Razorpay Order ID</strong> {razorpayOrderId || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Razorpay Payment ID:</strong> {razorpayPaymentId || '-'}
+                              <strong>Razorpay Payment ID</strong> {razorpayPaymentId || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Subscription Expiry:</strong>{' '}
+                              <strong>Subscription Expiry</strong>{' '}
                               {formatDate(subscriptionExpiry)}
                             </div>
                           </div> */}
@@ -313,55 +314,55 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                               <hr />
                             </div>
                             <div className="col-md-4">
-                              <strong>Name:</strong> {technicianName || '-'}
+                              <strong>Name</strong> {technicianName || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Technician ID:</strong> {technicianId || '-'}
+                              <strong>Technician ID</strong> {technicianId || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Email:</strong> {technicianEmail || '-'}
+                              <strong>Email</strong> {technicianEmail || '-'}
                             </div>
                           </div>
 
                           <div className="row viewDataCss mt-2">
                             <div className="col-md-4">
-                              <strong>Phone:</strong> {technicianPhone || '-'}
+                              <strong>Phone</strong> {technicianPhone || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Assigned Date:</strong> {formatDateTime(assignedDate)}
+                              <strong>Assigned Date</strong> {formatDateTime(assignedDate)}
                             </div>
                             <div className="col-md-4">
-                              <strong>Assigned By:</strong> {assignedBy || '-'}
+                              <strong>Assigned By</strong> {assignedBy || '-'}
                             </div>
                           </div>
 
                           {/* <div className="row viewDataCss mt-2">
                             <div className="col-md-4">
-                              <strong>Released Date:</strong> {formatDateTime(releasedDate)}
+                              <strong>Released Date</strong> {formatDateTime(releasedDate)}
                             </div>
                             <div className="col-md-4">
-                              <strong>Released By:</strong> {releasedBy || '-'}
+                              <strong>Released By</strong> {releasedBy || '-'}
                             </div>
                             <div className="col-md-4">
-                              <strong>Release Notes:</strong> {releaseNotes || '-'}
+                              <strong>Release Notes</strong> {releaseNotes || '-'}
                             </div>
                           </div> */}
 
                           <div className="row viewDataCss mt-2">
                             <div className="col-md-4">
-                              <strong>Completion Date:</strong> {formatDateTime(completedDate)}
+                              <strong>Completion Date</strong> {formatDateTime(completedDate)}
                             </div>
+                            {/* <div className="col-md-4">
+                              <strong>Completion Notes</strong> {completionNotes || '-'}
+                            </div> */}
                             <div className="col-md-4">
-                              <strong>Completion Notes:</strong> {completionNotes || '-'}
-                            </div>
-                            <div className="col-md-4">
-                              <strong>Task Status:</strong> {taskStatus || '-'}
+                              <strong>Task Status</strong> {taskStatus || '-'}
                             </div>
                           </div>
 {/*
                           <div className="row viewDataCss mt-2">
                             <div className="col-md-4">
-                              <strong>Subscription Expiry:</strong>{' '}
+                              <strong>Subscription Expiry</strong>{' '}
                               {formatDate(subscriptionExpiry)}
                             </div>
                           </div> */}
@@ -370,7 +371,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                           {imageAfterService?.length > 0 && (
                             <div className="row viewDataCss mt-3">
                               <div className="col-md-12">
-                                <strong>After Service Images:</strong>
+                                <strong>After Service Images</strong>
                                 <div className="row mt-2">
                                   {imageAfterService.map((img, idx) => (
                                     <div className="col-md-3 mb-2" key={idx}>

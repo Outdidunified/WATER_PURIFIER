@@ -215,6 +215,7 @@ async function autoAssignInstallation(order) {
         const serviceRecords = db.collection("service_records");
         const usersCollection = db.collection("users");
         const ordersCollection = db.collection("orders");
+        const paymentsCollection = db.collection("payments");
         const technicianDetailsCollection = db.collection("technician_details");
 
         const normalizedAddress = normalizeDeliveryAddress(order.deliveryAddress || {});
@@ -230,11 +231,85 @@ async function autoAssignInstallation(order) {
             return;
         }
 
-        // Enforce payment and order status
-        if (order.paymentStatus !== 'Completed' || order.orderStatus !== 'Confirmed') {
-            console.log(`Skipping auto-assign for unpaid/unconfirmed order ${order.customOrderId || order.wp_device_id}`);
+        // Enforce order confirmation and payment rules based on payment type
+        const normalizedPaymentType = (order.paymentType || '').toString().toUpperCase();
+        const isOrderConfirmed = order.orderStatus === 'Confirmed';
+        const isPaymentCompleted = order.paymentStatus === 'Completed';
+
+        if (!isOrderConfirmed) {
+            console.log(`Skipping auto-assign for unconfirmed order ${order.customOrderId || order.wp_device_id}`);
             return;
         }
+
+        if (normalizedPaymentType !== 'COD' && !isPaymentCompleted) {
+            console.log(`Skipping auto-assign for unpaid order ${order.customOrderId || order.wp_device_id} (paymentType: ${normalizedPaymentType || 'N/A'})`);
+            return;
+        }
+
+        const paymentDetails = order?._id ? await paymentsCollection.findOne({ orderId: order._id }) : null;
+
+        const normalizeId = (value) =>
+            value && typeof value.toString === 'function' ? value.toString() : value ?? null;
+
+        const orderSnapshot = {
+            orderId: normalizeId(order?._id),
+            customOrderId: order?.customOrderId ?? null,
+            user_id: order?.user_id ?? null,
+            productModelId: order?.productModelId ?? null,
+            modelName: order?.modelName ?? null,
+            main_image: order?.main_image ?? null,
+            sub_images: Array.isArray(order?.sub_images) ? order.sub_images : [],
+            wp_device_id: order?.wp_device_id ?? null,
+            selectedPlan: order?.selectedPlan ?? null,
+            selectedDuration: order?.selectedDuration ?? null,
+            grandTotal: order?.grandTotal ?? null,
+            price: order?.price ?? null,
+            subtotal: order?.subtotal ?? null,
+            securityDeposit: order?.securityDeposit ?? null,
+            paymentType: normalizedPaymentType || null,
+            paymentStatus: order?.paymentStatus ?? null,
+            orderStatus: order?.orderStatus ?? null,
+            razorpayOrderId: order?.razorpayOrderId ?? null,
+            deliveryAddress: order?.deliveryAddress ?? null,
+            totalLitre: order?.totalLitre ?? null,
+            createdAt: order?.createdAt ?? null,
+            updatedAt: order?.updatedAt ?? null
+        };
+
+        const paymentSnapshot = paymentDetails
+            ? {
+                  paymentId: normalizeId(paymentDetails._id),
+                  orderId: normalizeId(paymentDetails.orderId),
+                  paymentType: paymentDetails.paymentType ?? null,
+                  paymentStatus: paymentDetails.paymentStatus ?? null,
+                  finalMonthlyPrice: paymentDetails.finalMonthlyPrice ?? null,
+                  discountAmount: paymentDetails.discountAmount ?? null,
+                  priceWithGST: paymentDetails.priceWithGST ?? null,
+                  gstAmount: paymentDetails.gstAmount ?? null,
+                  securityDeposit: paymentDetails.securityDeposit ?? null,
+                  totalPrice: paymentDetails.totalPrice ?? null,
+                  subtotal: paymentDetails.subtotal ?? null,
+                  price: paymentDetails.price ?? null,
+                  razorpayOrderId: paymentDetails.razorpayOrderId ?? null,
+                  razorpayPaymentId: paymentDetails.razorpayPaymentId ?? null,
+                  createdAt: paymentDetails.createdAt ?? null,
+                  updatedAt: paymentDetails.updatedAt ?? null
+              }
+            : null;
+
+        const orderDetailsForRecord = {
+            customOrderId: order.customOrderId,
+            user_id: order.user_id,
+            orderMongoId: orderSnapshot.orderId,
+            paymentType: normalizedPaymentType || null,
+            paymentStatus: order.paymentStatus ?? null,
+            orderStatus: order.orderStatus ?? null,
+            grandTotal: order.grandTotal ?? null,
+            price: order.price ?? null,
+            subtotal: order.subtotal ?? null,
+            securityDeposit: order.securityDeposit ?? null,
+            razorpayOrderId: order.razorpayOrderId ?? null
+        };
 
         // Fetch user info
         const orderUser = await usersCollection.findOne({ user_id: order.user_id });
@@ -268,10 +343,8 @@ async function autoAssignInstallation(order) {
                 selectedPlan: order.selectedPlan,
                 selectedDuration: order.selectedDuration
             },
-            order: {
-                customOrderId: order.customOrderId,
-                user_id: order.user_id
-            }
+            order_snapshot: orderSnapshot,
+            payment_snapshot: paymentSnapshot
         };
 
         // Insert task
@@ -349,7 +422,10 @@ async function autoAssignPendingInstallations() {
         // Find all confirmed and paid orders
         const confirmedOrders = await ordersCollection.find({
             orderStatus: 'Confirmed',
-            paymentStatus: 'Completed'
+            $or: [
+                { paymentStatus: 'Completed' },
+                { paymentType: { $regex: /^cod$/i } }
+            ]
         }).toArray();
 
         for (const order of confirmedOrders) {

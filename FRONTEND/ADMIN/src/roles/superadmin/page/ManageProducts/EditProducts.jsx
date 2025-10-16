@@ -36,7 +36,6 @@ const EditProducts = ({ userInfo, handleLogout }) => {
     handleAddProduct,
     status,
     setStatus,
-    isModified,
     errorMessage
   } = useEditProducts(userInfo);
 
@@ -159,17 +158,22 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="input-label" htmlFor="productSpecifications">Product Specifications</label>
-                      <textarea
-                        id="productSpecifications"
+                      <label className="input-label" htmlFor="productSpecifications">Product Specifications (PDF)</label>
+                      <input
+                        type="file"
+                        accept="application/pdf"
                         className="form-control"
-                        style={{ minHeight: '130px' }}
-                        value={productSpecifications}
-                        onChange={(e) => setProductSpecifications(e.target.value)}
-                        required
-                        maxLength={500}
-                        placeholder="Enter product specifications (10-500 chars)"
+                        onChange={(e) => setProductSpecifications(e.target.files[0])}
                       />
+                      <span style={{ marginLeft: '10px', fontSize: '14px', color: '#666' }}>
+                        {productSpecifications
+                          ? (productSpecifications instanceof File
+                            ? productSpecifications.name
+                            : (typeof productSpecifications === 'string'
+                              ? productSpecifications.split('/').pop() || productSpecifications
+                              : 'No file chosen'))
+                          : 'No file chosen'}
+                      </span>
                     </div>
                   </div>
 
@@ -240,6 +244,7 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                                 if (e.target.value === 'unlimited') handlePlanChange(index, 'capacity', '');
                               }}
                               required
+
                             >
                               <option value="">Select Plan</option>
                               {availableOptions.map((opt) => (
@@ -251,9 +256,9 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                           {plan.label !== 'unlimited' && (
                             <div className="col-md-4">
                               <InputField
-                                placeholder="Capacity"
+                                placeholder="Capacity (per 28 days)"
                                 value={plan.capacity}
-                                onChange={(e) => handlePlanChange(index, 'capacity', e.target.value)}
+                                onChange={(e) => handlePlanChange(index, 'capacity', e.target.value.replace(/[^0-9]/g, ''))}
                                 required
                               />
                             </div>
@@ -261,7 +266,7 @@ const EditProducts = ({ userInfo, handleLogout }) => {
 
                           <div className="col-md-3">
                             <InputField
-                              placeholder="Price"
+                              placeholder="Price (per 28 days)"
                               value={plan.price}
                               onChange={(e) => handlePlanChange(index, 'price', e.target.value)}
                               required
@@ -346,7 +351,7 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                   {errorMessage && <div className="text-danger mb-3">{errorMessage}</div>}
 
                   <div className="mt-4">
-                    <ReusableButton type="submit" loading={loading} disabled={!isModified}>Update</ReusableButton>
+                    <ReusableButton type="submit" loading={loading}>Update</ReusableButton>
                   </div>
                 </form>
               </div>

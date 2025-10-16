@@ -14,7 +14,6 @@ const EditManageDevice = ({ userInfo, handleLogout }) => {
         modelName, setModelName,
         status, setStatus,
         loading,
-        isModified,
         updateDevice,
         goBackToManageDevices,
         errorMessage
@@ -53,7 +52,7 @@ const EditManageDevice = ({ userInfo, handleLogout }) => {
                                 <div className="card">
                                     <div className="card-body">
                                         <h4 className="card-title">Manage Device</h4>
-                                        <form className="form-sample" onSubmit={updateDevice}>
+                                        <form className="form-sample" >
                                             {errorMessage && (
                                                 <p className="text-danger">{errorMessage}</p>
                                             )}
@@ -137,9 +136,9 @@ const EditManageDevice = ({ userInfo, handleLogout }) => {
                                             </div>
 
                                             <ReusableButton
-                                                type="submit"
-                                                disabled={loading || !isModified}
+                                                type="button"
                                                 loading={loading}
+                                                onSubmit={updateDevice}
                                             >
                                                 Update
                                             </ReusableButton>

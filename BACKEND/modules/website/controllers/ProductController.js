@@ -55,27 +55,40 @@ exports.getAllProductsWithPlans = async (req, res) => {
   try {
     const db = await connectToDatabase();
 
-    // 1. Get all wp_device_ids used in completed orders
-    const allCompletedOrders = await db.collection('orders').find({
-      paymentStatus: 'Completed',
+    // 1. Get all devices already used in any active or completed order
+    const allUsedOrders = await db.collection('orders').find({
+      $or: [
+        { paymentStatus: 'Completed' },
+        { orderStatus: 'Confirmed' }
+      ],
       wp_device_id: { $exists: true, $ne: null }
     }).toArray();
 
-    const usedDeviceIds = new Set(allCompletedOrders.map(order => order.wp_device_id));
+    const usedDeviceIdsFromOrders = new Set(allUsedOrders.map(order => order.wp_device_id));
 
-    // 2. Get all product models with status = true (remove wp_device_quantity filter)
-    const allProducts = await db.collection('product_models').find({
-      status: true
-    }).toArray();
+    // 2. Get all devices already assigned to users
+    const allUsers = await db.collection('users').find({}).toArray();
+    const assignedDeviceIds = new Set();
+    allUsers.forEach(user => {
+      if (Array.isArray(user.assigned_device_ids)) {
+        user.assigned_device_ids.forEach(id => assignedDeviceIds.add(id));
+      }
+    });
+
+    // Combine all used device IDs
+    const unavailableDeviceIds = new Set([...usedDeviceIdsFromOrders, ...assignedDeviceIds]);
+
+    // 3. Get all active products
+    const allProducts = await db.collection('product_models').find({ status: true }).toArray();
 
     const availableProducts = [];
 
     for (const product of allProducts) {
-      // 3. Find an unused and active device if available
+      // Find an available device for this product
       const availableDevice = await db.collection('device_details').findOne({
         model_id: product.model_id,
         status: true,
-        wp_device_id: { $nin: Array.from(usedDeviceIds) }
+        wp_device_id: { $nin: Array.from(unavailableDeviceIds) }
       });
 
       availableProducts.push({
@@ -100,6 +113,7 @@ exports.getAllProductsWithPlans = async (req, res) => {
     });
   }
 };
+
 
 
 

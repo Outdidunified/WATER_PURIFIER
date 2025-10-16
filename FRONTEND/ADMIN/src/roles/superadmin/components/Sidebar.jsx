@@ -89,7 +89,7 @@ const Sidebar = ({ userInfo, permissions: propsPermissions }) => {
             </div>
           </li>
         )}
-
+{/* 
         {canView('manage_call_requests') && (
           <li className={location.pathname === '/superadmin/ManageCallRequests' ? 'nav-item active' : 'nav-item'}>
             <Link className="nav-link" to="/superadmin/ManageCallRequests">
@@ -97,7 +97,7 @@ const Sidebar = ({ userInfo, permissions: propsPermissions }) => {
               <span className="menu-title">Manage Call Requests</span>
             </Link>
           </li>
-        )}
+        )} */}
 
         {canView('manage_contact') && (
           <li className={location.pathname === '/superadmin/ManageContact' ? 'nav-item active' : 'nav-item'}>

@@ -15,7 +15,7 @@ const useAddProducts = (userInfo) => {
 
   const [modelName, setModelName] = useState('');
   const [productDetails, setProductDetails] = useState('');
-  const [productSpecifications, setProductSpecifications] = useState('');
+  const [productSpecifications, setProductSpecifications] = useState(null); // Now storing PDF File
   const [mainImage, setMainImage] = useState(null); // Now storing File
   const [subImages, setSubImages] = useState([null, null, null, null]); // Up to 4
 
@@ -25,7 +25,7 @@ const useAddProducts = (userInfo) => {
   const [durations, setDurations] = useState([
     {
       duration_id: 1,
-      duration_time_limit: '28 days',
+      duration_time_limit: '',
       gst: '',
       discount: '',
       security_deposit: '',
@@ -125,7 +125,7 @@ const useAddProducts = (userInfo) => {
       ...durations,
       {
         duration_id: Date.now(),
-        duration_time_limit: '28 days',
+        duration_time_limit: '',
         gst: '',
         discount: '',
         security_deposit: '',
@@ -200,8 +200,15 @@ const handleDurationChange = (index, field, value) => {
     e.preventDefault();
     setLoading(true);
 
-    if (!modelName || !productDetails || !productSpecifications || !mainImage) {
+    if (!modelName || !productDetails || !mainImage) {
       setErrorMessage("All required fields must be filled.");
+      setLoading(false);
+      return;
+    }
+
+    // Validate PDF file if provided
+    if (productSpecifications && productSpecifications.type !== 'application/pdf') {
+      showErrorAlert("Invalid File", "Product Specifications must be a PDF file.");
       setLoading(false);
       return;
     }
@@ -289,7 +296,7 @@ const handleDurationChange = (index, field, value) => {
         // Reset form
         setModelName('');
         setProductDetails('');
-        setProductSpecifications('');
+        setProductSpecifications(null);
         setMainImage(null);
         setSubImages([null, null, null, null]);
         setWpDeviceQuantity(0);

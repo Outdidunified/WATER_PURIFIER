@@ -19,6 +19,8 @@ const appRoutes = require('./routes/appRoutes');
 
 // Initialize MQTT Client for telemetry data collection
 require('./modules/app/services/mqttClient');
+// require('./publisher');
+// require('./mqttReceiver');
 
 const path = require('path');
 

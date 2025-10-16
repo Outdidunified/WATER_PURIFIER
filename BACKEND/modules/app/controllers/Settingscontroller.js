@@ -309,6 +309,7 @@ exports.updateUserDetails = async (req, res) => {
     const db = await connectToDatabase();
     const paymentCollection = db.collection('payments');
     const orderCollection = db.collection('orders');
+    const productModelsCollection = db.collection('product_models');
     const serviceRecordsCollection = db.collection('service_records');
 
     // 1️⃣ Fetch payments for the user
@@ -351,35 +352,56 @@ exports.updateUserDetails = async (req, res) => {
     }
 
     // 7️⃣ Merge payment + order + task_status logic
-    const paymentsWithOrders = payments.map(payment => {
-      const order = orderMap[payment.orderId];
-      let taskStatus = 'N/A';
+    const paymentsWithOrders = await Promise.all(
+      payments.map(async payment => {
+        const order = orderMap[payment.orderId];
+        let taskStatus = 'N/A';
+        let productModel = null;
 
-      if (
-        payment.paymentStatus === 'Completed' &&
-        order?.orderStatus === 'Confirmed'
-      ) {
-        const possibleDeviceId =
-          order.wp_device_id || order.device_id || '';
-        const normalizedId = possibleDeviceId.toString().toLowerCase();
+        if (
+          payment.paymentStatus === 'Completed' &&
+          order?.orderStatus === 'Confirmed'
+        ) {
+          const possibleDeviceId =
+            order.wp_device_id || order.device_id || '';
+          const normalizedId = possibleDeviceId.toString().toLowerCase();
 
-        if (serviceRecordMap[normalizedId]) {
-          taskStatus = serviceRecordMap[normalizedId];
+          if (serviceRecordMap[normalizedId]) {
+            taskStatus = serviceRecordMap[normalizedId];
+          }
         }
-      }
 
-      return {
-        ...payment,
-        orders: order
-          ? [
-              {
-                ...order,
-                task_status: taskStatus,
-              },
-            ]
-          : [],
-      };
-    });
+        if (order?.productModelId) {
+          const productData = await productModelsCollection.findOne({
+            _id: new ObjectId(order.productModelId)
+          });
+
+          if (productData) {
+            productModel = {
+              _id: productData._id,
+              main_img: productData.main_img || '',
+              sub_img_1: productData.sub_img_1 || '',
+              sub_img_2: productData.sub_img_2 || '',
+              sub_img_3: productData.sub_img_3 || '',
+              sub_img_4: productData.sub_img_4 || '',
+            };
+          }
+        }
+
+        return {
+          ...payment,
+          orders: order
+            ? [
+                {
+                  ...order,
+                  task_status: taskStatus,
+                  product_model_images: productModel,
+                },
+              ]
+            : [],
+        };
+      })
+    );
 
     // ✅ Final response
     res.status(200).json({
