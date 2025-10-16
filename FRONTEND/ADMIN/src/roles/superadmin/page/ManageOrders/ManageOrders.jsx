@@ -22,18 +22,98 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
     editOrderStatus,
     editLoading,
     modalStyle,
+    codConfirmationLoading,
     setEditOrderStatus,
     handleSearchInputChange,
     handleEditOrder,
     closeEditModal,
     updateOrderStatus,
+    resolveDeviceId,
+    confirmCodPayment,
   } = useManageOrders(userInfo);
 
   const [codConfirmation, setCodConfirmation] = useState({});
 
   useEffect(() => {
-    setCodConfirmation({});
+    const confirmationState = (filteredOrders || []).reduce((accumulator, order) => {
+      const stateKey = buildConfirmationStateKey(order);
+
+      if (!stateKey) {
+        return accumulator;
+      }
+
+      if (order.moneyReceived || (order.paymentStatus || '').toLowerCase() === 'completed') {
+        accumulator[stateKey] = true;
+      }
+
+      return accumulator;
+    }, {});
+
+    setCodConfirmation(confirmationState);
   }, [filteredOrders]);
+
+  const mapOrderToConfirmationKey = (order) => order.customOrderId || order._id;
+
+  const buildConfirmationStateKey = (order) => {
+    const keyBase = mapOrderToConfirmationKey(order);
+    return keyBase ? `${keyBase}-money` : null;
+  };
+
+  const isCodPaymentEligible = (order) => (order.paymentType || '').toUpperCase() === 'COD';
+
+  const handleMoneyReceivedToggle = async (order, isChecked) => {
+    const stateKey = buildConfirmationStateKey(order);
+
+    if (!stateKey) {
+      return;
+    }
+
+    if (order.moneyReceived || (order.paymentStatus || '').toLowerCase() === 'completed') {
+      setCodConfirmation((previousState) => ({
+        ...previousState,
+        [stateKey]: true,
+      }));
+      return;
+    }
+
+    if (!isChecked) {
+      setCodConfirmation((previousState) => ({
+        ...previousState,
+        [stateKey]: false,
+      }));
+      return;
+    }
+
+    if (!isCodPaymentEligible(order)) {
+      setCodConfirmation((previousState) => ({
+        ...previousState,
+        [stateKey]: false,
+      }));
+      return;
+    }
+
+    setCodConfirmation((previousState) => ({
+      ...previousState,
+      [stateKey]: true,
+    }));
+
+    const confirmationSucceeded = await confirmCodPayment({
+      wp_device_id: resolveDeviceId(order),
+      onSuccess: () => {
+        setCodConfirmation((previousState) => ({
+          ...previousState,
+          [stateKey]: true,
+        }));
+      },
+    });
+
+    if (!confirmationSucceeded) {
+      setCodConfirmation((previousState) => ({
+        ...previousState,
+        [stateKey]: false,
+      }));
+    }
+  };
 
   const ORDER_STATUSES = ['Confirmed', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
   const getStatusBadgeClass = (status) => {
@@ -221,27 +301,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
 
                                   </td>
                                   <td className="align-middle">
-                                    <div className="d-flex flex-column align-items-center gap-2">
-                                      <span>{order.paymentStatus}</span>
-                                      {/* <div className="form-check">
-                                        <input
-                                          className="form-check-input"
-                                          type="checkbox"
-                                          id={`cod-confirm-${order._id}`}
-                                          disabled={(order.paymentType || '').toUpperCase() !== 'COD'}
-                                          checked={Boolean(codConfirmation[order._id])}
-                                          onChange={(event) => {
-                                            setCodConfirmation((previousState) => ({
-                                              ...previousState,
-                                              [order._id]: event.target.checked,
-                                            }));
-                                          }}
-                                        />
-                                        <label className="form-check-label" htmlFor={`cod-confirm-${order._id}`}>
-                                          COD Collected
-                                        </label>
-                                      </div> */}
-                                    </div>
+                                    <span>{order.paymentStatus}</span>
                                   </td>
                                   <td>{formatTimestamp(order.createdAt)}</td>
                                   <td>
@@ -261,18 +321,13 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                                         className="form-check-input"
                                         type="checkbox"
                                         id={`money-received-${order._id}`}
-                                        disabled={(order.paymentType || '').toUpperCase() !== 'COD'}
-                                        checked={Boolean(codConfirmation[`${order._id}-money`])}
+                                        disabled={!isCodPaymentEligible(order) || codConfirmationLoading}
+                                        checked={Boolean(codConfirmation[buildConfirmationStateKey(order)])}
                                         onChange={(event) => {
-                                          setCodConfirmation((previousState) => ({
-                                            ...previousState,
-                                            [`${order._id}-money`]: event.target.checked,
-                                          }));
+                                          const isChecked = event.target.checked;
+                                          handleMoneyReceivedToggle(order, isChecked);
                                         }}
                                       />
-                                      {/* <label className="form-check-label ms-2" htmlFor={`money-received-${order._id}`}>
-                                        Money Received
-                                      </label> */}
                                     </div>
                                   </td>
                                 </tr>

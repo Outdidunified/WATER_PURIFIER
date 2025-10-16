@@ -972,6 +972,83 @@ const FetchOrders = async (req, res) => {
     }
 };
 
+const ConfirmCodPayment = async (req, res) => {
+    try {
+        const db = await database.connectToDatabase();
+        const ordersCollection = db.collection("orders");
+        const serviceRecordsCollection = db.collection("service_records");
+
+        const { wp_device_id } = req.body || {};
+
+        if (!wp_device_id) {
+            return res.status(400).json({
+                status: "failure",
+                message: "wp_device_id is required",
+            });
+        }
+
+        const serviceRecord = await serviceRecordsCollection.findOne({ wp_device_id });
+
+        if (!serviceRecord) {
+            return res.status(404).json({
+                status: "failure",
+                message: "No service record found for this device",
+            });
+        }
+
+        const paymentType = serviceRecord?.order_snapshot?.paymentType;
+        const collectPayment = serviceRecord?.collectPayment;
+
+        if (paymentType === "COD" && collectPayment === true) {
+            await ordersCollection.updateOne(
+                { wp_device_id },
+                {
+                    $set: {
+                        moneyReceived: true,
+                        paymentStatus: "Compleed",
+                        paymentCollectedAt: serviceRecord?.order_snapshot?.paymentCollectedAt || new Date(),
+                        adminPaymentConfirmedAt: new Date(),
+                    },
+                },
+            );
+
+            await serviceRecordsCollection.updateOne(
+                { _id: serviceRecord._id },
+                {
+                    $set: {
+                        "order_snapshot.moneyReceived": true,
+                        snapshot: true,
+                        modified_date: new Date(),
+                    },
+                },
+            );
+            
+            return res.status(200).json({
+                status: "success",
+                message: "COD payment confirmed successfully. moneyReceived updated in both collections.",
+                data: {
+                    wp_device_id,
+                    paymentType,
+                    collectPayment,
+                    moneyReceived: true,
+                },
+            });
+        }
+
+        return res.status(400).json({
+            status: "failure",
+            message: "Condition not met (either not COD or collectPayment is false)",
+        });
+    } catch (error) {
+        console.error("Error confirming COD payment:", error);
+        logger?.error?.(error);
+        return res.status(500).json({
+            status: "failure",
+            message: "Internal server error",
+        });
+    }
+};
+
 // UpdateOrdersStatus
 // const UpdateOrdersStatus = async (req, res) => {
 //     const { order_id, orderStatus, modified_by } = req.body;
@@ -4045,7 +4122,7 @@ module.exports = {
     FetchSelectServiceTask, AssignService, ReAssignService, assignPermissions, fetchPermissionsByRole,
     GetUsersByDistrict, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
     AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchEndUserDevices, FetchOrdersByUserId, FetchTechnicianTasksByUserId, GetAnalytics,
-    GetAnalyticsByDistrict,GetDistrictsWithSellers
+    GetAnalyticsByDistrict,GetDistrictsWithSellers,ConfirmCodPayment
     // UpdateOrdersStatus,
 
 };
