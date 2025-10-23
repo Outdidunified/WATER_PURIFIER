@@ -380,6 +380,32 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                 <button
                                                                     className="btn btn-primary"
                                                                     style={{
+                                                                        background: order.task_status === "Completed" ? "#0d6efd" : "#b0b0b0",
+                                                                        border: "none",
+                                                                        padding: "8px 20px",
+                                                                        borderRadius: "6px",
+                                                                        fontWeight: "600",
+                                                                        cursor: order.task_status === "Completed" ? "pointer" : "not-allowed",
+                                                                        opacity: order.task_status === "Completed" ? 1 : 0.6,
+                                                                        transition: "all 0.3s ease",
+                                                                    }}
+                                                                    disabled={order.task_status !== "Completed"}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (order.task_status === "Completed") {
+                                                                            handleDownloadInvoice(order.customOrderId);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <i className="bi bi-download" style={{ marginRight: "5px" }}></i>
+                                                                    Download Invoice
+                                                                </button>
+                                                            </div>
+
+                                                            {/* <div style={{ textAlign: "center", marginTop: "20px" }}>
+                                                                <button
+                                                                    className="btn btn-primary"
+                                                                    style={{
                                                                         background: "#0d6efd",
                                                                         border: "none",
                                                                         padding: "8px 20px",
@@ -394,7 +420,8 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                     <i className="bi bi-download" style={{ marginRight: "5px" }}></i>
                                                                     Download Invoice
                                                                 </button>
-                                                            </div>
+                                                            </div> */}
+
                                                         </div>
                                                     </div>
                                                 </div>
