@@ -55,8 +55,166 @@ exports.getAssignedTaskDetails = async (req, res) => {
       return res.status(500).json({ error: true, message: 'Server error while fetching task details' });
     }
   };
-  
-  
+
+
+// ============ LEAVE REQUEST API ============
+exports.requestLeave = async (req, res) => {
+  console.log('----- Incoming Request to /requestLeave -----');
+  console.log('➡️ Body:', req.body);
+  console.log('-------------------------------------------');
+
+  const {
+    technician_id,
+    email,
+    from_date,
+    to_date,
+    number_of_days,
+    reason,
+  } = req.body;
+
+  // Basic validation
+  if (!technician_id || !email || !from_date || !to_date || !number_of_days) {
+    return res.status(400).json({
+      error: true,
+      message: 'technician_id, email, from_date, to_date, and number_of_days are required',
+    });
+  }
+
+  // Reason validation - optional but if provided, should not be empty
+  if (reason && typeof reason === 'string' && reason.trim() === '') {
+    return res.status(400).json({
+      error: true,
+      message: 'Reason cannot be empty',
+    });
+  }
+
+  try {
+    const db = await connectToDatabase();
+    const leaveRequestsCollection = db.collection('leave_requests');
+    const usersCollection = db.collection('users');
+
+    // Verify technician exists
+    const technician = await usersCollection.findOne({
+      technician_id: technician_id.trim(),
+      email: email.trim(),
+    });
+
+    if (!technician) {
+      return res.status(404).json({
+        error: true,
+        message: 'Technician not found',
+      });
+    }
+
+    // Validate dates
+    const fromDate = new Date(from_date);
+    const toDate = new Date(to_date);
+
+    if (fromDate > toDate) {
+      return res.status(400).json({
+        error: true,
+        message: 'from_date cannot be after to_date',
+      });
+    }
+
+    // Check if leave already requested for these dates
+    const existingLeave = await leaveRequestsCollection.findOne({
+      technician_id: technician_id.trim(),
+      $or: [
+        {
+          from_date: { $lte: toDate },
+          to_date: { $gte: fromDate },
+          status: { $in: ['Requested', 'Approved'] },
+        },
+      ],
+    });
+
+    if (existingLeave) {
+      return res.status(400).json({
+        error: true,
+        message: 'Leave already requested or approved for these dates',
+      });
+    }
+
+    // Create leave request
+    const leaveRequest = {
+      technician_id: technician_id.trim(),
+      technician_name: technician.name,
+      technician_email: email.trim(),
+      from_date: fromDate,
+      to_date: toDate,
+      number_of_days: parseInt(number_of_days),
+      reason: reason ? reason.trim() : null,
+      status: 'Requested', // Default status
+      requested_date: new Date(), // Current date/time
+      created_at: new Date(),
+      approval_date: null,
+      approved_by: null,
+      rejection_reason: null,
+    };
+
+    const result = await leaveRequestsCollection.insertOne(leaveRequest);
+
+    return res.status(201).json({
+      error: false,
+      message: 'Leave request submitted successfully',
+      data: {
+        leave_request_id: result.insertedId,
+        technician_id: technician_id.trim(),
+        from_date: from_date,
+        to_date: to_date,
+        number_of_days: parseInt(number_of_days),
+        reason: reason ? reason.trim() : 'No reason provided',
+        status: 'Requested',
+        requested_date: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error requesting leave:', error);
+    return res.status(500).json({
+      error: true,
+      message: 'Server error while processing leave request',
+    });
+  }
+};
+
+// ============ GET TECHNICIAN LEAVE REQUESTS ============
+exports.getTechnicianLeaveRequests = async (req, res) => {
+  const { technician_id, email } = req.body;
+
+  if (!technician_id || !email) {
+    return res.status(400).json({
+      error: true,
+      message: 'technician_id and email are required',
+    });
+  }
+
+  try {
+    const db = await connectToDatabase();
+    const leaveRequestsCollection = db.collection('leave_requests');
+
+    const leaveRequests = await leaveRequestsCollection
+      .find({
+        technician_id: technician_id.trim(),
+        technician_email: email.trim(),
+      })
+      .sort({ requested_date: -1 })
+      .toArray();
+
+    return res.status(200).json({
+      error: false,
+      message: 'Leave requests fetched successfully',
+      data: leaveRequests,
+    });
+  } catch (error) {
+    console.error('Error fetching leave requests:', error);
+    return res.status(500).json({
+      error: true,
+      message: 'Server error while fetching leave requests',
+    });
+  }
+};
+
 
 // Nodemailer transporter
 const transporter = nodemailer.createTransport({
@@ -299,7 +457,7 @@ exports.updateTaskDetails = async (req, res) => {
 };
 
   
- exports.acceptDeclineTask = async (req, res) => {
+exports.acceptDeclineTask = async (req, res) => {
   const {
     user_id,
     email,
@@ -385,11 +543,11 @@ exports.updateTaskDetails = async (req, res) => {
       };
     }
 
-    // ❌ DECLINE
+    // ❌ DECLINE —> change task_status to "Rejected"
     if (actionLower === 'decline') {
       updateData = {
         ...updateData,
-        task_status: 'Pending',
+        task_status: 'Rejected', // ✅ changed from Pending to Rejected
         pending_reason: decline_reason.trim(),
         estimated_start: null,
         estimated_end: null,
@@ -407,7 +565,7 @@ exports.updateTaskDetails = async (req, res) => {
 
     const actionMessage = actionLower === 'accept'
       ? 'Task accepted successfully'
-      : 'Task declined successfully';
+      : 'Task rejected successfully'; // ✅ changed message
 
     return res.status(200).json({
       error: false,
@@ -431,6 +589,7 @@ exports.updateTaskDetails = async (req, res) => {
     });
   }
 };
+
 
 
 
