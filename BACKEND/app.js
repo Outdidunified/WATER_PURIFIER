@@ -10,7 +10,7 @@ const helmet = require('helmet');
 const logger = require('./middlewares/requestLogger');
 const { connectToDatabase } = require('./config/db');
 const cron = require('node-cron');
-const { autoAssignPendingTasks, autoAssignPendingInstallations, autoReassignOverdueTasks } = require('./modules/admin/services/autoAssignmentService');
+const { autoAssignPendingTasks, autoAssignPendingInstallations, autoReassignOverdueTasks, autoReassignRejectedTasks } = require('./modules/admin/services/autoAssignmentService');
 
 // Import Routes
 const adminRoutes = require('./routes/adminRoutes');
@@ -92,6 +92,7 @@ connectToDatabase()
             console.log('Running auto-assign pending tasks...');
             autoAssignPendingTasks();
             autoReassignOverdueTasks();
+            autoReassignRejectedTasks();
         });
     })
     .catch(err => {

@@ -69,15 +69,17 @@ const useManageOrders = (userInfo) => {
                 wp_device_id,
             });
 
-            if (response.data.status === 'success') {
-                showSuccessAlert('Success', response.data.message || 'COD payment confirmed successfully');
+            const responseStatus = (response?.data?.status || '').toString().toLowerCase();
+
+            if (responseStatus === 'success') {
+                showSuccessAlert('Success', response?.data?.message || 'COD payment confirmed successfully');
                 if (typeof onSuccess === 'function') {
                     onSuccess();
                 }
                 await fetchOrders();
                 return true;
             } else {
-                showErrorAlert('Error', response.data.message || 'Failed to confirm COD payment');
+                showErrorAlert('Error', response?.data?.message || 'Failed to confirm COD payment');
                 return false;
             }
         } catch (error) {
