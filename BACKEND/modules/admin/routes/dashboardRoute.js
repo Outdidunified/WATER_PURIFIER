@@ -7,6 +7,7 @@ const verifyToken = require('../middlewares/dashboardAuthMiddleware');
 const flatted = require('flatted');
 const { ObjectId } = require('mongodb');
 const { upload } = require('../middlewares/imgMiddleware');
+const leaveRequestsRoute = require('./leaveRequestsRoute');
 
 // 1.Login
 // Route to check login credentials
@@ -157,5 +158,8 @@ router.get('/services/by-district', verifyToken, Controller.GetServicesByDistric
 router.get('/analytics',  Controller.GetAnalytics);
 // Analytics by district
 router.get('/analytics/by-district',  Controller.GetAnalyticsByDistrict);
+
+// 11. Leave Requests Management
+router.use('/', leaveRequestsRoute);
 
 module.exports = router;

@@ -27,6 +27,8 @@ import EditProducts from '../../roles/superadmin/page/ManageProducts/EditProduct
 import ViewProducts from '../../roles/superadmin/page/ManageProducts/ViewProducts';
 import ManageContact from '../../roles/superadmin/page/ManageContact/ManageContact';
 import ManageCallRequests from '../../roles/superadmin/page/ManageCallRequests/ManageCallRequests';
+import ManageLeaves from '../../roles/superadmin/page/ManageLeaves/ManageLeaves';
+import ViewLeaveDetails from '../../roles/superadmin/page/ManageLeaves/ViewLeaveDetails';
 import axiosInstance from '../../utils/utils';
 
 const SuperAdminApp = () => {
@@ -169,6 +171,13 @@ const SuperAdminApp = () => {
 
         {canView('manage_contact') && (
           <Route path="/ManageContact" element={<ManageContact userInfo={userInfo} handleLogout={handleLogout} />} />
+        )}
+
+        {canView('manage_leaves') && (
+          <>
+            <Route path="/ManageLeaves" element={<ManageLeaves userInfo={userInfo} handleLogout={handleLogout} />} />
+            <Route path="/ViewLeaveDetails/:leaveRequestId" element={<ViewLeaveDetails userInfo={userInfo} handleLogout={handleLogout} />} />
+          </>
         )}
 
         <Route path="/Profile" element={<Profile userInfo={userInfo} handleLogout={handleLogout} />} />
