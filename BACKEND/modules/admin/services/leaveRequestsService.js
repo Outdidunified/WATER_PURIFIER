@@ -66,18 +66,17 @@ async function getLeaveRequestById(leaveRequestId) {
 }
 
 /**
- * Get technician's pending tasks (Installation + Service)
+ * Get all technician's tasks (all statuses)
  */
 async function getTechnicianPendingTasks(technicianId, leaveFromDate, leaveToDate) {
     try {
         const db = await connectToDatabase();
         const tasksCollection = db.collection('tasks');
 
-        // Find tasks assigned to technician with status: pending, accepted, in_progress
+        // Find ALL tasks assigned to technician (no status filter)
         const tasks = await tasksCollection
             .find({
                 assigned_to: technicianId,
-                status: { $in: ['pending', 'accepted', 'in_progress'] },
             })
             .toArray();
 
@@ -115,8 +114,10 @@ async function approveLeaveRequest(leaveRequestId, approvedBy) {
             }
         );
 
-        // Send approval email
-        await sendApprovalEmail(leaveRequest);
+        // Send approval email (non-blocking - don't wait for it)
+        sendApprovalEmail(leaveRequest).catch(err => {
+            console.error(`⚠️ Failed to send approval email: ${err.message}`);
+        });
 
         return result;
     } catch (error) {
@@ -153,8 +154,10 @@ async function rejectLeaveRequest(leaveRequestId, rejectionReason, approvedBy) {
             }
         );
 
-        // Send rejection email
-        await sendRejectionEmail(leaveRequest, rejectionReason);
+        // Send rejection email (non-blocking - don't wait for it)
+        sendRejectionEmail(leaveRequest, rejectionReason).catch(err => {
+            console.error(`⚠️ Failed to send rejection email: ${err.message}`);
+        });
 
         return result;
     } catch (error) {

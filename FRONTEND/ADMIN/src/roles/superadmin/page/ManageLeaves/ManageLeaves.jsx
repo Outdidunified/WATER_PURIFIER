@@ -118,7 +118,7 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
   };
 
   const handleViewLeave = (leave) => {
-    navigate(`/superadmin/ViewLeaveDetails`, {
+    navigate(`/superadmin/ViewLeaveDetails/${leave._id}`, {
       state: {
         dataItem: [leave],
       },
@@ -260,6 +260,7 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
                             <th>Duration</th>
                             <th>Reason</th>
                             <th>Status</th>
+                            <th>View</th>
                             <th>Actions</th>
                           </tr>
                         </thead>
@@ -268,7 +269,7 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
                         <tbody style={{ textAlign: 'center' }}>
                           {loading ? (
                             <tr>
-                              <td colSpan="10">
+                              <td colSpan="11">
                                 <div className="spinner-border" role="status">
                                   <span className="sr-only">Loading...</span>
                                 </div>
@@ -300,16 +301,21 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
                                     {leave.status || 'Pending'}
                                   </span>
                                 </td>
+                                {/* View Column */}
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline-info btn-sm"
+                                    onClick={() => handleViewLeave(leave)}
+                                    title="View details"
+                                  >
+                                    <i className="mdi mdi-eye"></i> View
+                                  </button>
+                                </td>
+                                {/* Actions Column */}
                                 <td>
                                   {isLeaveProcessed(leave.status) ? (
-                                    <button
-                                      type="button"
-                                      className="btn btn-outline-info btn-sm"
-                                      onClick={() => handleViewLeave(leave)}
-                                      title="View details"
-                                    >
-                                      <i className="mdi mdi-eye"></i> View
-                                    </button>
+                                    <span className="text-muted small">—</span>
                                   ) : (
                                     <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
                                       <button
@@ -337,7 +343,7 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
                             ))
                           ) : (
                             <tr>
-                              <td colSpan="10">
+                              <td colSpan="11">
                                 <div style={{ padding: '20px', color: '#999' }}>
                                   No leave requests found.
                                 </div>

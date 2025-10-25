@@ -44,6 +44,11 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
                 },
             });
 
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `HTTP ${response.status}: Failed to fetch leave details`);
+            }
+
             const data = await response.json();
 
             if (data.success) {
@@ -74,6 +79,11 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
                 },
             });
 
+            if (!response.ok) {
+                console.warn(`Failed to fetch tasks: HTTP ${response.status}`);
+                return;
+            }
+
             const data = await response.json();
 
             if (data.success && data.data.pendingTasks) {
@@ -99,9 +109,36 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
                 body: JSON.stringify({ approvedBy: adminName }),
             });
 
-            const data = await response.json();
+            console.log('Approve Leave Response Status:', response.status);
 
-            if (data.success) {
+            if (!response.ok) {
+                try {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `HTTP ${response.status}: Failed to approve leave`);
+                } catch (parseErr) {
+                    throw new Error(`HTTP ${response.status}: Failed to approve leave`);
+                }
+            }
+
+            let data;
+            try {
+                data = await response.json();
+            } catch (parseErr) {
+                console.warn('Could not parse response as JSON, assuming success');
+                // If response is ok but can't parse, assume it worked
+                setLeaveDetails((prev) => ({
+                    ...prev,
+                    status: 'Approved',
+                    approval_date: new Date(),
+                    approved_by: adminName,
+                }));
+                showSuccessAlert('Success', 'Leave approved successfully');
+                return { success: true, message: 'Leave approved successfully' };
+            }
+
+            console.log('Approve Leave Response Data:', data);
+
+            if (data.success || response.status === 200) {
                 setLeaveDetails((prev) => ({
                     ...prev,
                     status: 'Approved',
@@ -151,9 +188,38 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
                 }),
             });
 
-            const data = await response.json();
+            console.log('Reject Leave Response Status:', response.status);
 
-            if (data.success) {
+            if (!response.ok) {
+                try {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `HTTP ${response.status}: Failed to reject leave`);
+                } catch (parseErr) {
+                    throw new Error(`HTTP ${response.status}: Failed to reject leave`);
+                }
+            }
+
+            let data;
+            try {
+                data = await response.json();
+            } catch (parseErr) {
+                console.warn('Could not parse response as JSON, assuming success');
+                // If response is ok but can't parse, assume it worked
+                setLeaveDetails((prev) => ({
+                    ...prev,
+                    status: 'Rejected',
+                    approval_date: new Date(),
+                    approved_by: adminName,
+                    rejection_reason: rejectionReason,
+                }));
+                setRejectionReason('');
+                showSuccessAlert('Success', 'Leave rejected successfully');
+                return { success: true, message: 'Leave rejected successfully' };
+            }
+
+            console.log('Reject Leave Response Data:', data);
+
+            if (data.success || response.status === 200) {
                 setLeaveDetails((prev) => ({
                     ...prev,
                     status: 'Rejected',
@@ -182,12 +248,15 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
     };
 
     const getTasksCount = () => {
-        const statuses = {
-            pending: pendingTasks.filter((t) => t.status === 'pending').length,
-            accepted: pendingTasks.filter((t) => t.status === 'accepted').length,
-            in_progress: pendingTasks.filter((t) => t.status === 'in_progress').length,
-        };
-        return statuses;
+        // Count tasks by actual status values from API
+        const statusCounts = {};
+        
+        pendingTasks.forEach((task) => {
+            const status = task.status || 'Unknown';
+            statusCounts[status] = (statusCounts[status] || 0) + 1;
+        });
+        
+        return statusCounts;
     };
 
     return {
