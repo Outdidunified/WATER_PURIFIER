@@ -6,9 +6,10 @@ const path = require('path');
 
 const fsPromises = fs.promises;
 const overdueLogsDirectory = path.resolve(__dirname, '../../../logs');
-const overdueLogsFilePath = path.join(overdueLogsDirectory, 'overdue_reassignment.log');
+const overdueLogPath = path.join(overdueLogsDirectory, 'overdue_reassignment.log');
 
-async function persistOverdueLog(message, metadata) {
+// Single unified logger function
+async function persistLog(message, metadata) {
     try {
         await fsPromises.mkdir(overdueLogsDirectory, { recursive: true });
         const timestamp = new Date().toISOString();
@@ -26,15 +27,23 @@ async function persistOverdueLog(message, metadata) {
             }
         }
         const suffix = serializedMetadata ? ` ${serializedMetadata}` : '';
-        await fsPromises.appendFile(overdueLogsFilePath, `${timestamp} ${sanitizedMessage}${suffix}\n`);
+        await fsPromises.appendFile(overdueLogPath, `${timestamp} ${sanitizedMessage}${suffix}\n`);
     } catch (error) {
-        console.error('Failed to persist overdue reassignment log:', error);
+        console.error(`Failed to persist log:`, error);
     }
 }
 
-async function logOverdueEvent(message, metadata) {
+async function logEvent(message, metadata) {
     console.log(message);
-    await persistOverdueLog(message, metadata);
+    await persistLog(message, metadata);
+}
+
+async function logOverdueEvent(message, metadata) {
+    await logEvent(message, metadata);
+}
+
+async function persistOverdueLog(message, metadata) {
+    await persistLog(message, metadata);
 }
 
 // Rate limiter to prevent email spam detection
@@ -142,7 +151,7 @@ async function sendAssignServiceEmail(email, otp) {
     }
 }
 
-async function sendTechnicianAssignmentEmail(technician, { taskId, otp, taskType, normalizedAddress }) {
+async function sendTechnicianAssignmentEmail(technician, { taskId, taskType, normalizedAddress, isReassignment = false }) {
     if (!technician?.email) {
         return null;
     }
@@ -153,27 +162,25 @@ async function sendTechnicianAssignmentEmail(technician, { taskId, otp, taskType
     const locationString = [normalizedAddress?.city, normalizedAddress?.district, normalizedAddress?.state]
         .filter(Boolean)
         .join(', ');
-
-    const subject = `New ${taskTitle} Task Assigned - IonHive`;
+    
+    const assignmentType = isReassignment ? 'Re-assigned' : 'assigned';
+    const subject = `${isReassignment ? 'Re-assigned' : 'New'} ${taskTitle} Task - IonHive`;
     const locationText = locationString ? `\nLocation: ${locationString}` : '';
     const locationListItem = locationString ? `<li><strong>Location:</strong> ${locationString}</li>` : '';
 
     const text = `Hello ${technicianName},
 
-A new ${taskLabel} task (Task ID: ${taskId}) has been assigned to you. Please review the schedule and reach out to the customer to confirm the appointment.
-
-Customer OTP: ${otp}${locationText}
+A ${taskLabel} task (Task ID: ${taskId}) has been ${assignmentType} to you. Please review the schedule and reach out to the customer to confirm the appointment.${locationText}
 
 Thank you,
 IonHive Team`;
 
     const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
-            <h2 style="color: #333;">New ${taskTitle} Assignment</h2>
-            <p style="font-size: 16px; color: #555;">You have been assigned a new ${taskLabel} task.</p>
+            <h2 style="color: #333;">${isReassignment ? 'Re-assigned' : 'New'} ${taskTitle} Task</h2>
+            <p style="font-size: 16px; color: #555;">You have been ${assignmentType} a ${taskLabel} task.</p>
             <ul style="font-size: 16px; color: #555;">
                 <li><strong>Task ID:</strong> ${taskId}</li>
-                <li><strong>Customer OTP:</strong> ${otp}</li>
                 ${locationListItem}
             </ul>
             <p style="font-size: 16px; color: #555;">Please contact the customer to coordinate the ${taskLabel}.</p>
@@ -1347,11 +1354,541 @@ async function autoReassignRejectedTasks() {
     }
 }
 
+// NEW: Auto-reassign based on time thresholds (3hrs for Pending, 24hrs for In Progress)
+async function autoReassignTimeBasedTasks() {
+    try {
+        const db = await connectToDatabase();
+        const serviceRecords = db.collection("service_records");
+        const usersCollection = db.collection("users");
+        const ordersCollection = db.collection("orders");
+        const technicianDetailsCollection = db.collection("technician_details");
+
+        const now = new Date();
+        
+        // === PENDING TASKS: 3 hours ===
+        const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+        const pendingCandidates = await serviceRecords
+            .find({
+                task_type: { $in: [1, 2] },
+                task_status: "Pending",
+                assigned_technician_id: { $ne: null },
+                assigned_date: { $ne: null, $lte: threeHoursAgo },
+                $expr: { $gt: [{ $size: { $ifNull: ["$assignment_history", []] } }, 0] } // Not first assignment
+            })
+            .sort({ assigned_date: 1 })
+            .limit(50)
+            .toArray();
+
+        await logEvent(`Found ${pendingCandidates.length} Pending tasks ready for 3-hour reassignment`);
+
+        for (const task of pendingCandidates) {
+            try {
+                const currentTechnicianId = task.assigned_technician_id;
+                const assignmentHistory = Array.isArray(task.assignment_history) ? [...task.assignment_history] : [];
+                const historyTechnicianIds = assignmentHistory
+                    .map(entry => (entry?.technician_id !== undefined && entry?.technician_id !== null)
+                        ? entry.technician_id.toString().trim()
+                        : null)
+                    .filter(Boolean);
+
+                if (currentTechnicianId && !historyTechnicianIds.includes(currentTechnicianId.toString().trim())) {
+                    historyTechnicianIds.push(currentTechnicianId.toString().trim());
+                }
+
+                // Get task address
+                let normalizedAddress = null;
+                if (task.task_type === 1 && task.address) {
+                    normalizedAddress = task.address;
+                } else if (task.task_type === 2 && task.wp_device_id) {
+                    const order = await ordersCollection.findOne({ wp_device_id: task.wp_device_id });
+                    if (order?.deliveryAddress) {
+                        normalizedAddress = normalizeDeliveryAddress(order.deliveryAddress);
+                    }
+                }
+
+                if (!normalizedAddress) {
+                    await logEvent(`Skipping task ${task.task_id} - No address found`);
+                    continue;
+                }
+
+                // Find best technician
+                const technician = await findBestTechnician(normalizedAddress, historyTechnicianIds);
+                if (!technician || !isTechnicianMatchingDistrict(technician, normalizedAddress)) {
+                    await logEvent(`Task ${task.task_id} - No available technician in ${normalizedAddress.district}, ${normalizedAddress.state}`);
+                    continue;
+                }
+
+                const otp = Math.floor(100000 + Math.random() * 900000);
+                const reassignmentReason = `Pending for over 3 hours. Reassigned from ${currentTechnicianId}`;
+
+                // Update task
+                await serviceRecords.updateOne(
+                    { task_id: task.task_id },
+                    {
+                        $set: {
+                            assigned_technician_id: technician.technician_id,
+                            assigned_date: now,
+                            otp,
+                            modified_by: 'system',
+                            modified_date: now
+                        },
+                        $push: {
+                            assignment_history: {
+                                technician_id: technician.technician_id,
+                                assigned_date: now,
+                                assigned_by: 'system',
+                                reassigned_reason: reassignmentReason
+                            }
+                        }
+                    }
+                );
+
+                // Update technician details
+                await technicianDetailsCollection.updateOne(
+                    { technician_id: technician.technician_id },
+                    {
+                        $set: {
+                            user_id: technician.user_id,
+                            role_id: technician.role_id,
+                            email: technician.email,
+                            technician_id: technician.technician_id,
+                            status: true
+                        },
+                        $inc: { total_assigned_services: 1 }
+                    },
+                    { upsert: true }
+                );
+
+                // Send OTP only to CUSTOMER
+                if (task.task_created_by_user_email) {
+                    if (task.task_type === 1) {
+                        await sendAssignInstallationEmail(task.task_created_by_user_email, otp);
+                    } else if (task.task_type === 2) {
+                        await sendAssignServiceEmail(task.task_created_by_user_email, otp);
+                    }
+                    await delayForEmailRateLimit(500);
+                }
+
+                // Send assignment notification to technician (NO OTP)
+                await sendTechnicianAssignmentEmail(technician, {
+                    taskId: task.task_id,
+                    taskType: task.task_type,
+                    normalizedAddress,
+                    isReassignment: true
+                });
+                await delayForEmailRateLimit(500);
+
+                await logEvent(`Task ${task.task_id} reassigned to ${technician.technician_id} | Reason: ${reassignmentReason}`);
+
+            } catch (taskErr) {
+                await logEvent(`Error processing Pending task reassignment: ${taskErr.message} | Task: ${task?.task_id}`);
+            }
+        }
+
+        // === IN-PROGRESS TASKS: 24 hours (SKIP if waiting_status = true) ===
+        const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const inProgressCandidates = await serviceRecords
+            .find({
+                task_type: { $in: [1, 2] },
+                task_status: "In Progress",
+                waiting_status: { $ne: true }, // SKIP if waiting for something
+                assigned_technician_id: { $ne: null },
+                assigned_date: { $ne: null, $lte: twentyFourHoursAgo },
+                $expr: { $gt: [{ $size: { $ifNull: ["$assignment_history", []] } }, 0] } // Not first assignment
+            })
+            .sort({ assigned_date: 1 })
+            .limit(50)
+            .toArray();
+
+        await logEvent(`Found ${inProgressCandidates.length} In-Progress tasks ready for 24-hour reassignment`);
+
+        for (const task of inProgressCandidates) {
+            try {
+                const currentTechnicianId = task.assigned_technician_id;
+                const assignmentHistory = Array.isArray(task.assignment_history) ? [...task.assignment_history] : [];
+                const historyTechnicianIds = assignmentHistory
+                    .map(entry => (entry?.technician_id !== undefined && entry?.technician_id !== null)
+                        ? entry.technician_id.toString().trim()
+                        : null)
+                    .filter(Boolean);
+
+                if (currentTechnicianId && !historyTechnicianIds.includes(currentTechnicianId.toString().trim())) {
+                    historyTechnicianIds.push(currentTechnicianId.toString().trim());
+                }
+
+                // Get task address
+                let normalizedAddress = null;
+                if (task.task_type === 1 && task.address) {
+                    normalizedAddress = task.address;
+                } else if (task.task_type === 2 && task.wp_device_id) {
+                    const order = await ordersCollection.findOne({ wp_device_id: task.wp_device_id });
+                    if (order?.deliveryAddress) {
+                        normalizedAddress = normalizeDeliveryAddress(order.deliveryAddress);
+                    }
+                }
+
+                if (!normalizedAddress) {
+                    await logEvent(`Skipping task ${task.task_id} - No address found`);
+                    continue;
+                }
+
+                // Find best technician
+                const technician = await findBestTechnician(normalizedAddress, historyTechnicianIds);
+                if (!technician || !isTechnicianMatchingDistrict(technician, normalizedAddress)) {
+                    await logEvent(`Task ${task.task_id} - No available technician in ${normalizedAddress.district}, ${normalizedAddress.state}`);
+                    continue;
+                }
+
+                const otp = Math.floor(100000 + Math.random() * 900000);
+                const reassignmentReason = `In-Progress for over 24 hours. Reassigned from ${currentTechnicianId}`;
+
+                // Update task
+                await serviceRecords.updateOne(
+                    { task_id: task.task_id },
+                    {
+                        $set: {
+                            assigned_technician_id: technician.technician_id,
+                            assigned_date: now,
+                            otp,
+                            task_status: "Pending", // Change to Pending after reassignment
+                            modified_by: 'system',
+                            modified_date: now
+                        },
+                        $push: {
+                            assignment_history: {
+                                technician_id: technician.technician_id,
+                                assigned_date: now,
+                                assigned_by: 'system',
+                                reassigned_reason: reassignmentReason
+                            }
+                        }
+                    }
+                );
+
+                // Update technician details
+                await technicianDetailsCollection.updateOne(
+                    { technician_id: technician.technician_id },
+                    {
+                        $set: {
+                            user_id: technician.user_id,
+                            role_id: technician.role_id,
+                            email: technician.email,
+                            technician_id: technician.technician_id,
+                            status: true
+                        },
+                        $inc: { total_assigned_services: 1 }
+                    },
+                    { upsert: true }
+                );
+
+                // Send OTP only to CUSTOMER
+                if (task.task_created_by_user_email) {
+                    if (task.task_type === 1) {
+                        await sendAssignInstallationEmail(task.task_created_by_user_email, otp);
+                    } else if (task.task_type === 2) {
+                        await sendAssignServiceEmail(task.task_created_by_user_email, otp);
+                    }
+                    await delayForEmailRateLimit(500);
+                }
+
+                // Send assignment notification to technician (NO OTP)
+                await sendTechnicianAssignmentEmail(technician, {
+                    taskId: task.task_id,
+                    taskType: task.task_type,
+                    normalizedAddress,
+                    isReassignment: true
+                });
+                await delayForEmailRateLimit(500);
+
+                await logEvent(`Task ${task.task_id} reassigned to ${technician.technician_id} | Reason: ${reassignmentReason}`);
+
+            } catch (taskErr) {
+                await logEvent(`Error processing In-Progress task reassignment: ${taskErr.message} | Task: ${task?.task_id}`);
+            }
+        }
+
+        await logEvent(`✅ Completed 3-hour Pending task reassignments`);
+        await logEvent(`✅ Completed 24-hour In-Progress task reassignments`);
+
+    } catch (err) {
+        await logEvent(`Error in autoReassignTimeBasedTasks: ${err.message}`);
+    }
+}
+
+// NEW: Immediately reassign Rejected tasks with same process
+async function autoReassignRejectedTasksImmediate() {
+    try {
+        const db = await connectToDatabase();
+        const serviceRecords = db.collection("service_records");
+        const technicianDetailsCollection = db.collection("technician_details");
+        const ordersCollection = db.collection("orders");
+        const now = new Date();
+
+        const rejectedCandidates = await serviceRecords
+            .find({
+                task_type: { $in: [1, 2] },
+                task_status: "Rejected",
+                assigned_technician_id: { $ne: null }
+            })
+            .sort({ assigned_date: -1 })
+            .limit(50)
+            .toArray();
+
+        await logEvent(`[REJECTED] Found ${rejectedCandidates.length} Rejected tasks for immediate reassignment`);
+
+        for (const task of rejectedCandidates) {
+            try {
+                const currentTechnicianId = task.assigned_technician_id;
+                const assignmentHistory = Array.isArray(task.assignment_history) ? [...task.assignment_history] : [];
+                const historyTechnicianIds = assignmentHistory
+                    .map(entry => (entry?.technician_id !== undefined && entry?.technician_id !== null)
+                        ? entry.technician_id.toString().trim()
+                        : null)
+                    .filter(Boolean);
+
+                if (currentTechnicianId && !historyTechnicianIds.includes(currentTechnicianId.toString().trim())) {
+                    historyTechnicianIds.push(currentTechnicianId.toString().trim());
+                }
+
+                // Get task address
+                let normalizedAddress = null;
+                if (task.task_type === 1 && task.address) {
+                    normalizedAddress = task.address;
+                } else if (task.task_type === 2 && task.wp_device_id) {
+                    const order = await ordersCollection.findOne({ wp_device_id: task.wp_device_id });
+                    if (order?.deliveryAddress) {
+                        normalizedAddress = normalizeDeliveryAddress(order.deliveryAddress);
+                    }
+                }
+
+                if (!normalizedAddress) {
+                    await logEvent(`[REJECTED] Skipping task ${task.task_id} - No address found`);
+                    continue;
+                }
+
+                // Find best technician
+                const technician = await findBestTechnician(normalizedAddress, historyTechnicianIds);
+                if (!technician || !isTechnicianMatchingDistrict(technician, normalizedAddress)) {
+                    await logEvent(`[REJECTED] Task ${task.task_id} - No available technician in ${normalizedAddress.district}, ${normalizedAddress.state}`);
+                    continue;
+                }
+
+                const otp = Math.floor(100000 + Math.random() * 900000);
+                const reassignmentReason = `Task Rejected by ${currentTechnicianId}. Immediately reassigned`;
+
+                // Update task - change status to Pending
+                await serviceRecords.updateOne(
+                    { task_id: task.task_id },
+                    {
+                        $set: {
+                            assigned_technician_id: technician.technician_id,
+                            assigned_date: now,
+                            otp,
+                            task_status: "Pending",
+                            modified_by: 'system',
+                            modified_date: now
+                        },
+                        $push: {
+                            assignment_history: {
+                                technician_id: technician.technician_id,
+                                assigned_date: now,
+                                assigned_by: 'system',
+                                reassigned_reason: reassignmentReason
+                            }
+                        }
+                    }
+                );
+
+                // Update technician details
+                await technicianDetailsCollection.updateOne(
+                    { technician_id: technician.technician_id },
+                    {
+                        $set: {
+                            user_id: technician.user_id,
+                            role_id: technician.role_id,
+                            email: technician.email,
+                            technician_id: technician.technician_id,
+                            status: true
+                        },
+                        $inc: { total_assigned_services: 1 }
+                    },
+                    { upsert: true }
+                );
+
+                // Send OTP to CUSTOMER
+                if (task.task_created_by_user_email) {
+                    if (task.task_type === 1) {
+                        await sendAssignInstallationEmail(task.task_created_by_user_email, otp);
+                    } else if (task.task_type === 2) {
+                        await sendAssignServiceEmail(task.task_created_by_user_email, otp);
+                    }
+                    await delayForEmailRateLimit(500);
+                }
+
+                // Send notification to technician
+                await sendTechnicianAssignmentEmail(technician, {
+                    taskId: task.task_id,
+                    taskType: task.task_type,
+                    normalizedAddress,
+                    isReassignment: true
+                });
+                await delayForEmailRateLimit(500);
+
+                await logEvent(`[REJECTED] Task ${task.task_id} reassigned to ${technician.technician_id} | Reason: ${reassignmentReason}`);
+
+            } catch (taskErr) {
+                await logEvent(`[REJECTED] Error processing task reassignment: ${taskErr.message} | Task: ${task?.task_id}`);
+            }
+        }
+
+        await logEvent(`[REJECTED] ✅ Completed Rejected task immediate reassignments`);
+
+    } catch (err) {
+        await logEvent(`[REJECTED] Error in autoReassignRejectedTasksImmediate: ${err.message}`);
+    }
+}
+
+// NEW: Immediately reassign Forwarded tasks with same process
+async function autoReassignForwardedTasksImmediate() {
+    try {
+        const db = await connectToDatabase();
+        const serviceRecords = db.collection("service_records");
+        const technicianDetailsCollection = db.collection("technician_details");
+        const ordersCollection = db.collection("orders");
+        const now = new Date();
+
+        const forwardedCandidates = await serviceRecords
+            .find({
+                task_type: { $in: [1, 2] },
+                task_status: "Forwarded",
+                assigned_technician_id: { $ne: null }
+            })
+            .sort({ assigned_date: -1 })
+            .limit(50)
+            .toArray();
+
+        await logEvent(`[FORWARDED] Found ${forwardedCandidates.length} Forwarded tasks for immediate reassignment`);
+
+        for (const task of forwardedCandidates) {
+            try {
+                const currentTechnicianId = task.assigned_technician_id;
+                const assignmentHistory = Array.isArray(task.assignment_history) ? [...task.assignment_history] : [];
+                const historyTechnicianIds = assignmentHistory
+                    .map(entry => (entry?.technician_id !== undefined && entry?.technician_id !== null)
+                        ? entry.technician_id.toString().trim()
+                        : null)
+                    .filter(Boolean);
+
+                if (currentTechnicianId && !historyTechnicianIds.includes(currentTechnicianId.toString().trim())) {
+                    historyTechnicianIds.push(currentTechnicianId.toString().trim());
+                }
+
+                // Get task address
+                let normalizedAddress = null;
+                if (task.task_type === 1 && task.address) {
+                    normalizedAddress = task.address;
+                } else if (task.task_type === 2 && task.wp_device_id) {
+                    const order = await ordersCollection.findOne({ wp_device_id: task.wp_device_id });
+                    if (order?.deliveryAddress) {
+                        normalizedAddress = normalizeDeliveryAddress(order.deliveryAddress);
+                    }
+                }
+
+                if (!normalizedAddress) {
+                    await logEvent(`[FORWARDED] Skipping task ${task.task_id} - No address found`);
+                    continue;
+                }
+
+                // Find best technician
+                const technician = await findBestTechnician(normalizedAddress, historyTechnicianIds);
+                if (!technician || !isTechnicianMatchingDistrict(technician, normalizedAddress)) {
+                    await logEvent(`[FORWARDED] Task ${task.task_id} - No available technician in ${normalizedAddress.district}, ${normalizedAddress.state}`);
+                    continue;
+                }
+
+                const otp = Math.floor(100000 + Math.random() * 900000);
+                const reassignmentReason = `Task Forwarded by ${currentTechnicianId}. Immediately reassigned`;
+
+                // Update task - change status to Pending
+                await serviceRecords.updateOne(
+                    { task_id: task.task_id },
+                    {
+                        $set: {
+                            assigned_technician_id: technician.technician_id,
+                            assigned_date: now,
+                            otp,
+                            task_status: "Pending",
+                            modified_by: 'system',
+                            modified_date: now
+                        },
+                        $push: {
+                            assignment_history: {
+                                technician_id: technician.technician_id,
+                                assigned_date: now,
+                                assigned_by: 'system',
+                                reassigned_reason: reassignmentReason
+                            }
+                        }
+                    }
+                );
+
+                // Update technician details
+                await technicianDetailsCollection.updateOne(
+                    { technician_id: technician.technician_id },
+                    {
+                        $set: {
+                            user_id: technician.user_id,
+                            role_id: technician.role_id,
+                            email: technician.email,
+                            technician_id: technician.technician_id,
+                            status: true
+                        },
+                        $inc: { total_assigned_services: 1 }
+                    },
+                    { upsert: true }
+                );
+
+                // Send OTP to CUSTOMER
+                if (task.task_created_by_user_email) {
+                    if (task.task_type === 1) {
+                        await sendAssignInstallationEmail(task.task_created_by_user_email, otp);
+                    } else if (task.task_type === 2) {
+                        await sendAssignServiceEmail(task.task_created_by_user_email, otp);
+                    }
+                    await delayForEmailRateLimit(500);
+                }
+
+                // Send notification to technician
+                await sendTechnicianAssignmentEmail(technician, {
+                    taskId: task.task_id,
+                    taskType: task.task_type,
+                    normalizedAddress,
+                    isReassignment: true
+                });
+                await delayForEmailRateLimit(500);
+
+                await logEvent(`[FORWARDED] Task ${task.task_id} reassigned to ${technician.technician_id} | Reason: ${reassignmentReason}`);
+
+            } catch (taskErr) {
+                await logEvent(`[FORWARDED] Error processing task reassignment: ${taskErr.message} | Task: ${task?.task_id}`);
+            }
+        }
+
+        await logEvent(`[FORWARDED] ✅ Completed Forwarded task immediate reassignments`);
+
+    } catch (err) {
+        await logEvent(`[FORWARDED] Error in autoReassignForwardedTasksImmediate: ${err.message}`);
+    }
+}
+
 module.exports = {
     autoAssignInstallation,
     autoAssignService,
     autoAssignPendingTasks,
     autoAssignPendingInstallations,
     autoReassignOverdueTasks,
-    autoReassignRejectedTasks
+    autoReassignRejectedTasks,
+    autoReassignTimeBasedTasks,
+    autoReassignRejectedTasksImmediate,
+    autoReassignForwardedTasksImmediate
 };
