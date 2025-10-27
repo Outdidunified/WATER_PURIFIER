@@ -302,6 +302,7 @@ async function autoAssignInstallation(order) {
         const normalizedPaymentType = (order.paymentType || '').toString().toUpperCase();
         const isOrderConfirmed = order.orderStatus === 'Confirmed';
         const isPaymentCompleted = order.paymentStatus === 'Completed';
+        const isDeliveryCompleted = order.deliveryAcceptanceStatus === 'completed';
 
         if (!isOrderConfirmed) {
             console.log(`Skipping auto-assign for unconfirmed order ${order.customOrderId || order.wp_device_id}`);
@@ -310,6 +311,11 @@ async function autoAssignInstallation(order) {
 
         if (normalizedPaymentType !== 'COD' && !isPaymentCompleted) {
             console.log(`Skipping auto-assign for unpaid order ${order.customOrderId || order.wp_device_id} (paymentType: ${normalizedPaymentType || 'N/A'})`);
+            return;
+        }
+
+        if (!isDeliveryCompleted) {
+            console.log(`Skipping auto-assign for order ${order.customOrderId || order.wp_device_id}: delivery not marked completed`);
             return;
         }
 

@@ -7,6 +7,8 @@ const { sendSubscriptionConfirmationEmail } = require('../controllers/Email');
 const { validateDeliveryAddress, normalizeDeliveryAddress } = require('../models/DeliveryAddress');
 const { autoAssignInstallation } = require('../../admin/services/autoAssignmentService');
 
+const DELIVERY_STATUSES = ['accepted', 'packed', 'intransit', 'outfordelivery', 'completed'];
+
 function generateOrderId() {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // e.g. 20250526
   const random = Math.random().toString(36).substr(2, 6).toUpperCase();
@@ -102,6 +104,8 @@ exports.createSubscriptionOrder = async (req, res) => {
     const orderStatus = 'Confirmed';
     const paymentStatus = 'Pending'; // COD and ONLINE both start Pending
 
+    const now = new Date();
+
     const newOrder = {
       customOrderId,
       user_id: user.user_id,
@@ -122,8 +126,11 @@ exports.createSubscriptionOrder = async (req, res) => {
       price,
       subtotal,
       codFee,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      deliveryAcceptanceStatus: 'pending',
+      deliveryAcceptanceTimestamp: null,
+      deliveryCompletionTimestamp: null,
+      createdAt: now,
+      updatedAt: now
     };
 
     const result = await db.collection('orders').insertOne(newOrder);
@@ -145,8 +152,8 @@ exports.createSubscriptionOrder = async (req, res) => {
       price,
       subtotal,
       codFee,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: now,
+      updatedAt: now
     });
 
     // ✅ Immediately mark user subscribed for COD
@@ -165,6 +172,16 @@ exports.createSubscriptionOrder = async (req, res) => {
           },
           $addToSet: { assigned_device_ids: wp_device_id },
           $unset: { assigned_device_id: "" }
+        }
+      );
+
+      await db.collection('orders').updateOne(
+        { _id: orderId },
+        {
+          $set: {
+            deliveryAcceptanceStatus: 'accepted',
+            deliveryAcceptanceTimestamp: now
+          }
         }
       );
     }
@@ -267,12 +284,23 @@ exports.verifyRazorpayPayment = async (req, res) => {
           orderStatus: 'Confirmed',
           razorpayPaymentId: razorpay_payment_id,
           subscribed_at: now,
+          deliveryAcceptanceStatus: order.deliveryAcceptanceStatus === 'completed' ? 'completed' : 'accepted',
+          deliveryAcceptanceTimestamp: order.deliveryAcceptanceTimestamp || now,
           updatedAt: now
         }
       }
     );
 
-    const updatedOrder = { ...order, paymentStatus: 'Completed', orderStatus: 'Confirmed', razorpayPaymentId: razorpay_payment_id, subscribed_at: now, updatedAt: now };
+    const updatedOrder = {
+      ...order,
+      paymentStatus: 'Completed',
+      orderStatus: 'Confirmed',
+      razorpayPaymentId: razorpay_payment_id,
+      subscribed_at: now,
+      deliveryAcceptanceStatus: order.deliveryAcceptanceStatus === 'completed' ? 'completed' : 'accepted',
+      deliveryAcceptanceTimestamp: order.deliveryAcceptanceTimestamp || now,
+      updatedAt: now
+    };
 
     // ✅ Update user subscription & active plan
     const userUpdateResult = await usersCollection.updateOne(
