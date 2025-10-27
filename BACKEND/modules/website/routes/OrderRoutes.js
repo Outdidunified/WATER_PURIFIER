@@ -7,7 +7,9 @@ const {
   createSubscriptionOrder,
   verifyRazorpayPayment,
   getRechargeHistory,
-  downloadInvoice
+  downloadInvoice,
+  getDeliveryHistory,
+  updateDeliveryStatus
 } = require('../controllers/OrderController');
 
 // Multer middleware for subscription images
@@ -21,5 +23,7 @@ router.post(
 router.post('/orderverify', authMiddleware, verifyRazorpayPayment);
 router.get('/rechargehistory', authMiddleware, getRechargeHistory);
 router.get('/:orderId/invoice', downloadInvoice);
+router.get('/:orderId/delivery-history', getDeliveryHistory);
+router.post('/:orderId/update-delivery-status', authMiddleware, updateDeliveryStatus);
 
 module.exports = router;

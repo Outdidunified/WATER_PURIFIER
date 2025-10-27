@@ -764,6 +764,177 @@ exports.downloadInvoice = async (req, res) => {
     res.status(500).json({ message: 'Failed to generate invoice', error: error.message });
   }
 };
+
+exports.getDeliveryHistory = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+      return res.status(400).json({ message: 'orderId is required' });
+    }
+
+    // Validate if orderId is a valid MongoDB ObjectId
+    if (!ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: 'Invalid orderId format' });
+    }
+
+    const db = await connectToDatabase();
+    const order = await db.collection('orders').findOne({ _id: new ObjectId(orderId) });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Build delivery history from order's delivery fields
+    const history = [];
+
+    // Add delivery acceptance event if it exists
+    if (order.deliveryAcceptanceStatus && order.deliveryAcceptanceTimestamp) {
+      history.push({
+        status: order.deliveryAcceptanceStatus.toLowerCase(),
+        timestamp: order.deliveryAcceptanceTimestamp,
+        note: order.deliveryAcceptanceNote || '',
+        updatedBy: order.deliveryAcceptanceUpdatedBy || 'System',
+      });
+    }
+
+    // Add delivery completion event if it exists
+    if (order.deliveryCompletionTimestamp) {
+      history.push({
+        status: 'completed',
+        timestamp: order.deliveryCompletionTimestamp,
+        note: order.deliveryCompletionNote || '',
+        updatedBy: order.deliveryCompletionUpdatedBy || 'System',
+      });
+    }
+
+    // If no delivery events, use order status as fallback
+    if (history.length === 0 && order.orderStatus) {
+      history.push({
+        status: order.orderStatus.toLowerCase(),
+        timestamp: order.createdAt || new Date(),
+        note: 'Order created',
+        updatedBy: 'System',
+      });
+    }
+
+    // Extract notes/delivery notes if they exist as array
+    const notes = Array.isArray(order.deliveryNotes)
+      ? order.deliveryNotes
+      : order.deliveryNotes
+        ? [{ text: order.deliveryNotes, timestamp: new Date() }]
+        : [];
+
+    // Determine current status
+    let currentStatus = order.deliveryCurrentStatus || order.deliveryAcceptanceStatus || order.orderStatus || 'pending';
+    currentStatus = currentStatus.toLowerCase();
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        history,
+        deliveryHistory: history, // Duplicate for compatibility
+        notes,
+        deliveryNotes: notes, // Duplicate for compatibility
+        currentStatus,
+        order: {
+          _id: order._id,
+          customOrderId: order.customOrderId,
+          deliveryAcceptanceStatus: order.deliveryAcceptanceStatus,
+          deliveryCurrentStatus: order.deliveryCurrentStatus,
+          orderStatus: order.orderStatus,
+          paymentStatus: order.paymentStatus,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching delivery history:', error);
+    res.status(500).json({
+      message: 'Failed to fetch delivery history',
+      error: error.message,
+    });
+  }
+};
+
+exports.updateDeliveryStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { newStatus, notes } = req.body;
+
+    // Validate ObjectId
+    if (!ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: 'Invalid order ID format' });
+    }
+
+    // Validate new status
+    if (!newStatus) {
+      return res.status(400).json({ message: 'newStatus is required' });
+    }
+
+    const statusLower = newStatus.toLowerCase();
+    if (!DELIVERY_STATUSES.includes(statusLower)) {
+      return res.status(400).json({
+        message: `Invalid delivery status. Must be one of: ${DELIVERY_STATUSES.join(', ')}`
+      });
+    }
+
+    const db = await connectToDatabase();
+    const ordersCollection = db.collection('orders');
+
+    // Get current order
+    const order = await ordersCollection.findOne({ _id: new ObjectId(orderId) });
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Prepare update object
+    const updateData = {
+      deliveryCurrentStatus: statusLower,
+      updatedAt: new Date()
+    };
+
+    // Update status-specific timestamps
+    if (statusLower === 'accepted') {
+      updateData.deliveryAcceptanceStatus = true;
+      updateData.deliveryAcceptanceTimestamp = new Date();
+    } else if (statusLower === 'completed') {
+      updateData.deliveryCompletionStatus = true;
+      updateData.deliveryCompletionTimestamp = new Date();
+    }
+
+    // Add to delivery history
+    const historyEntry = {
+      status: statusLower,
+      timestamp: new Date(),
+      notes: notes || 'Manual update by admin',
+      updatedBy: 'admin'
+    };
+
+    // Update order
+    const result = await ordersCollection.findOneAndUpdate(
+      { _id: new ObjectId(orderId) },
+      {
+        $set: updateData,
+        $push: {
+          deliveryHistory: historyEntry
+        }
+      },
+      { returnDocument: 'after' }
+    );
+
+    return res.status(200).json({
+      message: 'Delivery status updated successfully',
+      order: result.value
+    });
+  } catch (error) {
+    console.error('Error updating delivery status:', error);
+    res.status(500).json({
+      message: 'Failed to update delivery status',
+      error: error.message
+    });
+  }
+};
+
 // Example helper functions (to be implemented elsewhere)
 function formatDate(date) {
   return date.toLocaleDateString('en-GB'); // e.g., DD/MM/YYYY
