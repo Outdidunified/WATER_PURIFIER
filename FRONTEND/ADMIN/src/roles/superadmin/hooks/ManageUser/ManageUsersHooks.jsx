@@ -127,6 +127,7 @@ const useManageUsers = (userInfo) => {
       item.name?.toUpperCase().includes(searchTerm) ||
       item.email?.toUpperCase().includes(searchTerm) ||
       item.phone?.toString().includes(searchTerm) ||
+      item.district?.toUpperCase().includes(searchTerm) ||
       item.city?.toUpperCase().includes(searchTerm) ||
       item.country?.toUpperCase().includes(searchTerm)
     );

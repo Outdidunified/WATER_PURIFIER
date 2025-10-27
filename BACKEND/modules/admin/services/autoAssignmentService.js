@@ -37,6 +37,11 @@ async function logOverdueEvent(message, metadata) {
     await persistOverdueLog(message, metadata);
 }
 
+// Rate limiter to prevent email spam detection
+async function delayForEmailRateLimit(delayMs = 500) {
+    return new Promise(resolve => setTimeout(resolve, delayMs));
+}
+
 // Email transporter setup
 const transporter = nodemailer.createTransport({
     host: 'smtppro.zoho.in', // SMTP server address
@@ -212,7 +217,9 @@ async function findBestTechnician(normalizedAddress, excludedTechnicianIds = [])
         const technicianId = (tech.technician_id !== undefined && tech.technician_id !== null)
             ? tech.technician_id.toString().trim()
             : null;
-        const matchesLocation = normalizedTechState.toLowerCase() === state.toLowerCase() && techDistrictNormalized === district;
+        const matchesLocation =
+            normalizedTechState.toLowerCase() === state.toLowerCase() &&
+            techDistrictNormalized.toLowerCase() === district.toLowerCase();
         const notExcluded = technicianId ? !excludedSet.has(technicianId) : false;
         return matchesLocation && notExcluded;
     });
@@ -451,14 +458,16 @@ async function autoAssignInstallation(order) {
                 { upsert: true }
             );
 
-            // Send notifications
+            // Send notifications with rate limiting
             await sendAssignInstallationEmail(orderUser.email, otp);
+            await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
             await sendTechnicianAssignmentEmail(technician, {
                 taskId: nextTaskId,
                 otp,
                 taskType: 1,
                 normalizedAddress
             });
+            await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
 
             console.log(`Installation auto-assigned to technician ${technician.technician_id}`);
         }
@@ -519,27 +528,43 @@ async function autoAssignService(taskId) {
             return;
         }
 
-        // For service tasks tied to an order/device, enforce payment check
+        // For service tasks tied to an order/device, enforce payment check and prefer the order's delivery address
+        let relatedOrder = null;
         if (task.wp_device_id) {
-            const order = await ordersCollection.findOne({ wp_device_id: task.wp_device_id });
-            if (!order || order.paymentStatus !== 'Completed') {
-                console.log(`Skipping auto-assign service for unpaid/unknown order with device ${task.wp_device_id}`);
-                return;
+            relatedOrder = await ordersCollection.findOne({ wp_device_id: task.wp_device_id });
+        }
+
+        if (!relatedOrder && task.device_id) {
+            const matchedInstallTask = await serviceRecords.findOne({
+                task_type: 1,
+                wp_device_id: task.device_id
+            });
+            if (matchedInstallTask?.order?.customOrderId) {
+                relatedOrder = await ordersCollection.findOne({ customOrderId: matchedInstallTask.order.customOrderId });
             }
         }
 
-        // Get user address
-        const user = await usersCollection.findOne({ user_id: task.task_created_by_user_id });
-        if (!user) {
-            console.log('User not found for service');
+        if (!relatedOrder) {
+            console.log(`❌ Skipping auto-assign service for task ${taskId}: no matching order found by wp_device_id or device_id`);
             return;
         }
 
-        const normalizedAddress = normalizeDeliveryAddress({
-            state: user.state,
-            district: user.district,
-            city: user.city
-        });
+        if (relatedOrder.paymentStatus !== 'Completed') {
+            console.log(`⚠️ Skipping auto-assign service for unpaid order ${relatedOrder.customOrderId || task.wp_device_id || task.device_id}`);
+            return;
+        }
+
+        // Use ONLY order delivery address (no user profile fallback)
+        let normalizedAddress = null;
+        if (relatedOrder?.deliveryAddress) {
+            normalizedAddress = normalizeDeliveryAddress(relatedOrder.deliveryAddress);
+            console.log(`✅ autoAssignService - Task ${taskId}: Using ORDER address - ${normalizedAddress.state}, ${normalizedAddress.district}`);
+        }
+
+        if (!normalizedAddress) {
+            console.log(`❌ Skipping auto-assign service for task ${taskId}: order has no delivery address`);
+            return;
+        }
 
         const historyTechnicianIds = (task.assignment_history || [])
             .map(entry => (entry?.technician_id !== undefined && entry?.technician_id !== null)
@@ -551,6 +576,8 @@ async function autoAssignService(taskId) {
         }
 
         // Find best technician
+        console.log(`Attempting auto-assign for service task ${taskId} (wp_device_id: ${task.wp_device_id || 'N/A'}, device_id: ${task.device_id || 'N/A'}) with address`, normalizedAddress);
+
         const technician = await findBestTechnician(normalizedAddress, historyTechnicianIds);
         if (technician && !isTechnicianMatchingDistrict(technician, normalizedAddress)) {
             console.log(`Found technician ${technician.technician_id} for service task ${taskId} but district mismatch, leaving task unassigned`);
@@ -558,7 +585,7 @@ async function autoAssignService(taskId) {
         }
 
         if (!technician) {
-            console.log('No available technician for service');
+            console.log(`No available technician for service task ${taskId} (wp_device_id: ${task.wp_device_id || 'N/A'}, device_id: ${task.device_id || 'N/A'})`);
             return;
         }
 
@@ -604,14 +631,16 @@ async function autoAssignService(taskId) {
             { upsert: true }
         );
 
-        // Send notifications
+        // Send notifications with rate limiting
         await sendAssignServiceEmail(task.task_created_by_user_email, otp);
+        await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
         await sendTechnicianAssignmentEmail(technician, {
             taskId: taskId,
             otp,
             taskType: 2,
             normalizedAddress
         });
+        await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
 
         console.log(`Service auto-assigned to technician ${technician.technician_id}`);
 
@@ -632,7 +661,7 @@ async function autoAssignPendingTasks() {
         // Find all unassigned tasks
         const pendingTasks = await serviceRecords.find({
             assigned_technician_id: null,
-            task_status: { $in: ["Unassigned", "Pending"] }
+            task_status: { $in: ["Unassigned", "Pending", "Initiated"] }
         }).toArray();
 
         console.log(`Found ${pendingTasks.length} pending tasks`);
@@ -651,14 +680,28 @@ async function autoAssignPendingTasks() {
                     }
                 }
             } else if (task.task_type === 2) {
-                // Service: use user's address
-                const user = await usersCollection.findOne({ user_id: task.task_created_by_user_id });
-                if (user) {
-                    normalizedAddress = normalizeDeliveryAddress({
-                        state: user.state,
-                        district: user.district,
-                        city: user.city
-                    });
+                // Service: ONLY use order delivery address (no user profile fallback)
+                let relatedOrder = null;
+                if (task.wp_device_id || task.device_id) {
+                    if (task.wp_device_id) {    
+                        relatedOrder = await ordersCollection.findOne({ wp_device_id: task.wp_device_id });
+                    } else if (task.device_id) {
+                        relatedOrder = await ordersCollection.findOne({ wp_device_id: task.device_id });
+                    }
+                    else {
+                        console.log(`❌ Task ${task.task_id} has no wp_device_id or device_id. Cannot determine order. Skipping task.`);
+                    }
+
+                    if (!relatedOrder) {
+                        console.log(`❌ No order found for device_id: ${task.wp_device_id} (task ${task.task_id}). Skipping task.`);
+                    } else if (relatedOrder?.deliveryAddress) {
+                        normalizedAddress = normalizeDeliveryAddress(relatedOrder.deliveryAddress);
+                        console.log(`✅ Service task ${task.task_id}: Using ORDER address - ${normalizedAddress.state}, ${normalizedAddress.district}`);
+                    } else {
+                        console.log(`❌ Order found for device_id: ${task.wp_device_id} (task ${task.task_id}) but has no delivery address. Skipping task.`);
+                    }
+                } else {
+                    console.log(`❌ Task ${task.task_id} has no wp_device_id. Cannot determine address. Skipping task.`);
                 }
             }
 
@@ -758,10 +801,11 @@ async function autoAssignPendingTasks() {
                     { upsert: true }
                 );
 
-                // Send OTP email
+                // Send OTP email with rate limiting
                 const user = await usersCollection.findOne({ user_id: task.task_created_by_user_id });
                 if (user) {
                     await sendAssignInstallationEmail(user.email, otp);
+                    await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
                 }
 
                 await sendTechnicianAssignmentEmail(technician, {
@@ -770,6 +814,7 @@ async function autoAssignPendingTasks() {
                     taskType: 1,
                     normalizedAddress
                 });
+                await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
 
             } else if (task.task_type === 2) {
                 // Assign service
@@ -812,14 +857,16 @@ async function autoAssignPendingTasks() {
                     { upsert: true }
                 );
 
-                // Send notifications
+                // Send notifications with rate limiting
                 await sendAssignServiceEmail(task.task_created_by_user_email, otp);
+                await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
                 await sendTechnicianAssignmentEmail(technician, {
                     taskId: task.task_id,
                     otp,
                     taskType: 2,
                     normalizedAddress
                 });
+                await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
             }
 
             console.log(`Auto-assigned pending task ${task.task_id} to technician ${technician.technician_id}`);
@@ -974,13 +1021,25 @@ async function autoReassignOverdueTasks() {
                     }
                 }
             } else if (task.task_type === 2) {
-                const user = await usersCollection.findOne({ user_id: task.task_created_by_user_id });
-                if (user) {
-                    normalizedAddress = normalizeDeliveryAddress({
-                        state: user.state,
-                        district: user.district,
-                        city: user.city
-                    });
+                // Service: ONLY use order delivery address (no user profile fallback)
+                let relatedOrder = null;
+                if (task.wp_device_id || task.device_id) {
+                    if (task.wp_device_id) {    
+                        relatedOrder = await ordersCollection.findOne({ wp_device_id: task.wp_device_id });
+                    } else if (task.device_id) {
+                        relatedOrder = await ordersCollection.findOne({ wp_device_id: task.device_id });
+                    }
+
+                    if (!relatedOrder) {
+                        console.log(`❌ Reassignment - No order found for device_id: ${task.wp_device_id || task.device_id} (task ${task.task_id}). Skipping task.`);
+                    } else if (relatedOrder?.deliveryAddress) {
+                        normalizedAddress = normalizeDeliveryAddress(relatedOrder.deliveryAddress);
+                        console.log(`✅ Reassignment - Service task ${task.task_id}: Using ORDER address - ${normalizedAddress.state}, ${normalizedAddress.district}`);
+                    } else {
+                        console.log(`❌ Reassignment - Order found for task ${task.task_id} (device_id: ${task.wp_device_id || task.device_id}) but has no delivery address. Skipping task.`);
+                    }
+                } else {
+                    console.log(`❌ Reassignment - Task ${task.task_id} has no wp_device_id or device_id. Cannot determine address. Skipping task.`);
                 }
             }
 
@@ -1089,6 +1148,7 @@ async function autoReassignOverdueTasks() {
                 taskType: task.task_type,
                 normalizedAddress
             });
+            await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
 
             await logOverdueEvent(`Overdue ${taskTypeLabel} task ${task.task_id} reassigned to technician ${technician.technician_id} at ${locationSummary}`);
         }
@@ -1103,10 +1163,195 @@ async function autoReassignOverdueTasks() {
     }
 }
 
+// Auto reassign rejected tasks to a different technician
+async function autoReassignRejectedTasks() {
+    try {
+        const db = await connectToDatabase();
+        const serviceRecords = db.collection("service_records");
+        const usersCollection = db.collection("users");
+        const ordersCollection = db.collection("orders");
+        const technicianDetailsCollection = db.collection("technician_details");
+
+        // Find all rejected tasks
+        const rejectedTasks = await serviceRecords.find({
+            task_status: "Rejected"
+        }).toArray();
+
+        console.log(`Found ${rejectedTasks.length} rejected tasks for reassignment`);
+
+        for (const task of rejectedTasks) {
+            try {
+                let normalizedAddress = null;
+                let relatedOrder = null;
+
+                // Get normalized address based on task type
+                if (task.task_type === 1) {
+                    // Installation: use address from task
+                    if (task.address) {
+                        normalizedAddress = normalizeDeliveryAddress(task.address);
+                    }
+                } else if (task.task_type === 2) {
+                    // Service: use order delivery address
+                    if (task.wp_device_id || task.device_id) {
+                        if (task.wp_device_id) {
+                            relatedOrder = await ordersCollection.findOne({ wp_device_id: task.wp_device_id });
+                        } else if (task.device_id) {
+                            relatedOrder = await ordersCollection.findOne({ wp_device_id: task.device_id });
+                        }
+
+                        if (relatedOrder?.deliveryAddress) {
+                            normalizedAddress = normalizeDeliveryAddress(relatedOrder.deliveryAddress);
+                        }
+                    }
+                }
+
+                if (!normalizedAddress) {
+                    console.log(`⚠️ Cannot reassign rejected task ${task.task_id}: no address found`);
+                    continue;
+                }
+
+                // Build excluded technician list from assignment history
+                const excludedTechnicianIds = (task.assignment_history || [])
+                    .map(entry => (entry?.technician_id !== undefined && entry?.technician_id !== null)
+                        ? entry.technician_id.toString().trim()
+                        : null)
+                    .filter(Boolean);
+
+                if (task.assigned_technician_id) {
+                    excludedTechnicianIds.push(task.assigned_technician_id.toString().trim());
+                }
+
+                console.log(`🔄 Reassigning rejected task ${task.task_id} (Type: ${task.task_type === 1 ? 'Installation' : 'Service'}) - Excluded technicians: ${excludedTechnicianIds.join(', ')}`);
+
+                // Find best available technician (excluding all from history)
+                const technician = await findBestTechnician(normalizedAddress, excludedTechnicianIds);
+
+                if (!technician) {
+                    console.log(`❌ No available technician to reassign rejected task ${task.task_id}`);
+                    continue;
+                }
+
+                if (!isTechnicianMatchingDistrict(technician, normalizedAddress)) {
+                    console.log(`❌ Found technician ${technician.technician_id} for rejected task ${task.task_id} but district mismatch`);
+                    continue;
+                }
+
+                // Generate new OTP
+                const otp = Math.floor(100000 + Math.random() * 900000);
+                const now = new Date();
+
+                // Mark previous assignment as unassigned in history (if exists)
+                if (task.assigned_technician_id) {
+                    // Update the last assignment history entry with unassigned info
+                    const updatedHistory = task.assignment_history ? [...task.assignment_history] : [];
+                    if (updatedHistory.length > 0) {
+                        updatedHistory[updatedHistory.length - 1].unassigned_date = now;
+                        updatedHistory[updatedHistory.length - 1].unassigned_by = 'system';
+                        updatedHistory[updatedHistory.length - 1].unassigned_reason = 'Rejected by technician';
+                    }
+
+                    // Add new assignment entry to history
+                    updatedHistory.push({
+                        technician_id: technician.technician_id,
+                        assigned_date: now,
+                        assigned_by: 'system',
+                        reassigned_reason: 'Rejected by previous technician'
+                    });
+
+                    // Update task with new assignment and updated history
+                    await serviceRecords.updateOne(
+                        { task_id: task.task_id },
+                        {
+                            $set: {
+                                task_status: "Pending",
+                                assigned_technician_id: technician.technician_id,
+                                assigned_date: now,
+                                otp: otp,
+                                assigned_by: 'system',
+                                modified_by: 'system',
+                                modified_date: now,
+                                assignment_history: updatedHistory
+                            }
+                        }
+                    );
+                } else {
+                    // First assignment
+                    await serviceRecords.updateOne(
+                        { task_id: task.task_id },
+                        {
+                            $set: {
+                                task_status: "Pending",
+                                assigned_technician_id: technician.technician_id,
+                                assigned_date: now,
+                                otp: otp,
+                                assigned_by: 'system',
+                                modified_by: 'system',
+                                modified_date: now
+                            },
+                            $push: {
+                                assignment_history: {
+                                    technician_id: technician.technician_id,
+                                    assigned_date: now,
+                                    assigned_by: 'system'
+                                }
+                            }
+                        }
+                    );
+                }
+
+                // Update technician details
+                await technicianDetailsCollection.updateOne(
+                    { technician_id: technician.technician_id },
+                    {
+                        $set: {
+                            user_id: technician.user_id,
+                            role_id: technician.role_id,
+                            email: technician.email,
+                            technician_id: technician.technician_id,
+                            status: true
+                        },
+                        $inc: { total_assigned_services: 1 }
+                    },
+                    { upsert: true }
+                );
+
+                // Send notifications with rate limiting to prevent email spam detection
+                if (task.task_created_by_user_email) {
+                    if (task.task_type === 1) {
+                        await sendAssignInstallationEmail(task.task_created_by_user_email, otp);
+                    } else if (task.task_type === 2) {
+                        await sendAssignServiceEmail(task.task_created_by_user_email, otp);
+                    }
+                    await delayForEmailRateLimit(500); // 500ms delay after customer email
+                }
+
+                await sendTechnicianAssignmentEmail(technician, {
+                    taskId: task.task_id,
+                    otp,
+                    taskType: task.task_type,
+                    normalizedAddress
+                });
+                await delayForEmailRateLimit(500); // 500ms delay after technician email
+
+                console.log(`✅ Rejected task ${task.task_id} reassigned to technician ${technician.technician_id}`);
+
+            } catch (taskErr) {
+                console.error(`Error reassigning rejected task ${task.task_id}:`, taskErr);
+            }
+        }
+
+        console.log('✅ Finished processing rejected task reassignments');
+
+    } catch (err) {
+        console.error("Error in autoReassignRejectedTasks:", err);
+    }
+}
+
 module.exports = {
     autoAssignInstallation,
     autoAssignService,
     autoAssignPendingTasks,
     autoAssignPendingInstallations,
-    autoReassignOverdueTasks
+    autoReassignOverdueTasks,
+    autoReassignRejectedTasks
 };

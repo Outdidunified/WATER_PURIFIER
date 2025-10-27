@@ -108,6 +108,15 @@ const Sidebar = ({ userInfo, permissions: propsPermissions }) => {
           </li>
         )}
 
+        {canView('manage_leaves') && (
+          <li className={['/superadmin/ManageLeaves','/superadmin/ViewLeaveDetails'].includes(location.pathname) ? 'nav-item active' : 'nav-item'}>
+            <Link className="nav-link" to="/superadmin/ManageLeaves">
+              <i className="icon-head menu-icon mdi mdi-calendar-multiple"></i>
+              <span className="menu-title">Manage Leaves</span>
+            </Link>
+          </li>
+        )}
+
         {canView('profile') && (
   <li className={location.pathname === '/superadmin/Profile' ? 'nav-item active' : 'nav-item'}>
     <Link className="nav-link" to="/superadmin/Profile">

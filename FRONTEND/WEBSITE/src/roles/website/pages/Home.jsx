@@ -9,6 +9,8 @@ import { getDistricts } from "india-state-district";
 
 const Home = ({ userInfo, token, handleLogout }) => {
     const durationRef = useRef(null);
+    const scrollRef = useRef(null);
+    let scrollInterval;
     const [hoveredQR, setHoveredQR] = useState(null);
     const [showSummaryModal, setShowSummaryModal] = useState(false);
     const [showModal, setShowModal] = useState(false);
@@ -38,6 +40,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
     const [selectedDurationIndex, setSelectedDurationIndex] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [showAllModels, setShowAllModels] = useState(false);
 
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
@@ -578,6 +581,53 @@ const Home = ({ userInfo, token, handleLogout }) => {
         stateNameMap[s.isoCode.toUpperCase()] = s.name;
     });
 
+    useEffect(() => {
+        const container = scrollRef.current;
+        if (!container) return;
+
+        let scrollDirection = 1; // 1 = right, -1 = left
+        const scrollSpeed = 1;   // pixels per tick
+        const intervalDelay = 20; // ms
+
+        // Start auto-scroll
+        scrollInterval = setInterval(() => {
+            if (!container) return;
+
+            container.scrollLeft += scrollDirection * scrollSpeed;
+
+            // Change direction at ends
+            if (container.scrollLeft + container.clientWidth >= container.scrollWidth) {
+                scrollDirection = -1; // scroll left
+            } else if (container.scrollLeft <= 0) {
+                scrollDirection = 1; // scroll right
+            }
+        }, intervalDelay);
+
+        // Pause on hover
+        const pauseAutoScroll = () => clearInterval(scrollInterval);
+        const resumeAutoScroll = () => {
+            scrollInterval = setInterval(() => {
+                if (!container) return;
+                container.scrollLeft += scrollDirection * scrollSpeed;
+                if (container.scrollLeft + container.clientWidth >= container.scrollWidth) {
+                    scrollDirection = -1;
+                } else if (container.scrollLeft <= 0) {
+                    scrollDirection = 1;
+                }
+            }, intervalDelay);
+        };
+
+        container.addEventListener("mouseenter", pauseAutoScroll);
+        container.addEventListener("mouseleave", resumeAutoScroll);
+
+        // Cleanup
+        return () => {
+            clearInterval(scrollInterval);
+            container.removeEventListener("mouseenter", pauseAutoScroll);
+            container.removeEventListener("mouseleave", resumeAutoScroll);
+        };
+    }, []);
+
 
     return (
         <div>
@@ -773,101 +823,232 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             </div>
                                         </div>
                                     </div>
+                                    {!showAllModels && (
+                                        <div className="row mt-4 align-items-start">
+                                            <div className="col-lg-6 col-12" style={{ padding: '20px' }}>
+                                                <div className="d-flex justify-content-center flex-column align-items-center section-title">
+                                                    <div className="text-center mb-3">
+                                                        <h2>Select Model</h2>
+                                                    </div>
+                                                    <ul className="nav nav-tabs flex-wrap" style={{ justifyContent: 'center' }}>
+                                                        <li className="nav-item">
+                                                            <button
+                                                                className={`nav-link text-center ${selectedModelIndex === -1 ? 'active' : ''}`}
+                                                                onClick={() => setShowAllModels(true)}
+                                                                style={{
+                                                                    minWidth: '150px',
+                                                                    margin: '5px',
+                                                                    backgroundColor: selectedModelIndex === -1 ? '#0d6efd' : '#e8f1ff',
+                                                                    color: selectedModelIndex === -1 ? '#fff' : '#0d6efd',
+                                                                    border: '1px solid #0d6efd',
+                                                                    borderRadius: '15px',
+                                                                    fontWeight: '600',
+                                                                    transition: 'all 0.3s ease'
+                                                                }}
+                                                            >
+                                                                <h4 style={{ margin: 0, fontSize: '16px' }}>All Model's</h4>
+                                                            </button>
+                                                        </li>
+                                                        {products.map((product, index) => {
+                                                            const isSelected = selectedModelIndex === index;
+                                                            const isOutOfStock = !product?.wp_device_id; // check if out of stock
 
-                                    <div className="row mt-4 align-items-start">
-                                        <div className="col-lg-6 col-12" style={{ padding: '20px' }}>
-                                            <div className="d-flex justify-content-center flex-column align-items-center section-title">
-                                                <div className="text-center mb-3">
-                                                    <h2>Select Model</h2>
+                                                            return (
+                                                                <li key={product._id} className="nav-item">
+                                                                    <button
+                                                                        className={`nav-link text-center ${isSelected ? 'active' : ''}`}
+                                                                        onClick={() => {
+                                                                            setSelectedModelIndex(index);
+                                                                            setSelectedPlanIndex(0);
+                                                                            setSelectedDurationIndex(0);
+                                                                            setTimeout(() => {
+                                                                                durationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                                                            }, 100);
+                                                                        }}
+                                                                        style={{
+                                                                            minWidth: '150px',
+                                                                            margin: '5px',
+                                                                            backgroundColor: isSelected
+                                                                                ? isOutOfStock ? '#dc3545' : '#0d6efd' // red if selected & out of stock
+                                                                                : isOutOfStock ? '#f8d7da' : '#e8f1ff', // light red if not selected
+                                                                            color: isSelected ? '#fff' : isOutOfStock ? '#721c24' : '#0d6efd',
+                                                                            border: '1px solid',
+                                                                            borderColor: isOutOfStock ? '#f5c6cb' : '#0d6efd',
+                                                                            borderRadius: '15px',
+                                                                            fontWeight: '600',
+                                                                            transition: 'all 0.3s ease'
+                                                                        }}
+                                                                    >
+                                                                        <h4 style={{ margin: 0, fontSize: '16px' }}>
+                                                                            {product.model_name} {isOutOfStock && '(Out of Stock)'}
+                                                                        </h4>
+                                                                    </button>
+                                                                </li>
+                                                            );
+                                                        })}
+
+                                                    </ul>
+
                                                 </div>
-                                                <ul className="nav nav-tabs flex-wrap" style={{ justifyContent: 'center' }}>
-                                                    {products.map((product, index) => {
-                                                        const isSelected = selectedModelIndex === index;
-                                                        return (
-                                                            <li key={product._id} className="nav-item">
-                                                                <button
-                                                                    className={`nav-link text-center ${isSelected ? 'active' : ''}`}
-                                                                    onClick={() => {
-                                                                        setSelectedModelIndex(index);
-                                                                        setSelectedPlanIndex(0);
-                                                                        setSelectedDurationIndex(0);
-                                                                        setTimeout(() => {
-                                                                            durationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                                                                        }, 100);
-                                                                    }}
-                                                                    style={{
-                                                                        minWidth: '150px',
-                                                                        margin: '5px',
-                                                                        backgroundColor: isSelected ? '#0d6efd' : '#e8f1ff', // blue for active, light-blue for others
-                                                                        color: isSelected ? '#fff' : '#0d6efd',              // white text for active, blue text for others
-                                                                        border: '1px solid #0d6efd',
-                                                                        borderRadius: '15px',
-                                                                        fontWeight: '600',
-                                                                        transition: 'all 0.3s ease'
-                                                                    }}
-                                                                >
-                                                                    <h4 style={{ margin: 0, fontSize: '16px' }}>{product.model_name}</h4>
-                                                                </button>
-                                                            </li>
-                                                        );
-                                                    })}
-                                                </ul>
-
                                             </div>
-                                        </div>
 
-                                        <div className="col-lg-6 col-12 text-center" style={{ padding: '20px' }}>
-                                            <img
-                                                src={`/upload/img/${mainImage || products[selectedModelIndex]?.main_img}`}
-                                                alt="Main Product"
-                                                className="img-fluid mb-3"
-                                                style={{
-                                                    boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
-                                                    borderRadius: '20px',
-                                                    maxWidth: '100%',
-                                                    width: '400px',
-                                                    height: '300px',
-                                                    objectFit: 'contain',
-                                                }}
-                                            />
-                                            <div className="d-flex justify-content-center align-items-center flex-wrap gap-3 mt-3">
-                                                {[1, 2, 3, 4].map((num) => {
-                                                    const subImg = products[selectedModelIndex]?.[`sub_img_${num}`];
-                                                    return subImg ? (
+                                            <div className="col-lg-6 col-12 text-center" style={{ padding: '20px' }}>
+                                                <img
+                                                    src={`/upload/img/${mainImage || products[selectedModelIndex]?.main_img}`}
+                                                    alt="Main Product"
+                                                    className="img-fluid mb-3"
+                                                    style={{
+                                                        boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
+                                                        borderRadius: '20px',
+                                                        maxWidth: '100%',
+                                                        width: '400px',
+                                                        height: '300px',
+                                                        objectFit: 'contain',
+                                                    }}
+                                                />
+                                                <div className="d-flex justify-content-center align-items-center flex-wrap gap-3 mt-3">
+                                                    {[1, 2, 3, 4].map((num) => {
+                                                        const subImg = products[selectedModelIndex]?.[`sub_img_${num}`];
+                                                        return subImg ? (
+                                                            <img
+                                                                key={num}
+                                                                src={`/upload/img/${subImg}`}
+                                                                alt={`Sub ${num}`}
+                                                                className="rounded"
+                                                                style={{
+                                                                    width: "80px",
+                                                                    height: "80px",
+                                                                    objectFit: "cover",
+                                                                    border: mainImage === subImg ? "2px solid #0d83fd" : "1px solid #ccc",
+                                                                    cursor: "pointer",
+                                                                }}
+                                                                onClick={() => setMainImage(subImg)}
+                                                            />
+                                                        ) : null;
+                                                    })}
+                                                    {products[selectedModelIndex]?.main_img && (
                                                         <img
-                                                            key={num}
-                                                            src={`/upload/img/${subImg}`}
-                                                            alt={`Sub ${num}`}
+                                                            src={`/upload/img/${products[selectedModelIndex].main_img}`}
+                                                            alt="Main Preview"
                                                             className="rounded"
                                                             style={{
                                                                 width: "80px",
                                                                 height: "80px",
                                                                 objectFit: "cover",
-                                                                border: mainImage === subImg ? "2px solid #0d83fd" : "1px solid #ccc",
+                                                                border: mainImage === products[selectedModelIndex].main_img ? "2px solid #0d83fd" : "2px dashed #0d83fd",
                                                                 cursor: "pointer",
                                                             }}
-                                                            onClick={() => setMainImage(subImg)}
+                                                            onClick={() => setMainImage(products[selectedModelIndex].main_img)}
                                                         />
-                                                    ) : null;
-                                                })}
-                                                {products[selectedModelIndex]?.main_img && (
-                                                    <img
-                                                        src={`/upload/img/${products[selectedModelIndex].main_img}`}
-                                                        alt="Main Preview"
-                                                        className="rounded"
-                                                        style={{
-                                                            width: "80px",
-                                                            height: "80px",
-                                                            objectFit: "cover",
-                                                            border: mainImage === products[selectedModelIndex].main_img ? "2px solid #0d83fd" : "2px dashed #0d83fd",
-                                                            cursor: "pointer",
-                                                        }}
-                                                        onClick={() => setMainImage(products[selectedModelIndex].main_img)}
-                                                    />
-                                                )}
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
+
+                                    {showAllModels && (
+                                        <div className="col-lg-12 col-12" style={{ padding: '20px' }}>
+                                            <div className="section-title text-center" style={{ paddingBottom: '10px' }}>
+                                                <h2>Select Model</h2>
+                                                <ul className="nav flex-wrap" style={{ justifyContent: 'center' }}>
+                                                    <li className="nav-item">
+                                                        <button
+                                                            className={`nav-link text-center ${selectedModelIndex === -1 ? 'active' : ''}`}
+                                                            onClick={() => setShowAllModels(false)}
+                                                            style={{
+                                                                minWidth: '150px',
+                                                                margin: '5px',
+                                                                backgroundColor: selectedModelIndex === -1 ? '#0d6efd' : '#e8f1ff',
+                                                                color: selectedModelIndex === -1 ? '#fff' : '#0d6efd',
+                                                                border: '1px solid #0d6efd',
+                                                                borderRadius: '15px',
+                                                                fontWeight: '600',
+                                                                transition: 'all 0.3s ease'
+                                                            }}
+                                                        >
+                                                            <h4 style={{ margin: 0, fontSize: '16px' }}>Back Model's</h4>
+                                                        </button>
+                                                    </li>
+                                                </ul>
+                                            </div>
+
+                                            <div
+                                                ref={scrollRef}
+                                                className="d-flex overflow-auto py-3"
+                                                style={{ gap: "20px", scrollBehavior: "smooth", cursor: "grab" }}
+                                            >
+                                                {products.map((product, index) => {
+                                                    const isSelected = selectedModelIndex === index;
+                                                    const isOutOfStock = !product?.wp_device_id;
+
+                                                    return (
+                                                        <div
+                                                            key={product._id}
+                                                            className={`card text-center flex-shrink-0`}
+                                                            style={{
+                                                                width: "250px",
+                                                                borderRadius: "20px",
+                                                                border: isSelected ? "3px solid #0d6efd" : "1px solid #ddd",
+                                                                boxShadow: isSelected
+                                                                    ? "0 0 20px rgba(13,110,253,0.3)"
+                                                                    : "0 2px 8px rgba(0,0,0,0.1)",
+                                                                transform: isSelected ? "scale(1.05)" : "scale(1)",
+                                                                transition: "all 0.4s ease",
+                                                                opacity: isOutOfStock ? 0.5 : 1,
+                                                                cursor: "pointer",
+                                                                marginLeft: '10px',
+                                                                marginRight: '10px'
+                                                            }}
+                                                            onClick={() => {
+                                                                setSelectedModelIndex(index);
+                                                                setActiveModelIndex(index);
+                                                                setSelectedPlanIndex(0);
+                                                                setSelectedDurationIndex(0);
+                                                                setMainImage(product.main_img);
+                                                                setTimeout(() => {
+                                                                    durationRef.current?.scrollIntoView({
+                                                                        behavior: "smooth",
+                                                                        block: "start",
+                                                                    });
+                                                                }, 300);
+                                                            }}
+                                                        >
+                                                            <img
+                                                                src={`/upload/img/${product.main_img}`}
+                                                                alt={product.model_name}
+                                                                className="card-img-top"
+                                                                style={{
+                                                                    height: "180px",
+                                                                    objectFit: "contain",
+                                                                    borderTopLeftRadius: "20px",
+                                                                    borderTopRightRadius: "20px",
+                                                                    animation: isSelected ? "slideIn 0.5s ease-in-out" : "none",
+                                                                }}
+                                                            />
+                                                            <div className="card-body">
+                                                                <h5
+                                                                    style={{
+                                                                        color: isSelected ? "#0d6efd" : "#000",
+                                                                        fontWeight: "600",
+                                                                        fontSize: "16px",
+                                                                    }}
+                                                                >
+                                                                    {product.model_name}{" "}
+                                                                    {isOutOfStock && (
+                                                                        <span style={{ color: "red", fontWeight: "600" }}>
+                                                                            (Out of Stock)
+                                                                        </span>
+                                                                    )}
+                                                                </h5>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+
+
+                                        </div>
+                                    )}
 
                                     <div ref={durationRef}>
                                         <div className="row mt-4">
@@ -1099,6 +1280,19 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                                 <span className="text-warning">✓</span> Includes ₹
                                                                                 {priceDetails.securityDeposit || 0} refundable deposit
                                                                             </li>
+                                                                            {(() => {
+                                                                                const product = products[selectedModelIndex];
+                                                                                const isOutOfStock = !product?.wp_device_id;
+
+                                                                                if (isOutOfStock) {
+                                                                                    return (
+                                                                                        <li className="text-danger" style={{ textAlign: 'center' }}>
+                                                                                            <span className="text-danger">❌</span> Out of Stock
+                                                                                        </li>
+                                                                                    );
+                                                                                }
+                                                                                return null;
+                                                                            })()}
                                                                         </ul>
                                                                     </div>
 
@@ -1109,8 +1303,20 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                             const isOutOfStock = !product?.wp_device_id;
                                                                             if (isOutOfStock) {
                                                                                 return (
-                                                                                    <button className="btn btn-danger px-4 py-2 rounded-pill" disabled>
-                                                                                        Out of Stock
+                                                                                    // <button className="btn btn-danger px-4 py-2 rounded-pill" disabled>
+                                                                                    //     Out of Stock
+                                                                                    // </button>
+                                                                                    <button
+                                                                                        className="btn px-4 py-2 rounded-pill"
+                                                                                        style={{
+                                                                                            background: isPopular ? "#0d6efd" : "#0d6efd",
+                                                                                            border: "none",
+                                                                                            color: "#fff",
+                                                                                            transition: "0.3s",
+                                                                                        }}
+                                                                                        disabled
+                                                                                    >
+                                                                                        Buy Now
                                                                                     </button>
                                                                                 );
                                                                             }
@@ -1130,7 +1336,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                                         handleSubscribeClick();
                                                                                     }}
                                                                                 >
-                                                                                    Subscribe Now
+                                                                                    Buy Now
                                                                                 </button>
                                                                             );
                                                                         })()}

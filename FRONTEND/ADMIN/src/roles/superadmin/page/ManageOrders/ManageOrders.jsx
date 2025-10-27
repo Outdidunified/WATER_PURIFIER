@@ -42,10 +42,14 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
         return accumulator;
       }
 
-      if (order.moneyReceived || (order.paymentStatus || '').toLowerCase() === 'completed') {
-        accumulator[stateKey] = true;
+      const paymentStatus = (order.paymentStatus || '').toLowerCase();
+
+      if (!isCodPaymentEligible(order)) {
+        accumulator[stateKey] = paymentStatus === 'completed';
+        return accumulator;
       }
 
+      accumulator[stateKey] = Boolean(order.moneyReceived);
       return accumulator;
     }, {});
 
@@ -92,11 +96,6 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
       return;
     }
 
-    setCodConfirmation((previousState) => ({
-      ...previousState,
-      [stateKey]: true,
-    }));
-
     const confirmationSucceeded = await confirmCodPayment({
       wp_device_id: resolveDeviceId(order),
       onSuccess: () => {
@@ -107,12 +106,10 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
       },
     });
 
-    if (!confirmationSucceeded) {
-      setCodConfirmation((previousState) => ({
-        ...previousState,
-        [stateKey]: false,
-      }));
-    }
+    setCodConfirmation((previousState) => ({
+      ...previousState,
+      [stateKey]: confirmationSucceeded,
+    }));
   };
 
   const ORDER_STATUSES = ['Confirmed', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
