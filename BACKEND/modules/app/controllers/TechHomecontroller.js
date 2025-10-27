@@ -76,7 +76,7 @@ exports.requestLeave = async (req, res) => {
   if (!technician_id || !email || !from_date || !to_date || !number_of_days) {
     return res.status(400).json({
       error: true,
-      message: 'technician_id, email, from_date, to_date, and number_of_days are required',
+      message: 'Missing required fields',
     });
   }
 
@@ -84,7 +84,7 @@ exports.requestLeave = async (req, res) => {
   if (reason && typeof reason === 'string' && reason.trim() === '') {
     return res.status(400).json({
       error: true,
-      message: 'Reason cannot be empty',
+      message: 'Reason is empty',
     });
   }
 
@@ -113,7 +113,7 @@ exports.requestLeave = async (req, res) => {
     if (fromDate > toDate) {
       return res.status(400).json({
         error: true,
-        message: 'from_date cannot be after to_date',
+        message: 'Start date cannot be after end date',
       });
     }
 
@@ -132,7 +132,33 @@ exports.requestLeave = async (req, res) => {
     if (existingLeave) {
       return res.status(400).json({
         error: true,
-        message: 'Leave already requested or approved for these dates',
+        message: 'Leave already exists for these dates',
+        data: {
+          leave_from: existingLeave.from_date,
+          leave_to: existingLeave.to_date,
+          status: existingLeave.status,
+        },
+      });
+    }
+
+    // Check if technician has an active or pending approved leave that hasn't been completed
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const pendingApprovedLeave = await leaveRequestsCollection.findOne({
+      technician_id: technician_id.trim(),
+      status: 'Approved',
+      to_date: { $gte: today }, // Leave end date is today or in the future
+    });
+
+    if (pendingApprovedLeave) {
+      return res.status(400).json({
+        error: true,
+        message: 'Complete your current leave first',
+        data: {
+          current_leave_from: pendingApprovedLeave.from_date,
+          current_leave_to: pendingApprovedLeave.to_date,
+        },
       });
     }
 
@@ -173,7 +199,7 @@ exports.requestLeave = async (req, res) => {
     console.error('Error requesting leave:', error);
     return res.status(500).json({
       error: true,
-      message: 'Server error while processing leave request',
+      message: 'Server error',
     });
   }
 };
@@ -224,6 +250,142 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASSWORD,
   },
 });
+
+
+exports.updateInProgressTaskLeaveAction = async (req, res) => {
+  const { technician_id, email, task_id, action } = req.body;
+
+  if (!technician_id || !email || !task_id || !action) {
+    return res.status(400).json({
+      error: true,
+      message: 'Missing required fields',
+    });
+  }
+
+  const validActions = ['forward', 'waiting'];
+  const actionLower = action.toLowerCase();
+
+  if (!validActions.includes(actionLower)) {
+    return res.status(400).json({
+      error: true,
+      message: 'Action must be "forward" or "waiting"',
+    });
+  }
+
+  try {
+    const db = await connectToDatabase();
+    const serviceRecordsCollection = db.collection('service_records');
+    const leaveRequestsCollection = db.collection('leave_requests');
+
+    // Check if technician is currently on approved leave
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // First check: Is there any approved leave for this technician that hasn't completed?
+    const anyApprovedLeave = await leaveRequestsCollection.findOne({
+      technician_id: technician_id.trim(),
+      technician_email: email.trim(),
+      status: 'Approved',
+      to_date: { $gte: today }, // Leave end date is today or in the future
+    });
+
+    if (!anyApprovedLeave) {
+      return res.status(403).json({
+        error: true,
+        message: 'No approved leave found',
+      });
+    }
+
+    // Second check: Is technician currently within the leave period?
+    const currentlyOnLeave = await leaveRequestsCollection.findOne({
+      technician_id: technician_id.trim(),
+      technician_email: email.trim(),
+      status: 'Approved',
+      from_date: { $lte: today },
+      to_date: { $gte: today },
+    });
+
+    if (!currentlyOnLeave) {
+      return res.status(403).json({
+        error: true,
+        message: 'You can only do this during your leave dates',
+        data: {
+          leave_from: anyApprovedLeave.from_date,
+          leave_to: anyApprovedLeave.to_date,
+        },
+      });
+    }
+
+    const approvedLeave = currentlyOnLeave;
+
+    // Find the In Progress task
+    const task = await serviceRecordsCollection.findOne({
+      task_id: parseInt(task_id),
+      assigned_technician_id: technician_id.trim(),
+      task_status: 'In Progress',
+    });
+
+    if (!task) {
+      return res.status(404).json({
+        error: true,
+        message: 'Task not found',
+      });
+    }
+
+    // Prepare update data
+    const updateData = {
+      modified_by: technician_id.trim(),
+      modified_date: new Date().toISOString(),
+      leave_action: actionLower,
+      leave_reference: {
+        from_date: approvedLeave.from_date,
+        to_date: approvedLeave.to_date,
+      },
+    };
+
+    if (actionLower === 'forward') {
+      updateData.task_status = 'Forwarded'; // will be picked up for reassignment
+      updateData.waiting_status = false;    // reset waiting
+    } else if (actionLower === 'waiting') {
+      updateData.task_status = 'In Progress'; // keep as In Progress
+      updateData.waiting_status = true;       // mark waiting
+    }
+
+    // Update service record
+    const result = await serviceRecordsCollection.updateOne(
+      { task_id: parseInt(task_id), assigned_technician_id: technician_id.trim() },
+      { $set: updateData }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(400).json({
+        error: true,
+        message: 'Failed to update task',
+      });
+    }
+
+    // Response
+    const message =
+      actionLower === 'forward'
+        ? 'Task forwarded for reassignment'
+        : 'Task waiting status updated';
+
+    return res.status(200).json({
+      error: false,
+      message,
+      data: {
+        action: actionLower,
+      },
+    });
+  } catch (error) {
+    console.error('Error updating task during leave:', error);
+    return res.status(500).json({
+      error: true,
+      message: 'Server error',
+    });
+  }
+};
+
 
 exports.updateTaskDetails = async (req, res) => {
   console.log('----- Incoming Request to /updateTaskDetails -----');
@@ -473,23 +635,31 @@ exports.acceptDeclineTask = async (req, res) => {
   if (!user_id || !email || !role_id || !technician_id || !task_id || !action) {
     return res.status(400).json({
       error: true,
-      message: 'user_id, email, role_id, technician_id, task_id, and action are required',
+      message:
+        'user_id, email, role_id, technician_id, task_id, and action are required',
     });
   }
 
   // Only technicians can act
   if (parseInt(role_id) !== 2) {
-    return res.status(403).json({ error: true, message: 'Access denied: not a technician' });
+    return res
+      .status(403)
+      .json({ error: true, message: 'Access denied: not a technician' });
   }
 
   const actionLower = action.toLowerCase();
   if (!['accept', 'decline'].includes(actionLower)) {
-    return res.status(400).json({ error: true, message: 'Action must be "accept" or "decline"' });
+    return res
+      .status(400)
+      .json({ error: true, message: 'Action must be "accept" or "decline"' });
   }
 
   // Decline must have a reason
   if (actionLower === 'decline' && (!decline_reason || !decline_reason.trim())) {
-    return res.status(400).json({ error: true, message: 'decline_reason is required when declining a task' });
+    return res.status(400).json({
+      error: true,
+      message: 'decline_reason is required when declining a task',
+    });
   }
 
   try {
@@ -504,7 +674,10 @@ exports.acceptDeclineTask = async (req, res) => {
     });
 
     if (!task) {
-      return res.status(404).json({ error: true, message: 'Task not found or not assigned to technician' });
+      return res.status(404).json({
+        error: true,
+        message: 'Task not found or not assigned to technician',
+      });
     }
 
     let updateData = {
@@ -515,22 +688,25 @@ exports.acceptDeclineTask = async (req, res) => {
     // ✅ ACCEPT
     if (actionLower === 'accept') {
       if (!estimated_end) {
-        return res.status(400).json({ error: true, message: 'estimated_end is required when accepting a task' });
+        return res.status(400).json({
+          error: true,
+          message: 'estimated_end is required when accepting a task',
+        });
       }
 
       // Parse assigned date and estimated end in UTC
-      const assignedDateUTC = new Date(task.assigned_date); // already UTC
-      const estimatedEndUTC = new Date(estimated_end); // sent from Flutter as UTC
+      const assignedDateUTC = new Date(task.assigned_date);
+      const estimatedEndUTC = new Date(estimated_end);
 
-      // Calculate 3-day limit in UTC
-      const threeDaysLaterUTC = new Date(assignedDateUTC);
-      threeDaysLaterUTC.setUTCDate(threeDaysLaterUTC.getUTCDate() + 3);
+      // Calculate 2-day (48-hour) limit in UTC
+      const twoDaysLaterUTC = new Date(assignedDateUTC);
+      twoDaysLaterUTC.setUTCDate(twoDaysLaterUTC.getUTCDate() + 2);
 
-      // Validation: ensure estimatedEndUTC is within assignedDateUTC and threeDaysLaterUTC
-      if (estimatedEndUTC < assignedDateUTC || estimatedEndUTC > threeDaysLaterUTC) {
+      // Validation: ensure estimatedEndUTC is within assignedDateUTC and twoDaysLaterUTC
+      if (estimatedEndUTC < assignedDateUTC || estimatedEndUTC > twoDaysLaterUTC) {
         return res.status(400).json({
           error: true,
-          message: `Estimated end date must be within 3 days of assigned date (${assignedDateUTC.toISOString()} - ${threeDaysLaterUTC.toISOString()})`,
+          message: `Estimated end date must be within 48 hours of assigned date (${assignedDateUTC.toISOString()} - ${twoDaysLaterUTC.toISOString()})`,
         });
       }
 
@@ -547,7 +723,7 @@ exports.acceptDeclineTask = async (req, res) => {
     if (actionLower === 'decline') {
       updateData = {
         ...updateData,
-        task_status: 'Rejected', // ✅ changed from Pending to Rejected
+        task_status: 'Rejected',
         pending_reason: decline_reason.trim(),
         estimated_start: null,
         estimated_end: null,
@@ -555,17 +731,23 @@ exports.acceptDeclineTask = async (req, res) => {
     }
 
     const result = await serviceRecordsCollection.updateOne(
-      { task_id: parseInt(task_id), assigned_technician_id: technician_id.trim() },
+      {
+        task_id: parseInt(task_id),
+        assigned_technician_id: technician_id.trim(),
+      },
       { $set: updateData }
     );
 
     if (result.modifiedCount === 0) {
-      return res.status(400).json({ error: true, message: 'Failed to update task status' });
+      return res
+        .status(400)
+        .json({ error: true, message: 'Failed to update task status' });
     }
 
-    const actionMessage = actionLower === 'accept'
-      ? 'Task accepted successfully'
-      : 'Task rejected successfully'; // ✅ changed message
+    const actionMessage =
+      actionLower === 'accept'
+        ? 'Task accepted successfully'
+        : 'Task rejected successfully';
 
     return res.status(200).json({
       error: false,
@@ -574,7 +756,9 @@ exports.acceptDeclineTask = async (req, res) => {
         task_id: parseInt(task_id),
         new_status: updateData.task_status,
         action: actionLower,
-        ...(actionLower === 'decline' && { decline_reason: decline_reason.trim() }),
+        ...(actionLower === 'decline' && {
+          decline_reason: decline_reason.trim(),
+        }),
         ...(actionLower === 'accept' && {
           estimated_start: updateData.estimated_start,
           estimated_end: updateData.estimated_end,
@@ -589,6 +773,7 @@ exports.acceptDeclineTask = async (req, res) => {
     });
   }
 };
+
 
 
 

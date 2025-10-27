@@ -20,5 +20,6 @@ router.post('/acceptDeclineTask', techhome.acceptDeclineTask);
 // ============ LEAVE REQUEST ROUTES ============
 router.post('/requestLeave', techhome.requestLeave);
 router.post('/getTechnicianLeaveRequests', techhome.getTechnicianLeaveRequests);
+router.post('/updateInProgressTaskLeaveAction', techhome.updateInProgressTaskLeaveAction);
 
 module.exports = router;
