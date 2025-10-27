@@ -66,13 +66,27 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
   const isCodPaymentEligible = (order) => (order.paymentType || '').toUpperCase() === 'COD';
 
   const handleMoneyReceivedToggle = async (order, isChecked) => {
+    console.log('handleMoneyReceivedToggle called:', { 
+      orderId: order._id, 
+      customOrderId: order.customOrderId,
+      isChecked,
+      paymentType: order.paymentType,
+      paymentStatus: order.paymentStatus,
+      moneyReceived: order.moneyReceived,
+      wp_device_id: order.wp_device_id,
+      order_snapshot_wp_device_id: order?.order_snapshot?.wp_device_id,
+      fullOrder: order
+    });
+
     const stateKey = buildConfirmationStateKey(order);
 
     if (!stateKey) {
+      console.error('Could not build confirmation state key');
       return;
     }
 
     if (order.moneyReceived || (order.paymentStatus || '').toLowerCase() === 'completed') {
+      console.log('Order already marked as received or payment completed');
       setCodConfirmation((previousState) => ({
         ...previousState,
         [stateKey]: true,
@@ -81,6 +95,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
     }
 
     if (!isChecked) {
+      console.log('Checkbox unchecked, resetting confirmation state');
       setCodConfirmation((previousState) => ({
         ...previousState,
         [stateKey]: false,
@@ -89,6 +104,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
     }
 
     if (!isCodPaymentEligible(order)) {
+      console.log('Order is not COD payment eligible');
       setCodConfirmation((previousState) => ({
         ...previousState,
         [stateKey]: false,
@@ -96,9 +112,13 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
       return;
     }
 
+    const deviceId = resolveDeviceId(order);
+    console.log('Resolved device ID:', deviceId);
+
     const confirmationSucceeded = await confirmCodPayment({
-      wp_device_id: resolveDeviceId(order),
+      wp_device_id: deviceId,
       onSuccess: () => {
+        console.log('Payment confirmation succeeded, updating UI state');
         setCodConfirmation((previousState) => ({
           ...previousState,
           [stateKey]: true,
@@ -106,6 +126,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
       },
     });
 
+    console.log('Payment confirmation result:', confirmationSucceeded);
     setCodConfirmation((previousState) => ({
       ...previousState,
       [stateKey]: confirmationSucceeded,

@@ -88,6 +88,7 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
     };
 
     // Fetch only tasks from API (when details are passed from state)
+    // Uses same API endpoint as ViewManageUsersHooks for consistency
     const fetchTasksFromAPI = async (technicianId, technicianEmail) => {
         try {
             if (!technicianId) {
@@ -95,7 +96,7 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
                 return;
             }
 
-            // Use axiosInstance like ViewManageUsersHooks does
+            // ✅ Using same API endpoint as ViewManageUsersHooks (line 83)
             const tasksResponse = await axiosInstance.post('/api/admin/FetchTechnicianTasksByUserId', {
                 user_id: technicianId,
                 email: technicianEmail || '',
@@ -106,7 +107,7 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
             if (tasksResponse.status === 200) {
                 if (tasksResponse.data.status === 'Success') {
                     const tasks = tasksResponse.data.data || [];
-                    console.log('✅ Tasks fetched successfully:', tasks);
+                    console.log('✅ Tasks fetched successfully:', tasks.length, 'tasks');
                     setPendingTasks(tasks);
                 } else {
                     console.warn('API returned non-success status:', tasksResponse.data.message);

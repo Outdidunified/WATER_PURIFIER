@@ -5,8 +5,11 @@ import Footer from '../../components/Footer';
 import { useNavigate } from 'react-router-dom';
 import { formatTimestamp } from '../../../../utils/formatTimestamp';
 import useViewOrders from '../../hooks/ManageOrders/ViewOrdersHooks';
+import HorizontalDeliveryTimeline from '../../components/DeliveryTimeline/HorizontalDeliveryTimeline';
+import UpdateDeliveryStatusModal from '../../components/DeliveryTimeline/UpdateDeliveryStatusModal';
 import classNames from 'classnames';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import './ViewOrders.css';
 
 const DELIVERY_STATUS_LABELS = {
   accepted: 'Accepted',
@@ -20,6 +23,7 @@ const DELIVERY_STATUS_ORDER = ['accepted', 'packed', 'intransit', 'outfordeliver
 
 const ViewOrders = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const {
     order,
     deliveryHistory,
@@ -27,10 +31,34 @@ const ViewOrders = ({ userInfo, handleLogout }) => {
     currentDeliveryStatus,
     isLoading,
     error,
+    setOrder,
+    refreshDeliveryDetails,
   } = useViewOrders();
 
   const handleBack = () => {
     navigate('/superadmin/ManageOrders');
+  };
+
+  const handleUpdateStatusClick = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleUpdateDeliveryStatus = async (updatedOrder) => {
+    console.log('handleUpdateDeliveryStatus called with order:', updatedOrder?._id);
+    // Merge updated order with existing order to preserve all fields including _id
+    setOrder(prevOrder => ({
+      ...prevOrder,
+      ...updatedOrder
+    }));
+    // Refresh delivery details using the updated order's ID to ensure fresh data is fetched
+    console.log('Refreshing delivery details for order:', updatedOrder?._id);
+    await refreshDeliveryDetails(updatedOrder?._id);
+    console.log('Delivery details refreshed successfully');
+    // Don't close modal here - let modal close itself after showing success message
   };
 
   const timeline = useMemo(() => {
@@ -155,90 +183,45 @@ const ViewOrders = ({ userInfo, handleLogout }) => {
                     </div>
 
                     <div className="mt-5">
-                      <div className="d-flex align-items-center justify-content-between">
-                        <h4 className="card-title mb-0">Delivery Timeline</h4>
-                        {isLoading && <span className="badge badge-info">Loading timeline...</span>}
-                      </div>
-                      {error && (
-                        <div className="alert alert-danger mt-3" role="alert">
-                          {error}
-                        </div>
-                      )}
+                      <h4 className="card-title mb-3">Delivery Timeline</h4>
+                      
+                      {/* Horizontal Timeline Component */}
+                      <HorizontalDeliveryTimeline 
+                        timeline={timeline}
+                        currentDeliveryStatus={currentDeliveryStatus}
+                        isLoading={isLoading}
+                        error={error}
+                      />
 
-                      {hasTimelineData ? (
-                        <div className="mt-4 timeline-wrapper">
-                          <ul className="timeline list-unstyled">
-                            {timeline.map((item) => (
-                              <li
-                                key={item.status}
-                                className={classNames('timeline-item', {
-                                  'timeline-item--active': item.isActive,
-                                  'timeline-item--reached': item.isReached,
-                                })}
-                              >
-                                <div className="timeline-marker" />
-                                <div className="timeline-content">
-                                  <div className="d-flex justify-content-between align-items-center">
-                                    <h6 className="mb-1">{item.label}</h6>
-                                    <span className="badge badge-outline-primary text-capitalize">{item.status}</span>
-                                  </div>
-                                  <p className="text-muted mb-2">
-                                    {item.latestUpdate ? renderTimestamp(item.latestUpdate.timestamp) : 'Pending'}
-                                  </p>
-                                  {item.updates.length > 0 && (
-                                    <div className="timeline-updates">
-                                      {item.updates.map((update, index) => (
-                                        <div key={`${item.status}-${index}`} className="timeline-update border rounded p-3 mb-2">
-                                          <div className="d-flex justify-content-between align-items-start">
-                                            <span className="font-weight-bold text-capitalize">{item.label}</span>
-                                            <small className="text-muted">{renderTimestamp(update.timestamp)}</small>
-                                          </div>
-                                          {update.note && <p className="mt-2 mb-0">{update.note}</p>}
-                                          {update.updatedBy && (
-                                            <small className="text-muted d-block mt-1">Updated by: {update.updatedBy}</small>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : (
-                        <div className="alert alert-secondary mt-4" role="alert">
-                          Delivery timeline updates will appear here once available.
-                        </div>
-                      )}
+                      <div className="text-center mt-4 mb-4">
+                        <button 
+                          type="button" 
+                          className="btn btn-warning"
+                          onClick={handleUpdateStatusClick}
+                          title="Update delivery status"
+                        >
+                          📝 Update Delivery Status
+                        </button>
+                      </div>
                     </div>
 
-                    {Array.isArray(deliveryNotes) && deliveryNotes.length > 0 && (
-                      <div className="mt-5">
-                        <h4 className="card-title">Delivery Notes</h4>
-                        <div className="row">
-                          {deliveryNotes.map((note, index) => (
-                            <div key={index} className="col-md-6 mb-3">
-                              <div className="card">
-                                <div className="card-body">
-                                  <h6 className="card-subtitle mb-2 text-muted">{note?.title || `Note ${index + 1}`}</h6>
-                                  <p className="card-text">{note?.message || note?.note || '-'}</p>
-                                  <div className="d-flex justify-content-between">
-                                    <small className="text-muted">{note?.updatedBy || note?.author || 'System'}</small>
-                                    <small className="text-muted">{renderTimestamp(note?.timestamp || note?.createdAt)}</small>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                   
                   </div>
                 </div>
               </div>
             </div>
           </div>
+                        
+          
+          {/* Update Delivery Status Modal */}
+          <UpdateDeliveryStatusModal
+            isOpen={isModalOpen}
+            orderId={order?._id}
+            currentStatus={currentDeliveryStatus}
+            onClose={handleCloseModal}
+            onUpdate={handleUpdateDeliveryStatus}
+          />
+          
           <Footer />
         </div>
       </div>

@@ -278,12 +278,24 @@ function isTechnicianMatchingDistrict(technician, normalizedAddress) {
 // Auto assign installation after order confirmation
 async function autoAssignInstallation(order) {
     try {
+        // Validate order object exists
+        if (!order) {
+            console.error('Error: order object is undefined or null in autoAssignInstallation');
+            return;
+        }
+
         const db = await connectToDatabase();
         const serviceRecords = db.collection("service_records");
         const usersCollection = db.collection("users");
         const ordersCollection = db.collection("orders");
         const paymentsCollection = db.collection("payments");
         const technicianDetailsCollection = db.collection("technician_details");
+
+        console.log('Auto-assign processing for order:', {
+            customOrderId: order.customOrderId,
+            wp_device_id: order.wp_device_id,
+            hasDeliveryAddress: !!order.deliveryAddress
+        });
 
         const normalizedAddress = normalizeDeliveryAddress(order.deliveryAddress || {});
 
@@ -302,7 +314,7 @@ async function autoAssignInstallation(order) {
         const normalizedPaymentType = (order.paymentType || '').toString().toUpperCase();
         const isOrderConfirmed = order.orderStatus === 'Confirmed';
         const isPaymentCompleted = order.paymentStatus === 'Completed';
-        const isDeliveryCompleted = order.deliveryAcceptanceStatus === 'completed';
+        const isDeliveryCompleted = order.deliveryCurrentStatus === 'completed';
 
         if (!isOrderConfirmed) {
             console.log(`Skipping auto-assign for unconfirmed order ${order.customOrderId || order.wp_device_id}`);
@@ -315,7 +327,7 @@ async function autoAssignInstallation(order) {
         }
 
         if (!isDeliveryCompleted) {
-            console.log(`Skipping auto-assign for order ${order.customOrderId || order.wp_device_id}: delivery not marked completed`);
+            console.log(`Skipping auto-assign for order ${order.customOrderId || order.wp_device_id}: delivery not marked completed (currentStatus: ${order.deliveryCurrentStatus})`);
             return;
         }
 

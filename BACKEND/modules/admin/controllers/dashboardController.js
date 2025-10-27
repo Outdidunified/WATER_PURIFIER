@@ -974,70 +974,115 @@ const FetchOrders = async (req, res) => {
 
 const ConfirmCodPayment = async (req, res) => {
     try {
-        const db = await database.connectToDatabase();
-        const ordersCollection = db.collection("orders");
-        const serviceRecordsCollection = db.collection("service_records");
-
         const { wp_device_id } = req.body || {};
 
         if (!wp_device_id) {
+            console.error('wp_device_id is missing from request body');
             return res.status(400).json({
                 status: "failure",
                 message: "wp_device_id is required",
             });
         }
 
-        const serviceRecord = await serviceRecordsCollection.findOne({ wp_device_id });
+        console.log('ConfirmCodPayment API called with wp_device_id:', wp_device_id);
 
-        if (!serviceRecord) {
+        const db = await database.connectToDatabase();
+        const ordersCollection = db.collection("orders");
+        const serviceRecordsCollection = db.collection("service_records");
+
+        // ✅ Find order first (primary source of truth)
+        console.log('Looking for order with wp_device_id:', wp_device_id);
+        const order = await ordersCollection.findOne({ wp_device_id });
+        
+        if (!order) {
+            console.error('No order found for wp_device_id:', wp_device_id);
             return res.status(404).json({
                 status: "failure",
-                message: "No service record found for this device",
+                message: "Order not found for this device",
             });
         }
 
-        const paymentType = serviceRecord?.order_snapshot?.paymentType;
-        const collectPayment = serviceRecord?.collectPayment;
+        console.log('Order found:', { 
+            _id: order._id, 
+            customOrderId: order.customOrderId,
+            paymentType: order.paymentType,
+            paymentStatus: order.paymentStatus,
+            moneyReceived: order.moneyReceived 
+        });
 
-        if (paymentType === "COD" && collectPayment === true) {
-            await ordersCollection.updateOne(
-                { wp_device_id },
-                {
-                    $set: {
-                        moneyReceived: true,
-                        paymentStatus: "Compleed",
-                        paymentCollectedAt: serviceRecord?.order_snapshot?.paymentCollectedAt || new Date(),
-                        adminPaymentConfirmedAt: new Date(),
-                    },
+        // ✅ Check if order is COD payment type
+        const paymentType = order?.paymentType;
+        
+        if (paymentType !== "COD") {
+            console.error('Order payment type is not COD:', paymentType);
+            return res.status(400).json({
+                status: "failure",
+                message: "This order is not a COD payment. Payment type is: " + paymentType,
+            });
+        }
+
+        // ✅ Check if payment status is already completed
+        if (order?.paymentStatus === "Completed") {
+            console.log('Payment already completed for order:', order._id);
+            return res.status(400).json({
+                status: "failure",
+                message: "Payment is already confirmed for this order",
+            });
+        }
+
+        const now = new Date();
+
+        // ✅ Update order with COD payment confirmation
+        console.log('Updating order with wp_device_id:', wp_device_id);
+        const updateResult = await ordersCollection.updateOne(
+            { wp_device_id },
+            {
+                $set: {
+                    moneyReceived: true,
+                    paymentStatus: "Completed",
+                    paymentCollectedAt: now,
+                    adminPaymentConfirmedAt: now,
+                    updatedAt: now,
                 },
-            );
+            }
+        );
 
+        console.log('Order update result:', { 
+            matchedCount: updateResult.matchedCount, 
+            modifiedCount: updateResult.modifiedCount 
+        });
+
+        // ✅ Also update service record if it exists
+        const serviceRecord = await serviceRecordsCollection.findOne({ wp_device_id });
+        if (serviceRecord) {
+            console.log('Updating service record for wp_device_id:', wp_device_id);
             await serviceRecordsCollection.updateOne(
                 { _id: serviceRecord._id },
                 {
                     $set: {
                         "order_snapshot.moneyReceived": true,
+                        "order_snapshot.paymentStatus": "Completed",
+                        collectPayment: false,
                         snapshot: true,
-                        modified_date: new Date(),
+                        modified_date: now,
                     },
-                },
+                }
             );
-            
-            return res.status(200).json({
-                status: "success",
-                message: "COD payment confirmed successfully. moneyReceived updated in both collections.",
-                data: {
-                    wp_device_id,
-                    paymentType,
-                    collectPayment,
-                    moneyReceived: true,
-                },
-            });
+        } else {
+            console.log('No service record found for wp_device_id:', wp_device_id);
         }
-
-        return res.status(400).json({
-            status: "failure",
-            message: "Payment not yet confirmed by technician",
+        
+        console.log('Successfully confirmed COD payment for device:', wp_device_id);
+        return res.status(200).json({
+            status: "success",
+            message: "COD payment confirmed successfully.",
+            data: {
+                wp_device_id,
+                paymentType: "COD",
+                moneyReceived: true,
+                paymentStatus: "Completed",
+                confirmedAt: now,
+            },
         });
     } catch (error) {
         console.error("Error confirming COD payment:", error);
@@ -1045,6 +1090,7 @@ const ConfirmCodPayment = async (req, res) => {
         return res.status(500).json({
             status: "failure",
             message: "Internal server error",
+            error: error.message,
         });
     }
 };

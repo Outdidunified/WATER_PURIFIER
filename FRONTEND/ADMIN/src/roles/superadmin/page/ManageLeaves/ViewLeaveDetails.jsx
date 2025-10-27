@@ -234,21 +234,21 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
                       <h5 className="font-weight-bold mb-3">Leave Period</h5>
                       <div className="row">
                         <div className="col-md-4">
-                          <div className="alert alert-info mb-0" role="alert" style={{ padding: '12px' }}>
-                            <small className="text-muted">From Date</small>
-                            <h6 className="font-weight-bold mb-0">{formatDate(leaveDetails.from_date)}</h6>
+                          <div className="alert alert-info mb-0" role="alert" style={{ padding: '12px', borderLeft: '4px solid #17a2b8' }}>
+                            <small className="text-muted d-block mb-1">From Date</small>
+                            <h6 className="font-weight-bold mb-0" style={{ color: '#17a2b8' }}>{formatDate(leaveDetails.from_date)}</h6>
                           </div>
                         </div>
                         <div className="col-md-4">
-                          <div className="alert alert-info mb-0" role="alert" style={{ padding: '12px' }}>
-                            <small className="text-muted">To Date</small>
-                            <h6 className="font-weight-bold mb-0">{formatDate(leaveDetails.to_date)}</h6>
+                          <div className="alert alert-info mb-0" role="alert" style={{ padding: '12px', borderLeft: '4px solid #17a2b8' }}>
+                            <small className="text-muted d-block mb-1">To Date</small>
+                            <h6 className="font-weight-bold mb-0" style={{ color: '#17a2b8' }}>{formatDate(leaveDetails.to_date)}</h6>
                           </div>
                         </div>
                         <div className="col-md-4">
-                          <div className="alert alert-info mb-0" role="alert" style={{ padding: '12px' }}>
-                            <small className="text-muted">Number of Days</small>
-                            <h6 className="font-weight-bold mb-0">{leaveDetails.number_of_days || 0} days</h6>
+                          <div className="alert alert-info mb-0" role="alert" style={{ padding: '12px', borderLeft: '4px solid #17a2b8' }}>
+                            <small className="text-muted d-block mb-1">Number of Days</small>
+                            <h6 className="font-weight-bold mb-0" style={{ color: '#17a2b8' }}>{leaveDetails.number_of_days || 0} days</h6>
                           </div>
                         </div>
                       </div>
@@ -258,9 +258,15 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
 
                     {/* Reason */}
                     <div className="mb-3">
-                      <p className="text-muted small">Leave Reason</p>
-                      <div className="alert alert-light" role="alert">
-                        <p className="mb-0">{leaveDetails.reason || '-'}</p>
+                      <p className="text-muted small font-weight-bold">Leave Reason</p>
+                      <div style={{ 
+                        padding: '12px 15px',
+                        backgroundColor: '#f0f8ff',
+                        border: '1px solid #b3d9ff',
+                        borderRadius: '4px',
+                        borderLeft: '4px solid #0d6efd'
+                      }}>
+                        <p className="mb-0" style={{ color: '#333', fontSize: '14px' }}>{leaveDetails.reason || '-'}</p>
                       </div>
                     </div>
 
@@ -270,14 +276,30 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
                         <hr />
                         <div className="row">
                           <div className="col-md-6 mb-3">
-                            <p className="text-muted small">Approval Date</p>
-                            <h5 className="font-weight-bold">
-                              {leaveDetails.approval_date ? formatDate(leaveDetails.approval_date) : 'N/A'}
-                            </h5>
+                            <div style={{ 
+                              padding: '12px',
+                              backgroundColor: '#d4edda',
+                              border: '1px solid #b1dfbb',
+                              borderRadius: '4px',
+                              borderLeft: '4px solid #28a745'
+                            }}>
+                              <small className="text-muted d-block mb-1 font-weight-bold">Approval Date</small>
+                              <h6 className="font-weight-bold mb-0" style={{ color: '#28a745' }}>
+                                {leaveDetails.approval_date ? formatDate(leaveDetails.approval_date) : 'N/A'}
+                              </h6>
+                            </div>
                           </div>
                           <div className="col-md-6 mb-3">
-                            <p className="text-muted small">Approved By</p>
-                            <h5 className="font-weight-bold">{leaveDetails.approved_by || 'N/A'}</h5>
+                            <div style={{ 
+                              padding: '12px',
+                              backgroundColor: '#d4edda',
+                              border: '1px solid #b1dfbb',
+                              borderRadius: '4px',
+                              borderLeft: '4px solid #28a745'
+                            }}>
+                              <small className="text-muted d-block mb-1 font-weight-bold">Approved By</small>
+                              <h6 className="font-weight-bold mb-0" style={{ color: '#28a745' }}>{leaveDetails.approved_by || 'N/A'}</h6>
+                            </div>
                           </div>
                         </div>
 
@@ -285,9 +307,15 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
                           <>
                             <hr />
                             <div>
-                              <p className="text-muted small">Rejection Reason</p>
-                              <div className="alert alert-danger" role="alert">
-                                <p className="mb-0">{leaveDetails.rejection_reason || 'No reason provided'}</p>
+                              <p className="text-muted small font-weight-bold">Rejection Reason</p>
+                              <div style={{ 
+                                padding: '12px 15px',
+                                backgroundColor: '#ffe6e6',
+                                border: '1px solid #ffb3b3',
+                                borderRadius: '4px',
+                                borderLeft: '4px solid #dc3545'
+                              }}>
+                                <p className="mb-0" style={{ color: '#333', fontSize: '14px' }}>{leaveDetails.rejection_reason || 'No reason provided'}</p>
                               </div>
                             </div>
                           </>
@@ -322,7 +350,7 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
                           return (
                             <div className="row mb-2" key={status}>
                               <div className="col-12">
-                                <div className={`${getAlertClass(status)} mb-2`} role="alert" style={{ padding: '10px' }}>
+                                <div className={`alert ${getAlertClass(status)} mb-2`} role="alert" style={{ padding: '10px' }}>
                                   <small className="text-muted d-block">{status}</small>
                                   <h6 className="font-weight-bold mb-0">{count}</h6>
                                 </div>
@@ -332,15 +360,23 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
                         })}
                         <div className="row mt-3">
                           <div className="col-12">
-                            <div className="alert alert-secondary mb-0" role="alert" style={{ padding: '10px' }}>
+                            <div className="alert alert-secondary mb-0" role="alert" style={{ padding: '10px', backgroundColor: '#e7f3ff', borderLeft: '4px solid #0078d4' }}>
                               <small className="text-muted d-block font-weight-bold">Total Tasks</small>
-                              <h6 className="font-weight-bold mb-0">{pendingTasks.length}</h6>
+                              <h6 className="font-weight-bold mb-0" style={{ color: '#0078d4' }}>{pendingTasks.length}</h6>
                             </div>
                           </div>
                         </div>
                       </>
                     ) : (
-                      <p className="text-muted text-center mb-0">No tasks assigned to this technician</p>
+                      <div style={{
+                        padding: '20px',
+                        textAlign: 'center',
+                        backgroundColor: '#f8f9fa',
+                        borderRadius: '4px',
+                        border: '1px solid #dee2e6'
+                      }}>
+                        <p className="text-muted mb-0" style={{ fontSize: '13px' }}>No tasks assigned</p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -369,26 +405,26 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
                   </div>
                 )}
 
-                {/* Active Tasks List */}
+                {/* Active Tasks List
                 <div className="card">
                   <div className="card-body">
                     <h5 className="card-title font-weight-bold mb-3">Working Devices & Task History</h5>
                     {pendingTasks.length > 0 ? (
                       <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
                         <div className="table-responsive">
-                          <table className="table table-sm table-bordered mb-0">
-                            <thead style={{ backgroundColor: '#f8f9fa', fontSize: '12px' }}>
+                          <table className="table table-sm table-hover table-bordered mb-0">
+                            <thead style={{ backgroundColor: '#f8f9fa', fontSize: '12px', fontWeight: '600' }}>
                               <tr>
-                                <th>Task ID</th>
-                                <th>Task Status</th>
-                                <th>Due Date</th>
+                                <th style={{ borderBottom: '2px solid #dee2e6' }}>Task ID</th>
+                                <th style={{ borderBottom: '2px solid #dee2e6' }}>Task Status</th>
+                                <th style={{ borderBottom: '2px solid #dee2e6' }}>Due Date</th>
                               </tr>
                             </thead>
                             <tbody style={{ fontSize: '12px' }}>
                               {pendingTasks.map((task, index) => (
-                                <tr key={task._id || index}>
+                                <tr key={task._id || index} style={{ verticalAlign: 'middle' }}>
                                   <td>
-                                    <small className="font-weight-bold">{task._id?.substring(0, 8) || `Task-${index + 1}`}</small>
+                                    <small className="font-weight-bold text-primary">{task._id?.substring(0, 8) || `Task-${index + 1}`}</small>
                                   </td>
                                   <td>
                                     <span className={`badge badge-${getTaskStatusBadgeClass(task.status)}`}>
@@ -396,7 +432,7 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
                                     </span>
                                   </td>
                                   <td>
-                                    <small>{formatDate(task.due_date) || '-'}</small>
+                                    <small className="text-secondary">{formatDate(task.due_date) || '-'}</small>
                                   </td>
                                 </tr>
                               ))}
@@ -405,10 +441,22 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-muted text-center mb-0">No tasks assigned to this technician</p>
+                      <div style={{
+                        padding: '40px 20px',
+                        textAlign: 'center',
+                        backgroundColor: '#f8f9fa',
+                        borderRadius: '4px',
+                        border: '1px solid #dee2e6'
+                      }}>
+                        <div style={{ fontSize: '32px', marginBottom: '12px', color: '#ccc' }}>
+                          📋
+                        </div>
+                        <p className="text-muted mb-1" style={{ fontSize: '14px' }}>No tasks assigned to this technician</p>
+                        <small className="text-muted">All tasks will appear here once assigned</small>
+                      </div>
                     )}
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>

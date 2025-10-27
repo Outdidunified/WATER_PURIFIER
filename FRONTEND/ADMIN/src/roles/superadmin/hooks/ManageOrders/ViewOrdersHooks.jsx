@@ -155,6 +155,9 @@ const useViewOrders = () => {
       deliveryNotes: Array.isArray(orderData.deliveryNotes) ? orderData.deliveryNotes : [],
     };
 
+    console.log('mergeOrderData: Setting order with deliveryCurrentStatus:', formattedOrder.deliveryCurrentStatus);
+    console.log('mergeOrderData: Setting delivery history:', formattedOrder.deliveryHistory);
+    
     setOrder(formattedOrder);
     localStorage.setItem('orderData', JSON.stringify(formattedOrder));
     setDeliveryHistory(buildDeliveryHistory(formattedOrder.deliveryHistory));
@@ -181,44 +184,59 @@ const useViewOrders = () => {
   }, [location, mergeOrderData]);
 
   const fetchDeliveryDetails = useCallback(async (orderId) => {
-    if (!orderId) return;
+    if (!orderId) {
+      console.warn('fetchDeliveryDetails called without orderId');
+      return;
+    }
 
     try {
+      console.log('Fetching delivery details for order:', orderId);
       setIsLoading(true);
       setError('');
-      const response = await axiosInstance.get(`/api/admin/orders/${orderId}/delivery-history`);
+      const response = await axiosInstance.get(`/api/website/orders/${orderId}/delivery-history`);
 
       const history = response?.data?.data?.history || response?.data?.data?.deliveryHistory || [];
       const notes = response?.data?.data?.notes || response?.data?.data?.deliveryNotes || [];
       const currentStatus = response?.data?.data?.currentStatus;
 
-      const nextOrderState = {
-        ...order,
-        deliveryHistory: history,
-        deliveryNotes: notes,
-        deliveryCurrentStatus: currentStatus || getCurrentStatus({
-          deliveryAcceptanceStatus: order.deliveryAcceptanceStatus,
-          orderStatus: order.orderStatus,
-          paymentStatus: order.paymentStatus,
-        }),
-      };
+      console.log('Fetched delivery history:', history);
+      console.log('Fetched delivery notes:', notes);
+      console.log('Current status from API:', currentStatus);
 
-      mergeOrderData(nextOrderState);
+      setOrder(prevOrder => {
+        const nextOrderState = {
+          ...prevOrder,
+          deliveryHistory: history,
+          deliveryNotes: notes,
+          deliveryCurrentStatus: currentStatus || getCurrentStatus({
+            deliveryAcceptanceStatus: prevOrder.deliveryAcceptanceStatus,
+            orderStatus: prevOrder.orderStatus,
+            paymentStatus: prevOrder.paymentStatus,
+          }),
+        };
+        
+        localStorage.setItem('orderData', JSON.stringify(nextOrderState));
+        setDeliveryHistory(buildDeliveryHistory(history));
+        setDeliveryNotes(Array.isArray(notes) ? notes : []);
+        
+        console.log('Order state updated with new delivery history');
+        return nextOrderState;
+      });
     } catch (requestError) {
       console.error('Failed to fetch delivery details', requestError);
       setError(requestError?.response?.data?.message || 'Failed to fetch delivery details');
     } finally {
       setIsLoading(false);
     }
-  }, [mergeOrderData, order]);
+  }, []);
 
   useEffect(() => {
     if (order?._id) {
       fetchDeliveryDetails(order._id);
     }
-  }, [order?._id, fetchDeliveryDetails]);
+  }, [order?._id]);
 
-  const currentDeliveryStatus = getCurrentStatus({
+  const currentDeliveryStatus = order.deliveryCurrentStatus || getCurrentStatus({
     deliveryAcceptanceStatus: order.deliveryAcceptanceStatus,
     deliveryCurrentStatus: order.deliveryCurrentStatus,
     orderStatus: order.orderStatus,
@@ -227,12 +245,13 @@ const useViewOrders = () => {
 
   return {
     order,
+    setOrder,
     deliveryHistory,
     deliveryNotes,
     currentDeliveryStatus,
     isLoading,
     error,
-    refreshDeliveryDetails: () => fetchDeliveryDetails(order?._id),
+    refreshDeliveryDetails: (orderId) => fetchDeliveryDetails(orderId || order?._id),
   };
 };
 

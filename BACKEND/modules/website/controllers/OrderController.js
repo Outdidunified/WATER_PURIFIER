@@ -878,13 +878,44 @@ exports.updateDeliveryStatus = async (req, res) => {
       });
     }
 
+    console.log('updateDeliveryStatus called with:', { orderId, newStatus: statusLower });
+
     const db = await connectToDatabase();
     const ordersCollection = db.collection('orders');
 
     // Get current order
+    console.log('Fetching order with ID:', orderId);
     const order = await ordersCollection.findOne({ _id: new ObjectId(orderId) });
+    console.log('Order fetched:', { orderId, found: !!order, orderStatus: order?.orderStatus });
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Validate sequential status progression (no skipping, no going backwards)
+    const currentStatus = order.deliveryCurrentStatus || 'pending';
+    const currentStatusIndex = DELIVERY_STATUSES.indexOf(currentStatus);
+    const newStatusIndex = DELIVERY_STATUSES.indexOf(statusLower);
+
+    // If already at current status, return error
+    if (currentStatus === statusLower) {
+      return res.status(400).json({
+        message: `Delivery status is already "${statusLower}". Cannot update to the same status.`
+      });
+    }
+
+    // Check if trying to go backwards
+    if (newStatusIndex < currentStatusIndex) {
+      return res.status(400).json({
+        message: `Cannot go backwards in delivery status. Current: "${currentStatus}" → Requested: "${statusLower}". You can only move forward in the sequence: ${DELIVERY_STATUSES.join(' → ')}`
+      });
+    }
+
+    // Check if trying to skip steps
+    if (newStatusIndex > currentStatusIndex + 1) {
+      const nextStatus = DELIVERY_STATUSES[currentStatusIndex + 1];
+      return res.status(400).json({
+        message: `Cannot skip delivery status steps. Current: "${currentStatus}" → Next should be: "${nextStatus}" → Cannot jump to: "${statusLower}". Follow the sequence: ${DELIVERY_STATUSES.join(' → ')}`
+      });
     }
 
     // Prepare update object
@@ -911,6 +942,12 @@ exports.updateDeliveryStatus = async (req, res) => {
     };
 
     // Update order
+    console.log('Attempting to update order:', {
+      orderId,
+      updateData,
+      historyEntry
+    });
+
     const result = await ordersCollection.findOneAndUpdate(
       { _id: new ObjectId(orderId) },
       {
@@ -922,9 +959,53 @@ exports.updateDeliveryStatus = async (req, res) => {
       { returnDocument: 'after' }
     );
 
+    console.log('Update result:', {
+      resultType: typeof result,
+      hasValue: result?.value ? true : false,
+      hasOk: result?.ok ? true : false,
+      resultKeys: result ? Object.keys(result) : 'null'
+    });
+
+    // Handle both old and new MongoDB driver versions
+    const updatedOrder = result?.value || result;
+
+    if (!updatedOrder || !updatedOrder._id) {
+      console.error('Failed to get updated order:', { result, updatedOrder });
+      return res.status(500).json({
+        message: 'Failed to update order in database',
+        error: 'Update returned no value',
+        debug: {
+          resultType: typeof result,
+          resultKeys: result ? Object.keys(result) : 'null',
+          hasId: updatedOrder?._id ? true : false
+        }
+      });
+    }
+
+    // Trigger auto-assignment for installation if delivery is completed
+    if (statusLower === 'completed') {
+      console.log(`Delivery completed for order ${orderId}. Triggering auto-assignment for installation...`);
+      console.log('Order details for auto-assignment:', {
+        orderId: updatedOrder._id,
+        wp_device_id: updatedOrder.wp_device_id,
+        orderStatus: updatedOrder.orderStatus,
+        paymentStatus: updatedOrder.paymentStatus,
+        paymentType: updatedOrder.paymentType,
+        deliveryAddress: updatedOrder.deliveryAddress ? '✓ Present' : '✗ Missing',
+        customOrderId: updatedOrder.customOrderId
+      });
+      try {
+        await autoAssignInstallation(updatedOrder);
+        console.log('Auto-assignment completed successfully for order:', orderId);
+      } catch (assignmentError) {
+        console.error('Error during auto-assignment:', assignmentError);
+        // Don't fail the response, just log the error
+      }
+    }
+
     return res.status(200).json({
       message: 'Delivery status updated successfully',
-      order: result.value
+      order: updatedOrder
     });
   } catch (error) {
     console.error('Error updating delivery status:', error);

@@ -58,17 +58,24 @@ const useManageOrders = (userInfo) => {
     };
 
     const confirmCodPayment = async ({ wp_device_id, onSuccess } = {}) => {
+        console.log('confirmCodPayment called with:', { wp_device_id });
+        
         if (!wp_device_id) {
-            showErrorAlert('Error', 'Device ID missing. Unable to confirm payment.');
+            const errorMsg = 'Device ID missing. Unable to confirm payment.';
+            console.error(errorMsg);
+            showErrorAlert('Error', errorMsg);
             return false;
         }
 
         try {
             setCodConfirmationLoading(true);
+            console.log('Sending request to /api/admin/ConfirmCodPayment with wp_device_id:', wp_device_id);
+            
             const response = await axiosInstance.post('/api/admin/ConfirmCodPayment', {
                 wp_device_id,
             });
 
+            console.log('API Response:', response.data);
             const responseStatus = (response?.data?.status || '').toString().toLowerCase();
 
             if (responseStatus === 'success') {
@@ -79,12 +86,19 @@ const useManageOrders = (userInfo) => {
                 await fetchOrders();
                 return true;
             } else {
-                showErrorAlert('Error', response?.data?.message || 'Failed to confirm COD payment');
+                const errorMsg = response?.data?.message || 'Failed to confirm COD payment';
+                console.error('API returned non-success status:', errorMsg);
+                showErrorAlert('Error', errorMsg);
                 return false;
             }
         } catch (error) {
             console.error('Error confirming COD payment:', error);
-            const message = error?.response?.data?.message || 'An error occurred while confirming COD payment';
+            const message = error?.response?.data?.message || error?.message || 'An error occurred while confirming COD payment';
+            console.error('Full error:', { 
+                status: error?.response?.status,
+                data: error?.response?.data,
+                message 
+            });
             showErrorAlert('Error', message);
             return false;
         } finally {
