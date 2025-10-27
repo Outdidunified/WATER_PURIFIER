@@ -71,12 +71,13 @@ async function getLeaveRequestById(leaveRequestId) {
 async function getTechnicianPendingTasks(technicianId, leaveFromDate, leaveToDate) {
     try {
         const db = await connectToDatabase();
-        const tasksCollection = db.collection('tasks');
+        const serviceRecordsCollection = db.collection('service_records');
 
-        // Find ALL tasks assigned to technician (no status filter)
-        const tasks = await tasksCollection
+        // Find ALL tasks assigned to technician using assigned_technician_id
+        // (technicianId is like "EMP026")
+        const tasks = await serviceRecordsCollection
             .find({
-                assigned_to: technicianId,
+                assigned_technician_id: technicianId,
             })
             .toArray();
 

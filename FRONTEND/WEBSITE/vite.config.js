@@ -9,11 +9,11 @@ export default defineConfig({
         strictPort: true,
         proxy: {
             '/api': {
-                target: 'http://192.168.0.32:5001',
+                target: 'http://192.168.0.19:5001',
                 changeOrigin: true,
             },
             '/upload': {
-                target: 'http://192.168.0.32:5001',
+                target: 'http://192.168.0.19:5001',
                 changeOrigin: true,
             },
         },

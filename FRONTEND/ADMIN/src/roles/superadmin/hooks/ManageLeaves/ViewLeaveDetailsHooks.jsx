@@ -18,9 +18,17 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
         if (leaveFromState) {
             setLeaveDetails(leaveFromState);
             setLoading(false);
-            // Fetch tasks from API
-            if (leaveRequestId) {
-                fetchTasksFromAPI();
+            
+            // Check if tasks are already in the state
+            if (leaveFromState?.pendingTasks && Array.isArray(leaveFromState.pendingTasks)) {
+                console.log('✅ Tasks already in state:', leaveFromState.pendingTasks);
+                setPendingTasks(leaveFromState.pendingTasks);
+            } else {
+                // Fetch tasks from API using technician ID and email
+                if (leaveFromState?.technician_id) {
+                    console.log('📌 Tasks not in state, fetching from API...');
+                    fetchTasksFromAPI(leaveFromState.technician_id, leaveFromState?.technician_email);
+                }
             }
         } else if (leaveRequestId) {
             // Otherwise fetch from API
@@ -52,8 +60,20 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
             const data = await response.json();
 
             if (data.success) {
-                setLeaveDetails(data.data.leaveRequest);
-                setPendingTasks(data.data.pendingTasks);
+                const leaveRequest = data.data.leaveRequest;
+                setLeaveDetails(leaveRequest);
+                
+                // Check if pendingTasks are already in the response
+                if (data.data.pendingTasks && Array.isArray(data.data.pendingTasks)) {
+                    console.log('✅ Tasks already in leave response:', data.data.pendingTasks);
+                    setPendingTasks(data.data.pendingTasks);
+                } else {
+                    // Fallback: Fetch technician tasks from separate endpoint if not in response
+                    console.log('📌 Tasks not in response, fetching from separate endpoint...');
+                    if (leaveRequest?.technician_id) {
+                        await fetchTasksFromAPI(leaveRequest.technician_id, leaveRequest?.technician_email);
+                    }
+                }
             } else {
                 showErrorAlert('Error', data.message || 'Failed to fetch leave details');
             }
@@ -68,29 +88,37 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
     };
 
     // Fetch only tasks from API (when details are passed from state)
-    const fetchTasksFromAPI = async () => {
+    const fetchTasksFromAPI = async (technicianId, technicianEmail) => {
         try {
-            const token = sessionStorage.getItem('superAdminToken');
-            const response = await fetch(`/api/api/admin/leave-requests/${leaveRequestId}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { 'Authorization': `Bearer ${token}` }),
-                },
-            });
-
-            if (!response.ok) {
-                console.warn(`Failed to fetch tasks: HTTP ${response.status}`);
+            if (!technicianId) {
+                console.warn('Technician ID not provided');
                 return;
             }
 
-            const data = await response.json();
+            // Use axiosInstance like ViewManageUsersHooks does
+            const tasksResponse = await axiosInstance.post('/api/admin/FetchTechnicianTasksByUserId', {
+                user_id: technicianId,
+                email: technicianEmail || '',
+            });
 
-            if (data.success && data.data.pendingTasks) {
-                setPendingTasks(data.data.pendingTasks);
+            console.log('📋 Technician Tasks Response:', tasksResponse);
+
+            if (tasksResponse.status === 200) {
+                if (tasksResponse.data.status === 'Success') {
+                    const tasks = tasksResponse.data.data || [];
+                    console.log('✅ Tasks fetched successfully:', tasks);
+                    setPendingTasks(tasks);
+                } else {
+                    console.warn('API returned non-success status:', tasksResponse.data.message);
+                    setPendingTasks([]);
+                }
+            } else {
+                console.warn('Failed to fetch tasks: HTTP', tasksResponse.status);
+                setPendingTasks([]);
             }
         } catch (err) {
-            console.error('Error fetching tasks:', err);
+            console.error('Error fetching technician tasks:', err);
+            setPendingTasks([]);
         }
     };
 
