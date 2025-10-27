@@ -972,8 +972,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 </ul>
                                             </div>
 
-                                            <div
-                                                ref={scrollRef}
+                                            <div ref={scrollRef}
                                                 className="d-flex overflow-auto py-3"
                                                 style={{ gap: "20px", scrollBehavior: "smooth", cursor: "grab" }}
                                             >
@@ -1365,7 +1364,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                             tabIndex="-1"
                             style={{
                                 backgroundColor: "rgba(0,0,0,0.5)",
-                                padding: "20px",
+                                padding: "10px",
                                 display: "flex",
                                 justifyContent: "center",
                                 alignItems: "center",
@@ -1375,14 +1374,14 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                 width: "100%",
                                 height: "100%",
                                 zIndex: 1050,
-                                paddingTop: '5%'
+                                overflowY: "auto",
                             }}
                         >
                             <div
                                 className="modal-dialog modal-lg"
                                 style={{
-                                    maxWidth: "700px",
-                                    width: "60%",
+                                    width: window.innerWidth < 768 ? "90%" : "60%",
+                                    maxWidth: window.innerWidth < 768 ? "95%" : "700px",
                                 }}
                             >
                                 <div
@@ -1393,8 +1392,16 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                         boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
                                     }}
                                 >
-                                    <div className="modal-header" style={{ backgroundColor: 'aliceblue' }}>
-                                        <h5 className="modal-title" style={{ color: "#0d6efd" }}>
+                                    <div className="modal-header"
+                                        style={{
+                                            backgroundColor: "aliceblue",
+                                            padding: window.innerWidth < 768 ? "10px 15px" : "15px 25px",
+                                        }}>
+                                        <h5 className="modal-title"
+                                            style={{
+                                                color: "#0d6efd",
+                                                fontSize: window.innerWidth < 768 ? "16px" : "18px",
+                                            }}>
                                             Subscription Summary
                                         </h5>
                                         <button
@@ -1407,9 +1414,11 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                     <div
                                         className="modal-body"
                                         style={{
-                                            fontSize: "16px",
-                                            lineHeight: "1.8",
-                                            padding: "20px 30px",
+                                            fontSize: window.innerWidth < 768 ? "14px" : "16px",
+                                            lineHeight: "1.6",
+                                            padding: window.innerWidth < 768 ? "15px 20px" : "20px 30px",
+                                            maxHeight: "80vh",
+                                            overflowY: "auto",
                                         }}
                                     >
                                         {(() => {
@@ -1523,8 +1532,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                         })()}
                                     </div>
 
-                                    {/* Footer Section */}
-                                    {/* Footer Section */}
+                                    {/* Footer */}
                                     <div
                                         className="modal-footer"
                                         style={{
@@ -1536,43 +1544,38 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             backgroundColor: "aliceblue",
                                         }}
                                     >
-                                        {/* Payment Type Selection */}
-                                        <div style={{ display: "flex", gap: "20px", justifyContent: "center" }}>
+                                        {/* Payment buttons */}
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                flexWrap: "wrap",
+                                                gap: "15px",
+                                                justifyContent: "center",
+                                                width: "100%",
+                                            }}
+                                        >
                                             {["online", "cod"].map((type) => (
                                                 <label
                                                     key={type}
                                                     style={{
                                                         cursor: "pointer",
-                                                        padding: "12px 20px",
+                                                        padding: "10px 15px",
                                                         border: selectedPaymentType === type
                                                             ? type === "online"
                                                                 ? "2px solid #0d6efd"
                                                                 : "2px solid #198754"
                                                             : "1px solid #ccc",
-                                                        borderRadius: "10px",
+                                                        borderRadius: "8px",
                                                         backgroundColor:
                                                             selectedPaymentType === type
                                                                 ? type === "online"
                                                                     ? "#e7f1ff"
                                                                     : "#e9f9ee"
                                                                 : "#fff",
-                                                        boxShadow:
-                                                            selectedPaymentType === type
-                                                                ? "0 0 10px rgba(13,110,253,0.3)"
-                                                                : "none",
+                                                        fontSize: window.innerWidth < 768 ? "13px" : "15px",
+                                                        width: window.innerWidth < 768 ? "100%" : "auto",
+                                                        textAlign: "center",
                                                         transition: "all 0.2s ease-in-out",
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        gap: "10px",
-                                                        minWidth: "200px",
-                                                        justifyContent: "center",
-                                                        fontWeight: "600",
-                                                        color:
-                                                            selectedPaymentType === type
-                                                                ? type === "online"
-                                                                    ? "#0d6efd"
-                                                                    : "#198754"
-                                                                : "#333",
                                                     }}
                                                     onClick={() => setSelectedPaymentType(type)}
                                                 >
@@ -1582,7 +1585,10 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                         value={type}
                                                         checked={selectedPaymentType === type}
                                                         onChange={() => setSelectedPaymentType(type)}
-                                                        style={{ accentColor: type === "online" ? "#0d6efd" : "#198754" }}
+                                                        style={{
+                                                            accentColor: type === "online" ? "#0d6efd" : "#198754",
+                                                            marginRight: "6px",
+                                                        }}
                                                     />
                                                     {type === "online" ? "Online Payment" : "Cash on Delivery"}
                                                 </label>
@@ -1604,24 +1610,29 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             </div>
                                         )}
 
-                                        {/* Action Buttons */}
-                                        <div style={{ marginTop: "20px", display: "flex", gap: "15px" }}>
+                                        {/* Action buttons */}
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                flexWrap: "wrap",
+                                                justifyContent: "center",
+                                                gap: "10px",
+                                                width: "100%",
+                                            }}
+                                        >
                                             <button
                                                 className="btn btn-secondary"
+                                                style={{ width: window.innerWidth < 768 ? "45%" : "auto" }}
                                                 onClick={() => setShowSummaryModal(false)}
                                             >
                                                 Cancel
                                             </button>
-
                                             <button
-                                                className={`btn ${selectedPaymentType ? "btn-primary" : "btn-outline-primary"}`}
+                                                className={`btn ${selectedPaymentType ? "btn-primary" : "btn-outline-primary"
+                                                    }`}
                                                 style={{
-                                                    padding: "10px 30px",
+                                                    width: window.innerWidth < 768 ? "45%" : "auto",
                                                     fontWeight: "700",
-                                                    opacity: selectedPaymentType ? 1 : 0.7,
-                                                    cursor: selectedPaymentType ? "pointer" : "not-allowed",
-                                                    boxShadow: selectedPaymentType ? "0 0 10px rgba(13,110,253,0.4)" : "none",
-                                                    transition: "all 0.3s ease",
                                                 }}
                                                 disabled={!selectedPaymentType}
                                                 onClick={() => {
@@ -1630,10 +1641,10 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 }}
                                             >
                                                 {selectedPaymentType === "cod"
-                                                    ? "Proceed to COD Checkout"
+                                                    ? "Proceed to COD"
                                                     : selectedPaymentType === "online"
-                                                        ? "Proceed to Online Checkout"
-                                                        : "Select Payment Type"}
+                                                        ? "Proceed to Online"
+                                                        : "Select Payment"}
                                             </button>
                                         </div>
                                     </div>
@@ -1641,7 +1652,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
                             </div>
                         </div>
                     )}
-
 
                     {showModal && (
                         <div
@@ -1665,8 +1675,8 @@ const Home = ({ userInfo, token, handleLogout }) => {
                             <div
                                 className="modal-dialog modal-lg"
                                 style={{
-                                    width: "60%",
-                                    maxWidth: "800px",
+                                    width: window.innerWidth < 768 ? "90%" : "60%",
+                                    maxWidth: window.innerWidth < 768 ? "95%" : "800px",
                                 }}
                             >
                                 <div
@@ -1699,10 +1709,10 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                     <div
                                         className="modal-body"
                                         style={{
-                                            height: "600px",
+                                            height: window.innerWidth < 768 ? "auto" : "600px",
+                                            maxHeight: "80vh",
                                             overflowY: "auto",
-                                            padding: "25px 30px",
-                                            fontSize: "15px",
+                                            padding: window.innerWidth < 768 ? "15px 20px" : "25px 30px",
                                         }}
                                     >
                                         <form onSubmit={handleSubmit}>
@@ -1710,8 +1720,9 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             <div
                                                 style={{
                                                     display: "grid",
-                                                    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-                                                    gap: "20px 30px",
+                                                    gridTemplateColumns:
+                                                        window.innerWidth < 768 ? "1fr" : "repeat(auto-fit, minmax(250px, 1fr))",
+                                                    gap: "15px 20px",
                                                 }}
                                             >
                                                 {/* Name */}
