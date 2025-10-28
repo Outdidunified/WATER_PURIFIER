@@ -628,6 +628,15 @@ async function autoAssignService(taskId) {
         // Find best technician
         console.log(`Attempting auto-assign for service task ${taskId} (wp_device_id: ${task.wp_device_id || 'N/A'}, device_id: ${task.device_id || 'N/A'}) with address`, normalizedAddress);
 
+        if (!task.address) {
+            await serviceRecords.updateOne(
+                { task_id: taskId },
+                {
+                    $set: { address: normalizedAddress }
+                }
+            );
+        }
+
         const technician = await findBestTechnician(normalizedAddress, historyTechnicianIds);
         if (technician && !isTechnicianMatchingDistrict(technician, normalizedAddress)) {
             console.log(`Found technician ${technician.technician_id} for service task ${taskId} but district mismatch, leaving task unassigned`);
@@ -643,18 +652,24 @@ async function autoAssignService(taskId) {
         const now = new Date();
 
         // Update the task
+        const updateSet = {
+            task_status: "Pending",
+            assigned_technician_id: technician.technician_id,
+            assigned_date: now,
+            otp: otp,
+            assigned_by: 'system',
+            modified_by: 'system',
+            modified_date: now
+        };
+
+        if (!task.address) {
+            updateSet.address = normalizedAddress;
+        }
+
         await serviceRecords.updateOne(
             { task_id: taskId },
             {
-                $set: {
-                    task_status: "Pending",
-                    assigned_technician_id: technician.technician_id,
-                    assigned_date: now,
-                    otp: otp,
-                    assigned_by: 'system',
-                    modified_by: 'system',
-                    modified_date: now
-                },
+                $set: updateSet,
                 $push: {
                     assignment_history: {
                         technician_id: technician.technician_id,
@@ -867,20 +882,25 @@ async function autoAssignPendingTasks() {
                 await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
 
             } else if (task.task_type === 2) {
-                // Assign service
+                const serviceUpdateSet = {
+                    task_status: "Pending",
+                    assigned_technician_id: technician.technician_id,
+                    assigned_date: now,
+                    otp: otp,
+                    assigned_by: 'system',
+                    modified_by: 'system',
+                    modified_date: now,
+                    pending_reason: null
+                };
+
+                if (!task.address) {
+                    serviceUpdateSet.address = normalizedAddress;
+                }
+
                 await serviceRecords.updateOne(
                     { task_id: task.task_id },
                     {
-                        $set: {
-                            task_status: "Pending",
-                            assigned_technician_id: technician.technician_id,
-                            assigned_date: now,
-                            otp: otp,
-                            assigned_by: 'system',
-                            modified_by: 'system',
-                            modified_date: now,
-                            pending_reason: null
-                        },
+                        $set: serviceUpdateSet,
                         $push: {
                             assignment_history: {
                                 technician_id: technician.technician_id,
@@ -891,7 +911,6 @@ async function autoAssignPendingTasks() {
                     }
                 );
 
-                // Update technician details
                 await technicianDetailsCollection.updateOne(
                     { technician_id: technician.technician_id },
                     {
@@ -1146,18 +1165,24 @@ async function autoReassignOverdueTasks() {
 
             const otp = Math.floor(100000 + Math.random() * 900000);
 
+            const reassignmentSet = {
+                task_status: "Pending",
+                assigned_technician_id: technician.technician_id,
+                assigned_date: now,
+                pending_reason: null,
+                assigned_by: 'system',
+                otp,
+                ...commonSet
+            };
+
+            if (!task.address) {
+                reassignmentSet.address = normalizedAddress;
+            }
+
             await serviceRecords.updateOne(
                 { task_id: task.task_id },
                 {
-                    $set: {
-                        task_status: "Pending",
-                        assigned_technician_id: technician.technician_id,
-                        assigned_date: now,
-                        pending_reason: null,
-                        assigned_by: 'system',
-                        otp,
-                        ...commonSet
-                    },
+                    $set: reassignmentSet,
                     $push: {
                         assignment_history: {
                             technician_id: technician.technician_id,
@@ -1309,35 +1334,46 @@ async function autoReassignRejectedTasks() {
                     });
 
                     // Update task with new assignment and updated history
+                    const rejectedUpdateSet = {
+                        task_status: "Pending",
+                        assigned_technician_id: technician.technician_id,
+                        assigned_date: now,
+                        otp: otp,
+                        assigned_by: 'system',
+                        modified_by: 'system',
+                        modified_date: now,
+                        assignment_history: updatedHistory
+                    };
+
+                    if (!task.address) {
+                        rejectedUpdateSet.address = normalizedAddress;
+                    }
+
                     await serviceRecords.updateOne(
                         { task_id: task.task_id },
                         {
-                            $set: {
-                                task_status: "Pending",
-                                assigned_technician_id: technician.technician_id,
-                                assigned_date: now,
-                                otp: otp,
-                                assigned_by: 'system',
-                                modified_by: 'system',
-                                modified_date: now,
-                                assignment_history: updatedHistory
-                            }
+                            $set: rejectedUpdateSet
                         }
                     );
                 } else {
-                    // First assignment
+                    const firstRejectedUpdateSet = {
+                        task_status: "Pending",
+                        assigned_technician_id: technician.technician_id,
+                        assigned_date: now,
+                        otp: otp,
+                        assigned_by: 'system',
+                        modified_by: 'system',
+                        modified_date: now
+                    };
+
+                    if (!task.address) {
+                        firstRejectedUpdateSet.address = normalizedAddress;
+                    }
+
                     await serviceRecords.updateOne(
                         { task_id: task.task_id },
                         {
-                            $set: {
-                                task_status: "Pending",
-                                assigned_technician_id: technician.technician_id,
-                                assigned_date: now,
-                                otp: otp,
-                                assigned_by: 'system',
-                                modified_by: 'system',
-                                modified_date: now
-                            },
+                            $set: firstRejectedUpdateSet,
                             $push: {
                                 assignment_history: {
                                     technician_id: technician.technician_id,
@@ -1464,17 +1500,22 @@ async function autoReassignTimeBasedTasks() {
                 const otp = Math.floor(100000 + Math.random() * 900000);
                 const reassignmentReason = `Pending for over 3 hours. Reassigned from ${currentTechnicianId}`;
 
-                // Update task
+                const pendingReassignSet = {
+                    assigned_technician_id: technician.technician_id,
+                    assigned_date: now,
+                    otp,
+                    modified_by: 'system',
+                    modified_date: now
+                };
+
+                if (!task.address) {
+                    pendingReassignSet.address = normalizedAddress;
+                }
+
                 await serviceRecords.updateOne(
                     { task_id: task.task_id },
                     {
-                        $set: {
-                            assigned_technician_id: technician.technician_id,
-                            assigned_date: now,
-                            otp,
-                            modified_by: 'system',
-                            modified_date: now
-                        },
+                        $set: pendingReassignSet,
                         $push: {
                             assignment_history: {
                                 technician_id: technician.technician_id,
@@ -1585,18 +1626,23 @@ async function autoReassignTimeBasedTasks() {
                 const otp = Math.floor(100000 + Math.random() * 900000);
                 const reassignmentReason = `In-Progress for over 24 hours. Reassigned from ${currentTechnicianId}`;
 
-                // Update task
+                const inProgressReassignSet = {
+                    assigned_technician_id: technician.technician_id,
+                    assigned_date: now,
+                    otp,
+                    task_status: "Pending",
+                    modified_by: 'system',
+                    modified_date: now
+                };
+
+                if (!task.address) {
+                    inProgressReassignSet.address = normalizedAddress;
+                }
+
                 await serviceRecords.updateOne(
                     { task_id: task.task_id },
                     {
-                        $set: {
-                            assigned_technician_id: technician.technician_id,
-                            assigned_date: now,
-                            otp,
-                            task_status: "Pending", // Change to Pending after reassignment
-                            modified_by: 'system',
-                            modified_date: now
-                        },
+                        $set: inProgressReassignSet,
                         $push: {
                             assignment_history: {
                                 technician_id: technician.technician_id,
