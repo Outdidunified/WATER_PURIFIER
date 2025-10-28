@@ -136,26 +136,25 @@ const Home = ({ userInfo, token, handleLogout }) => {
         setDistrict("");
     }, [state, country]);
 
-    // Calculate price details
+    // Updated: Calculate price details (matches modal logic)
     const calculatePriceDetails = () => {
         const selectedProduct = products[selectedModelIndex];
-        const selectedPlan = selectedProduct?.plans[selectedPlanIndex];
-        const selectedDuration = selectedProduct?.duration[selectedDurationIndex];
+        const selectedDuration = selectedProduct?.duration?.[selectedDurationIndex];
+        const selectedPlan = selectedDuration?.plans?.[selectedPlanIndex];
 
-        if (!selectedProduct || !selectedPlan || !selectedDuration) return null;
+        if (!selectedProduct || !selectedDuration || !selectedPlan) return null;
 
         // Base values
         const basePrice = selectedPlan?.price || 0;
         const gstRate = selectedDuration?.gst || 0;
         const discountRate = selectedDuration?.discount || 0;
 
-        // Duration
+        // Duration handling
         const durationText = selectedDuration?.duration_time_limit || "28 days";
         const durationDays = parseInt(durationText.replace(/[^\d]/g, ""), 10) || 28;
-        const baseDays = 28;
 
-        // Step — Base total for duration
-        const totalPrice = (basePrice / baseDays) * durationDays;
+        // Step — Base total for selected duration
+        const totalPrice = (basePrice);
 
         // Step — GST
         const gstAmount = (totalPrice * gstRate) / 100;
@@ -165,13 +164,15 @@ const Home = ({ userInfo, token, handleLogout }) => {
         const discountAmount = (priceWithGST * discountRate) / 100;
         const subtotal = priceWithGST - discountAmount;
 
-        // Step — Security Deposit
-        const securityDeposit = !userInfo?.security_deposit ? selectedDuration?.security_deposit || 0 : 0;
+        // Step — Security Deposit (skip if user already has one)
+        const securityDeposit = !userInfo?.security_deposit
+            ? selectedDuration?.security_deposit || 0
+            : 0;
 
-        // Step — Final total
+        // Step — Final total (without COD)
         const grandTotal = subtotal + securityDeposit;
 
-        // Step — Monthly equivalent (for display only)
+        // Step — Monthly equivalent (display only)
         const finalMonthlyPrice = (subtotal / durationDays) * 28;
 
         return {
@@ -582,52 +583,50 @@ const Home = ({ userInfo, token, handleLogout }) => {
     });
 
     useEffect(() => {
-        const container = scrollRef.current;
-        if (!container) return;
+        const el = scrollRef.current;
+        if (!el) return;
 
-        let scrollDirection = 1; // 1 = right, -1 = left
-        const scrollSpeed = 1;   // pixels per tick
-        const intervalDelay = 20; // ms
+        let autoScroll;
+        let direction = 1;
+        let isUserScrolling = false;
+        let scrollTimeout;
 
-        // Start auto-scroll
-        scrollInterval = setInterval(() => {
-            if (!container) return;
-
-            container.scrollLeft += scrollDirection * scrollSpeed;
-
-            // Change direction at ends
-            if (container.scrollLeft + container.clientWidth >= container.scrollWidth) {
-                scrollDirection = -1; // scroll left
-            } else if (container.scrollLeft <= 0) {
-                scrollDirection = 1; // scroll right
-            }
-        }, intervalDelay);
-
-        // Pause on hover
-        const pauseAutoScroll = () => clearInterval(scrollInterval);
-        const resumeAutoScroll = () => {
-            scrollInterval = setInterval(() => {
-                if (!container) return;
-                container.scrollLeft += scrollDirection * scrollSpeed;
-                if (container.scrollLeft + container.clientWidth >= container.scrollWidth) {
-                    scrollDirection = -1;
-                } else if (container.scrollLeft <= 0) {
-                    scrollDirection = 1;
-                }
-            }, intervalDelay);
+        // --- Detect manual scroll ---
+        const handleUserScroll = () => {
+            isUserScrolling = true;
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                isUserScrolling = false;
+            }, 2500); // resume auto-scroll after 2.5s of inactivity
         };
 
-        container.addEventListener("mouseenter", pauseAutoScroll);
-        container.addEventListener("mouseleave", resumeAutoScroll);
+        // --- Auto scroll loop ---
+        const startScroll = () => {
+            autoScroll = setInterval(() => {
+                if (!isUserScrolling) {
+                    el.scrollLeft += 1.5 * direction;
 
-        // Cleanup
+                    // reverse direction on edges
+                    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 5) direction = -1;
+                    else if (el.scrollLeft <= 0) direction = 1;
+                }
+            }, 20); // small smooth interval
+        };
+
+        const stopScroll = () => clearInterval(autoScroll);
+
+        startScroll();
+        el.addEventListener("scroll", handleUserScroll);
+        el.addEventListener("mouseenter", stopScroll);
+        el.addEventListener("mouseleave", startScroll);
+
         return () => {
-            clearInterval(scrollInterval);
-            container.removeEventListener("mouseenter", pauseAutoScroll);
-            container.removeEventListener("mouseleave", resumeAutoScroll);
+            clearInterval(autoScroll);
+            el.removeEventListener("scroll", handleUserScroll);
+            el.removeEventListener("mouseenter", stopScroll);
+            el.removeEventListener("mouseleave", startScroll);
         };
     }, []);
-
 
     return (
         <div>
@@ -972,9 +971,15 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 </ul>
                                             </div>
 
-                                            <div ref={scrollRef}
-                                                className="d-flex overflow-auto py-3"
-                                                style={{ gap: "20px", scrollBehavior: "smooth", cursor: "grab" }}
+                                            <div
+                                                ref={scrollRef}
+                                                className="d-flex overflow-auto py-3 scroll-container"
+                                                style={{
+                                                    gap: "20px",
+                                                    scrollBehavior: "smooth",
+                                                    cursor: "grab",
+                                                    scrollSnapType: "x mandatory",
+                                                }}
                                             >
                                                 {products.map((product, index) => {
                                                     const isSelected = selectedModelIndex === index;
@@ -983,7 +988,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                     return (
                                                         <div
                                                             key={product._id}
-                                                            className={`card text-center flex-shrink-0`}
+                                                            className="card text-center flex-shrink-0"
                                                             style={{
                                                                 width: "250px",
                                                                 borderRadius: "20px",
@@ -995,8 +1000,8 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                 transition: "all 0.4s ease",
                                                                 opacity: isOutOfStock ? 0.5 : 1,
                                                                 cursor: "pointer",
-                                                                marginLeft: '10px',
-                                                                marginRight: '10px'
+                                                                margin: "0 10px",
+                                                                scrollSnapAlign: "center",
                                                             }}
                                                             onClick={() => {
                                                                 setSelectedModelIndex(index);
@@ -1045,7 +1050,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 })}
                                             </div>
 
-
                                         </div>
                                     )}
 
@@ -1054,27 +1058,26 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             <div className="col-lg-12">
                                                 <div style={{ textAlign: "center" }}>
                                                     <h2>Flexible Rental Plans</h2>
-                                                    {/* --- BLUE CENTER BORDER --- */}
                                                     <div
                                                         style={{
-                                                            width: "50px", height: "3px",
+                                                            width: "50px",
+                                                            height: "3px",
                                                             backgroundColor: "#0d6efd",
-                                                            borderRadius: "2px", margin: "10px auto 0 auto",
+                                                            borderRadius: "2px",
+                                                            margin: "10px auto 0 auto",
                                                         }}
                                                     ></div>
                                                     <p className="fst-italic mt-2">
                                                         Security deposit of ₹{products[selectedModelIndex]?.duration[selectedDurationIndex]?.security_deposit || 0} will be 100% refundable
                                                     </p>
                                                     <h5>Choose Duration</h5>
-                                                    <div className="d-flex flex-wrap gap-2 mb-3 justify-content-center" style={{ textAlign: "center" }}>
-                                                        {products[selectedModelIndex]?.duration.map((duration, durationIndex) => (
+
+                                                    <div className="d-flex flex-wrap gap-2 mb-3 justify-content-center">
+                                                        {products[selectedModelIndex]?.duration.map((duration, index) => (
                                                             <button
                                                                 key={duration.duration_id}
-                                                                className={`btn ${selectedDurationIndex === durationIndex
-                                                                    ? "btn-primary"
-                                                                    : "btn-outline-primary"
-                                                                    }`}
-                                                                onClick={() => setSelectedDurationIndex(durationIndex)}
+                                                                className={`btn ${selectedDurationIndex === index ? "btn-primary" : "btn-outline-primary"}`}
+                                                                onClick={() => setSelectedDurationIndex(index)}
                                                             >
                                                                 {duration.duration_time_limit}
                                                             </button>
@@ -1083,14 +1086,43 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 </div>
 
                                                 <div className="row justify-content-center" style={{ padding: "20px" }}>
-                                                    {products[selectedModelIndex]?.plans.map((plan, planIndex) => {
-                                                        const priceDetails = calculatePriceDetails();
-                                                        if (!priceDetails) return null;
+                                                    {products[selectedModelIndex]?.duration?.[selectedDurationIndex]?.plans?.map((plan, planIndex) => {
+                                                        const product = products[selectedModelIndex];
+                                                        const selectedDuration = product?.duration?.[selectedDurationIndex];
 
-                                                        const selectedDuration = priceDetails.selectedDuration?.duration_time_limit || "N/A";
-                                                        const durationNumber = parseInt(selectedDuration);
-                                                        const isPopular = plan.label.toLowerCase() === "couple";
-                                                        const connectivity = products[selectedModelIndex]?.connectivity?.trim();
+                                                        if (!product || !selectedDuration) return null;
+
+                                                        const durationText = selectedDuration?.duration_time_limit || "28 days";
+                                                        const durationDays = parseInt(durationText) || 28;
+                                                        const baseDays = 28;
+
+                                                        // If plan.price belongs to that duration (like in your JSON), just use it directly
+                                                        // Otherwise (for older data with 28-day base), multiply proportionally
+                                                        const totalPrice =
+                                                            selectedDuration?.plans?.length > 0
+                                                                ? plan.price // already specific for this duration
+                                                                : (plan.price / baseDays) * durationDays;
+
+                                                        const formattedPrice = new Intl.NumberFormat("en-IN", {
+                                                            style: "currency",
+                                                            currency: "INR",
+                                                            minimumFractionDigits: 0,
+                                                            maximumFractionDigits: 0,
+                                                        }).format(totalPrice);
+
+                                                        const isPopular = plan.label?.toLowerCase() === "couple";
+                                                        const isOutOfStock = !product?.wp_device_id;
+
+                                                        // Normalize connectivity (array or string)
+                                                        const connectivityRaw = product?.connectivity;
+                                                        const connectivity = Array.isArray(connectivityRaw)
+                                                            ? connectivityRaw.join(", ")
+                                                            : (connectivityRaw || "").toString().trim();
+
+                                                        // Pull GST, Discount, Deposit from duration
+                                                        const discountRate = selectedDuration?.discount || 0;
+                                                        const gstRate = selectedDuration?.gst || 0;
+                                                        const securityDeposit = selectedDuration?.security_deposit || 0;
 
                                                         return (
                                                             <div className="col-md-3 mb-4" key={plan.plans_id}>
@@ -1135,7 +1167,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                     )}
 
                                                                     {/* HEADER */}
-                                                                    <div className="card-header bg-white text-center pt-4 border-0" style={{ borderRadius: '20px', }}>
+                                                                    <div className="card-header bg-white text-center pt-4 border-0" style={{ borderRadius: '20px' }}>
                                                                         <h5
                                                                             style={{
                                                                                 color: "#000",
@@ -1152,8 +1184,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                                 <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
                                                                             ) : (
                                                                                 <>
-                                                                                    {plan.capacity}/
-                                                                                    <span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
+                                                                                    {plan.capacity}/<span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
                                                                                 </>
                                                                             )}
                                                                         </p>
@@ -1161,184 +1192,90 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                                                                     {/* PRICE */}
                                                                     <div className="text-center mt-2">
-                                                                        <h4
-                                                                            style={{
-                                                                                color: "#000", fontWeight: "700",
-                                                                                fontSize: "32px", marginBottom: "5px",
-                                                                            }}
-                                                                        >
-                                                                            {/* PRICE */}
-                                                                            <div className="text-center mt-2">
-                                                                                {(() => {
-                                                                                    const basePrice = plan.price || 0;
-                                                                                    const durationText = selectedDuration || "28 days";
-
-                                                                                    // Extract number part from duration (e.g. "90 days" → 90)
-                                                                                    const durationDays = parseInt(durationText);
-                                                                                    const baseDays = 28; // base duration for price calculation
-
-                                                                                    // Calculate multiplied total
-                                                                                    const totalPrice = (basePrice / baseDays) * durationDays;
-
-                                                                                    //  Format with Indian comma style and no decimals
-                                                                                    const formattedPrice = new Intl.NumberFormat("en-IN", {
-                                                                                        style: "currency",
-                                                                                        currency: "INR",
-                                                                                        minimumFractionDigits: 0,
-                                                                                        maximumFractionDigits: 0,
-                                                                                    }).format(totalPrice);
-
-                                                                                    return (
-                                                                                        <>
-                                                                                            <span style={{ color: "#0d6efd", fontWeight: "700", fontSize: "32px" }}>
-                                                                                                {formattedPrice}
-                                                                                            </span>
-                                                                                            <p
-                                                                                                style={{
-                                                                                                    color: "#666",
-                                                                                                    fontWeight: "500",
-                                                                                                    fontSize: "15px",
-                                                                                                    marginBottom: "0px",
-                                                                                                }}
-                                                                                            >
-                                                                                                / per {durationText.toLowerCase().includes("day") ? durationText : "month"}
-                                                                                            </p>
-                                                                                        </>
-                                                                                    );
-                                                                                })()}
-                                                                            </div>
-
-                                                                            <p
-                                                                                style={{
-                                                                                    marginTop: "8px", color: "#333",
-                                                                                    fontWeight: "600", fontSize: "13px",
-                                                                                }}
-                                                                            >
-                                                                                {priceDetails.discountRate ? `${priceDetails.discountRate}% OFF` : "No Discount"}
-                                                                                <br />
-                                                                                <span style={{ fontSize: "12px", color: "#777" }}>(Inclusive of GST)</span>
-                                                                            </p>
-                                                                            {/* --- BLUE CENTER BORDER --- */}
-                                                                            <div
-                                                                                style={{
-                                                                                    width: "200px", height: "2px",
-                                                                                    backgroundColor: "#0d6efd",
-                                                                                    borderRadius: "2px", margin: "10px auto 0 auto",
-                                                                                }}
-                                                                            ></div>
+                                                                        <h4 style={{ color: "#000", fontWeight: "700", fontSize: "32px", marginBottom: "5px" }}>
+                                                                            <span style={{ color: "#0d6efd" }}>{formattedPrice}</span>
                                                                         </h4>
+                                                                        <p style={{ color: "#666", fontWeight: "500", fontSize: "15px", marginBottom: "0" }}>
+                                                                            / for {durationText}
+                                                                        </p>
+
+                                                                        <p style={{ marginTop: "8px", color: "#333", fontWeight: "600", fontSize: "13px" }}>
+                                                                            {discountRate ? `${discountRate}% OFF` : "No Discount"}
+                                                                            <br />
+                                                                            <span style={{ fontSize: "12px", color: "#777" }}>(Inclusive of GST)</span>
+                                                                        </p>
+
+                                                                        <div
+                                                                            style={{
+                                                                                width: "200px",
+                                                                                height: "2px",
+                                                                                backgroundColor: "#0d6efd",
+                                                                                borderRadius: "2px",
+                                                                                margin: "10px auto 0 auto",
+                                                                            }}
+                                                                        ></div>
                                                                     </div>
+
                                                                     {/* FEATURES */}
                                                                     <div className="card-body text-left px-4" style={{ paddingTop: "0px" }}>
                                                                         <ul style={{ listStyle: "none", paddingLeft: "0", margin: "5px 0" }}>
-                                                                            <li className="mb-2">
-                                                                                <span className="text-success">✓</span> Lifetime Maintenance
-                                                                            </li>
-                                                                            <li className="mb-2">
-                                                                                <span className="text-success">✓</span> Security ₹{products[selectedModelIndex]?.duration[selectedDurationIndex]?.security_deposit || 0}
-                                                                            </li>
-                                                                            <li className="mb-2">
-                                                                                <span className="text-success">✓</span> 24–48 Hour Installation
-                                                                            </li>
-                                                                            {durationNumber >= 90 && (
-                                                                                <li className="mb-2">
-                                                                                    <span className="text-success">✓</span> Filter Replacement Every 3 Months
-                                                                                </li>
+                                                                            <li className="mb-2"><span className="text-success">✓</span> Lifetime Maintenance</li>
+                                                                            <li className="mb-2"><span className="text-success">✓</span> Security ₹ {securityDeposit}</li>
+                                                                            <li className="mb-2"><span className="text-success">✓</span> 24–48 Hour Installation</li>
+                                                                            {durationDays >= 90 && (
+                                                                                <li className="mb-2"><span className="text-success">✓</span> Filter Replacement Every 3 Months</li>
                                                                             )}
 
-                                                                            {/* --- CONNECTIVITY --- */}
+                                                                            {/* CONNECTIVITY */}
                                                                             {connectivity ? (
                                                                                 <li className="mb-2">
                                                                                     <span className="text-success">✓</span> Connectivity:
-                                                                                    <ul
-                                                                                        style={{
-                                                                                            listStyleType: "disc",
-                                                                                            paddingLeft: "25px",
-                                                                                            marginTop: "5px",
-                                                                                        }}
-                                                                                    >
+                                                                                    <ul style={{ listStyleType: "disc", paddingLeft: "25px", marginTop: "5px" }}>
                                                                                         {connectivity.split(",").map((conn, i) => (
                                                                                             <li key={i}>{conn.trim()}</li>
                                                                                         ))}
                                                                                     </ul>
                                                                                 </li>
                                                                             ) : (
-                                                                                <li className="mb-2 text-danger">
-                                                                                    ❌ No Connectivity
-                                                                                </li>
+                                                                                <li className="mb-2 text-danger">❌ No Connectivity</li>
                                                                             )}
 
-                                                                            <li className="mb-2">
-                                                                                <span className="text-success">✓</span> Discount: {priceDetails.discountRate || 0}%
-                                                                            </li>
-                                                                            <li className="mb-2">
-                                                                                <span className="text-success">✓</span> GST:{" "}
-                                                                                {products[selectedModelIndex]?.duration[selectedDurationIndex]?.gst || 0}%
-                                                                            </li>
+                                                                            <li className="mb-2"><span className="text-success">✓</span> Discount: {discountRate}%</li>
+                                                                            <li className="mb-2"><span className="text-success">✓</span> GST: {gstRate}%</li>
                                                                             <li className="text-warning">
-                                                                                <span className="text-warning">✓</span> Includes ₹
-                                                                                {priceDetails.securityDeposit || 0} refundable deposit
+                                                                                <span className="text-warning">✓</span> Includes ₹{securityDeposit} refundable deposit
                                                                             </li>
-                                                                            {(() => {
-                                                                                const product = products[selectedModelIndex];
-                                                                                const isOutOfStock = !product?.wp_device_id;
 
-                                                                                if (isOutOfStock) {
-                                                                                    return (
-                                                                                        <li className="text-danger" style={{ textAlign: 'center' }}>
-                                                                                            <span className="text-danger">❌</span> Out of Stock
-                                                                                        </li>
-                                                                                    );
-                                                                                }
-                                                                                return null;
-                                                                            })()}
+                                                                            {isOutOfStock && (
+                                                                                <li className="text-danger" style={{ textAlign: "center" }}>
+                                                                                    <span className="text-danger">❌</span> Out of Stock
+                                                                                </li>
+                                                                            )}
                                                                         </ul>
                                                                     </div>
 
                                                                     {/* BUTTON */}
                                                                     <div className="card-footer text-center pb-4 border-0 bg-white" style={{ borderRadius: '20px' }}>
-                                                                        {(() => {
-                                                                            const product = products[selectedModelIndex];
-                                                                            const isOutOfStock = !product?.wp_device_id;
-                                                                            if (isOutOfStock) {
-                                                                                return (
-                                                                                    // <button className="btn btn-danger px-4 py-2 rounded-pill" disabled>
-                                                                                    //     Out of Stock
-                                                                                    // </button>
-                                                                                    <button
-                                                                                        className="btn px-4 py-2 rounded-pill"
-                                                                                        style={{
-                                                                                            background: isPopular ? "#0d6efd" : "#0d6efd",
-                                                                                            border: "none",
-                                                                                            color: "#fff",
-                                                                                            transition: "0.3s",
-                                                                                        }}
-                                                                                        disabled
-                                                                                    >
-                                                                                        Buy Now
-                                                                                    </button>
-                                                                                );
-                                                                            }
-                                                                            return (
-                                                                                <button
-                                                                                    className="btn px-4 py-2 rounded-pill"
-                                                                                    style={{
-                                                                                        background: isPopular ? "#0d6efd" : "#0d6efd",
-                                                                                        border: "none",
-                                                                                        color: "#fff",
-                                                                                        transition: "0.3s",
-                                                                                    }}
-                                                                                    onMouseEnter={(e) => (e.currentTarget.style.background = "#0b5ed7")}
-                                                                                    onMouseLeave={(e) => (e.currentTarget.style.background = "#0d6efd")}
-                                                                                    onClick={() => {
-                                                                                        setSelectedPlanIndex(planIndex);
-                                                                                        handleSubscribeClick();
-                                                                                    }}
-                                                                                >
-                                                                                    Buy Now
-                                                                                </button>
-                                                                            );
-                                                                        })()}
+                                                                        <button
+                                                                            className="btn px-4 py-2 rounded-pill"
+                                                                            style={{
+                                                                                background: "#0d6efd",
+                                                                                border: "none",
+                                                                                color: "#fff",
+                                                                                transition: "0.3s",
+                                                                            }}
+                                                                            disabled={isOutOfStock}
+                                                                            onMouseEnter={(e) => (e.currentTarget.style.background = "#0b5ed7")}
+                                                                            onMouseLeave={(e) => (e.currentTarget.style.background = "#0d6efd")}
+                                                                            onClick={() => {
+                                                                                if (!isOutOfStock) {
+                                                                                    setSelectedPlanIndex(planIndex);
+                                                                                    handleSubscribeClick();
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            {isOutOfStock ? "Out of Stock" : "Buy Now"}
+                                                                        </button>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1349,6 +1286,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             </div>
                                         </div>
                                     </div>
+
                                 </div>
                             </div>
                         </div>
@@ -1422,8 +1360,11 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                         }}
                                     >
                                         {(() => {
-                                            const priceDetails = calculatePriceDetails();
-                                            if (!priceDetails)
+                                            const product = products[selectedModelIndex];
+                                            const duration = product?.duration?.[selectedDurationIndex];
+                                            const plan = duration?.plans?.[selectedPlanIndex];
+
+                                            if (!product || !duration || !plan)
                                                 return <p>Error loading summary. Please try again.</p>;
 
                                             const textRow = (label, value, isBold = false, isBlue = false) => (
@@ -1448,7 +1389,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                         style={{
                                                             fontWeight: isBold ? "700" : "500",
                                                             color: isBlue ? "#0d6efd" : "#333",
-                                                            fontSize: "14px", // smaller than label
+                                                            fontSize: "14px",
                                                         }}
                                                     >
                                                         {value}
@@ -1456,40 +1397,40 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 </div>
                                             );
 
-                                            //  Price Calculations
-                                            const basePrice = priceDetails.basePrice || 0;
-                                            const durationText = priceDetails.selectedDuration?.duration_time_limit || "28 days";
-                                            const durationDays = parseInt(durationText) || 28;
-                                            const baseDays = 28;
-                                            const totalPrice = (basePrice / baseDays) * durationDays;
-
-                                            const gstRate = priceDetails.gstRate || 0;
-                                            const gstAmount = (totalPrice * gstRate) / 100;
-                                            const priceWithGST = totalPrice + gstAmount;
-
-                                            const discountRate = priceDetails.discountRate || 0;
-                                            const discountAmount = (priceWithGST * discountRate) / 100;
-                                            const subtotal = priceWithGST - discountAmount;
-                                            const securityDeposit = priceDetails.securityDeposit || 0;
-
-                                            //  COD Fee Logic
-                                            const codFee = selectedPaymentType === "cod" ? 100 : 0;
-                                            const grandTotal = subtotal + securityDeposit + codFee;
-
                                             const formatINR = (val) =>
-                                                `₹${val.toLocaleString("en-IN", {
+                                                `₹${val?.toLocaleString("en-IN", {
                                                     minimumFractionDigits: 0,
                                                     maximumFractionDigits: 2,
                                                 })}`;
 
-                                            const formattedPrice = formatINR(totalPrice);
+                                            // === PRICE CALCULATION BASED ON SELECTED DURATION & PLAN ===
+                                            const durationText = duration.duration_time_limit || "28 days";
+                                            const durationDays = parseInt(durationText) || 28;
+                                            const totalPrice = (plan.price);
+
+                                            const gstRate = duration.gst || 0;
+                                            const gstAmount = (totalPrice * gstRate) / 100;
+
+                                            const discountRate = duration.discount || 0;
+                                            const discountAmount = ((totalPrice + gstAmount) * discountRate) / 100;
+
+                                            const priceWithGST = totalPrice + gstAmount;
+                                            const subtotal = priceWithGST - discountAmount;
+                                            const securityDeposit = duration.security_deposit || 0;
+
+                                            const codFee = selectedPaymentType === "cod" ? 100 : 0;
+                                            const grandTotal = subtotal + securityDeposit + codFee;
 
                                             return (
                                                 <>
-                                                    {textRow("Model", priceDetails.selectedProduct?.model_name, false, true)}
-                                                    {textRow("Plan", priceDetails.selectedPlan?.label, false, true)}
+                                                    {textRow("Model", product.model_name, true, true)}
+                                                    {textRow("Details", product.product_details)}
+                                                    {textRow("Connectivity", product.connectivity || "N/A")}
+                                                    <hr style={{ color: "#0d6efd" }} />
 
-                                                    {/* Capacity */}
+                                                    {textRow("Selected Duration", duration.duration_time_limit, false, true)}
+                                                    {textRow("Selected Plan", plan.label.toUpperCase(), false, true)}
+
                                                     <div
                                                         style={{
                                                             display: "flex",
@@ -1499,15 +1440,12 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                     >
                                                         <span style={{ fontWeight: "600", color: "#000" }}>Capacity</span>
                                                         <span style={{ fontWeight: "500" }}>
-                                                            {priceDetails.selectedPlan?.label?.toLowerCase() === "unlimited" ||
-                                                                !priceDetails.selectedPlan?.capacity ? (
+                                                            {plan.label.toLowerCase() === "unlimited" || !plan.capacity ? (
                                                                 <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
                                                             ) : (
                                                                 <>
-                                                                    {priceDetails.selectedPlan?.capacity}/
-                                                                    <span style={{
-                                                                        color: "rgb(13, 110, 253)"
-                                                                    }}>Ltr</span>
+                                                                    {plan.capacity}/
+                                                                    <span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
                                                                 </>
                                                             )}
                                                         </span>
@@ -1515,11 +1453,11 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                                                     <hr style={{ color: "#0d6efd" }} />
 
-                                                    {textRow("Price", formattedPrice)}
+                                                    {textRow("Base Price", formatINR(plan.price))}
                                                     {textRow("Duration", `${durationDays} days`)}
                                                     {textRow(`GST (${gstRate}%)`, formatINR(gstAmount))}
-                                                    {textRow("Price with GST", formatINR(priceWithGST))}
                                                     {textRow(`Discount (${discountRate}%)`, formatINR(discountAmount))}
+                                                    {textRow("Price with GST", formatINR(priceWithGST))}
 
                                                     <hr style={{ color: "#0d6efd" }} />
 
