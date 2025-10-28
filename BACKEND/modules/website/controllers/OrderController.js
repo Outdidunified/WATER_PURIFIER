@@ -84,8 +84,13 @@ exports.createSubscriptionOrder = async (req, res) => {
       return res.status(400).json({ message: 'This device is already assigned to another order. Please choose another device.' });
     }
 
-    const selectedPlan = productModel.plans.find(plan => plan.plans_id === selectedPlanId);
-    const selectedDuration = productModel.duration.find(dur => dur.duration_id === selectedDurationId);
+    const normalizeId = (value) => (value === undefined || value === null ? '' : value.toString());
+    const durations = Array.isArray(productModel.duration) ? productModel.duration : [];
+    const selectedDuration = durations.find((duration) => normalizeId(duration.duration_id) === normalizeId(selectedDurationId));
+    const selectedDurationPlans = Array.isArray(selectedDuration?.plans) ? selectedDuration.plans : [];
+    const topLevelPlans = Array.isArray(productModel.plans) ? productModel.plans : [];
+    const plans = selectedDurationPlans.length > 0 ? selectedDurationPlans : topLevelPlans;
+    const selectedPlan = plans.find((plan) => normalizeId(plan.plans_id) === normalizeId(selectedPlanId));
     if (!selectedPlan || !selectedDuration) return res.status(404).json({ message: 'Plan or duration not found' });
 
     const effectiveSecurityDeposit = user.security_deposit_added ? 0 : securityDeposit;
