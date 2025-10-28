@@ -65,9 +65,18 @@ const useEditProducts = (userInfo) => {
       setWpDeviceQuantity(data.wp_device_quantity || 0);
 
       const connectivityData = data.connectivity || '';
-      const connectivityArray = typeof connectivityData === 'string'
-        ? connectivityData.split(',').map(s => s.trim()).filter(Boolean)
-        : Array.isArray(connectivityData) ? connectivityData : [];
+      const connectivityArray = Array.from(
+        new Set(
+          (typeof connectivityData === 'string'
+            ? connectivityData.split(',')
+            : Array.isArray(connectivityData)
+            ? connectivityData
+            : []
+          )
+            .map((s) => (typeof s === 'string' ? s.trim() : ''))
+            .filter((s) => s)
+        )
+      );
       setConnectivity(connectivityArray);
 
       const statusValue =
@@ -79,7 +88,7 @@ const useEditProducts = (userInfo) => {
       const parsedDurations = data.duration?.length > 0
         ? data.duration.map((d) => ({
             duration_id: d.duration_id ?? generateUniqueId(),
-            duration_time_limit: d.duration_time_limit || '',
+            duration_time_limit: typeof d.duration_time_limit === 'string' ? d.duration_time_limit.trim() : (d.duration_time_limit || ''),
             gst: d.gst?.toString() || '',
             discount: d.discount?.toString() || '',
             security_deposit: d.security_deposit?.toString() || '',
@@ -297,8 +306,9 @@ const useEditProducts = (userInfo) => {
     };
 
     if (field === 'duration_time_limit') {
+      const normalizedValue = typeof value === 'string' ? value.trim() : value;
       setDurations(prevDurations => prevDurations.map((duration, idx) =>
-        idx === index ? { ...duration, [field]: value } : duration
+        idx === index ? { ...duration, [field]: normalizedValue } : duration
       ));
       return;
     }
@@ -331,6 +341,14 @@ const useEditProducts = (userInfo) => {
     e.preventDefault();
     setLoading(true);
 
+    const sanitizedConnectivity = Array.from(
+      new Set(
+        connectivity
+          .filter((item) => typeof item === 'string' && item.trim() !== '')
+          .map((item) => item.trim())
+      )
+    );
+
     if (!modelName || !productDetails || !mainImage) {
       setErrorMessage('All required fields must be filled.');
       setLoading(false);
@@ -343,7 +361,7 @@ const useEditProducts = (userInfo) => {
       return;
     }
 
-    if (connectivity.length === 0) {
+    if (sanitizedConnectivity.length === 0) {
       showErrorAlert('Missing Data', 'Please select at least one connectivity option.');
       setLoading(false);
       return;
@@ -406,7 +424,7 @@ const useEditProducts = (userInfo) => {
     }
     formData.append('existing_product_specifications', originalDataRef.current?.productSpecifications || '');
     formData.append('wp_device_quantity', wpDeviceQuantity);
-    formData.append('connectivity', connectivity.join(', '));
+    formData.append('connectivity', sanitizedConnectivity.join(', '));
     formData.append('main_img', mainImage);
     formData.append('createdby', userInfo.email);
     formData.append('modifiedby', userInfo.email);

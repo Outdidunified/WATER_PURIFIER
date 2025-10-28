@@ -41,36 +41,92 @@ const fetchTechnicians = async () => {
         ? techs.filter((tech) => tech?.district?.trim().toLowerCase() === sellerDistrict)
         : techs;
 
-      const toTimestamp = (task) => {
-        const rawDate =
-          task?.task_assigned_date ||
-          task?.assigned_date ||
-          task?.createdAt ||
-          task?.updatedAt ||
-          task?.completed_at ||
-          task?.createddate;
-
-        if (!rawDate) return 0;
-        const date = new Date(rawDate);
+      const toValidTimestamp = (value) => {
+        if (!value) return 0;
+        const date = new Date(value);
         return Number.isNaN(date.getTime()) ? 0 : date.getTime();
       };
 
-      const sortedTasks = [...tasks].sort((a, b) => toTimestamp(b) - toTimestamp(a));
+      const recordTimestamp = (record) => {
+        if (!record) return 0;
+        return Math.max(
+          0,
+          toValidTimestamp(record.createdAt),
+          toValidTimestamp(record.created_at),
+          toValidTimestamp(record.assigned_date),
+          toValidTimestamp(record.assignedDate),
+          toValidTimestamp(record.updatedAt),
+          toValidTimestamp(record.updated_at),
+          toValidTimestamp(record.completed_at),
+          toValidTimestamp(record.completedAt),
+          toValidTimestamp(record.createddate),
+          toValidTimestamp(record.created_date)
+        );
+      };
 
-      const enriched = sortedTasks.map((task) => {
+      const sortServiceRecords = (taskItem) => {
+        if (!Array.isArray(taskItem?.service_records)) {
+          return [];
+        }
+        const records = taskItem.service_records.filter(Boolean);
+        if (records.length <= 1) {
+          return records;
+        }
+        return records.sort((a, b) => recordTimestamp(b) - recordTimestamp(a));
+      };
+
+      const computeTaskTimestamp = (latestRecord, taskItem) => {
+        return Math.max(
+          recordTimestamp(latestRecord),
+          toValidTimestamp(taskItem?.task_assigned_date),
+          toValidTimestamp(taskItem?.assigned_date),
+          toValidTimestamp(taskItem?.createdAt),
+          toValidTimestamp(taskItem?.updatedAt),
+          toValidTimestamp(taskItem?.completed_at),
+          toValidTimestamp(taskItem?.createddate)
+        );
+      };
+
+      const enrichedWithTimestamp = tasks.map((task) => {
+        const serviceRecords = sortServiceRecords(task);
+        const primaryRecord = serviceRecords[0] || null;
         const assignedTechnician = filteredTechnicians.find(
-          (tech) => tech.technician_id === task.assigned_technician_id
+          (tech) => tech.technician_id === (primaryRecord?.assigned_technician_id || task.assigned_technician_id)
         );
 
-        const statusValue = (task.task_status || '').toString().toLowerCase();
-        const isAssignable = statusValue ? statusValue !== 'completed' : true;
+        const statusValue = (
+          task?.task_status ||
+          primaryRecord?.task_status ||
+          ''
+        ).toString();
+        const statusLower = statusValue.toLowerCase();
+        const isAssignable = statusLower ? statusLower !== 'completed' : true;
+        const timestamp = computeTaskTimestamp(primaryRecord, task);
 
         return {
           ...task,
           assignedTechnician: assignedTechnician || null,
+          service_records: serviceRecords,
+          task_status: statusValue,
+          pending_reason:
+            task?.pending_reason ||
+            primaryRecord?.pending_reason ||
+            primaryRecord?.pending_reason_text ||
+            '',
+          task_id: primaryRecord?.task_id || task?.task_id || null,
+          task_assigned_date: primaryRecord?.assigned_date || task?.task_assigned_date || null,
+          assigned_technician_id:
+            primaryRecord?.assigned_technician_id ||
+            task?.assigned_technician_id ||
+            null,
           isAssignable,
+          _timestamp: timestamp,
         };
       });
+
+      const enriched = enrichedWithTimestamp
+        .sort((a, b) => (b._timestamp || 0) - (a._timestamp || 0))
+        .map(({ _timestamp, ...rest }) => rest);
 
       setTechnicians(filteredTechnicians);
       setServiceTasks(enriched);

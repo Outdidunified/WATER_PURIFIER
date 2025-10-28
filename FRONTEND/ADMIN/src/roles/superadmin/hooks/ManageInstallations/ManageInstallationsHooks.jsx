@@ -84,41 +84,65 @@ const useManageInstallation = (userInfo) => {
         return acc;
       }, {});
 
-      const toPrimaryRecord = (item) =>
-        Array.isArray(item?.service_records) && item.service_records.length > 0
-          ? item.service_records[0]
-          : null;
-
-      const toTimestamp = (item) => {
-        const primaryRecord = toPrimaryRecord(item);
-        const rawDate =
-          primaryRecord?.assigned_date ||
-          primaryRecord?.createdAt ||
-          item?.task_assigned_date ||
-          item?.createdAt ||
-          item?.updatedAt ||
-          primaryRecord?.updatedAt;
-
-        if (!rawDate) return 0;
-        const date = new Date(rawDate);
+      const toValidTimestamp = (value) => {
+        if (!value) return 0;
+        const date = new Date(value);
         return Number.isNaN(date.getTime()) ? 0 : date.getTime();
       };
 
-      const sortedTasks = [...tasks].sort((a, b) => toTimestamp(b) - toTimestamp(a));
+      const recordTimestamp = (record) => {
+        if (!record) return 0;
+        return Math.max(
+          0,
+          toValidTimestamp(record.createdAt),
+          toValidTimestamp(record.created_at),
+          toValidTimestamp(record.assigned_date),
+          toValidTimestamp(record.assignedDate),
+          toValidTimestamp(record.updatedAt),
+          toValidTimestamp(record.updated_at),
+          toValidTimestamp(record.completed_at),
+          toValidTimestamp(record.completedAt),
+          toValidTimestamp(record.createddate),
+          toValidTimestamp(record.created_date)
+        );
+      };
 
-      const enrichedTasks = sortedTasks.map((task) => {
+      const mergeServiceRecords = (taskItem, relatedOrder) => {
+        const records = [];
+        if (Array.isArray(taskItem?.service_records)) {
+          records.push(...taskItem.service_records.filter(Boolean));
+        }
+        if (Array.isArray(relatedOrder?.service_records)) {
+          records.push(...relatedOrder.service_records.filter(Boolean));
+        }
+        if (records.length <= 1) {
+          return records;
+        }
+        return records.sort((a, b) => recordTimestamp(b) - recordTimestamp(a));
+      };
+
+      const computeTaskTimestamp = (latestRecord, taskItem, relatedOrder) => {
+        return Math.max(
+          recordTimestamp(latestRecord),
+          toValidTimestamp(taskItem?.task_assigned_date),
+          toValidTimestamp(taskItem?.createdAt),
+          toValidTimestamp(taskItem?.updatedAt),
+          toValidTimestamp(taskItem?.createddate),
+          toValidTimestamp(relatedOrder?.task_assigned_date),
+          toValidTimestamp(relatedOrder?.createdAt),
+          toValidTimestamp(relatedOrder?.updatedAt),
+          toValidTimestamp(relatedOrder?.createddate)
+        );
+      };
+
+      const enrichedTasksWithTimestamp = tasks.map((task) => {
         const relatedOrder = orderMap[task?.wp_device_id] || null;
-
-        const serviceRecords =
-          Array.isArray(task?.service_records) && task.service_records.length > 0
-            ? task.service_records
-            : Array.isArray(relatedOrder?.service_records)
-            ? relatedOrder.service_records
-            : [];
-
+        const serviceRecords = mergeServiceRecords(task, relatedOrder);
         const primaryRecord =
-          serviceRecords?.[0] || toPrimaryRecord(task) || toPrimaryRecord(relatedOrder) || null;
-
+          serviceRecords[0] ||
+          (Array.isArray(task?.service_records) && task.service_records[0]) ||
+          (Array.isArray(relatedOrder?.service_records) && relatedOrder.service_records[0]) ||
+          null;
         const technicianFromMap = primaryRecord?.technician_device_map_id
           ? technicianMap[primaryRecord.technician_device_map_id]
           : null;
@@ -159,6 +183,45 @@ const useManageInstallation = (userInfo) => {
               }
             : null);
 
+        const taskAssignmentHistory = Array.isArray(task?.assignment_history)
+          ? task.assignment_history.filter(Boolean)
+          : [];
+        const orderAssignmentHistory = Array.isArray(relatedOrder?.assignment_history)
+          ? relatedOrder.assignment_history.filter(Boolean)
+          : [];
+        const mergedAssignmentHistory = [...taskAssignmentHistory, ...orderAssignmentHistory];
+
+        const extractAssignedDate = (value) => {
+          if (!value) return null;
+          if (typeof value === 'object') {
+            if ('$date' in value) return value.$date;
+            if ('$numberLong' in value) {
+              const millis = Number(value.$numberLong);
+              return Number.isNaN(millis) ? null : new Date(millis).toISOString();
+            }
+            return null;
+          }
+          return value;
+        };
+
+        const assignmentTimestamp = (entry) => {
+          const assignedValue =
+            extractAssignedDate(entry?.assigned_date) || extractAssignedDate(entry?.assignedDate);
+          if (assignedValue) {
+            return toValidTimestamp(assignedValue);
+          }
+          return 0;
+        };
+
+        const assignmentHistory = mergedAssignmentHistory.length > 0
+          ? mergedAssignmentHistory
+              .map((entry, index) => ({ ...entry, _historyIndex: index }))
+              .sort((a, b) => assignmentTimestamp(b) - assignmentTimestamp(a))
+              .map(({ _historyIndex, ...rest }) => rest)
+          : taskAssignmentHistory.length > 0
+          ? taskAssignmentHistory
+          : orderAssignmentHistory;
+
         const statusValue = (
           task?.task_status ||
           primaryRecord?.task_status ||
@@ -167,6 +230,8 @@ const useManageInstallation = (userInfo) => {
         ).toString();
         const statusLower = statusValue.toLowerCase();
         const isAssignable = statusLower ? statusLower !== 'completed' : true;
+
+        const timestamp = computeTaskTimestamp(primaryRecord, task, relatedOrder);
 
         return {
           ...(relatedOrder || {}),
@@ -178,6 +243,7 @@ const useManageInstallation = (userInfo) => {
             primaryRecord?.pending_reason_text ||
             '',
           service_records: serviceRecords,
+          assignment_history: assignmentHistory,
           task_id: primaryRecord?.task_id || task?.task_id || null,
           task_assigned_date: primaryRecord?.assigned_date || task?.task_assigned_date || null,
           task_released_date: primaryRecord?.released_date || task?.task_released_date || null,
@@ -197,8 +263,13 @@ const useManageInstallation = (userInfo) => {
           modelName: relatedOrder?.modelName || task?.modelName || '',
           email: relatedOrder?.email || task?.email || '',
           isAssignable,
+          _timestamp: timestamp,
         };
       });
+
+      const enrichedTasks = enrichedTasksWithTimestamp
+        .sort((a, b) => (b._timestamp || 0) - (a._timestamp || 0))
+        .map(({ _timestamp, ...rest }) => rest);
 
       setEnrichedTaskList(enrichedTasks);
       setDisplayTasks(enrichedTasks);

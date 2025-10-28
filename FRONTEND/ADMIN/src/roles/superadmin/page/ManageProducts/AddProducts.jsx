@@ -10,6 +10,7 @@ import useAddProducts from '../../hooks/ManageProducts/AddProductsHooks';
 
 const planOptions = ['solo', 'couple', 'family', 'unlimited'];
 const durationOptions = ['28 days', '60 days', '90 days', '180 days', '360 days'];
+const connectivityOptions = ['Bluetooth', 'Wifi', '4G', 'Ethernet'];
 
 const AddProducts = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
@@ -47,8 +48,12 @@ const AddProducts = ({ userInfo, handleLogout }) => {
   };
 
   const handleConnectivityAdd = (value) => {
-    if (value && !connectivity.includes(value)) {
-      setConnectivity(prev => [...prev, value]);
+    const normalizedValue = typeof value === 'string' ? value.trim() : '';
+    if (!normalizedValue || !connectivityOptions.includes(normalizedValue)) {
+      return;
+    }
+    if (!connectivity.includes(normalizedValue)) {
+      setConnectivity(prev => [...prev, normalizedValue]);
     }
   };
 
@@ -222,7 +227,7 @@ const AddProducts = ({ userInfo, handleLogout }) => {
                           onChange={(e) => handleConnectivityAdd(e.target.value)}
                         >
                           <option value="">Select Connectivity</option>
-                          {['Bluetooth', 'Wifi', '4G', 'Ethernet']
+                          {connectivityOptions
                             .filter(option => !connectivity.includes(option))
                             .map(option => (
                               <option key={option} value={option}>{option}</option>
@@ -295,73 +300,90 @@ const AddProducts = ({ userInfo, handleLogout }) => {
                   {/* Durations and Plans */}
                   <div className="mb-4">
                     <h5 className="card-title">Durations & Plans</h5>
-                    {durations.map((duration, index) => (
-                      <div className="card mb-3" key={duration.duration_id || index}>
-                        <div className="card-body">
-                          <div className="d-flex justify-content-between align-items-center mb-3">
-                            <h5 className="mb-0">Duration {index + 1}</h5>
-                            {durations.length > 1 && (
-                              <button
-                                type="button"
-                                className="btn btn-outline-danger btn-sm"
-                                onClick={() => removeDuration(index)}
-                              >
-                                Remove Duration
-                              </button>
-                            )}
-                          </div>
+                    {durations.map((duration, index) => {
+                      const normalizeDurationValue = (value) =>
+                        typeof value === 'string' ? value.trim().toLowerCase() : '';
+                      const selectedDurationValues = durations
+                        .filter((_, idx) => idx !== index)
+                        .map((d) => normalizeDurationValue(d.duration_time_limit))
+                        .filter(Boolean);
+                      const currentDurationValue = normalizeDurationValue(duration.duration_time_limit);
+                      const availableDurationOptions = durationOptions.filter((option) => {
+                        const normalizedOption = normalizeDurationValue(option);
+                        return (
+                          normalizedOption === currentDurationValue ||
+                          !selectedDurationValues.includes(normalizedOption)
+                        );
+                      });
 
-                          <div className="row mb-3">
-                            <div className="col-md-3">
-                              <label className="input-label">Duration</label>
-                              <select
-                                className="form-control"
-                                value={duration.duration_time_limit}
-                                onChange={(e) => handleDurationChange(index, 'duration_time_limit', e.target.value)}
-                                required
-                              >
-                                <option value="">Select Duration</option>
-                                {durationOptions.map(option => (
-                                  <option key={option} value={option}>{option}</option>
-                                ))}
-                              </select>
+                      return (
+                        <div className="card mb-3" key={duration.duration_id || index}>
+                          <div className="card-body">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                              <h5 className="mb-0">Duration {index + 1}</h5>
+                              {durations.length > 1 && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-danger btn-sm"
+                                  onClick={() => removeDuration(index)}
+                                >
+                                  Remove Duration
+                                </button>
+                              )}
                             </div>
-                            <div className="col-md-3">
-                              <label className="input-label">GST (%)</label>
-                              <InputField
-                                type="text"
-                                placeholder="GST (%)"
-                                value={duration.gst}
-                                onChange={(e) => handleDurationChange(index, 'gst', e.target.value)}
-                                required
-                              />
-                            </div>
-                            <div className="col-md-3">
-                              <label className="input-label">Discount (%)</label>
-                              <InputField
-                                type="text"
-                                placeholder="Discount (%)"
-                                value={duration.discount}
-                                onChange={(e) => handleDurationChange(index, 'discount', e.target.value)}
-                                required
-                              />
-                            </div>
-                            <div className="col-md-3">
-                              <label className="input-label">Security Deposit</label>
-                              <InputField
-                                type="text"
-                                placeholder="Security Deposit"
-                                value={duration.security_deposit}
-                                onChange={(e) => handleDurationChange(index, 'security_deposit', e.target.value)}
-                                required
-                              />
-                            </div>
-                          </div>
 
-                          {renderPlanControls(duration, index)}
+                            <div className="row mb-3">
+                              <div className="col-md-3">
+                                <label className="input-label">Duration</label>
+                                <select
+                                  className="form-control"
+                                  value={duration.duration_time_limit}
+                                  onChange={(e) => handleDurationChange(index, 'duration_time_limit', e.target.value)}
+                                  required
+                                >
+                                  <option value="">Select Duration</option>
+                                  {availableDurationOptions.map(option => (
+                                    <option key={option} value={option}>{option}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="col-md-3">
+                                <label className="input-label">GST (%)</label>
+                                <InputField
+                                  type="text"
+                                  placeholder="GST (%)"
+                                  value={duration.gst}
+                                  onChange={(e) => handleDurationChange(index, 'gst', e.target.value)}
+                                  required
+                                />
+                              </div>
+                              <div className="col-md-3">
+                                <label className="input-label">Discount (%)</label>
+                                <InputField
+                                  type="text"
+                                  placeholder="Discount (%)"
+                                  value={duration.discount}
+                                  onChange={(e) => handleDurationChange(index, 'discount', e.target.value)}
+                                  required
+                                />
+                              </div>
+                              <div className="col-md-3">
+                                <label className="input-label">Security Deposit</label>
+                                <InputField
+                                  type="text"
+                                  placeholder="Security Deposit"
+                                  value={duration.security_deposit}
+                                  onChange={(e) => handleDurationChange(index, 'security_deposit', e.target.value)}
+                                  required
+                                />
+                              </div>
+                            </div>
+
+                            {renderPlanControls(duration, index)}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                     <button type="button" className="btn btn-outline-primary btn-sm" onClick={addDuration}>
                       Add Duration

@@ -242,8 +242,9 @@ const useAddProducts = (userInfo) => {
 
   const handleDurationChange = (index, field, value) => {
     if (field === 'duration_time_limit') {
+      const normalizedValue = typeof value === 'string' ? value.trim() : value;
       const updatedDurations = durations.map((duration, idx) =>
-        idx === index ? { ...duration, [field]: value, durationError: '' } : duration
+        idx === index ? { ...duration, [field]: normalizedValue, durationError: '' } : duration
       );
       setDurations(updatedDurations);
       return;
@@ -288,6 +289,14 @@ const useAddProducts = (userInfo) => {
     e.preventDefault();
     setLoading(true);
 
+    const sanitizedConnectivity = Array.from(
+      new Set(
+        connectivity
+          .filter((item) => typeof item === 'string' && item.trim() !== '')
+          .map((item) => item.trim())
+      )
+    );
+
     if (!modelName || !productDetails || !mainImage) {
       setErrorMessage('All required fields must be filled.');
       setLoading(false);
@@ -300,7 +309,7 @@ const useAddProducts = (userInfo) => {
       return;
     }
 
-    if (connectivity.length === 0) {
+    if (sanitizedConnectivity.length === 0) {
       showErrorAlert('Missing Data', 'Please select at least one connectivity option.');
       setLoading(false);
       return;
@@ -361,7 +370,6 @@ const useAddProducts = (userInfo) => {
       formData.append('product_specifications', productSpecifications);
     }
     formData.append('wp_device_quantity', wpDeviceQuantity);
-    formData.append('connectivity', connectivity.join(', '));
     formData.append('main_img', mainImage);
 
     subImages.forEach((img, i) => {
@@ -386,7 +394,7 @@ const useAddProducts = (userInfo) => {
 
     formData.append('duration', JSON.stringify(normalizedDurations));
     formData.append('createdby', userInfo.email);
-    formData.append('connectivity', connectivity.join(', '));
+    formData.append('connectivity', sanitizedConnectivity.join(', '));
 
     try {
       const response = await axiosInstance.post('api/admin/AddProductModels', formData, {

@@ -13,8 +13,75 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
     navigate('/superadmin/ManageInstallations');
   };
 
-  const formatDate = (value) => (value ? new Date(value).toLocaleDateString() : '-');
-  const formatDateTime = (value) => (value ? new Date(value).toLocaleString() : '-');
+  const extractDateValue = (value) => {
+    if (!value) return null;
+    if (typeof value === 'object' && value !== null && '$date' in value) {
+      return value.$date;
+    }
+    return value;
+  };
+
+  const formatDate = (value) => {
+    const dateValue = extractDateValue(value);
+    return dateValue ? new Date(dateValue).toLocaleDateString() : '-';
+  };
+  const formatDateTime = (value) => {
+    const dateValue = extractDateValue(value);
+    return dateValue ? new Date(dateValue).toLocaleString() : '-';
+  };
+
+  const resolveTechnicianId = (record) => {
+    if (!record) return '-';
+
+    const toPlainString = (value) => {
+      if (value === null || value === undefined) return '';
+      if (typeof value === 'string') return value.trim();
+      if (typeof value === 'number' || typeof value === 'bigint') return value.toString();
+      if (typeof value === 'object') {
+        if ('$date' in value) return toPlainString(value.$date);
+        if ('$oid' in value) return toPlainString(value.$oid);
+        if ('$numberInt' in value) return toPlainString(value.$numberInt);
+        if ('$numberLong' in value) return toPlainString(value.$numberLong);
+        if ('technician_id' in value) return toPlainString(value.technician_id);
+        if ('assigned_technician_id' in value) return toPlainString(value.assigned_technician_id);
+        if ('id' in value) return toPlainString(value.id);
+        if (Array.isArray(value)) {
+          for (const item of value) {
+            const result = toPlainString(item);
+            if (result) return result;
+          }
+          return '';
+        }
+        const stringValue = value.toString();
+        return stringValue && stringValue !== '[object Object]' ? stringValue : '';
+      }
+      return '';
+    };
+
+    const values = [
+      record.technician_id,
+      record.assigned_technician_id,
+      record.technicianId,
+      record.assignedTechnicianId,
+      record.technician_code,
+      record.technicianCode,
+      record.technicianID,
+      record.technician_device_map_id,
+      record.technician?.technician_id,
+      record.technicianDetails?.technician_id,
+      record.assignedTechnician?.technician_id,
+      record.technician,
+      record.technicianDetails,
+      record.assignedTechnician,
+    ];
+
+    for (const value of values) {
+      const resolved = toPlainString(value);
+      if (resolved) return resolved;
+    }
+
+    return '-';
+  };
 
   return (
     <div className="container-scroller">
@@ -161,7 +228,139 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                   serviceRecord.created_at ||
                   serviceRecord.createdAt;
                 const imageAfterService = task.image_after_service || serviceRecord.image_after_service || [];
-                
+                const assignmentHistoryRecords = Array.isArray(task.assignment_history)
+                  ? task.assignment_history.map((entry) => {
+                      const technicianIdValue =
+                        resolveTechnicianId(entry) ||
+                        entry.technician_id ||
+                        entry.assigned_technician_id ||
+                        entry.technicianId ||
+                        entry.assignedTechnicianId ||
+                        '';
+                      const technicianNameValue =
+                        entry.technician_name ||
+                        entry.technicianName ||
+                        entry.name ||
+                        entry.technician?.technician_name ||
+                        entry.technician?.name ||
+                        entry.technicianDetails?.technician_name ||
+                        entry.technicianDetails?.name ||
+                        entry.assignedTechnician?.technician_name ||
+                        entry.assignedTechnician?.name ||
+                        '';
+
+                      return {
+                        technicianLabel:
+                          [technicianIdValue, technicianNameValue].filter(Boolean).join(' - ') ||
+                          technicianIdValue ||
+                          technicianNameValue ||
+                          '-',
+                        technicianId: technicianIdValue || technicianNameValue || '-',
+                        assignedBy: entry.assigned_by || '-',
+                        assignedDate: entry.assigned_date || entry.assignedDate || null,
+                        pendingReason:
+                          entry.unassigned_reason ||
+                          entry.unassignedReason ||
+                          entry.pending_reason ||
+                          entry.pendingReason ||
+                          entry.pending_reason_text ||
+                          entry.pendingReasonText ||
+                          entry.reassigned_reason ||
+                          entry.reassignedReason ||
+                          '-',
+                      };
+                    })
+                  : [];
+                const serviceHistoryRecords = Array.isArray(task.service_records)
+                  ? task.service_records.map((record) => {
+                      const technicianIdValue =
+                        resolveTechnicianId(record) ||
+                        record.technician_id ||
+                        record.assigned_technician_id ||
+                        record.technicianId ||
+                        record.assignedTechnicianId ||
+                        record.technician_device_map_id ||
+                        '';
+                      const technicianNameValue =
+                        record.technician_name ||
+                        record.technicianName ||
+                        record.name ||
+                        record.technician?.technician_name ||
+                        record.technician?.name ||
+                        record.technicianDetails?.technician_name ||
+                        record.technicianDetails?.name ||
+                        record.assignedTechnician?.technician_name ||
+                        record.assignedTechnician?.name ||
+                        '';
+
+                      return {
+                        technicianLabel:
+                          [technicianIdValue, technicianNameValue].filter(Boolean).join(' - ') ||
+                          technicianIdValue ||
+                          technicianNameValue ||
+                          '-',
+                        technicianId: technicianIdValue || technicianNameValue || '-',
+                        assignedBy: record.assigned_by || record.assignedBy || '-',
+                        assignedDate: record.assigned_date || record.assignedDate || null,
+                        pendingReason:
+                          record.pending_reason ||
+                          record.pendingReason ||
+                          record.pending_reason_text ||
+                          record.pendingReasonText ||
+                          record.reassigned_reason ||
+                          record.reassignedReason ||
+                          '-',
+                      };
+                    })
+                  : [];
+                const historyRows =
+                  assignmentHistoryRecords.length > 0
+                    ? assignmentHistoryRecords
+                    : serviceHistoryRecords.length > 0
+                    ? serviceHistoryRecords
+                    : Array.isArray(task.assignment_history)
+                    ? task.assignment_history.map((entry) => {
+                        const technicianIdValue =
+                          resolveTechnicianId(entry) ||
+                          entry.technician_id ||
+                          entry.assigned_technician_id ||
+                          entry.technicianId ||
+                          entry.assignedTechnicianId ||
+                          '';
+                        const technicianNameValue =
+                          entry.technician_name ||
+                          entry.technicianName ||
+                          entry.name ||
+                          entry.technician?.technician_name ||
+                          entry.technician?.name ||
+                          entry.technicianDetails?.technician_name ||
+                          entry.technicianDetails?.name ||
+                          entry.assignedTechnician?.technician_name ||
+                          entry.assignedTechnician?.name ||
+                          '';
+
+                        return {
+                          technicianLabel:
+                            [technicianIdValue, technicianNameValue].filter(Boolean).join(' - ') ||
+                            technicianIdValue ||
+                            technicianNameValue ||
+                            '-',
+                          technicianId: technicianIdValue || technicianNameValue || '-',
+                          assignedBy: entry.assigned_by || '-',
+                          assignedDate: entry.assigned_date || null,
+                          pendingReason:
+                            entry.unassigned_reason ||
+                            entry.unassignedReason ||
+                            entry.pending_reason ||
+                            entry.pendingReason ||
+                            entry.pending_reason_text ||
+                            entry.pendingReasonText ||
+                            entry.reassigned_reason ||
+                            entry.reassignedReason ||
+                            '-',
+                        };
+                      })
+                    : [];
 
                 return (
                   <div
@@ -383,6 +582,41 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                                       />
                                     </div>
                                   ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {historyRows.length > 0 && (
+                            <div className="row viewDataCss mt-4">
+                              <div className="col-12">
+                                <h5 className="font-weight-bold" style={{ color: '#007bff' }}>
+                                  Assignment History
+                                </h5>
+                                <hr />
+                                <div className="table-responsive">
+                                  <table className="table table-striped">
+                                    <thead>
+                                      <tr>
+                                        <th>#</th>
+                                        <th>Technician</th>
+                                        <th>Assigned By</th>
+                                        <th>Assigned Date</th>
+                                        <th>Pending Reason</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {historyRows.map((record, recordIndex) => (
+                                        <tr key={`${record.technicianLabel || record.technicianId || 'row'}-${recordIndex}`}>
+                                          <td>{recordIndex + 1}</td>
+                                          <td>{record.technicianLabel || record.technicianId || '-'}</td>
+                                          <td>{record.assignedBy || '-'}</td>
+                                          <td>{formatDateTime(record.assignedDate)}</td>
+                                          <td>{record.pendingReason || '-'}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
                                 </div>
                               </div>
                             </div>
