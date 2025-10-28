@@ -320,6 +320,26 @@ const AddProductModels = async (req, res) => {
         const uploadedFiles = req.files || {};
         const docsToInsert = [];
 
+        const lastPlanIdDoc = await collection.aggregate([
+            { $unwind: { path: '$duration', preserveNullAndEmptyArrays: true } },
+            { $match: { 'duration.duration_id': { $exists: true } } },
+            { $unwind: { path: '$duration.plans', preserveNullAndEmptyArrays: true } },
+            { $match: { 'duration.plans.plans_id': { $exists: true } } },
+            { $sort: { 'duration.plans.plans_id': -1 } },
+            { $limit: 1 },
+            { $project: { _id: 0, plans_id: '$duration.plans.plans_id' } }
+        ]).toArray();
+        let nextPlansId = lastPlanIdDoc.length > 0 ? lastPlanIdDoc[0].plans_id + 1 : 1;
+
+        const lastDurationIdDoc = await collection.aggregate([
+            { $unwind: { path: '$duration', preserveNullAndEmptyArrays: true } },
+            { $match: { 'duration.duration_id': { $exists: true } } },
+            { $sort: { 'duration.duration_id': -1 } },
+            { $limit: 1 },
+            { $project: { _id: 0, duration_id: '$duration.duration_id' } }
+        ]).toArray();
+        let nextDurationId = lastDurationIdDoc.length > 0 ? lastDurationIdDoc[0].duration_id + 1 : 1;
+
         for (let i = 0; i < productModels.length; i++) {
             const product = productModels[i];
 
@@ -331,11 +351,13 @@ const AddProductModels = async (req, res) => {
                 createdby
             } = product;
 
-            const plans = parseArray(product.plans);
-            const duration = parseArray(product.duration);
+            const duration = parseArray(product.duration).map(durationItem => ({
+                ...durationItem,
+                plans: parseArray(durationItem.plans),
+            }));
 
-            if (!model_name || !plans.length || !duration.length || !createdby) {
-                return res.status(400).json({ status: 'Failed', message: 'Missing required fields in product' });
+            if (!model_name || !duration.length || duration.some(d => !d.plans || !d.plans.length) || !createdby) {
+                return res.status(400).json({ status: 'Failed', message: 'Missing required fields in product or duration without plans' });
             }
 
             const quantityInt = parseInt(wp_device_quantity);
@@ -361,31 +383,30 @@ const AddProductModels = async (req, res) => {
             const sub_img_4 = uploadedFiles['sub_img_4']?.[0]?.filename || product.sub_img_4 || "";
             const product_specifications = uploadedFiles['product_specifications']?.[0]?.filename || product.product_specifications || "";
 
-            // Auto-assign missing plans_id (global across all models)
-            const lastPlanIdDoc = await collection.aggregate([
-                { $unwind: '$plans' },
-                { $sort: { 'plans.plans_id': -1 } },
-                { $limit: 1 },
-                { $project: { _id: 0, plans_id: '$plans.plans_id' } }
-            ]).toArray();
-            let nextPlansId = lastPlanIdDoc.length > 0 ? lastPlanIdDoc[0].plans_id + 1 : 1;
+            const updatedDuration = duration.map(durationItem => {
+                const normalizedDurationId = Number(durationItem.duration_id);
+                const duration_id = Number.isInteger(normalizedDurationId) && normalizedDurationId > 0
+                    ? normalizedDurationId
+                    : nextDurationId++;
 
-            const updatedPlans = plans.map(p =>
-                p.plans_id && Number.isInteger(p.plans_id) ? p : { ...p, plans_id: nextPlansId++ }
-            );
+                const plans = (durationItem.plans || []).map(planItem => {
+                    const normalizedPlanId = Number(planItem.plans_id);
+                    const plans_id = Number.isInteger(normalizedPlanId) && normalizedPlanId > 0
+                        ? normalizedPlanId
+                        : nextPlansId++;
 
-            // Auto-assign missing duration_id (global across all models)
-            const lastDurationIdDoc = await collection.aggregate([
-                { $unwind: '$duration' },
-                { $sort: { 'duration.duration_id': -1 } },
-                { $limit: 1 },
-                { $project: { _id: 0, duration_id: '$duration.duration_id' } }
-            ]).toArray();
-            let nextDurationId = lastDurationIdDoc.length > 0 ? lastDurationIdDoc[0].duration_id + 1 : 1;
+                    return {
+                        ...planItem,
+                        plans_id,
+                    };
+                });
 
-            const updatedDuration = duration.map(d =>
-                d.duration_id && Number.isInteger(d.duration_id) ? d : { ...d, duration_id: nextDurationId++ }
-            );
+                return {
+                    ...durationItem,
+                    duration_id,
+                    plans,
+                };
+            });
 
             docsToInsert.push({
                 model_id,
@@ -396,10 +417,9 @@ const AddProductModels = async (req, res) => {
                 sub_img_3,
                 sub_img_4,
                 product_specifications,
-                wp_device_quantity: quantityInt, 
+                wp_device_quantity: quantityInt,
                 product_details,
                 connectivity: connectivity || '',
-                plans: updatedPlans,
                 duration: updatedDuration,
                 createdby,
                 createddate: now,
@@ -605,6 +625,26 @@ const UpdateProductModels = async (req, res) => {
         const db = await database.connectToDatabase();
         const collection = db.collection('product_models');
 
+        const lastPlanIdDoc = await collection.aggregate([
+            { $unwind: { path: '$duration', preserveNullAndEmptyArrays: true } },
+            { $match: { 'duration.duration_id': { $exists: true } } },
+            { $unwind: { path: '$duration.plans', preserveNullAndEmptyArrays: true } },
+            { $match: { 'duration.plans.plans_id': { $exists: true } } },
+            { $sort: { 'duration.plans.plans_id': -1 } },
+            { $limit: 1 },
+            { $project: { _id: 0, plans_id: '$duration.plans.plans_id' } }
+        ]).toArray();
+        let nextPlansId = lastPlanIdDoc.length > 0 ? lastPlanIdDoc[0].plans_id + 1 : 1;
+
+        const lastDurationIdDoc = await collection.aggregate([
+            { $unwind: { path: '$duration', preserveNullAndEmptyArrays: true } },
+            { $match: { 'duration.duration_id': { $exists: true } } },
+            { $sort: { 'duration.duration_id': -1 } },
+            { $limit: 1 },
+            { $project: { _id: 0, duration_id: '$duration.duration_id' } }
+        ]).toArray();
+        let nextDurationId = lastDurationIdDoc.length > 0 ? lastDurationIdDoc[0].duration_id + 1 : 1;
+
         for (const product of productModels) {
             let {
                 model_id,
@@ -636,11 +676,13 @@ const UpdateProductModels = async (req, res) => {
                 status = false;
             }
 
-            const plans = parseArray(product.plans);
-            const duration = parseArray(product.duration);
+            const duration = parseArray(product.duration).map(durationItem => ({
+                ...durationItem,
+                plans: parseArray(durationItem.plans),
+            }));
 
-            if (!model_id || !model_name || !plans.length || !duration.length || !modifiedby || typeof status !== 'boolean') {
-                return res.status(400).json({ status: 'Failed', message: 'Missing or invalid required fields in product' });
+            if (!model_id || !model_name || !duration.length || duration.some(d => !d.plans || !d.plans.length) || !modifiedby || typeof status !== 'boolean') {
+                return res.status(400).json({ status: 'Failed', message: 'Missing required fields in product or duration without plans' });
             }
 
             // Duplicate check excluding current model_id
@@ -663,31 +705,30 @@ const UpdateProductModels = async (req, res) => {
             const sub_img_4 = req.files?.['sub_img_4']?.[0]?.filename || product.sub_img_4 || '';
             const product_specifications = req.files?.['product_specifications']?.[0]?.filename || req.body.existing_product_specifications || '';
 
-            // Auto-assign missing plans_id
-            const lastPlanIdDoc = await collection.aggregate([
-                { $unwind: '$plans' },
-                { $sort: { 'plans.plans_id': -1 } },
-                { $limit: 1 },
-                { $project: { _id: 0, plans_id: '$plans.plans_id' } }
-            ]).toArray();
-            let nextPlansId = lastPlanIdDoc.length > 0 ? lastPlanIdDoc[0].plans_id + 1 : 1;
+            const updatedDuration = duration.map(durationItem => {
+                const normalizedDurationId = Number(durationItem.duration_id);
+                const duration_id = Number.isInteger(normalizedDurationId) && normalizedDurationId > 0
+                    ? normalizedDurationId
+                    : nextDurationId++;
 
-            const updatedPlans = plans.map(p =>
-                p.plans_id && Number.isInteger(p.plans_id) ? p : { ...p, plans_id: nextPlansId++ }
-            );
+                const plans = (durationItem.plans || []).map(planItem => {
+                    const normalizedPlanId = Number(planItem.plans_id);
+                    const plans_id = Number.isInteger(normalizedPlanId) && normalizedPlanId > 0
+                        ? normalizedPlanId
+                        : nextPlansId++;
 
-            // Auto-assign missing duration_id
-            const lastDurationIdDoc = await collection.aggregate([
-                { $unwind: '$duration' },
-                { $sort: { 'duration.duration_id': -1 } },
-                { $limit: 1 },
-                { $project: { _id: 0, duration_id: '$duration.duration_id' } }
-            ]).toArray();
-            let nextDurationId = lastDurationIdDoc.length > 0 ? lastDurationIdDoc[0].duration_id + 1 : 1;
+                    return {
+                        ...planItem,
+                        plans_id,
+                    };
+                });
 
-            const updatedDuration = duration.map(d =>
-                d.duration_id && Number.isInteger(d.duration_id) ? d : { ...d, duration_id: nextDurationId++ }
-            );
+                return {
+                    ...durationItem,
+                    duration_id,
+                    plans,
+                };
+            });
 
             const now = new Date();
 
@@ -705,7 +746,6 @@ const UpdateProductModels = async (req, res) => {
                         product_details,
                         connectivity: connectivity || '',
                         product_specifications,
-                        plans: updatedPlans,
                         duration: updatedDuration,
                         modifiedby,
                         modifieddate: now,

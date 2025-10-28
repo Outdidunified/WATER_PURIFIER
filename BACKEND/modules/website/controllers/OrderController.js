@@ -911,12 +911,12 @@ exports.updateDeliveryStatus = async (req, res) => {
     }
 
     // Check if trying to skip steps
-    if (newStatusIndex > currentStatusIndex + 1) {
-      const nextStatus = DELIVERY_STATUSES[currentStatusIndex + 1];
-      return res.status(400).json({
-        message: `Cannot skip delivery status steps. Current: "${currentStatus}" → Next should be: "${nextStatus}" → Cannot jump to: "${statusLower}". Follow the sequence: ${DELIVERY_STATUSES.join(' → ')}`
-      });
-    }
+    // if (newStatusIndex > currentStatusIndex + 1) {
+    //   const nextStatus = DELIVERY_STATUSES[currentStatusIndex + 1];
+    //   return res.status(400).json({
+    //     message: `Cannot skip delivery status steps. Current: "${currentStatus}" → Next should be: "${nextStatus}" → Cannot jump to: "${statusLower}". Follow the sequence: ${DELIVERY_STATUSES.join(' → ')}`
+    //   });
+    // }
 
     // Prepare update object
     const updateData = {

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import './UpdateDeliveryStatusModal.css';
 
-const DELIVERY_STATUSES = ['accepted', 'packed', 'intransit', 'outfordelivery', 'completed'];
+const DELIVERY_STATUSES = ['pending', 'accepted', 'packed', 'intransit', 'outfordelivery', 'completed'];
 
 const DELIVERY_STATUS_LABELS = {
+  pending: 'Pending',
   accepted: 'Accepted',
   packed: 'Packed',
   intransit: 'In Transit',
@@ -76,7 +77,7 @@ const UpdateDeliveryStatusModal = ({ isOpen, orderId, currentStatus, onClose, on
       console.log('Updating delivery status for order:', orderId);
       
       const response = await fetch(
-        `http://192.168.0.19:5001/api/website/orders/${orderId}/update-delivery-status`,
+        `http://192.168.0.26:5001/api/website/orders/${orderId}/update-delivery-status`,
         {
           method: 'POST',
           headers: {

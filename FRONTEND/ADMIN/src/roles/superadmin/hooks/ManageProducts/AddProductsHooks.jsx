@@ -1,5 +1,4 @@
-//AddProductHook
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import axiosInstance from '../../../../utils/utils';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -8,30 +7,38 @@ import {
   showSuccessAlert
 } from '../../../../utils/alert';
 
+const generateUniqueId = () => Date.now() + Math.floor(Math.random() * 1000);
+
+const createEmptyPlan = () => ({
+  plans_id: generateUniqueId(),
+  label: '',
+  capacity: '',
+  price: ''
+});
+
+const createEmptyDuration = () => ({
+  duration_id: generateUniqueId(),
+  duration_time_limit: '',
+  gst: '',
+  discount: '',
+  security_deposit: '',
+  plans: [createEmptyPlan()],
+  durationError: ''
+});
+
 const useAddProducts = (userInfo) => {
   const navigate = useNavigate();
-  const fetchDataCalled = useRef(false);
   const [loading, setLoading] = useState(false);
 
   const [modelName, setModelName] = useState('');
   const [productDetails, setProductDetails] = useState('');
-  const [productSpecifications, setProductSpecifications] = useState(null); // Now storing PDF File
-  const [mainImage, setMainImage] = useState(null); // Now storing File
-  const [subImages, setSubImages] = useState([null, null, null, null]); // Up to 4
+  const [productSpecifications, setProductSpecifications] = useState(null);
+  const [mainImage, setMainImage] = useState(null);
+  const [subImages, setSubImages] = useState([null, null, null, null]);
 
   const [wpDeviceQuantity, setWpDeviceQuantity] = useState(0);
   const [connectivity, setConnectivity] = useState([]);
-  const [plans, setPlans] = useState([{ plans_id: 1, label: '', capacity: '', price: '' }]);
-  const [durations, setDurations] = useState([
-    {
-      duration_id: 1,
-      duration_time_limit: '',
-      gst: '',
-      discount: '',
-      security_deposit: '',
-      durationError: ''
-    }
-  ]);
+  const [durations, setDurations] = useState([createEmptyDuration()]);
   const [errorMessage, setErrorMessage] = useState('');
 
   const backToManagePage = () => {
@@ -41,7 +48,7 @@ const useAddProducts = (userInfo) => {
   const addSubImage = () => {
     const nonNullImages = subImages.filter(img => img !== null);
     if (nonNullImages.length >= 4) {
-      showErrorAlert("Limit reached", "You can add max 4 sub images.");
+      showErrorAlert('Limit reached', 'You can add max 4 sub images.');
       return;
     }
     setSubImages([...subImages, null]);
@@ -49,46 +56,16 @@ const useAddProducts = (userInfo) => {
 
   const removeSubImage = (index) => {
     showConfirmationAlert({
-      title: "Are you sure?",
-      text: "Do you want to remove this sub image?",
-      confirmButtonText: "Yes, remove it!",
-      cancelButtonText: "No, keep it",
+      title: 'Are you sure?',
+      text: 'Do you want to remove this sub image?',
+      confirmButtonText: 'Yes, remove it!',
+      cancelButtonText: 'No, keep it',
     }).then((result) => {
       if (result.isConfirmed) {
         const updated = [...subImages];
         updated[index] = null;
         setSubImages(updated);
-        showSuccessAlert("Image removed");
-      }
-    });
-  };
-
-  const removeDuration = (index) => {
-    showConfirmationAlert({
-      title: "Are you sure?",
-      text: "Do you want to remove this duration?",
-      confirmButtonText: "Yes, remove it!",
-      cancelButtonText: "No, keep it",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const updated = durations.filter((_, i) => i !== index);
-        setDurations(updated);
-        showSuccessAlert("Duration removed");
-      }
-    });
-  };
-
-  const removePlan = (index) => {
-    showConfirmationAlert({
-      title: "Are you sure?",
-      text: "Do you want to remove this plan?",
-      confirmButtonText: "Yes, remove it!",
-      cancelButtonText: "No, keep it",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const updated = plans.filter((_, i) => i !== index);
-        setPlans(updated);
-        showSuccessAlert("Plan removed");
+        showSuccessAlert('Image removed');
       }
     });
   };
@@ -99,39 +76,141 @@ const useAddProducts = (userInfo) => {
     setSubImages(updated);
   };
 
-  const addPlan = () => {
-    setPlans([
-      ...plans, 
-      { plans_id: Date.now(), label: '', capacity: '', price: '' }
-    ]);
-  };
+  const addPlan = (durationIndex) => {
+    setDurations(prevDurations => prevDurations.map((duration, idx) => {
+      if (idx !== durationIndex) return duration;
 
-  const handlePlanChange = (index, field, value) => {
-    setPlans(prevPlans => {
-      const updatedPlans = prevPlans.map((plan, idx) =>
-        idx === index ? { ...plan, [field]: value } : plan
-      );
-
-      if (field === 'label' && value.toLowerCase() === 'unlimited') {
-        updatedPlans[index] = { ...updatedPlans[index], capacity: '' };
+      if (duration.plans.length >= 4) {
+        showErrorAlert('Limit reached', 'You can add up to 4 plan types per duration.');
+        return duration;
       }
 
-      return updatedPlans;
+      return {
+        ...duration,
+        plans: [...duration.plans, createEmptyPlan()]
+      };
+    }));
+  };
+
+  const removePlan = (durationIndex, planIndex) => {
+    const currentDuration = durations[durationIndex];
+    if (!currentDuration) return;
+
+    if (currentDuration.plans.length === 1) {
+      showErrorAlert('Not allowed', 'Each duration must have at least one plan.');
+      return;
+    }
+
+    showConfirmationAlert({
+      title: 'Are you sure?',
+      text: 'Do you want to remove this plan?',
+      confirmButtonText: 'Yes, remove it!',
+      cancelButtonText: 'No, keep it',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setDurations(prevDurations => prevDurations.map((duration, idx) => {
+          if (idx !== durationIndex) return duration;
+          return {
+            ...duration,
+            plans: duration.plans.filter((_, i) => i !== planIndex)
+          };
+        }));
+        showSuccessAlert('Plan removed');
+      }
     });
   };
 
+  const normalizePrice = (value) => {
+    let sanitized = value.replace(/[^0-9.]/g, '');
+    const dotCount = (sanitized.match(/\./g) || []).length;
+    if (dotCount > 1) return null;
+
+    if (sanitized.includes('.')) {
+      const [integerPart, decimalPart] = sanitized.split('.');
+      if (decimalPart && decimalPart.length > 2) return null;
+      sanitized = `${integerPart}.${decimalPart ?? ''}`;
+    }
+
+    if (sanitized === '.') {
+      sanitized = '0.';
+    }
+
+    return sanitized;
+  };
+
+  const handlePlanChange = (durationIndex, planIndex, field, rawValue) => {
+    setDurations(prevDurations => prevDurations.map((duration, idx) => {
+      if (idx !== durationIndex) return duration;
+
+      const updatedPlans = duration.plans.map((plan, pIdx) => {
+        if (pIdx !== planIndex) return plan;
+
+        if (field === 'price') {
+          const normalized = normalizePrice(rawValue);
+          if (normalized === null) return plan;
+          return { ...plan, price: normalized };
+        }
+
+        if (field === 'capacity') {
+          const numericValue = rawValue.replace(/[^0-9]/g, '');
+          return { ...plan, capacity: numericValue };
+        }
+
+        if (field === 'label') {
+          const label = rawValue.toLowerCase();
+          let updated = { ...plan, label };
+
+          switch (label) {
+            case 'solo':
+              updated = { ...updated, capacity: '1' };
+              break;
+            case 'couple':
+              updated = { ...updated, capacity: '2' };
+              break;
+            case 'family':
+              updated = { ...updated, capacity: '4' };
+              break;
+            case 'unlimited':
+              updated = { ...updated, capacity: '' };
+              break;
+            default:
+              updated = { ...updated, capacity: '' };
+              break;
+          }
+          return updated;
+        }
+
+        return { ...plan, [field]: rawValue };
+      });
+
+      return {
+        ...duration,
+        plans: updatedPlans
+      };
+    }));
+  };
+
   const addDuration = () => {
-    setDurations([
-      ...durations,
-      {
-        duration_id: Date.now(),
-        duration_time_limit: '',
-        gst: '',
-        discount: '',
-        security_deposit: '',
-        durationError: ''
+    setDurations(prevDurations => [...prevDurations, createEmptyDuration()]);
+  };
+
+  const removeDuration = (index) => {
+    if (durations.length === 1) {
+      showErrorAlert('Not allowed', 'At least one duration is required.');
+      return;
+    }
+
+    showConfirmationAlert({
+      title: 'Are you sure?',
+      text: 'Do you want to remove this duration?',
+      confirmButtonText: 'Yes, remove it!',
+      cancelButtonText: 'No, keep it',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setDurations(prevDurations => prevDurations.filter((_, i) => i !== index));
+        showSuccessAlert('Duration removed');
       }
-    ]);
+    });
   };
 
   const normalizeNumericInput = (rawValue, options = {}) => {
@@ -161,104 +240,126 @@ const useAddProducts = (userInfo) => {
     return sanitized;
   };
 
-const handleDurationChange = (index, field, value) => {
-  if (field === 'duration_time_limit') {
-    const updatedDurations = durations.map((duration, idx) =>
-      idx === index ? { ...duration, [field]: value } : duration
-    );
-    setDurations(updatedDurations);
-    return;
-  }
+  const handleDurationChange = (index, field, value) => {
+    if (field === 'duration_time_limit') {
+      const updatedDurations = durations.map((duration, idx) =>
+        idx === index ? { ...duration, [field]: value, durationError: '' } : duration
+      );
+      setDurations(updatedDurations);
+      return;
+    }
 
-  const configMap = {
-    gst: { allowDecimal: true, maxDecimals: 2, max: 100 },
-    discount: { allowDecimal: true, maxDecimals: 2, max: 100 },
-    security_deposit: { allowDecimal: true, maxDecimals: 2 }
+    const configMap = {
+      gst: { allowDecimal: true, maxDecimals: 2, max: 100 },
+      discount: { allowDecimal: true, maxDecimals: 2, max: 100 },
+      security_deposit: { allowDecimal: true, maxDecimals: 2 }
+    };
+
+    const config = configMap[field];
+    const normalizedValue = config ? normalizeNumericInput(value, config) : value;
+    if (normalizedValue === null) return;
+
+    const updatedDurations = durations.map((duration, idx) =>
+      idx === index
+        ? {
+            ...duration,
+            [field]: normalizedValue,
+            durationError: ''
+          }
+        : duration
+    );
+
+    setDurations(updatedDurations);
   };
 
-  const config = configMap[field];
-  const normalizedValue = config ? normalizeNumericInput(value, config) : value;
-  if (normalizedValue === null) return;
-
-  const updatedDurations = durations.map((duration, idx) =>
-    idx === index
-      ? {
-          ...duration,
-          [field]: normalizedValue,
-          durationError: ''
-        }
-      : duration
-  );
-
-  setDurations(updatedDurations);
-};
-
-
-
+  const resetForm = () => {
+    setModelName('');
+    setProductDetails('');
+    setProductSpecifications(null);
+    setMainImage(null);
+    setSubImages([null, null, null, null]);
+    setWpDeviceQuantity(0);
+    setConnectivity([]);
+    setDurations([createEmptyDuration()]);
+    setErrorMessage('');
+  };
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     if (!modelName || !productDetails || !mainImage) {
-      setErrorMessage("All required fields must be filled.");
+      setErrorMessage('All required fields must be filled.');
       setLoading(false);
       return;
     }
 
-    // Validate PDF file if provided
     if (productSpecifications && productSpecifications.type !== 'application/pdf') {
-      showErrorAlert("Invalid File", "Product Specifications must be a PDF file.");
+      showErrorAlert('Invalid File', 'Product Specifications must be a PDF file.');
       setLoading(false);
       return;
     }
 
     if (connectivity.length === 0) {
-      showErrorAlert("Missing Data", "Please select at least one connectivity option.");
+      showErrorAlert('Missing Data', 'Please select at least one connectivity option.');
       setLoading(false);
       return;
     }
 
-    if (plans.length === 0 || durations.length === 0) {
-      showErrorAlert("Missing Data", "Please add at least one plan and one duration.");
+    if (!durations.length) {
+      showErrorAlert('Missing Data', 'Please add at least one duration.');
       setLoading(false);
       return;
     }
 
-    for (let plan of plans) {
-      const requiresCapacity = plan.label && plan.label.toLowerCase() !== 'unlimited';
-      if (
-        !plan.label ||
-        (requiresCapacity && !plan.capacity) ||
-        plan.price === '' ||
-        isNaN(Number(plan.price))
-      ) {
-        showErrorAlert(
-          "Give valid Plan",
-          "Each plan must include a label, numeric price, and capacity unless it is unlimited."
-        );
+    for (const duration of durations) {
+      if (!duration.duration_time_limit) {
+        showErrorAlert('Invalid Duration', 'Each duration must include a time limit.');
         setLoading(false);
         return;
       }
-    }
 
-    for (let dur of durations) {
       if (
-        !dur.duration_time_limit ||
-        dur.gst === '' || isNaN(Number(dur.gst)) ||
-        dur.discount === '' || isNaN(Number(dur.discount)) ||
-        dur.security_deposit === '' || isNaN(Number(dur.security_deposit))
+        duration.gst === '' || isNaN(Number(duration.gst)) ||
+        duration.discount === '' || isNaN(Number(duration.discount)) ||
+        duration.security_deposit === '' || isNaN(Number(duration.security_deposit))
       ) {
-        showErrorAlert("Give Valid Duration", "Each duration must have valid data.");
+        showErrorAlert('Invalid Duration', 'GST, discount, and security deposit must be valid numbers.');
         setLoading(false);
         return;
+      }
+
+      if (!duration.plans.length) {
+        showErrorAlert('Invalid Duration', 'Each duration must contain at least one plan.');
+        setLoading(false);
+        return;
+      }
+
+      for (const plan of duration.plans) {
+        const label = plan.label?.toLowerCase();
+        const requiresCapacity = label && label !== 'unlimited';
+        if (
+          !label ||
+          (requiresCapacity && !plan.capacity) ||
+          plan.price === '' ||
+          isNaN(Number(plan.price))
+        ) {
+          showErrorAlert(
+            'Invalid Plan',
+            'Each plan must include a label, numeric price, and capacity unless it is unlimited.'
+          );
+          setLoading(false);
+          return;
+        }
       }
     }
 
     const formData = new FormData();
     formData.append('model_name', modelName);
     formData.append('product_details', productDetails);
-    formData.append('product_specifications', productSpecifications);
+    if (productSpecifications) {
+      formData.append('product_specifications', productSpecifications);
+    }
     formData.append('wp_device_quantity', wpDeviceQuantity);
     formData.append('connectivity', connectivity.join(', '));
     formData.append('main_img', mainImage);
@@ -269,20 +370,23 @@ const handleDurationChange = (index, field, value) => {
       }
     });
 
-    formData.append('plans', JSON.stringify(plans.map(plan => ({
-      ...plan,
-      price: Number(plan.price)
-    }))));
+    const normalizedDurations = durations.map(duration => ({
+      duration_id: duration.duration_id,
+      duration_time_limit: duration.duration_time_limit.toLowerCase(),
+      gst: Number(duration.gst),
+      discount: Number(duration.discount),
+      security_deposit: Number(duration.security_deposit),
+      plans: duration.plans.map(plan => ({
+        plans_id: plan.plans_id,
+        label: plan.label.toLowerCase(),
+        capacity: plan.label.toLowerCase() === 'unlimited' ? '' : plan.capacity,
+        price: Number(plan.price)
+      }))
+    }));
 
-    formData.append('duration', JSON.stringify(durations.map(dur => ({
-      ...dur,
-      duration_time_limit: dur.duration_time_limit.toLowerCase(),
-      gst: Number(dur.gst),
-      discount: Number(dur.discount),
-      security_deposit: Number(dur.security_deposit)
-    }))));
-
+    formData.append('duration', JSON.stringify(normalizedDurations));
     formData.append('createdby', userInfo.email);
+    formData.append('connectivity', connectivity.join(', '));
 
     try {
       const response = await axiosInstance.post('api/admin/AddProductModels', formData, {
@@ -291,29 +395,16 @@ const handleDurationChange = (index, field, value) => {
 
       setLoading(false);
       if (response.data.status === 'Success') {
-        showSuccessAlert("Product added successfully");
-
-        // Reset form
-        setModelName('');
-        setProductDetails('');
-        setProductSpecifications(null);
-        setMainImage(null);
-        setSubImages([null, null, null, null]);
-        setWpDeviceQuantity(0);
-        setConnectivity([]);
-        setPlans([{ plans_id: 1, label: '', capacity: '', price: '' }]);
-        setDurations([
-          { duration_id: 1, duration_time_limit: '', gst: '', discount: '', security_deposit: '' }
-        ]);
-
+        showSuccessAlert('Product added successfully');
+        resetForm();
         backToManagePage();
       } else {
-        showErrorAlert("Failed", response.data.message || "Product creation failed.");
+        showErrorAlert('Failed', response.data.message || 'Product creation failed.');
       }
     } catch (error) {
       setLoading(false);
       const errMsg = error?.response?.data?.message || error.message;
-      showErrorAlert("Error", `An error occurred: ${errMsg}`);
+      showErrorAlert('Error', `An error occurred: ${errMsg}`);
     }
   };
 
@@ -334,17 +425,16 @@ const handleDurationChange = (index, field, value) => {
     handleSubImageChange,
     connectivity,
     setConnectivity,
-    plans,
-    addPlan,
-    handlePlanChange,
     durations,
     addDuration,
     handleDurationChange,
     removeDuration,
+    addPlan,
+    removePlan,
+    handlePlanChange,
     wpDeviceQuantity,
     setWpDeviceQuantity,
     handleAddProduct,
-    removePlan
   };
 };
 

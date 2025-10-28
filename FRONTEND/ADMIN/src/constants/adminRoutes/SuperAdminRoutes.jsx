@@ -173,13 +173,6 @@ const SuperAdminApp = () => {
           <Route path="/ManageContact" element={<ManageContact userInfo={userInfo} handleLogout={handleLogout} />} />
         )}
 
-        {canView('manage_leaves') && (
-          <>
-            <Route path="/ManageLeaves" element={<ManageLeaves userInfo={userInfo} handleLogout={handleLogout} />} />
-            <Route path="/ViewLeaveDetails/:leaveRequestId" element={<ViewLeaveDetails userInfo={userInfo} handleLogout={handleLogout} />} />
-          </>
-        )}
-
         <Route path="/Profile" element={<Profile userInfo={userInfo} handleLogout={handleLogout} />} />
 
         {/* Redirect if route not permitted */}

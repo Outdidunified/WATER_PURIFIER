@@ -7,6 +7,9 @@ import ReusableButton from '../../../../utils/ReusableButton';
 import InputField from '../../../../utils/InputField';
 import useEditProducts from '../../hooks/ManageProducts/EditProductsHooks';
 
+const planOptions = ['solo', 'couple', 'family', 'unlimited'];
+const durationOptions = ['28 days', '60 days', '90 days', '180 days', '360 days'];
+
 const EditProducts = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
   const {
@@ -19,7 +22,6 @@ const EditProducts = ({ userInfo, handleLogout }) => {
     subImages,
     connectivity,
     setConnectivity,
-    plans,
     durations,
     setModelName,
     setWpDeviceQuantity,
@@ -27,21 +29,110 @@ const EditProducts = ({ userInfo, handleLogout }) => {
     setProductSpecifications,
     setMainImage,
     handleSubImageChange,
-    addPlan,
-    handlePlanChange,
     addDuration,
     handleDurationChange,
     removeDuration,
+    addPlan,
+    handlePlanChange,
     removePlan,
     handleAddProduct,
     status,
     setStatus,
-    errorMessage
+    errorMessage,
+    removeSubImage,
   } = useEditProducts(userInfo);
 
   const backManageDevice = () => navigate('/superadmin/ManageProducts');
 
-  const planOptions = ["solo", "couple", "family", "unlimited"];
+  const handleConnectivityAdd = (value) => {
+    if (value && !connectivity.includes(value)) {
+      setConnectivity(prev => [...prev, value]);
+    }
+  };
+
+  const renderPlanControls = (duration, durationIndex) => {
+    const usedOptions = duration.plans.map(plan => plan.label);
+
+    return (
+      <div className="card border" style={{ marginTop: '15px' }}>
+        <div className="card-body">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h6 className="mb-0">Plans for {duration.duration_time_limit || 'Selected Duration'}</h6>
+            <button
+              type="button"
+              className="btn btn-outline-primary btn-sm"
+              onClick={() => addPlan(durationIndex)}
+              disabled={duration.plans.length >= planOptions.length}
+            >
+              Add Plan
+            </button>
+          </div>
+
+          {duration.plans.map((plan, planIndex) => {
+            const availableOptions = planOptions.filter(
+              option => option === plan.label || !usedOptions.includes(option)
+            );
+
+            return (
+              <div className="row align-items-end mb-3" key={plan.plans_id || `${durationIndex}-${planIndex}`}>
+                <div className="col-md-4">
+                  <label className="input-label">Plan Type</label>
+                  <select
+                    className="form-control"
+                    value={plan.label}
+                    onChange={(e) => handlePlanChange(durationIndex, planIndex, 'label', e.target.value)}
+                    required
+                  >
+                    <option value="">Select Plan</option>
+                    {availableOptions.map(option => (
+                      <option key={option} value={option}>
+                        {option.charAt(0).toUpperCase() + option.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {plan.label !== 'unlimited' && (
+                  <div className="col-md-3">
+                    <label className="input-label">Capacity</label>
+                    <InputField
+                      placeholder="Capacity"
+                      value={plan.capacity}
+                      onChange={(e) => handlePlanChange(durationIndex, planIndex, 'capacity', e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+
+                <div className="col-md-3">
+                  <label className="input-label">Price (₹)</label>
+                  <InputField
+                    type="text"
+                    placeholder="Price"
+                    value={plan.price}
+                    onChange={(e) => handlePlanChange(durationIndex, planIndex, 'price', e.target.value)}
+                    required
+                  />
+                </div>
+
+                {duration.plans.length > 1 && (
+                  <div className="col-md-2 d-flex justify-content-end">
+                    <button
+                      type="button"
+                      className="btn btn-outline-danger btn-sm"
+                      onClick={() => removePlan(durationIndex, planIndex)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="container-scroller">
@@ -60,7 +151,6 @@ const EditProducts = ({ userInfo, handleLogout }) => {
             <div className="card">
               <div className="card-body">
                 <form className="form-sample" onSubmit={handleAddProduct} noValidate>
-                  {/* Model & Quantity */}
                   <div className="row mb-4">
                     <div className="col-md-6">
                       <label className="input-label" htmlFor="modelName">Model Name</label>
@@ -91,7 +181,6 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                     </div>
                   </div>
 
-                  {/* Connectivity */}
                   <div className="row mb-4">
                     <div className="col-md-12">
                       <label className="input-label">Connectivity *</label>
@@ -125,11 +214,7 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                             backgroundColor: 'transparent'
                           }}
                           value=""
-                          onChange={(e) => {
-                            if (e.target.value && !connectivity.includes(e.target.value)) {
-                              setConnectivity(prev => [...prev, e.target.value]);
-                            }
-                          }}
+                          onChange={(e) => handleConnectivityAdd(e.target.value)}
                         >
                           <option value="">Select Connectivity</option>
                           {['Bluetooth', 'Wifi', '4G', 'Ethernet']
@@ -142,7 +227,6 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                     </div>
                   </div>
 
-                  {/* Product Details & Specs */}
                   <div className="row mb-4">
                     <div className="col-md-6">
                       <label className="input-label" htmlFor="productDetails">Product Details</label>
@@ -177,7 +261,6 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                     </div>
                   </div>
 
-                  {/* Images */}
                   <div className="row mb-4">
                     <div className="col-md-6 mb-3">
                       <label className="input-label">Main Image</label>
@@ -200,7 +283,7 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                       </span>
                     </div>
 
-                    {subImages.slice(0, 3).map((img, i) => (
+                    {subImages.map((img, i) => (
                       <div className="col-md-6 mb-3" key={i}>
                         <label className="input-label">{`Sub Image ${i + 1}`}</label>
                         <input
@@ -220,138 +303,94 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                         <span style={{ marginLeft: '10px' }}>
                           {img ? (img instanceof File ? img.name : img) : 'No file chosen'}
                         </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Plans */}
-                  <div className="mb-4">
-                    <h5>Plans</h5>
-                    {plans.map((plan, index) => {
-                      const used = plans.map((p, i) => (i === index ? null : p.label)).filter(Boolean);
-                      const availableOptions = planOptions.filter(opt => opt === plan.label || !used.includes(opt));
-                      return (
-                        <div className="row mb-3" key={index}>
-                          <div className="col-md-4">
-                            <select
-                              className="form-control"
-                              value={plan.label}
-                              onChange={(e) => {
-                                handlePlanChange(index, 'label', e.target.value);
-                                if (e.target.value === 'solo') handlePlanChange(index, 'capacity', '1');
-                                if (e.target.value === 'couple') handlePlanChange(index, 'capacity', '2');
-                                if (e.target.value === 'family') handlePlanChange(index, 'capacity', '4');
-                                if (e.target.value === 'unlimited') handlePlanChange(index, 'capacity', '');
-                              }}
-                              required
-
-                            >
-                              <option value="">Select Plan</option>
-                              {availableOptions.map((opt) => (
-                                <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {plan.label !== 'unlimited' && (
-                            <div className="col-md-4">
-                              <InputField
-                                placeholder="Capacity (per 28 days)"
-                                value={plan.capacity}
-                                onChange={(e) => handlePlanChange(index, 'capacity', e.target.value.replace(/[^0-9]/g, ''))}
-                                required
-                              />
-                            </div>
-                          )}
-
-                          <div className="col-md-3">
-                            <InputField
-                              placeholder="Price (per 28 days)"
-                              value={plan.price}
-                              onChange={(e) => handlePlanChange(index, 'price', e.target.value)}
-                              required
-                            />
-                          </div>
-
-                          {index !== 0 && (
-                            <div className="col-md-1">
-                              <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => removePlan(index)}>Remove</button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    <button type="button" className="btn btn-outline-primary btn-sm" onClick={addPlan} disabled={plans.length >= 4}>Add Plan</button>
-                  </div>
-
-                  {/* Durations */}
-                  <div className="mb-4">
-                    <h5>Durations</h5>
-                    {durations.map((dur, i) => (
-                      <div className="row mb-3" key={i}>
-                        <div className="col-md-3">
-                          <select
-                            className="form-control"
-                            value={dur.duration_time_limit}
-                            onChange={(e) => handleDurationChange(i, 'duration_time_limit', e.target.value)}
-                            required
+                        {img && (
+                          <button
+                            type="button"
+                            className="btn btn-link text-danger p-0"
+                            onClick={() => removeSubImage(i)}
                           >
-                            <option value="28 days">28 days</option>
-                            <option value="60 days">60 days</option>
-                            <option value="90 days">90 days</option>
-                            <option value="180 days">180 days</option>
-                            <option value="360 days">360 days</option>
-                          </select>
-                        </div>
-                        <div className="col-md-3">
-                          <InputField
-                            placeholder="GST (%)"
-                            value={dur.gst}
-                            onChange={(e) => handleDurationChange(i, 'gst', e.target.value)}
-                            required
-                          />
-                        </div>
-                        <div className="col-md-3">
-                          <InputField
-                            placeholder="Discount (%)"
-                            value={dur.discount}
-                            onChange={(e) => handleDurationChange(i, 'discount', e.target.value)}
-                            required
-                          />
-                        </div>
-                        <div className="col-md-3">
-                          <InputField
-                            placeholder="Security Deposit"
-                            value={dur.security_deposit}
-                            onChange={(e) => handleDurationChange(i, 'security_deposit', e.target.value)}
-                            required
-                          />
-                        </div>
-                        {i !== 0 && (
-                          <div className="col-md-12 d-flex justify-content-end mt-2">
-                            <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => removeDuration(i)}>Remove</button>
-                          </div>
+                            Remove
+                          </button>
                         )}
                       </div>
                     ))}
-                    <button type="button" className="btn btn-outline-primary btn-sm" onClick={addDuration}>Add Duration</button>
                   </div>
 
-                  {/* Status */}
-                  <div className="row mb-4">
-                    <div className="col-md-6">
-                      <label>Status</label>
-                      <select className="form-control" value={status} onChange={(e) => setStatus(e.target.value)} style={{ maxWidth: '200px' }}>
-                        <option value="true">Active</option>
-                        <option value="false">Deactive</option>
-                      </select>
-                    </div>
+                  <div className="mb-4">
+                    <h5>Durations & Plans</h5>
+                    {durations.map((duration, index) => (
+                      <div className="card mb-3" key={duration.duration_id || index}>
+                        <div className="card-body">
+                          <div className="d-flex justify-content-between align-items-center mb-3">
+                            <h5 className="mb-0">Duration {index + 1}</h5>
+                            {durations.length > 1 && (
+                              <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => removeDuration(index)}>
+                                Remove Duration
+                              </button>
+                            )}
+                          </div>
+                          <div className="row mb-3">
+                            <div className="col-md-3">
+                              <label className="input-label">Duration</label>
+                              <select
+                                className="form-control"
+                                value={duration.duration_time_limit}
+                                onChange={(e) => handleDurationChange(index, 'duration_time_limit', e.target.value)}
+                                required
+                              >
+                                <option value="">Select Duration</option>
+                                {durationOptions.map(option => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="col-md-3">
+                              <label className="input-label">GST (%)</label>
+                              <InputField
+                                type="text"
+                                placeholder="GST (%)"
+                                value={duration.gst}
+                                onChange={(e) => handleDurationChange(index, 'gst', e.target.value)}
+                                required
+                              />
+                            </div>
+                            <div className="col-md-3">
+                              <label className="input-label">Discount (%)</label>
+                              <InputField
+                                type="text"
+                                placeholder="Discount (%)"
+                                value={duration.discount}
+                                onChange={(e) => handleDurationChange(index, 'discount', e.target.value)}
+                                required
+                              />
+                            </div>
+                            <div className="col-md-3">
+                              <label className="input-label">Security Deposit</label>
+                              <InputField
+                                type="text"
+                                placeholder="Security Deposit"
+                                value={duration.security_deposit}
+                                onChange={(e) => handleDurationChange(index, 'security_deposit', e.target.value)}
+                                required
+                              />
+                            </div>
+                          </div>
+
+                          {renderPlanControls(duration, index)}
+                        </div>
+                      </div>
+                    ))}
+                    <button type="button" className="btn btn-outline-primary btn-sm" onClick={addDuration}>
+                      Add Duration
+                    </button>
                   </div>
 
-                  {errorMessage && <div className="text-danger mb-3">{errorMessage}</div>}
+                  {errorMessage && <div className="text-danger mt-3">{errorMessage}</div>}
 
                   <div className="mt-4">
-                    <ReusableButton type="submit" loading={loading}>Update</ReusableButton>
+                    <ReusableButton type="submit" loading={loading}>
+                      Update
+                    </ReusableButton>
                   </div>
                 </form>
               </div>
