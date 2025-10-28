@@ -193,10 +193,12 @@ IonHive Team`;
 }
 
 // Find the best technician based on location and workload
-async function findBestTechnician(normalizedAddress, excludedTechnicianIds = []) {
+async function findBestTechnician(normalizedAddress, excludedTechnicianIds = [], options = {}) {
+    const { ensureNotOnLeave = true, assignmentDate = new Date() } = options;
     const db = await connectToDatabase();
     const usersCollection = db.collection('users');
     const serviceRecordsCollection = db.collection('service_records');
+    const leaveRequestsCollection = db.collection('leave_requests');
 
     if (!normalizedAddress?.state || !normalizedAddress?.district) {
         return null;
@@ -210,6 +212,11 @@ async function findBestTechnician(normalizedAddress, excludedTechnicianIds = [])
             .map(id => (id !== undefined && id !== null) ? id.toString().trim() : null)
             .filter(Boolean)
     );
+
+    const todayStart = new Date(assignmentDate);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(assignmentDate);
+    todayEnd.setHours(23, 59, 59, 999);
 
     // Find all technicians (we'll filter by normalized state)
     const allTechnicians = await usersCollection.find({
@@ -230,6 +237,24 @@ async function findBestTechnician(normalizedAddress, excludedTechnicianIds = [])
         const notExcluded = technicianId ? !excludedSet.has(technicianId) : false;
         return matchesLocation && notExcluded;
     });
+
+    if (ensureNotOnLeave && technicians.length) {
+        const technicianIds = technicians
+            .map(tech => tech.technician_id)
+            .filter(id => id !== undefined && id !== null);
+
+        if (technicianIds.length) {
+            const approvedLeaves = await leaveRequestsCollection.find({
+                technician_id: { $in: technicianIds },
+                status: 'Approved',
+                from_date: { $lte: todayEnd },
+                to_date: { $gte: todayStart }
+            }).toArray();
+
+            const onLeaveIds = new Set(approvedLeaves.map(leave => leave.technician_id));
+            technicians = technicians.filter(tech => !onLeaveIds.has(tech.technician_id));
+        }
+    }
 
     console.log(`Found ${technicians.length} technicians for state: ${state}, district: ${district}`);
 
