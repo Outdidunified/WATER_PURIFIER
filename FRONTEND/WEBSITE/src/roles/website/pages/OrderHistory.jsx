@@ -258,6 +258,10 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                             }}
                                                         >
                                                             {(() => {
+                                                                if (order.deliveryAcceptanceStatus === true) {
+                                                                    return "Order Confirmed";
+                                                                }
+
                                                                 const statusMap = {
                                                                     accepted: "Order Accepted",
                                                                     packed: "Order Packed",
@@ -265,10 +269,12 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                     outfordelivery: "Out For Delivery",
                                                                     completed: "Delivered",
                                                                 };
+
                                                                 return statusMap[order.deliveryCurrentStatus] || "N/A";
                                                             })()}
                                                         </span>
                                                     </p>
+
                                                     <button
                                                         type="button"
                                                         style={{
