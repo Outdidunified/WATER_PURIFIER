@@ -10,7 +10,163 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
     const [actionLoading, setActionLoading] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
     const [actionError, setActionError] = useState(null);
+    const [assignmentHistoryMap, setAssignmentHistoryMap] = useState({});
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historyError, setHistoryError] = useState(null);
     const adminName = sessionStorage.getItem('superAdminName') || 'Admin';
+
+    const getTaskIdentifier = (task) => {
+        if (!task || typeof task !== 'object') {
+            return null;
+        }
+        if (task.task_id !== undefined && task.task_id !== null) {
+            return String(task.task_id);
+        }
+        if (task.wp_device_id) {
+            return String(task.wp_device_id);
+        }
+        if (task.device_id) {
+            return String(task.device_id);
+        }
+        return null;
+    };
+
+    const buildHistoryParams = (task) => {
+        if (!task || typeof task !== 'object') {
+            return null;
+        }
+        if (task.task_id !== undefined && task.task_id !== null && !Number.isNaN(Number(task.task_id))) {
+            return { task_id: task.task_id };
+        }
+        if (task.wp_device_id) {
+            return { wp_device_id: task.wp_device_id };
+        }
+        if (task.device_id) {
+            return { device_id: task.device_id };
+        }
+        return null;
+    };
+
+    const normalizePendingTaskPayload = (payload) => {
+        if (!payload) {
+            return { tasks: [], history: null };
+        }
+        if (Array.isArray(payload)) {
+            return { tasks: payload, history: null };
+        }
+        if (typeof payload === 'object') {
+            if (Array.isArray(payload.tasks)) {
+                let history = null;
+                if (payload.assignmentHistory && typeof payload.assignmentHistory === 'object' && payload.assignmentHistory !== null) {
+                    history = payload.assignmentHistory;
+                } else if (payload.assignment_history && typeof payload.assignment_history === 'object' && payload.assignment_history !== null) {
+                    history = payload.assignment_history;
+                } else if (payload.assignmentHistoryMap && typeof payload.assignmentHistoryMap === 'object' && payload.assignmentHistoryMap !== null) {
+                    history = payload.assignmentHistoryMap;
+                } else if (payload.assignment_history_map && typeof payload.assignment_history_map === 'object' && payload.assignment_history_map !== null) {
+                    history = payload.assignment_history_map;
+                }
+                if (!history) {
+                    const map = {};
+                    payload.tasks.forEach((task) => {
+                        const key = getTaskIdentifier(task);
+                        if (!key) {
+                            return;
+                        }
+                        const entries = Array.isArray(task.assignment_history) ? task.assignment_history : [];
+                        if (!entries.length && !task.status && !task.pending_reason && !task.wp_device_id && !task.device_id) {
+                            return;
+                        }
+                        map[key] = {
+                            assignment_history: entries,
+                            total_assignments: entries.length,
+                            task_status: task.status,
+                            pending_reason: task.pending_reason,
+                            wp_device_id: task.wp_device_id,
+                            device_id: task.device_id,
+                        };
+                    });
+                    history = Object.keys(map).length ? map : null;
+                }
+                return { tasks: payload.tasks, history };
+            }
+            if (Array.isArray(payload.data)) {
+                return { tasks: payload.data, history: null };
+            }
+            if (Array.isArray(payload.items)) {
+                return { tasks: payload.items, history: null };
+            }
+        }
+        return { tasks: [], history: null };
+    };
+
+    const fetchAssignmentHistory = async (params) => {
+        if (!params) {
+            return null;
+        }
+        try {
+            const response = await axiosInstance.get('/api/admin/GetServiceAssignmentHistory', {
+                params,
+            });
+            if (response.status === 200 && response.data?.status === 'Success') {
+                return response.data.data;
+            }
+            return null;
+        } catch (err) {
+            return null;
+        }
+    };
+
+    const loadAssignmentHistory = async (tasks) => {
+        if (!Array.isArray(tasks) || tasks.length === 0) {
+            setAssignmentHistoryMap({});
+            setHistoryError(null);
+            setHistoryLoading(false);
+            return;
+        }
+        setHistoryLoading(true);
+        setHistoryError(null);
+        try {
+            const results = await Promise.allSettled(tasks.map(async (task) => {
+                const params = buildHistoryParams(task);
+                const data = await fetchAssignmentHistory(params);
+                return { key: getTaskIdentifier(task), data };
+            }));
+            const map = {};
+            let hasRejection = false;
+            for (const result of results) {
+                if (result.status === 'fulfilled') {
+                    const key = result.value?.key;
+                    if (key) {
+                        map[key] = result.value?.data || null;
+                    }
+                } else {
+                    hasRejection = true;
+                }
+            }
+            setAssignmentHistoryMap(map);
+            if (hasRejection) {
+                setHistoryError('Failed to fetch assignment history for some tasks');
+            }
+        } catch (err) {
+            setAssignmentHistoryMap({});
+            setHistoryError('Failed to fetch assignment history');
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    const applyTaskData = async (payload) => {
+        const { tasks, history } = normalizePendingTaskPayload(payload);
+        setPendingTasks(tasks);
+        if (history) {
+            setHistoryLoading(false);
+            setHistoryError(null);
+            setAssignmentHistoryMap(history);
+            return;
+        }
+        await loadAssignmentHistory(tasks);
+    };
 
     // Fetch leave request details
     useEffect(() => {
@@ -18,20 +174,29 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
         if (leaveFromState) {
             setLeaveDetails(leaveFromState);
             setLoading(false);
-            
-            // Check if tasks are already in the state
-            if (leaveFromState?.pendingTasks && Array.isArray(leaveFromState.pendingTasks)) {
-                console.log('✅ Tasks already in state:', leaveFromState.pendingTasks);
-                setPendingTasks(leaveFromState.pendingTasks);
+
+            if (leaveFromState?.pendingTasks) {
+                applyTaskData(leaveFromState.pendingTasks);
+            } else if (leaveFromState?.pending_tasks) {
+                applyTaskData(leaveFromState.pending_tasks);
+            } else if (leaveFromState?.tasks) {
+                applyTaskData({
+                    tasks: leaveFromState.tasks,
+                    assignmentHistory: leaveFromState.assignmentHistory || leaveFromState.assignment_history || null,
+                });
+            } else if (leaveFromState?.technician_id || leaveFromState?.technician_email || leaveFromState?.user_id) {
+                fetchTasksFromAPI({
+                    technicianId: leaveFromState.technician_id,
+                    technicianEmail: leaveFromState?.technician_email,
+                    technicianUserId: leaveFromState?.technician_user_id || leaveFromState?.user_id,
+                });
             } else {
-                // Fetch tasks from API using technician ID and email
-                if (leaveFromState?.technician_id) {
-                    console.log('📌 Tasks not in state, fetching from API...');
-                    fetchTasksFromAPI(leaveFromState.technician_id, leaveFromState?.technician_email);
-                }
+                setPendingTasks([]);
+                setAssignmentHistoryMap({});
+                setHistoryLoading(false);
+                setHistoryError(null);
             }
         } else if (leaveRequestId) {
-            // Otherwise fetch from API
             fetchLeaveDetails();
         } else {
             setError('No leave request ID provided');
@@ -63,16 +228,26 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
                 const leaveRequest = data.data.leaveRequest;
                 setLeaveDetails(leaveRequest);
                 
-                // Check if pendingTasks are already in the response
-                if (data.data.pendingTasks && Array.isArray(data.data.pendingTasks)) {
-                    console.log('✅ Tasks already in leave response:', data.data.pendingTasks);
-                    setPendingTasks(data.data.pendingTasks);
+                if (data.data.pendingTasks) {
+                    await applyTaskData(data.data.pendingTasks);
+                } else if (data.data.pending_tasks) {
+                    await applyTaskData(data.data.pending_tasks);
+                } else if (data.data.tasks) {
+                    await applyTaskData({
+                        tasks: data.data.tasks,
+                        assignmentHistory: data.data.assignmentHistory || data.data.assignment_history || null,
+                    });
+                } else if (leaveRequest?.technician_id || leaveRequest?.technician_email || leaveRequest?.user_id) {
+                    await fetchTasksFromAPI({
+                        technicianId: leaveRequest.technician_id,
+                        technicianEmail: leaveRequest?.technician_email,
+                        technicianUserId: leaveRequest?.technician_user_id || leaveRequest?.user_id,
+                    });
                 } else {
-                    // Fallback: Fetch technician tasks from separate endpoint if not in response
-                    console.log('📌 Tasks not in response, fetching from separate endpoint...');
-                    if (leaveRequest?.technician_id) {
-                        await fetchTasksFromAPI(leaveRequest.technician_id, leaveRequest?.technician_email);
-                    }
+                    setPendingTasks([]);
+                    setAssignmentHistoryMap({});
+                    setHistoryLoading(false);
+                    setHistoryError(null);
                 }
             } else {
                 showErrorAlert('Error', data.message || 'Failed to fetch leave details');
@@ -89,37 +264,44 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
 
     // Fetch only tasks from API (when details are passed from state)
     // Uses same API endpoint as ViewManageUsersHooks for consistency
-    const fetchTasksFromAPI = async (technicianId, technicianEmail) => {
+    const fetchTasksFromAPI = async ({ technicianId, technicianEmail, technicianUserId }) => {
         try {
-            if (!technicianId) {
-                console.warn('Technician ID not provided');
+            if (!technicianId && !technicianEmail && !technicianUserId) {
+                console.warn('Technician identifiers not provided');
                 return;
             }
 
-            // ✅ Using same API endpoint as ViewManageUsersHooks (line 83)
-            const tasksResponse = await axiosInstance.post('/api/admin/FetchTechnicianTasksByUserId', {
-                user_id: technicianId,
+            const payload = {
                 email: technicianEmail || '',
-            });
+                technician_id: technicianId || '',
+            };
 
-            console.log('📋 Technician Tasks Response:', tasksResponse);
+            if (technicianUserId) {
+                payload.user_id = technicianUserId;
+            }
+
+            const tasksResponse = await axiosInstance.post('/api/admin/FetchTechnicianTasksByUserId', payload);
 
             if (tasksResponse.status === 200) {
                 if (tasksResponse.data.status === 'Success') {
-                    const tasks = tasksResponse.data.data || [];
-                    console.log('✅ Tasks fetched successfully:', tasks.length, 'tasks');
-                    setPendingTasks(tasks);
+                    await applyTaskData(tasksResponse.data.data);
                 } else {
-                    console.warn('API returned non-success status:', tasksResponse.data.message);
                     setPendingTasks([]);
+                    setAssignmentHistoryMap({});
+                    setHistoryLoading(false);
+                    setHistoryError(null);
                 }
             } else {
-                console.warn('Failed to fetch tasks: HTTP', tasksResponse.status);
                 setPendingTasks([]);
+                setAssignmentHistoryMap({});
+                setHistoryLoading(false);
+                setHistoryError(null);
             }
         } catch (err) {
-            console.error('Error fetching technician tasks:', err);
             setPendingTasks([]);
+            setAssignmentHistoryMap({});
+            setHistoryLoading(false);
+            setHistoryError(null);
         }
     };
 
@@ -301,6 +483,9 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
         rejectLeave,
         getTasksCount,
         fetchLeaveDetails,
+        assignmentHistoryMap,
+        historyLoading,
+        historyError,
     };
 };
 

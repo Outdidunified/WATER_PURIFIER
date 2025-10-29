@@ -87,7 +87,15 @@ const useViewManageUser = () => {
 
           if (tasksResponse.status === 200) {
             if (tasksResponse.data.status === 'Success') {
-              setTechnicianTasks(tasksResponse.data.data || []);
+              const technicianPayload = tasksResponse.data.data;
+              const normalizedTasks = Array.isArray(technicianPayload)
+                ? technicianPayload
+                : Array.isArray(technicianPayload?.tasks)
+                  ? technicianPayload.tasks
+                  : Array.isArray(technicianPayload?.data)
+                    ? technicianPayload.data
+                    : [];
+              setTechnicianTasks(normalizedTasks);
               setError(null);
             } else {
               setError(tasksResponse.data.message || 'Unexpected response from server');

@@ -33,24 +33,36 @@ import axiosInstance from '../../utils/utils';
 
 const SuperAdminApp = () => {
   const storedUser = JSON.parse(sessionStorage.getItem('superAdminUser'));
+  const storedPermissions = JSON.parse(sessionStorage.getItem('superAdminPermissions') || '[]');
   const [loggedIn, setLoggedIn] = useState(!!storedUser);
   const [userInfo, setUserInfo] = useState(storedUser || {});
-  const [permissions, setPermissions] = useState([]);
+  const [permissions, setPermissions] = useState(storedPermissions);
+  const [permissionsLoaded, setPermissionsLoaded] = useState(storedPermissions.length > 0);
   const navigate = useNavigate();
 
-  // Fetch permissions from API
   useEffect(() => {
-    if (loggedIn) {
-      axiosInstance
-        .get(`/api/admin/by-role?ids=${userInfo.role_id}`)
-        .then((res) => {
-          if (res.data.status === 'Success') {
-            setPermissions(res.data.data);
-            sessionStorage.setItem('superAdminPermissions', JSON.stringify(res.data.data));
-          }
-        })
-        .catch((err) => console.error(err));
+    if (!loggedIn) {
+      setPermissions([]);
+      setPermissionsLoaded(true);
+      return;
     }
+
+    if (!userInfo.role_id) {
+      setPermissionsLoaded(true);
+      return;
+    }
+
+    setPermissionsLoaded(false);
+    axiosInstance
+      .get(`/api/admin/by-role?ids=${userInfo.role_id}`)
+      .then((res) => {
+        if (res.data.status === 'Success') {
+          setPermissions(res.data.data);
+          sessionStorage.setItem('superAdminPermissions', JSON.stringify(res.data.data));
+        }
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setPermissionsLoaded(true));
   }, [loggedIn, userInfo.role_id]);
 
   const handleLogin = (data) => {
@@ -76,6 +88,10 @@ const SuperAdminApp = () => {
 
   // Helper to check permission
   const canView = (module) => permissions.find(p => p.module === module)?.can_view;
+
+  if (loggedIn && !permissionsLoaded) {
+    return null;
+  }
 
   return (
     <>
@@ -171,6 +187,13 @@ const SuperAdminApp = () => {
 
         {canView('manage_contact') && (
           <Route path="/ManageContact" element={<ManageContact userInfo={userInfo} handleLogout={handleLogout} />} />
+        )}
+
+        {canView('manage_leaves') && (
+          <>
+            <Route path="/ManageLeaves" element={<ManageLeaves userInfo={userInfo} handleLogout={handleLogout} />} />
+            <Route path="/ViewLeaveDetails/:leaveRequestId" element={<ViewLeaveDetails userInfo={userInfo} handleLogout={handleLogout} />} />
+          </>
         )}
 
         <Route path="/Profile" element={<Profile userInfo={userInfo} handleLogout={handleLogout} />} />

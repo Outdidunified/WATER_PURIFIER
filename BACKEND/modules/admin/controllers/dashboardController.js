@@ -4115,15 +4115,13 @@ const GetAnalyticsByDistrict = async (req, res) => {
     return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
   }
 };
-
 const FetchTechnicianTasksByUserId = async (req, res) => {
-  const { user_id, email } = req.body;
+  const { user_id, technician_id, email } = req.body;
 
-  // Basic validation
-  if (!user_id || !email) {
+  if (!email || (!user_id && !technician_id)) {
     return res.status(400).json({
       status: 'Failed',
-      message: 'user_id and email are required'
+      message: 'email and either user_id or technician_id are required'
     });
   }
 
@@ -4133,45 +4131,99 @@ const FetchTechnicianTasksByUserId = async (req, res) => {
     const serviceRecordsCollection = db.collection('service_records');
     const ordersCollection = db.collection('orders');
 
-    // Step 1: Find technician by user_id and email
-    const technician = await technicianCollection.findOne({
-      user_id: Number(user_id), // ✅ fixed
-      email: String(email).trim().toLowerCase(), // normalize
-    });
+    // Step 1: Find technician
+    const emailNormalized = String(email).trim().toLowerCase();
+    const rawConditions = [];
+
+    if (user_id !== undefined && user_id !== null && String(user_id).trim() !== '') {
+      const userIdTrimmed = String(user_id).trim();
+      const userIdNumber = Number(userIdTrimmed);
+
+      if (!Number.isNaN(userIdNumber)) {
+        rawConditions.push({ user_id: userIdNumber });
+      }
+
+      rawConditions.push({ user_id: userIdTrimmed });
+    }
+
+    if (technician_id !== undefined && technician_id !== null && String(technician_id).trim() !== '') {
+      rawConditions.push({ technician_id: String(technician_id).trim() });
+    }
+
+    const seenKeys = new Set();
+    const conditions = [];
+
+    for (const condition of rawConditions) {
+      const key = JSON.stringify(condition);
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        conditions.push(condition);
+      }
+    }
+
+    const technician = await technicianCollection.findOne(
+      conditions.length > 1
+        ? { email: emailNormalized, $or: conditions }
+        : { email: emailNormalized, ...conditions[0] }
+    );
 
     if (!technician) {
       return res.status(404).json({
         status: 'Failed',
-        message: 'Technician not found for given user_id and email'
+        message: 'Technician not found for given user_id and email',
       });
     }
 
     if (!technician.technician_id) {
       return res.status(400).json({
         status: 'Failed',
-        message: 'Technician record is missing technician_id'
+        message: 'Technician record is missing technician_id',
       });
     }
 
     const assignedTechnicianId = technician.technician_id;
 
-    // Step 2: Fetch tasks assigned to this technician
+    // Step 2: Fetch tasks either directly assigned or in assignment history
     const tasks = await serviceRecordsCollection
-      .find({ assigned_technician_id: assignedTechnicianId })
+      .find({
+        $or: [
+          { assigned_technician_id: assignedTechnicianId },
+          { 'assignment_history.technician_id': assignedTechnicianId }
+        ]
+      })
       .toArray();
 
-    if (!tasks || tasks.length === 0) {
+    if (!tasks.length) {
       return res.status(404).json({
         status: 'Failed',
-        message: 'No tasks found for this technician'
+        message: 'No tasks found for this technician (current or past assignments)',
       });
     }
 
-    // Step 3: Enrich tasks with order details
+    const buildTaskIdentifier = (task) => {
+      if (!task || typeof task !== 'object') {
+        return null;
+      }
+      if (task.task_id !== undefined && task.task_id !== null) {
+        return String(task.task_id);
+      }
+      if (task.wp_device_id) {
+        return String(task.wp_device_id);
+      }
+      if (task.device_id) {
+        return String(task.device_id);
+      }
+      return task._id ? String(task._id) : null;
+    };
+
+    const assignmentHistoryMap = {};
+
+    // Step 3: Enrich each task with order and assignment history details
     for (const task of tasks) {
-      if (task.order_id) {
+      const orderId = task?.order_snapshot?.orderId || task?.order_id;
+      if (orderId) {
         const order = await ordersCollection.findOne({
-          _id: new ObjectId(task.order_id)
+          _id: new ObjectId(orderId)
         });
 
         if (order) {
@@ -4188,9 +4240,23 @@ const FetchTechnicianTasksByUserId = async (req, res) => {
           };
         }
       }
+
+      const historyEntries = Array.isArray(task.assignment_history) ? task.assignment_history : [];
+      const key = buildTaskIdentifier(task);
+      if (key) {
+        assignmentHistoryMap[key] = {
+          assignment_history: historyEntries,
+          total_assignments: historyEntries.length,
+          task_status: task.status,
+          pending_reason: task.pending_reason,
+          wp_device_id: task.wp_device_id,
+          device_id: task.device_id,
+          last_assigned_date: historyEntries.length ? historyEntries[historyEntries.length - 1]?.assigned_date || null : null,
+        };
+      }
     }
 
-    // Step 4: Return response
+    // Step 4: Return enriched response
     return res.status(200).json({
       status: 'Success',
       technician: {
@@ -4198,15 +4264,18 @@ const FetchTechnicianTasksByUserId = async (req, res) => {
         user_id: technician.user_id,
         email: technician.email,
         role_id: technician.role_id,
-        status: technician.status
+        status: technician.status,
       },
-      data: tasks
+      data: {
+        tasks,
+        assignmentHistory: assignmentHistoryMap,
+      },
     });
   } catch (error) {
     console.error('Error in FetchTechnicianTasksByUserId:', error);
     return res.status(500).json({
       status: 'Failed',
-      message: 'Internal Server Error'
+      message: 'Internal Server Error',
     });
   }
 };
