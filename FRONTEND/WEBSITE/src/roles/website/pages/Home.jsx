@@ -1424,7 +1424,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             return (
                                                 <>
                                                     {textRow("Model", product.model_name, true, true)}
-                                                    {textRow("Details", product.product_details)}
                                                     {textRow("Connectivity", product.connectivity || "N/A")}
                                                     <hr style={{ color: "#0d6efd" }} />
 
