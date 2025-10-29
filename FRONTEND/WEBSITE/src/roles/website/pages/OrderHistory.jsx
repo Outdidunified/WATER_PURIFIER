@@ -8,6 +8,8 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
     const [loading, setLoading] = useState(true);
     const [expandedOrderId, setExpandedOrderId] = useState(null);
     const [hoveredIndex, setHoveredIndex] = useState(null);
+    const [showStatusModal, setShowStatusModal] = useState(false);
+    const [selectedOrderStatus, setSelectedOrderStatus] = useState(null);
 
     // Fetch payment history
     useEffect(() => {
@@ -120,6 +122,51 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
         }
     };
 
+    const getDeliveryTimeline = (order) => {
+        if (!order) return [];
+
+        const steps = [
+            { key: "accepted", label: "Order Accepted" },
+            { key: "packed", label: "Order Packed" },
+            { key: "intransit", label: "Shipped" },
+            { key: "outfordelivery", label: "Out For Delivery" },
+            { key: "completed", label: "Delivered" },
+        ];
+
+        return steps.map((step) => {
+            let history = null;
+
+            // Step 1: "accepted" is from deliveryAcceptanceStatus
+            if (step.key === "accepted" && order.deliveryAcceptanceStatus === "accepted") {
+                history = {
+                    timestamp: order.deliveryAcceptanceTimestamp,
+                    notes: "Order accepted by system",
+                };
+            }
+
+            // Step 2-5: from deliveryHistory array
+            if (!history && order.deliveryHistory) {
+                history = order.deliveryHistory.find((h) => h.status === step.key);
+            }
+
+            return {
+                label: step.label,
+                date: history ? formatDateToIST(history.timestamp) : null,
+                notes: history ? history.notes : null,
+                isCompleted: !!history,
+            };
+        });
+    };
+
+    useEffect(() => {
+        if (showStatusModal) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "auto";
+        }
+    }, [showStatusModal]);
+
+
     return (
         <div>
             {/* Header */}
@@ -203,25 +250,224 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                 {/* Status Info (Right Side) */}
                                                 <div style={{ textAlign: "right" }}>
                                                     <p>
-                                                        <strong>Order Status: </strong>
-                                                        <span style={getStatusClass2(order.orderStatus)}>
-                                                            {order.orderStatus || "N/A"}
+                                                        <strong>Delivery Status: </strong>
+                                                        <span
+                                                            style={{
+                                                                ...getStatusClass2(order.deliveryCurrentStatus),
+                                                                fontWeight: "600",
+                                                            }}
+                                                        >
+                                                            {(() => {
+                                                                if (order.deliveryAcceptanceStatus === true) {
+                                                                    return "Order Confirmed";
+                                                                }
+
+                                                                const statusMap = {
+                                                                    accepted: "Order Accepted",
+                                                                    packed: "Order Packed",
+                                                                    intransit: "Shipped",
+                                                                    outfordelivery: "Out For Delivery",
+                                                                    completed: "Delivered",
+                                                                };
+
+                                                                return statusMap[order.deliveryCurrentStatus] || "N/A";
+                                                            })()}
                                                         </span>
                                                     </p>
-                                                    <p>
-                                                        <strong>Payment Status: </strong>
-                                                        <span style={getStatusClass2(payment.paymentStatus)}>
-                                                            {payment.paymentStatus || "N/A"}
-                                                        </span>
-                                                    </p>
-                                                    <p>
-                                                        <strong>Installation Status: </strong>
-                                                        <span style={getStatusClass2(order.task_status)}>
-                                                            {order.task_status || "N/A"}
-                                                        </span>
-                                                    </p>
+
+                                                    <button
+                                                        type="button"
+                                                        style={{
+                                                            marginTop: "8px",
+                                                            backgroundColor: "#0d6efd",
+                                                            color: "#fff",
+                                                            border: "none",
+                                                            padding: "6px 12px",
+                                                            borderRadius: "6px",
+                                                            fontSize: "14px",
+                                                            fontWeight: "600",
+                                                            cursor: "pointer",
+                                                            boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+                                                            transition: "all 0.3s ease",
+                                                        }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedOrderStatus(order);
+                                                            setShowStatusModal(true);
+                                                        }}
+                                                    >
+                                                        View Delivery Status
+                                                    </button>
+
                                                 </div>
                                             </div>
+
+                                            {showStatusModal && selectedOrderStatus && (
+                                                <div
+                                                    style={{
+                                                        position: "fixed",
+                                                        top: 0,
+                                                        left: 0,
+                                                        width: "100%",
+                                                        height: "100%",
+                                                        backgroundColor: "rgba(0,0,0,0.5)",
+                                                        display: "flex",
+                                                        justifyContent: "center",
+                                                        alignItems: "center",
+                                                        zIndex: 2000,
+                                                    }}
+                                                >
+                                                    <div
+                                                        style={{
+                                                            width: window.innerWidth < 768 ? "90%" : "420px",
+                                                            backgroundColor: "#fff",
+                                                            borderRadius: "12px",
+                                                            boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+                                                            display: "flex",
+                                                            flexDirection: "column",
+                                                            overflow: "hidden",
+                                                        }}
+                                                    >
+                                                        {/* Header */}
+                                                        <div
+                                                            style={{
+                                                                backgroundColor: "aliceblue",
+                                                                padding: "12px 16px",
+                                                                display: "flex",
+                                                                justifyContent: "space-between",
+                                                                alignItems: "center",
+                                                                borderBottom: "1px solid #dce3f0",
+                                                            }}
+                                                        >
+                                                            <h5
+                                                                style={{
+                                                                    margin: 0,
+                                                                    fontSize: "16px",
+                                                                    fontWeight: "700",
+                                                                    color: "#0d6efd",
+                                                                }}
+                                                            >
+                                                                Delivery Status Timeline
+                                                            </h5>
+                                                            <button
+                                                                onClick={() => setShowStatusModal(false)}
+                                                                style={{
+                                                                    background: "transparent",
+                                                                    border: "none",
+                                                                    fontSize: "20px",
+                                                                    color: "#333",
+                                                                    cursor: "pointer",
+                                                                    lineHeight: "1",
+                                                                }}
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        </div>
+
+                                                        {/* Body */}
+                                                        <div
+                                                            style={{
+                                                                padding: "20px",
+                                                                maxHeight: "70vh",
+                                                                overflowY: "auto",
+                                                            }}
+                                                        >
+                                                            {getDeliveryTimeline(selectedOrderStatus).map((step, i, arr) => (
+                                                                <div
+                                                                    key={i}
+                                                                    style={{
+                                                                        display: "flex",
+                                                                        alignItems: "flex-start",
+                                                                        position: "relative",
+                                                                        marginBottom: i !== arr.length - 1 ? "25px" : "0",
+                                                                    }}
+                                                                >
+                                                                    {/* Connector Line */}
+                                                                    {i !== arr.length - 1 && (
+                                                                        <div
+                                                                            style={{
+                                                                                position: "absolute",
+                                                                                left: "7px",
+                                                                                top: "15px",
+                                                                                width: "2px",
+                                                                                height: "calc(100% - 15px)",
+                                                                                backgroundColor:
+                                                                                    step.isCompleted && arr[i + 1]?.isCompleted
+                                                                                        ? "#28a745"
+                                                                                        : "#ccc",
+                                                                                zIndex: 0,
+                                                                            }}
+                                                                        />
+                                                                    )}
+
+                                                                    {/* Circle */}
+                                                                    <div
+                                                                        style={{
+                                                                            width: "15px",
+                                                                            height: "15px",
+                                                                            borderRadius: "50%",
+                                                                            backgroundColor: step.isCompleted ? "#28a745" : "#ccc",
+                                                                            marginRight: "10px",
+                                                                            zIndex: 1,
+                                                                            flexShrink: 0,
+                                                                        }}
+                                                                    ></div>
+
+                                                                    {/* Text */}
+                                                                    <div style={{ flex: 1 }}>
+                                                                        <div style={{ fontWeight: "600", color: "#000" }}>{step.label}</div>
+                                                                        <div
+                                                                            style={{
+                                                                                color: step.isCompleted ? "#28a745" : "#888",
+                                                                                fontSize: "13px",
+                                                                            }}
+                                                                        >
+                                                                            {step.date || "—"}
+                                                                        </div>
+                                                                        <div
+                                                                            style={{
+                                                                                color: step.notes ? "#555" : "#888",
+                                                                                fontSize: "13px",
+                                                                                marginTop: "4px",
+                                                                            }}
+                                                                        >
+                                                                            {step.notes || "Pending update"}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+
+                                                        {/* Footer */}
+                                                        <div
+                                                            style={{
+                                                                backgroundColor: "aliceblue",
+                                                                padding: "10px 15px",
+                                                                borderTop: "1px solid #dce3f0",
+                                                                display: "flex",
+                                                                justifyContent: "center",
+                                                            }}
+                                                        >
+                                                            <button
+                                                                onClick={() => setShowStatusModal(false)}
+                                                                style={{
+                                                                    backgroundColor: "#0d6efd",
+                                                                    color: "#fff",
+                                                                    border: "none",
+                                                                    borderRadius: "6px",
+                                                                    padding: "8px 20px",
+                                                                    fontWeight: "600",
+                                                                    cursor: "pointer",
+                                                                    fontSize: "14px",
+                                                                    boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+                                                                }}
+                                                            >
+                                                                Close
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             {/* Expanded details */}
                                             {isExpanded && (
@@ -375,20 +621,47 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                 </tbody>
                                                             </table>
 
+                                                            <hr style={{ textAlign: 'center', color: '#0d6efd' }}></hr>
+
+                                                            <p>
+                                                                <strong>Order Status: </strong>
+                                                                <span style={getStatusClass2(order.orderStatus)}>
+                                                                    {order.orderStatus || "N/A"}
+                                                                </span>
+                                                            </p>
+                                                            <p>
+                                                                <strong>Payment Status: </strong>
+                                                                <span style={getStatusClass2(payment.paymentStatus)}>
+                                                                    {payment.paymentStatus || "N/A"}
+                                                                </span>
+                                                            </p>
+                                                            <p>
+                                                                <strong>Installation Status: </strong>
+                                                                <span style={getStatusClass2(order.task_status)}>
+                                                                    {order.task_status || "N/A"}
+                                                                </span>
+                                                            </p>
+
                                                             {/* Download Invoice Button */}
                                                             <div style={{ textAlign: "center", marginTop: "20px" }}>
                                                                 <button
                                                                     className="btn btn-primary"
                                                                     style={{
-                                                                        background: "#0d6efd",
+                                                                        background: order.task_status === "Completed" ? "#0d6efd" : "#b0b0b0",
                                                                         border: "none",
                                                                         padding: "8px 20px",
                                                                         borderRadius: "6px",
                                                                         fontWeight: "600",
+                                                                        cursor: order.task_status === "Completed" ? "pointer" : "not-allowed",
+                                                                        opacity: order.task_status === "Completed" ? 1 : 0.6,
+                                                                        transition: "all 0.3s ease",
                                                                     }}
+                                                                    disabled={order.task_status !== "Completed"}
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        handleDownloadInvoice(order.customOrderId);
+                                                                        if (order.task_status === "Completed") {
+                                                                            handleDownloadInvoice(order.customOrderId);
+                                                                        }
                                                                     }}
                                                                 >
                                                                     <i className="bi bi-download" style={{ marginRight: "5px" }}></i>

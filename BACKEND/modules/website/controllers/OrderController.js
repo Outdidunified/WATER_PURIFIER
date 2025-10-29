@@ -7,6 +7,8 @@ const { sendSubscriptionConfirmationEmail } = require('../controllers/Email');
 const { validateDeliveryAddress, normalizeDeliveryAddress } = require('../models/DeliveryAddress');
 const { autoAssignInstallation } = require('../../admin/services/autoAssignmentService');
 
+const DELIVERY_STATUSES = ['accepted', 'packed', 'intransit', 'outfordelivery', 'completed'];
+
 function generateOrderId() {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // e.g. 20250526
   const random = Math.random().toString(36).substr(2, 6).toUpperCase();
@@ -82,8 +84,13 @@ exports.createSubscriptionOrder = async (req, res) => {
       return res.status(400).json({ message: 'This device is already assigned to another order. Please choose another device.' });
     }
 
-    const selectedPlan = productModel.plans.find(plan => plan.plans_id === selectedPlanId);
-    const selectedDuration = productModel.duration.find(dur => dur.duration_id === selectedDurationId);
+    const normalizeId = (value) => (value === undefined || value === null ? '' : value.toString());
+    const durations = Array.isArray(productModel.duration) ? productModel.duration : [];
+    const selectedDuration = durations.find((duration) => normalizeId(duration.duration_id) === normalizeId(selectedDurationId));
+    const selectedDurationPlans = Array.isArray(selectedDuration?.plans) ? selectedDuration.plans : [];
+    const topLevelPlans = Array.isArray(productModel.plans) ? productModel.plans : [];
+    const plans = selectedDurationPlans.length > 0 ? selectedDurationPlans : topLevelPlans;
+    const selectedPlan = plans.find((plan) => normalizeId(plan.plans_id) === normalizeId(selectedPlanId));
     if (!selectedPlan || !selectedDuration) return res.status(404).json({ message: 'Plan or duration not found' });
 
     const effectiveSecurityDeposit = user.security_deposit_added ? 0 : securityDeposit;
@@ -101,6 +108,8 @@ exports.createSubscriptionOrder = async (req, res) => {
     const customOrderId = generateOrderId();
     const orderStatus = 'Confirmed';
     const paymentStatus = 'Pending'; // COD and ONLINE both start Pending
+
+    const now = new Date();
 
     const newOrder = {
       customOrderId,
@@ -122,8 +131,11 @@ exports.createSubscriptionOrder = async (req, res) => {
       price,
       subtotal,
       codFee,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      deliveryAcceptanceStatus: 'pending',
+      deliveryAcceptanceTimestamp: null,
+      deliveryCompletionTimestamp: null,
+      createdAt: now,
+      updatedAt: now
     };
 
     const result = await db.collection('orders').insertOne(newOrder);
@@ -145,8 +157,8 @@ exports.createSubscriptionOrder = async (req, res) => {
       price,
       subtotal,
       codFee,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: now,
+      updatedAt: now
     });
 
     // ✅ Immediately mark user subscribed for COD
@@ -165,6 +177,16 @@ exports.createSubscriptionOrder = async (req, res) => {
           },
           $addToSet: { assigned_device_ids: wp_device_id },
           $unset: { assigned_device_id: "" }
+        }
+      );
+
+      await db.collection('orders').updateOne(
+        { _id: orderId },
+        {
+          $set: {
+            deliveryAcceptanceStatus: 'accepted',
+            deliveryAcceptanceTimestamp: now
+          }
         }
       );
     }
@@ -267,12 +289,23 @@ exports.verifyRazorpayPayment = async (req, res) => {
           orderStatus: 'Confirmed',
           razorpayPaymentId: razorpay_payment_id,
           subscribed_at: now,
+          deliveryAcceptanceStatus: order.deliveryAcceptanceStatus === 'completed' ? 'completed' : 'accepted',
+          deliveryAcceptanceTimestamp: order.deliveryAcceptanceTimestamp || now,
           updatedAt: now
         }
       }
     );
 
-    const updatedOrder = { ...order, paymentStatus: 'Completed', orderStatus: 'Confirmed', razorpayPaymentId: razorpay_payment_id, subscribed_at: now, updatedAt: now };
+    const updatedOrder = {
+      ...order,
+      paymentStatus: 'Completed',
+      orderStatus: 'Confirmed',
+      razorpayPaymentId: razorpay_payment_id,
+      subscribed_at: now,
+      deliveryAcceptanceStatus: order.deliveryAcceptanceStatus === 'completed' ? 'completed' : 'accepted',
+      deliveryAcceptanceTimestamp: order.deliveryAcceptanceTimestamp || now,
+      updatedAt: now
+    };
 
     // ✅ Update user subscription & active plan
     const userUpdateResult = await usersCollection.updateOne(
@@ -736,6 +769,258 @@ exports.downloadInvoice = async (req, res) => {
     res.status(500).json({ message: 'Failed to generate invoice', error: error.message });
   }
 };
+
+exports.getDeliveryHistory = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+      return res.status(400).json({ message: 'orderId is required' });
+    }
+
+    // Validate if orderId is a valid MongoDB ObjectId
+    if (!ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: 'Invalid orderId format' });
+    }
+
+    const db = await connectToDatabase();
+    const order = await db.collection('orders').findOne({ _id: new ObjectId(orderId) });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Build delivery history from order's delivery fields
+    const history = [];
+
+    // Add delivery acceptance event if it exists
+    if (order.deliveryAcceptanceStatus && order.deliveryAcceptanceTimestamp) {
+      history.push({
+        status: order.deliveryAcceptanceStatus.toLowerCase(),
+        timestamp: order.deliveryAcceptanceTimestamp,
+        note: order.deliveryAcceptanceNote || '',
+        updatedBy: order.deliveryAcceptanceUpdatedBy || 'System',
+      });
+    }
+
+    // Add delivery completion event if it exists
+    if (order.deliveryCompletionTimestamp) {
+      history.push({
+        status: 'completed',
+        timestamp: order.deliveryCompletionTimestamp,
+        note: order.deliveryCompletionNote || '',
+        updatedBy: order.deliveryCompletionUpdatedBy || 'System',
+      });
+    }
+
+    // If no delivery events, use order status as fallback
+    if (history.length === 0 && order.orderStatus) {
+      history.push({
+        status: order.orderStatus.toLowerCase(),
+        timestamp: order.createdAt || new Date(),
+        note: 'Order created',
+        updatedBy: 'System',
+      });
+    }
+
+    // Extract notes/delivery notes if they exist as array
+    const notes = Array.isArray(order.deliveryNotes)
+      ? order.deliveryNotes
+      : order.deliveryNotes
+        ? [{ text: order.deliveryNotes, timestamp: new Date() }]
+        : [];
+
+    // Determine current status
+    let currentStatus = order.deliveryCurrentStatus || order.deliveryAcceptanceStatus || order.orderStatus || 'pending';
+    currentStatus = currentStatus.toLowerCase();
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        history,
+        deliveryHistory: history, // Duplicate for compatibility
+        notes,
+        deliveryNotes: notes, // Duplicate for compatibility
+        currentStatus,
+        order: {
+          _id: order._id,
+          customOrderId: order.customOrderId,
+          deliveryAcceptanceStatus: order.deliveryAcceptanceStatus,
+          deliveryCurrentStatus: order.deliveryCurrentStatus,
+          orderStatus: order.orderStatus,
+          paymentStatus: order.paymentStatus,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching delivery history:', error);
+    res.status(500).json({
+      message: 'Failed to fetch delivery history',
+      error: error.message,
+    });
+  }
+};
+
+exports.updateDeliveryStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { newStatus, notes } = req.body;
+
+    // Validate ObjectId
+    if (!ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: 'Invalid order ID format' });
+    }
+
+    // Validate new status
+    if (!newStatus) {
+      return res.status(400).json({ message: 'newStatus is required' });
+    }
+
+    const statusLower = newStatus.toLowerCase();
+    if (!DELIVERY_STATUSES.includes(statusLower)) {
+      return res.status(400).json({
+        message: `Invalid delivery status. Must be one of: ${DELIVERY_STATUSES.join(', ')}`
+      });
+    }
+
+    console.log('updateDeliveryStatus called with:', { orderId, newStatus: statusLower });
+
+    const db = await connectToDatabase();
+    const ordersCollection = db.collection('orders');
+
+    // Get current order
+    console.log('Fetching order with ID:', orderId);
+    const order = await ordersCollection.findOne({ _id: new ObjectId(orderId) });
+    console.log('Order fetched:', { orderId, found: !!order, orderStatus: order?.orderStatus });
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Validate sequential status progression (no skipping, no going backwards)
+    const currentStatus = order.deliveryCurrentStatus || 'pending';
+    const currentStatusIndex = DELIVERY_STATUSES.indexOf(currentStatus);
+    const newStatusIndex = DELIVERY_STATUSES.indexOf(statusLower);
+
+    // If already at current status, return error
+    if (currentStatus === statusLower) {
+      return res.status(400).json({
+        message: `Delivery status is already "${statusLower}". Cannot update to the same status.`
+      });
+    }
+
+    // Check if trying to go backwards
+    if (newStatusIndex < currentStatusIndex) {
+      return res.status(400).json({
+        message: `Cannot go backwards in delivery status. Current: "${currentStatus}" → Requested: "${statusLower}". You can only move forward in the sequence: ${DELIVERY_STATUSES.join(' → ')}`
+      });
+    }
+
+    // Check if trying to skip steps
+    // if (newStatusIndex > currentStatusIndex + 1) {
+    //   const nextStatus = DELIVERY_STATUSES[currentStatusIndex + 1];
+    //   return res.status(400).json({
+    //     message: `Cannot skip delivery status steps. Current: "${currentStatus}" → Next should be: "${nextStatus}" → Cannot jump to: "${statusLower}". Follow the sequence: ${DELIVERY_STATUSES.join(' → ')}`
+    //   });
+    // }
+
+    // Prepare update object
+    const updateData = {
+      deliveryCurrentStatus: statusLower,
+      updatedAt: new Date()
+    };
+
+    // Update status-specific timestamps
+    if (statusLower === 'accepted') {
+      updateData.deliveryAcceptanceStatus = true;
+      updateData.deliveryAcceptanceTimestamp = new Date();
+    } else if (statusLower === 'completed') {
+      updateData.deliveryCompletionStatus = true;
+      updateData.deliveryCompletionTimestamp = new Date();
+    }
+
+    // Add to delivery history
+    const historyEntry = {
+      status: statusLower,
+      timestamp: new Date(),
+      notes: notes || 'Manual update by admin',
+      updatedBy: 'admin'
+    };
+
+    // Update order
+    console.log('Attempting to update order:', {
+      orderId,
+      updateData,
+      historyEntry
+    });
+
+    const result = await ordersCollection.findOneAndUpdate(
+      { _id: new ObjectId(orderId) },
+      {
+        $set: updateData,
+        $push: {
+          deliveryHistory: historyEntry
+        }
+      },
+      { returnDocument: 'after' }
+    );
+
+    console.log('Update result:', {
+      resultType: typeof result,
+      hasValue: result?.value ? true : false,
+      hasOk: result?.ok ? true : false,
+      resultKeys: result ? Object.keys(result) : 'null'
+    });
+
+    // Handle both old and new MongoDB driver versions
+    const updatedOrder = result?.value || result;
+
+    if (!updatedOrder || !updatedOrder._id) {
+      console.error('Failed to get updated order:', { result, updatedOrder });
+      return res.status(500).json({
+        message: 'Failed to update order in database',
+        error: 'Update returned no value',
+        debug: {
+          resultType: typeof result,
+          resultKeys: result ? Object.keys(result) : 'null',
+          hasId: updatedOrder?._id ? true : false
+        }
+      });
+    }
+
+    // Trigger auto-assignment for installation if delivery is completed
+    if (statusLower === 'completed') {
+      console.log(`Delivery completed for order ${orderId}. Triggering auto-assignment for installation...`);
+      console.log('Order details for auto-assignment:', {
+        orderId: updatedOrder._id,
+        wp_device_id: updatedOrder.wp_device_id,
+        orderStatus: updatedOrder.orderStatus,
+        paymentStatus: updatedOrder.paymentStatus,
+        paymentType: updatedOrder.paymentType,
+        deliveryAddress: updatedOrder.deliveryAddress ? '✓ Present' : '✗ Missing',
+        customOrderId: updatedOrder.customOrderId
+      });
+      try {
+        await autoAssignInstallation(updatedOrder);
+        console.log('Auto-assignment completed successfully for order:', orderId);
+      } catch (assignmentError) {
+        console.error('Error during auto-assignment:', assignmentError);
+        // Don't fail the response, just log the error
+      }
+    }
+
+    return res.status(200).json({
+      message: 'Delivery status updated successfully',
+      order: updatedOrder
+    });
+  } catch (error) {
+    console.error('Error updating delivery status:', error);
+    res.status(500).json({
+      message: 'Failed to update delivery status',
+      error: error.message
+    });
+  }
+};
+
 // Example helper functions (to be implemented elsewhere)
 function formatDate(date) {
   return date.toLocaleDateString('en-GB'); // e.g., DD/MM/YYYY

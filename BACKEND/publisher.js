@@ -1,7 +1,7 @@
 require('dotenv').config();
 const client = require('./modules/app/services/mqttClient');
 
-const wp_device_id = process.env.WP_DEVICE_ID || 'WPD077';
+const wp_device_id = process.env.WP_DEVICE_ID || 'wp02423';
 const modelName = process.env.WP_MODEL_NAME || 'Aqua Purifier';
 
 // Topics

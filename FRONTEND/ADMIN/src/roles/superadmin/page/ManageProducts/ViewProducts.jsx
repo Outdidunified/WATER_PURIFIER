@@ -1,4 +1,3 @@
-//ViewProducts
 import React from 'react';
 import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
@@ -17,6 +16,35 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
 
   const handleEditDeviceList = () => {
     navigate('/superadmin/EditProducts', { state: { dataItem: product } });
+  };
+
+  const renderPlansForDuration = (duration) => {
+    if (!duration.plans?.length) {
+      return <p className="text-muted mb-0">No plans configured.</p>;
+    }
+
+    return (
+      <div className="table-responsive mb-3">
+        <table className="table table-bordered table-striped mb-1">
+          <thead className="table-light">
+            <tr>
+              <th>Plan</th>
+              <th>Capacity</th>
+              <th>Price (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {duration.plans.map(plan => (
+              <tr key={plan.plans_id}>
+                <td>{plan.label || '-'}</td>
+                <td>{plan.label === 'unlimited' ? 'Unlimited' : (plan.capacity || '-')}</td>
+                <td>{plan.price ?? '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
   };
 
   return (
@@ -90,9 +118,6 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
                   ))}
                 </div>
 
-
-
-                {/* First row: Model Name, Status, Quantity, Created By, Connectivity */}
                 <div className="d-flex justify-content-between text-start mb-4 flex-wrap">
                   <div><strong>Model Name:</strong> {product.model_name || '-'}</div>
                   <div><strong>Status:</strong> {product.status ? 'Active' : 'Deactive'}</div>
@@ -100,19 +125,14 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
                   <div><strong>Created By:</strong> {product.createdby || '-'}</div>
                 </div>
                 <div className="mb-3 text-start">
-                  
                   <div><strong>Connectivity:</strong> {product.connectivity || '-'}</div>
                 </div>
-                {/* Second row: Created Date, Modified By, Modified Date */}
 
-
-                {/* Product Details */}
                 <div className="mb-3 text-start">
                   <strong>Product Details:</strong><br />
                   {product.product_details || '-'}
                 </div>
 
-                {/* Specifications PDF */}
                 <div className="mb-4 text-start">
                   <strong>Specifications:</strong>{' '}
                   {product.product_specifications ? (
@@ -122,57 +142,28 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
                   ) : '-'}
                 </div>
 
-                {/* Plans */}
-                <h5 className="mt-4 mb-3">Available Plans</h5>
-                {product.plans?.length > 0 ? (
-                  <div className="table-responsive mb-4">
-                    <table className="table table-bordered table-striped">
-                      <thead className="table-light">
-                        <tr>
-                          <th>Plan</th>
-                          <th>Capacity</th>
-                          <th>Price (₹)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {product.plans.map(plan => (
-                          <tr key={plan.plans_id}>
-                            <td>{plan.label}</td>
-                            <td>{plan.capacity}</td>
-                            <td>{plan.price}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : <p>No Plans Available</p>}
-
-                {/* Durations */}
-                <h5 className="mt-4 mb-3">Available Durations</h5>
+                <h5 className="mt-4 mb-3">Durations & Plans</h5>
                 {product.duration?.length > 0 ? (
-                  <div className="table-responsive mb-4">
-                    <table className="table table-bordered table-striped">
-                      <thead className="table-light">
-                        <tr>
-                          <th>Duration</th>
-                          <th>GST (%)</th>
-                          <th>Discount (%)</th>
-                          <th>Security Deposit (₹)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {product.duration.map(d => (
-                          <tr key={d.duration_id}>
-                            <td>{d.duration_time_limit}</td>
-                            <td>{d.gst}</td>
-                            <td>{d.discount}</td>
-                            <td>{d.security_deposit}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : <p>No Durations Available</p>}
+                  product.duration.map(duration => (
+                    <div className="card mb-3" key={duration.duration_id}>
+                      <div className="card-body">
+                        <div className="d-flex justify-content-between align-items-center">
+                          <h6 className="mb-0">{duration.duration_time_limit || 'Duration'}</h6>
+                        </div>
+
+                        <div className="d-flex flex-wrap text-start mt-3 mb-2">
+                          <div className="me-3"><strong>GST:</strong> {duration.gst ?? '-'}</div>
+                          <div className="me-3"><strong>Discount:</strong> {duration.discount ?? '-'}</div>
+                          <div className="me-3"><strong>Security Deposit:</strong> {duration.security_deposit ?? '-'}</div>
+                        </div>
+
+                        {renderPlansForDuration(duration)}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p>No durations available.</p>
+                )}
 
               </div>
               <div className="d-flex justify-content-between text-center mb-4 flex-wrap px-3">
@@ -199,7 +190,6 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
       </div>
     </div>
   );
-
 };
 
 export default ViewProducts;

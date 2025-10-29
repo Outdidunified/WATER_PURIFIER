@@ -27,6 +27,8 @@ import EditProducts from '../../roles/superadmin/page/ManageProducts/EditProduct
 import ViewProducts from '../../roles/superadmin/page/ManageProducts/ViewProducts';
 import ManageContact from '../../roles/superadmin/page/ManageContact/ManageContact';
 import ManageCallRequests from '../../roles/superadmin/page/ManageCallRequests/ManageCallRequests';
+import ManageLeaves from '../../roles/superadmin/page/ManageLeaves/ManageLeaves';
+import ViewLeaveDetails from '../../roles/superadmin/page/ManageLeaves/ViewLeaveDetails';
 import axiosInstance from '../../utils/utils';
 
 const SuperAdminApp = () => {

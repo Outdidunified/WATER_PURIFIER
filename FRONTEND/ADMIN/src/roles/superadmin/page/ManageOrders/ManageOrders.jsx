@@ -22,18 +22,116 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
     editOrderStatus,
     editLoading,
     modalStyle,
+    codConfirmationLoading,
     setEditOrderStatus,
     handleSearchInputChange,
     handleEditOrder,
     closeEditModal,
     updateOrderStatus,
+    resolveDeviceId,
+    confirmCodPayment,
   } = useManageOrders(userInfo);
 
   const [codConfirmation, setCodConfirmation] = useState({});
 
   useEffect(() => {
-    setCodConfirmation({});
+    const confirmationState = (filteredOrders || []).reduce((accumulator, order) => {
+      const stateKey = buildConfirmationStateKey(order);
+
+      if (!stateKey) {
+        return accumulator;
+      }
+
+      const paymentStatus = (order.paymentStatus || '').toLowerCase();
+
+      if (!isCodPaymentEligible(order)) {
+        accumulator[stateKey] = paymentStatus === 'completed';
+        return accumulator;
+      }
+
+      accumulator[stateKey] = Boolean(order.moneyReceived);
+      return accumulator;
+    }, {});
+
+    setCodConfirmation(confirmationState);
   }, [filteredOrders]);
+
+  const mapOrderToConfirmationKey = (order) => order.customOrderId || order._id;
+
+  const buildConfirmationStateKey = (order) => {
+    const keyBase = mapOrderToConfirmationKey(order);
+    return keyBase ? `${keyBase}-money` : null;
+  };
+
+  const isCodPaymentEligible = (order) => (order.paymentType || '').toUpperCase() === 'COD';
+
+  const handleMoneyReceivedToggle = async (order, isChecked) => {
+    console.log('handleMoneyReceivedToggle called:', { 
+      orderId: order._id, 
+      customOrderId: order.customOrderId,
+      isChecked,
+      paymentType: order.paymentType,
+      paymentStatus: order.paymentStatus,
+      moneyReceived: order.moneyReceived,
+      wp_device_id: order.wp_device_id,
+      order_snapshot_wp_device_id: order?.order_snapshot?.wp_device_id,
+      fullOrder: order
+    });
+
+    const stateKey = buildConfirmationStateKey(order);
+
+    if (!stateKey) {
+      console.error('Could not build confirmation state key');
+      return;
+    }
+
+    if (order.moneyReceived || (order.paymentStatus || '').toLowerCase() === 'completed') {
+      console.log('Order already marked as received or payment completed');
+      setCodConfirmation((previousState) => ({
+        ...previousState,
+        [stateKey]: true,
+      }));
+      return;
+    }
+
+    if (!isChecked) {
+      console.log('Checkbox unchecked, resetting confirmation state');
+      setCodConfirmation((previousState) => ({
+        ...previousState,
+        [stateKey]: false,
+      }));
+      return;
+    }
+
+    if (!isCodPaymentEligible(order)) {
+      console.log('Order is not COD payment eligible');
+      setCodConfirmation((previousState) => ({
+        ...previousState,
+        [stateKey]: false,
+      }));
+      return;
+    }
+
+    const deviceId = resolveDeviceId(order);
+    console.log('Resolved device ID:', deviceId);
+
+    const confirmationSucceeded = await confirmCodPayment({
+      wp_device_id: deviceId,
+      onSuccess: () => {
+        console.log('Payment confirmation succeeded, updating UI state');
+        setCodConfirmation((previousState) => ({
+          ...previousState,
+          [stateKey]: true,
+        }));
+      },
+    });
+
+    console.log('Payment confirmation result:', confirmationSucceeded);
+    setCodConfirmation((previousState) => ({
+      ...previousState,
+      [stateKey]: confirmationSucceeded,
+    }));
+  };
 
   const ORDER_STATUSES = ['Confirmed', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
   const getStatusBadgeClass = (status) => {
@@ -221,27 +319,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
 
                                   </td>
                                   <td className="align-middle">
-                                    <div className="d-flex flex-column align-items-center gap-2">
-                                      <span>{order.paymentStatus}</span>
-                                      {/* <div className="form-check">
-                                        <input
-                                          className="form-check-input"
-                                          type="checkbox"
-                                          id={`cod-confirm-${order._id}`}
-                                          disabled={(order.paymentType || '').toUpperCase() !== 'COD'}
-                                          checked={Boolean(codConfirmation[order._id])}
-                                          onChange={(event) => {
-                                            setCodConfirmation((previousState) => ({
-                                              ...previousState,
-                                              [order._id]: event.target.checked,
-                                            }));
-                                          }}
-                                        />
-                                        <label className="form-check-label" htmlFor={`cod-confirm-${order._id}`}>
-                                          COD Collected
-                                        </label>
-                                      </div> */}
-                                    </div>
+                                    <span>{order.paymentStatus}</span>
                                   </td>
                                   <td>{formatTimestamp(order.createdAt)}</td>
                                   <td>
@@ -261,18 +339,13 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                                         className="form-check-input"
                                         type="checkbox"
                                         id={`money-received-${order._id}`}
-                                        disabled={(order.paymentType || '').toUpperCase() !== 'COD'}
-                                        checked={Boolean(codConfirmation[`${order._id}-money`])}
+                                        disabled={!isCodPaymentEligible(order) || codConfirmationLoading}
+                                        checked={Boolean(codConfirmation[buildConfirmationStateKey(order)])}
                                         onChange={(event) => {
-                                          setCodConfirmation((previousState) => ({
-                                            ...previousState,
-                                            [`${order._id}-money`]: event.target.checked,
-                                          }));
+                                          const isChecked = event.target.checked;
+                                          handleMoneyReceivedToggle(order, isChecked);
                                         }}
                                       />
-                                      {/* <label className="form-check-label ms-2" htmlFor={`money-received-${order._id}`}>
-                                        Money Received
-                                      </label> */}
                                     </div>
                                   </td>
                                 </tr>

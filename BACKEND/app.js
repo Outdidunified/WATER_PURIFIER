@@ -10,7 +10,7 @@ const helmet = require('helmet');
 const logger = require('./middlewares/requestLogger');
 const { connectToDatabase } = require('./config/db');
 const cron = require('node-cron');
-const { autoAssignPendingTasks, autoAssignPendingInstallations, autoReassignOverdueTasks } = require('./modules/admin/services/autoAssignmentService');
+const { autoAssignPendingTasks, autoAssignPendingInstallations, autoReassignOverdueTasks, autoReassignRejectedTasksImmediate, autoReassignForwardedTasksImmediate, autoReassignTimeBasedTasks } = require('./modules/admin/services/autoAssignmentService');
 
 // Import Routes
 const adminRoutes = require('./routes/adminRoutes');
@@ -88,10 +88,32 @@ connectToDatabase()
         await autoAssignPendingInstallations();
 
         // Schedule auto-assignment of pending tasks every 30 seconds
-        cron.schedule('*/30 * * * * *', () => {
-            console.log('Running auto-assign pending tasks...');
-            autoAssignPendingTasks();
-            autoReassignOverdueTasks();
+        cron.schedule('*/30 * * * * *', async () => {
+            console.log('Running auto-assignment cycle...');
+
+            try {
+                console.log('  → autoAssignPendingTasks');
+                await autoAssignPendingTasks();
+
+                console.log('  → autoAssignPendingInstallations');
+                await autoAssignPendingInstallations();
+
+                console.log('  → autoReassignTimeBasedTasks');
+                await autoReassignTimeBasedTasks();
+
+                console.log('  → autoReassignOverdueTasks');
+                await autoReassignOverdueTasks();
+
+                console.log('  → autoReassignRejectedTasksImmediate');
+                await autoReassignRejectedTasksImmediate();
+
+                console.log('  → autoReassignForwardedTasksImmediate');
+                await autoReassignForwardedTasksImmediate();
+
+                console.log('✅ Completed auto-assignment cycle');
+            } catch (cronError) {
+                console.error('❌ Auto-assignment cycle failed:', cronError);
+            }
         });
     })
     .catch(err => {

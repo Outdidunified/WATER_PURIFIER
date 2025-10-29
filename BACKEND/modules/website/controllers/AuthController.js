@@ -194,6 +194,14 @@ exports.login = async (req, res) => {
       .findOne({ email, role_id: Number(role_id) });
 
     if (existingUser) {
+      // 🚫 Prevent deactivated users from logging in
+      if (existingUser.status === false) {
+        return res.status(403).json({
+          error: true,
+          message: 'Your account has been deactivated. Login not allowed.',
+        });
+      }
+
       //  Check and reset expired subscription if needed
       await checkAndResetSubscription(db, existingUser);
 
@@ -213,6 +221,7 @@ exports.login = async (req, res) => {
           user_id: existingUser.user_id,
           role_id: existingUser.role_id,
           email: existingUser.email,
+          status: existingUser.status,
         },
       });
     } else {

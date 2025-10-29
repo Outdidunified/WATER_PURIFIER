@@ -1,0 +1,158 @@
+/* Timeline Styling */
+.timeline-wrapper {
+  position: relative;
+}
+
+.timeline {
+  position: relative;
+  padding: 20px 0;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 30px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e9ecef;
+}
+
+.timeline-item {
+  position: relative;
+  padding-left: 80px;
+  margin-bottom: 30px;
+}
+
+.timeline-item:last-child {
+  margin-bottom: 0;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: 10px;
+  top: 5px;
+  width: 40px;
+  height: 40px;
+  background: #f0f0f0;
+  border: 3px solid #ddd;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.timeline-item--reached .timeline-marker {
+  background: #28a745;
+  border-color: #28a745;
+  box-shadow: 0 0 0 4px rgba(40, 167, 69, 0.1);
+}
+
+.timeline-item--active .timeline-marker {
+  background: #007bff;
+  border-color: #007bff;
+  box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.1);
+  width: 50px;
+  height: 50px;
+  left: 5px;
+  top: 0;
+}
+
+.timeline-content {
+  background: #f8f9fa;
+  border-left: 3px solid #dee2e6;
+  padding: 15px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.timeline-item--reached .timeline-content {
+  background: #f0f8f5;
+  border-left-color: #28a745;
+}
+
+.timeline-item--active .timeline-content {
+  background: #f0f7ff;
+  border-left-color: #007bff;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+}
+
+.timeline-content h6 {
+  color: #333;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.timeline-content .badge {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.timeline-update {
+  background: #fff;
+  border: 1px solid #dee2e6 !important;
+  border-radius: 4px;
+  padding: 12px !important;
+  margin-bottom: 10px !important;
+}
+
+.timeline-update:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.timeline-update .font-weight-bold {
+  color: #495057;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.timeline-update .text-muted {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.timeline-update p {
+  margin-top: 8px;
+  margin-bottom: 0;
+  color: #495057;
+  font-size: 14px;
+}
+
+/* Status Badge Styling */
+.badge-outline-primary {
+  background-color: transparent;
+  border: 1px solid #007bff;
+  color: #007bff;
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .timeline {
+    padding: 10px 0;
+  }
+
+  .timeline::before {
+    left: 15px;
+  }
+
+  .timeline-item {
+    padding-left: 50px;
+    margin-bottom: 20px;
+  }
+
+  .timeline-marker {
+    left: -5px;
+    width: 30px;
+    height: 30px;
+    border-width: 2px;
+  }
+
+  .timeline-item--active .timeline-marker {
+    width: 40px;
+    height: 40px;
+    left: -10px;
+  }
+
+  .timeline-content {
+    padding: 12px;
+  }
+}

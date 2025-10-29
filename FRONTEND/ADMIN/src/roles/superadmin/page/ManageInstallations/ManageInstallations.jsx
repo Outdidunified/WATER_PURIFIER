@@ -171,7 +171,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                         <thead style={{ textAlign: 'center', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#fff' }}>
                           <tr>
                               <th>Sl.No</th>
-        <th>Order ID</th>
+        <th>Task ID</th>
         <th>Model</th>
         <th>Device ID</th>
         <th>Customer Name</th>
@@ -195,11 +195,13 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                               <td colSpan="10">Error: {error}</td>
                             </tr>
                           ) : installationTasks.length > 0 ? (
-                            installationTasks.map((item, index) => (
+                            installationTasks
+                              .filter((item) => item.task_id)
+                              .map((item, index) => (
                              
    <tr key={item._id || index}>
             <td>{index + 1}</td>
-            <td>{item.customOrderId || '-'}</td>
+            <td>{item.task_id || '-'}</td>
             <td >{item.modelName || '-'}</td>
             <td>{item.wp_device_id || '-'}</td>
             <td>{item.deliveryAddress?.name || '-'}</td>
@@ -251,7 +253,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                                   </button>
                                 </td>
                               </tr>
-                            ))
+                              ))
                           ) : (
                             <tr>
                               <td colSpan="10">No installation records found.</td>

@@ -8,6 +8,10 @@ import ReusableButton from '../../../../utils/ReusableButton';
 import InputField from '../../../../utils/InputField';
 import useAddProducts from '../../hooks/ManageProducts/AddProductsHooks';
 
+const planOptions = ['solo', 'couple', 'family', 'unlimited'];
+const durationOptions = ['28 days', '60 days', '90 days', '180 days', '360 days'];
+const connectivityOptions = ['Bluetooth', 'Wifi', '4G', 'Ethernet'];
+
 const AddProducts = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
 
@@ -18,35 +22,123 @@ const AddProducts = ({ userInfo, handleLogout }) => {
     productDetails,
     productSpecifications,
     mainImage,
-    subImg1,
-    subImg2,
-    subImg3,
-    plans,
+    subImages,
+    connectivity,
     durations,
+    errorMessage,
     setModelName,
     setWpDeviceQuantity,
     setProductDetails,
     setProductSpecifications,
-    setMainImage, handleAddProduct,
-    setSubImg1, handleSubImageChange,
-    setSubImg2, handlePlanChange,
-    setSubImg3,
-    subImages,
-    connectivity,
+    setMainImage,
+    handleSubImageChange,
     setConnectivity,
-    addPlan,
-    removePlan,
-    updatePlan,
     addDuration,
     removeDuration,
     handleDurationChange,
-    handleSubmit,
-    errorMessage
+    addPlan,
+    removePlan,
+    handlePlanChange,
+    handleAddProduct,
+    removeSubImage,
   } = useAddProducts(userInfo);
-
 
   const backManageDevice = () => {
     navigate('/superadmin/ManageProducts');
+  };
+
+  const handleConnectivityAdd = (value) => {
+    const normalizedValue = typeof value === 'string' ? value.trim() : '';
+    if (!normalizedValue || !connectivityOptions.includes(normalizedValue)) {
+      return;
+    }
+    if (!connectivity.includes(normalizedValue)) {
+      setConnectivity(prev => [...prev, normalizedValue]);
+    }
+  };
+
+  const renderPlanControls = (duration, durationIndex) => {
+    const usedOptions = duration.plans.map(plan => plan.label);
+
+    return (
+      <div className="card border" style={{ marginTop: '15px' }}>
+        <div className="card-body">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h6 className="mb-0">Plans for {duration.duration_time_limit || 'Selected Duration'}</h6>
+            <button
+              type="button"
+              className="btn btn-outline-primary btn-sm"
+              onClick={() => addPlan(durationIndex)}
+              disabled={duration.plans.length >= planOptions.length}
+            >
+              Add Plan
+            </button>
+          </div>
+
+          {duration.plans.map((plan, planIndex) => {
+            const availableOptions = planOptions.filter(
+              option => option === plan.label || !usedOptions.includes(option)
+            );
+
+            return (
+              <div className="row align-items-end mb-3" key={plan.plans_id || `${durationIndex}-${planIndex}`}>
+                <div className="col-md-4">
+                  <label className="input-label">Plan Type</label>
+                  <select
+                    className="form-control"
+                    value={plan.label}
+                    onChange={(e) => handlePlanChange(durationIndex, planIndex, 'label', e.target.value)}
+                    required
+                  >
+                    <option value="">Select Plan</option>
+                    {availableOptions.map(option => (
+                      <option key={option} value={option}>
+                        {option.charAt(0).toUpperCase() + option.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {plan.label !== 'unlimited' && (
+                  <div className="col-md-3">
+                    <label className="input-label">Capacity</label>
+                    <InputField
+                      placeholder="Capacity"
+                      value={plan.capacity}
+                      onChange={(e) => handlePlanChange(durationIndex, planIndex, 'capacity', e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+
+                <div className="col-md-3">
+                  <label className="input-label">Price (₹)</label>
+                  <InputField
+                    type="text"
+                    placeholder="Price"
+                    value={plan.price}
+                    onChange={(e) => handlePlanChange(durationIndex, planIndex, 'price', e.target.value)}
+                    required
+                  />
+                </div>
+
+                {duration.plans.length > 1 && (
+                  <div className="col-md-2 d-flex justify-content-end">
+                    <button
+                      type="button"
+                      className="btn btn-outline-danger btn-sm"
+                      onClick={() => removePlan(durationIndex, planIndex)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -74,7 +166,7 @@ const AddProducts = ({ userInfo, handleLogout }) => {
                         placeholder="Model Name"
                         value={modelName}
                         onChange={(e) => {
-const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
+                          const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
                           setModelName(value);
                         }}
                         maxLength={100}
@@ -132,14 +224,10 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
                             backgroundColor: 'transparent'
                           }}
                           value=""
-                          onChange={(e) => {
-                            if (e.target.value && !connectivity.includes(e.target.value)) {
-                              setConnectivity(prev => [...prev, e.target.value]);
-                            }
-                          }}
+                          onChange={(e) => handleConnectivityAdd(e.target.value)}
                         >
                           <option value="">Select Connectivity</option>
-                          {['Bluetooth', 'Wifi', '4G', 'Ethernet']
+                          {connectivityOptions
                             .filter(option => !connectivity.includes(option))
                             .map(option => (
                               <option key={option} value={option}>{option}</option>
@@ -155,8 +243,7 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
                       <label className="input-label">Product Details</label>
                       <textarea
                         className="form-control"
-                              style={{ minHeight: '130px' }}
-
+                        style={{ minHeight: '130px' }}
                         value={productDetails}
                         onChange={(e) => setProductDetails(e.target.value.trimStart())}
                         required
@@ -171,6 +258,7 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
                         className="form-control"
                         onChange={(e) => setProductSpecifications(e.target.files[0])}
                       />
+                      <small className="form-text text-muted">Upload PDF specifications (optional)</small>
                     </div>
                   </div>
 
@@ -187,358 +275,120 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
                       />
                     </div>
 
-                    <div className="col-md-6 mb-3">
-                      <label className="input-label">Sub Image 1</label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="form-control"
-                        onChange={(e) => handleSubImageChange(0, e.target.files[0])}
-                        required
-                      />
-                    </div>
-
-                    <div className="col-md-6 mb-3">
-                      <label className="input-label">Sub Image 2</label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="form-control"
-                        onChange={(e) => handleSubImageChange(1, e.target.files[0])}
-                        required
-                      />
-                    </div>
-
-                    <div className="col-md-6 mb-3">
-                      <label className="input-label">Sub Image 3</label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="form-control"
-                        onChange={(e) => handleSubImageChange(2, e.target.files[0])}
-                        required
-                      />
-                    </div>
+                    {[0, 1, 2, 3].map((idx) => (
+                      <div className="col-md-6 mb-3" key={idx}>
+                        <label className="input-label">{`Sub Image ${idx + 1}`}</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="form-control"
+                          onChange={(e) => handleSubImageChange(idx, e.target.files[0])}
+                        />
+                        {subImages[idx] && (
+                          <button
+                            type="button"
+                            className="btn btn-link text-danger p-0"
+                            onClick={() => removeSubImage(idx)}
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
 
-                 {/* Plans Section */}
-{/* Plans Section */}
-{/* <div className="mb-4">
-  <h5 className="card-title">Plans</h5>
-  {plans.map((plan, index) => (
-    <div className="row mb-3" key={index}>
-      <div className="col-md-4">
-        <InputField
-          placeholder="Plan Label"
-          value={plan.label}
-          onChange={(e) =>
-            handlePlanChange(index, 'label', e.target.value.replace(/[^a-zA-Z0-9 ]/g, ''))
-          }
-          required
-          maxLength={15}
-        />
-      </div>
-      <div className="col-md-4">
-        <InputField
-          placeholder="Capacity"
-          value={plan.capacity}
-          onChange={(e) => handlePlanChange(index, 'capacity', e.target.value)}
-          required
-          maxLength={15}
-        />
-      </div>
-      <div className="col-md-3">
-      <InputField
-  type="text"
-  placeholder="Price"
-  value={plan.price || ''}
-  maxLength={10}
-  title="Enter a valid price (up to 2 decimal places)."
-  onChange={(e) => {
-    let val = e.target.value.replace(/[^0-9.]/g, '');
+                  {/* Durations and Plans */}
+                  <div className="mb-4">
+                    <h5 className="card-title">Durations & Plans</h5>
+                    {durations.map((duration, index) => {
+                      const normalizeDurationValue = (value) =>
+                        typeof value === 'string' ? value.trim().toLowerCase() : '';
+                      const selectedDurationValues = durations
+                        .filter((_, idx) => idx !== index)
+                        .map((d) => normalizeDurationValue(d.duration_time_limit))
+                        .filter(Boolean);
+                      const currentDurationValue = normalizeDurationValue(duration.duration_time_limit);
+                      const availableDurationOptions = durationOptions.filter((option) => {
+                        const normalizedOption = normalizeDurationValue(option);
+                        return (
+                          normalizedOption === currentDurationValue ||
+                          !selectedDurationValues.includes(normalizedOption)
+                        );
+                      });
 
-    // Prevent more than one decimal point
-    const dotCount = (val.match(/\./g) || []).length;
-    if (dotCount > 1) return;
+                      return (
+                        <div className="card mb-3" key={duration.duration_id || index}>
+                          <div className="card-body">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                              <h5 className="mb-0">Duration {index + 1}</h5>
+                              {durations.length > 1 && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-danger btn-sm"
+                                  onClick={() => removeDuration(index)}
+                                >
+                                  Remove Duration
+                                </button>
+                              )}
+                            </div>
 
-    // Optional: Limit to 2 decimal places
-    if (val.includes('.')) {
-      const [intPart, decimalPart] = val.split('.');
-      if (decimalPart.length > 2) return;
-    }
+                            <div className="row mb-3">
+                              <div className="col-md-3">
+                                <label className="input-label">Duration</label>
+                                <select
+                                  className="form-control"
+                                  value={duration.duration_time_limit}
+                                  onChange={(e) => handleDurationChange(index, 'duration_time_limit', e.target.value)}
+                                  required
+                                >
+                                  <option value="">Select Duration</option>
+                                  {availableDurationOptions.map(option => (
+                                    <option key={option} value={option}>{option}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="col-md-3">
+                                <label className="input-label">GST (%)</label>
+                                <InputField
+                                  type="text"
+                                  placeholder="GST (%)"
+                                  value={duration.gst}
+                                  onChange={(e) => handleDurationChange(index, 'gst', e.target.value)}
+                                  required
+                                />
+                              </div>
+                              <div className="col-md-3">
+                                <label className="input-label">Discount (%)</label>
+                                <InputField
+                                  type="text"
+                                  placeholder="Discount (%)"
+                                  value={duration.discount}
+                                  onChange={(e) => handleDurationChange(index, 'discount', e.target.value)}
+                                  required
+                                />
+                              </div>
+                              <div className="col-md-3">
+                                <label className="input-label">Security Deposit</label>
+                                <InputField
+                                  type="text"
+                                  placeholder="Security Deposit"
+                                  value={duration.security_deposit}
+                                  onChange={(e) => handleDurationChange(index, 'security_deposit', e.target.value)}
+                                  required
+                                />
+                              </div>
+                            </div>
 
-    // Optional: Prevent leading zeros before integer part (e.g., 00123)
-    val = val.replace(/^0+(\d)/, '$1');
+                            {renderPlanControls(duration, index)}
+                          </div>
+                        </div>
+                      );
+                    })}
 
-    handlePlanChange(index, 'price', val);
-  }}
-  required
-/>
-
-      </div>
-      {index !== 0 && (
-        <div className="col-md-1 d-flex align-items-center">
-          <button
-            type="button"
-            className="btn btn-outline-danger btn-sm"
-            onClick={() => removePlan(index)}
-          >
-            Remove
-          </button>
-        </div>
-      )}
-    </div>
-  ))}
-  <button
-    type="button"
-    className="btn btn-outline-primary btn-sm"
-    onClick={addPlan}
-  >
-    Add Plan
-  </button>
-</div> */}
-
-{/* Plans Section */}
-<div className="mb-4">
-  <h5 className="card-title">Plans</h5>
-  {plans.map((plan, index) => {
-    const allOptions = ["solo", "couple", "family", "unlimited"];
-    const usedOptions = plans.map((p) => p.label);
-    const availableOptions = allOptions.filter(
-      (opt) => opt === plan.label || !usedOptions.includes(opt)
-    );
-
-    return (
-      <div className="row mb-3" key={index}>
-        {/* Plan Type Dropdown */}
-        <div className="col-md-4">
-          <select
-            className="form-control"
-            value={plan.label}
-            onChange={(e) => {
-              handlePlanChange(index, "label", e.target.value);
-
-              // Reset capacity if switching to unlimited
-              if (e.target.value === "unlimited") {
-                handlePlanChange(index, "capacity", "");
-              }
-            }}
-            required
-          >
-            <option value="">Select Plan</option>
-            {availableOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt.charAt(0).toUpperCase() + opt.slice(1)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Capacity - Hide if Unlimited */}
-        {plan.label !== "unlimited" && (
-          <div className="col-md-4">
-            <InputField
-              placeholder="Capacity"
-              value={plan.capacity}
-              onChange={(e) => {
-                const numericValue = e.target.value.replace(/[^0-9]/g, "");
-                handlePlanChange(index, "capacity", numericValue);
-              }}
-              required
-              maxLength={15}
-            />
-          </div>
-        )}
-
-        {/* Price */}
-        <div className="col-md-3">
-          <InputField
-            type="text"
-            placeholder="Price Per 28 Days"
-            value={plan.price || ""}
-            maxLength={10}
-            title="Enter a valid price (up to 2 decimal places)."
-            onChange={(e) => {
-              let val = e.target.value.replace(/[^0-9.]/g, "");
-
-              // Prevent multiple decimal points
-              const dotCount = (val.match(/\./g) || []).length;
-              if (dotCount > 1) return;
-
-              // Limit to 2 decimal places
-              if (val.includes(".")) {
-                const [intPart, decimalPart] = val.split(".");
-                if (decimalPart.length > 2) return;
-              }
-
-              // Prevent leading zeros
-              val = val.replace(/^0+(\d)/, "$1");
-
-              handlePlanChange(index, "price", val);
-            }}
-            required
-          />
-        </div>
-
-        {/* Remove Button */}
-        {index !== 0 && (
-          <div className="col-md-1 d-flex align-items-center">
-            <button
-              type="button"
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => removePlan(index)}
-            >
-              Remove
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  })}
-
-  {/* Add Plan Button */}
-  <button
-    type="button"
-    className="btn btn-outline-primary btn-sm"
-    onClick={addPlan}
-    disabled={plans.length >= 4} // prevent adding more than 4 (since only 4 unique options exist)
-  >
-    Add Plan
-  </button>
-</div>
-
-
-{/* Durations Section */}
-<div className="mb-4">
-  <h5 className="card-title">Durations</h5>
-  {durations.map((duration, index) => (
-    <div className="row mb-3" key={index}>
-      <div className="col-md-3">
-     <select
-  className="form-control"
-  value={duration.duration_time_limit}
-  onChange={(e) => handleDurationChange(index, 'duration_time_limit', e.target.value)}
-  required
->
-  <option value="">Select Duration</option>
-  <option value="28 days">28 days</option>
-  <option value="60 days">60 days</option>
-  <option value="90 days">90 days</option>
-  <option value="180 days">180 days</option>
-  <option value="360 days">360 days</option>
-</select>
-
-
-      </div>
-      <div className="col-md-3">
-       <InputField
-  type="text"
-  placeholder="GST (%)"
-  value={duration.gst}
-  maxLength={5} // e.g., 100.00 = 6 characters
-  title="Enter GST percentage (0 to 100, up to 2 decimal places)"
-  onChange={(e) => {
-    let val = e.target.value.replace(/[^0-9.]/g, '');
-
-    // Allow only one decimal point
-    if ((val.match(/\./g) || []).length > 1) return;
-
-    // Limit to 2 decimal places
-    if (val.includes('.')) {
-      const [intPart, decimalPart] = val.split('.');
-      if (decimalPart.length > 2) return;
-    }
-
-    // Prevent GST above 100
-    if (parseFloat(val) > 100) return;
-
-    handleDurationChange(index, 'gst', val);
-  }}
-  required
-/>
-
-      </div>
-      <div className="col-md-3">
-        <InputField
-  type="text"
-  placeholder="Discount (%)"
-  value={duration.discount}
-  maxLength={5} // e.g., 100.00 = 6 chars
-  title="Enter discount percentage (0 to 100, up to 2 decimal places)"
-  onChange={(e) => {
-    let val = e.target.value.replace(/[^0-9.]/g, '');
-
-    // Allow only one decimal point
-    if ((val.match(/\./g) || []).length > 1) return;
-
-    // Limit to 2 decimal places
-    if (val.includes('.')) {
-      const [intPart, decimalPart] = val.split('.');
-      if (decimalPart.length > 2) return;
-    }
-
-    // Prevent discount above 100
-    if (parseFloat(val) > 100) return;
-
-    handleDurationChange(index, 'discount', val);
-  }}
-  required
-/>
-
-      </div>
-      <div className="col-md-3">
-        <InputField
-  type="text"
-  placeholder="Security Deposit"
-  value={duration.security_deposit}
-  maxLength={10} // Adjust as needed
-  title="Enter a positive amount (up to 2 decimal places)"
-  onChange={(e) => {
-    let val = e.target.value.replace(/[^0-9.]/g, '');
-
-    // Allow only one decimal point
-    if ((val.match(/\./g) || []).length > 1) return;
-
-    // Limit to 2 decimal places
-    if (val.includes('.')) {
-      const [intPart, decimalPart] = val.split('.');
-      if (decimalPart.length > 2) return;
-    }
-
-    // Avoid leading multiple zeroes
-    if (/^0\d+/.test(val)) return;
-
-    // Prevent negative values (only positive numbers allowed)
-    if (val === '' || parseFloat(val) >= 0) {
-      handleDurationChange(index, 'security_deposit', val);
-    }
-  }}
-  required
-/>
-
-      </div>
-      {index !== 0 && (
-        <div className="col-md-12 d-flex justify-content-end mt-2">
-          <button
-            type="button"
-            className="btn btn-outline-danger btn-sm"
-            onClick={() => removeDuration(index)}
-          >
-            Remove
-          </button>
-        </div>
-      )}
-    </div>
-  ))}
-  <button
-    type="button"
-    className="btn btn-outline-primary btn-sm"
-    onClick={addDuration}
-  >
-    Add Duration
-  </button>
-</div>
-
+                    <button type="button" className="btn btn-outline-primary btn-sm" onClick={addDuration}>
+                      Add Duration
+                    </button>
+                  </div>
 
                   {/* Error Message */}
                   {errorMessage && <div className="text-danger mt-3">{errorMessage}</div>}
@@ -550,8 +400,6 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
                     </ReusableButton>
                   </div>
                 </form>
-
-
               </div>
             </div>
           </div>
@@ -560,7 +408,6 @@ const value = e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, '');
       </div>
     </div>
   );
-
 };
 
 export default AddProducts;

@@ -7,6 +7,7 @@ const verifyToken = require('../middlewares/dashboardAuthMiddleware');
 const flatted = require('flatted');
 const { ObjectId } = require('mongodb');
 const { upload } = require('../middlewares/imgMiddleware');
+const leaveRequestsRoute = require('./leaveRequestsRoute');
 
 // 1.Login
 // Route to check login credentials
@@ -77,6 +78,8 @@ router.post('/FetchOrders', verifyToken, Controller.FetchOrders);
 router.post('/FetchOrdersByDistrict', verifyToken, Controller.FetchOrdersByDistrict);
 // Route to FetchOrdersByUserId
 router.post('/FetchOrdersByUserId',  Controller.FetchOrdersByUserId);
+// Route to confirm COD payments manually
+router.post('/ConfirmCodPayment', verifyToken, Controller.ConfirmCodPayment);
 // Route to FetchEndUserDevices
 router.post('/FetchEndUserDevices', verifyToken, Controller.FetchEndUserDevices);
 // Route to FetchTechnicianTasksByUserId
@@ -155,5 +158,8 @@ router.get('/services/by-district', verifyToken, Controller.GetServicesByDistric
 router.get('/analytics',  Controller.GetAnalytics);
 // Analytics by district
 router.get('/analytics/by-district',  Controller.GetAnalyticsByDistrict);
+
+// 11. Leave Requests Management
+router.use('/', leaveRequestsRoute);
 
 module.exports = router;

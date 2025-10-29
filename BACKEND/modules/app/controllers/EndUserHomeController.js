@@ -16,6 +16,7 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
     const db = await connectToDatabase();
     const usersCollection = db.collection('users');
     const ordersCollection = db.collection('orders');
+    const serviceRecordsCollection = db.collection('service_records');
 
     const user = await usersCollection.findOne({
       user_id: parseInt(user_id),
@@ -74,10 +75,24 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
       });
     }
 
+    // ✅ Add installation_status from service_records for each order
+    const ordersWithStatus = await Promise.all(
+      orders.map(async (order) => {
+        const serviceRecord = await serviceRecordsCollection.findOne({
+          wp_device_id: order.wp_device_id
+        });
+        
+        return {
+          ...order,
+          installation_status: serviceRecord?.task_status || null
+        };
+      })
+    );
+
     return res.status(200).json({
       error: false,
-      message: `Found ${orders.length} order(s) for user`,
-      data: orders
+      message: `Found ${ordersWithStatus.length} order(s) for user`,
+      data: ordersWithStatus
     });
   } catch (error) {
     console.error('Error in getActiveSubscriptionDetails:', error);

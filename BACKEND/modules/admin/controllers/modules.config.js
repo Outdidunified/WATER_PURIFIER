@@ -10,5 +10,6 @@ module.exports = [
   { module: "manage_installations", actions: ["create", "view", "update", "delete"] },
   { module: "manage_contact", actions: ["create", "view", "update", "delete"] },
   { module: "manage_call_requests", actions: ["create", "view", "update", "delete"] },
+  { module: "manage_leaves", actions: ["view", "update"] },
   { module: "profile", actions: ["view", "update"] },
 ];

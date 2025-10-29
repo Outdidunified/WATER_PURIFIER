@@ -7,24 +7,39 @@ import {
   showSuccessAlert
 } from '../../../../utils/alert';
 
+const generateUniqueId = () => Date.now() + Math.floor(Math.random() * 1000);
+
+const createEmptyPlan = () => ({
+  plans_id: generateUniqueId(),
+  label: '',
+  capacity: '',
+  price: ''
+});
+
+const createEmptyDuration = () => ({
+  duration_id: generateUniqueId(),
+  duration_time_limit: '',
+  gst: '',
+  discount: '',
+  security_deposit: '',
+  plans: [createEmptyPlan()]
+});
+
 const useEditProducts = (userInfo) => {
   const navigate = useNavigate();
   const location = useLocation();
   const fetchDataCalled = useRef(false);
-  const originalDataRef = useRef(null); // Store original data for comparison
+  const originalDataRef = useRef(null);
 
   const [modelId, setModelId] = useState(null);
   const [modelName, setModelName] = useState('');
   const [productDetails, setProductDetails] = useState('');
-  const [productSpecifications, setProductSpecifications] = useState(null); // Now storing PDF File
+  const [productSpecifications, setProductSpecifications] = useState(null);
   const [mainImage, setMainImage] = useState(null);
   const [subImages, setSubImages] = useState([null, null, null, null]);
   const [wpDeviceQuantity, setWpDeviceQuantity] = useState(0);
   const [connectivity, setConnectivity] = useState([]);
-  const [plans, setPlans] = useState([{ plans_id: 1, label: '', capacity: '', price: '' }]);
-  const [durations, setDurations] = useState([
-    { duration_id: 1, duration_time_limit: '', gst: '', discount: '', security_deposit: '' },
-  ]);
+  const [durations, setDurations] = useState([createEmptyDuration()]);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -49,11 +64,19 @@ const useEditProducts = (userInfo) => {
       setProductSpecifications(data.product_specifications || '');
       setWpDeviceQuantity(data.wp_device_quantity || 0);
 
-      // Parse connectivity - could be string "Wifi, Bluetooth" or array
       const connectivityData = data.connectivity || '';
-      const connectivityArray = typeof connectivityData === 'string'
-        ? connectivityData.split(',').map(s => s.trim()).filter(Boolean)
-        : Array.isArray(connectivityData) ? connectivityData : [];
+      const connectivityArray = Array.from(
+        new Set(
+          (typeof connectivityData === 'string'
+            ? connectivityData.split(',')
+            : Array.isArray(connectivityData)
+            ? connectivityData
+            : []
+          )
+            .map((s) => (typeof s === 'string' ? s.trim() : ''))
+            .filter((s) => s)
+        )
+      );
       setConnectivity(connectivityArray);
 
       const statusValue =
@@ -62,27 +85,22 @@ const useEditProducts = (userInfo) => {
           : 'false';
       setStatus(statusValue);
 
-      const parsedPlans = data.plans?.length > 0
-        ? data.plans.map((p, i) => ({
-            ...p,
-            plans_id: i + 1,
-            label: p.label?.toLowerCase() || ''
-          }))
-        : [{ plans_id: 1, label: '', capacity: '', price: '' }];
-      setPlans(parsedPlans);
-
       const parsedDurations = data.duration?.length > 0
-        ? data.duration.map((d, i) => ({
-            ...d,
-            duration_id: i + 1
+        ? data.duration.map((d) => ({
+            duration_id: d.duration_id ?? generateUniqueId(),
+            duration_time_limit: typeof d.duration_time_limit === 'string' ? d.duration_time_limit.trim() : (d.duration_time_limit || ''),
+            gst: d.gst?.toString() || '',
+            discount: d.discount?.toString() || '',
+            security_deposit: d.security_deposit?.toString() || '',
+            plans: (d.plans || []).map(p => ({
+              plans_id: p.plans_id ?? generateUniqueId(),
+              label: p.label?.toLowerCase() || '',
+              capacity: p.capacity?.toString() || '',
+              price: p.price?.toString() || ''
+            })) || [createEmptyPlan()]
           }))
-        : [{
-            duration_id: 1,
-            duration_time_limit: '',
-            gst: '',
-            discount: '',
-            security_deposit: ''
-          }];
+        : [createEmptyDuration()];
+
       setDurations(parsedDurations);
 
       const subImgs = [
@@ -94,7 +112,6 @@ const useEditProducts = (userInfo) => {
       setMainImage(data.main_img || null);
       setSubImages(subImgs);
 
-      // Store original data for change detection
       originalDataRef.current = {
         modelName: data.model_name || '',
         productDetails: data.product_details || '',
@@ -103,17 +120,7 @@ const useEditProducts = (userInfo) => {
         connectivity: connectivityArray,
         mainImage: data.main_img || null,
         subImages: subImgs,
-        plans: parsedPlans.map(p => ({
-          label: p.label,
-          capacity: p.capacity,
-          price: Number(p.price)
-        })),
-        durations: parsedDurations.map(d => ({
-          duration_time_limit: d.duration_time_limit,
-          gst: Number(d.gst),
-          discount: Number(d.discount),
-          security_deposit: Number(d.security_deposit)
-        })),
+        durations: parsedDurations,
         status: statusValue
       };
     }
@@ -121,14 +128,12 @@ const useEditProducts = (userInfo) => {
     fetchDataCalled.current = true;
   }, [location]);
 
-
-
   const backToManagePage = () => navigate('/superadmin/ManageProducts');
 
   const addSubImage = () => {
     const nonNullImages = subImages.filter(img => img !== null);
     if (nonNullImages.length >= 4) {
-      showErrorAlert("Limit reached", "You can add max 4 sub images.");
+      showErrorAlert('Limit reached', 'You can add max 4 sub images.');
       return;
     }
     setSubImages([...subImages, null]);
@@ -136,46 +141,16 @@ const useEditProducts = (userInfo) => {
 
   const removeSubImage = (index) => {
     showConfirmationAlert({
-      title: "Are you sure?",
-      text: "Do you want to remove this sub image?",
-      confirmButtonText: "Yes, remove it!",
-      cancelButtonText: "No, keep it",
+      title: 'Are you sure?',
+      text: 'Do you want to remove this sub image?',
+      confirmButtonText: 'Yes, remove it!',
+      cancelButtonText: 'No, keep it',
     }).then((result) => {
       if (result.isConfirmed) {
         const updated = [...subImages];
         updated[index] = null;
         setSubImages(updated);
-        showSuccessAlert("Image removed");
-      }
-    });
-  };
-
-  const removeDuration = (index) => {
-    showConfirmationAlert({
-      title: "Are you sure?",
-      text: "Do you want to remove this duration?",
-      confirmButtonText: "Yes, remove it!",
-      cancelButtonText: "No, keep it",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const updated = durations.filter((_, i) => i !== index);
-        setDurations(updated);
-        showSuccessAlert("Duration removed");
-      }
-    });
-  };
-
-  const removePlan = (index) => {
-    showConfirmationAlert({
-      title: "Are you sure?",
-      text: "Do you want to remove this plan?",
-      confirmButtonText: "Yes, remove it!",
-      cancelButtonText: "No, keep it",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const updated = plans.filter((_, i) => i !== index);
-        setPlans(updated);
-        showSuccessAlert("Plan removed");
+        showSuccessAlert('Image removed');
       }
     });
   };
@@ -186,132 +161,257 @@ const useEditProducts = (userInfo) => {
     setSubImages(updated);
   };
 
-  const addPlan = () => {
-    setPlans([...plans, { plans_id: Date.now(), label: '', capacity: '', price: '' }]);
+  const addDuration = () => {
+    setDurations(prev => [...prev, createEmptyDuration()]);
   };
 
-  const handlePlanChange = (index, field, rawValue) => {
-    const value = field === 'price'
-      ? rawValue.replace(/[^0-9.]/g, '') // allow only digits and decimal
-      : rawValue;
+  const removeDuration = (index) => {
+    if (durations.length === 1) {
+      showErrorAlert('Not allowed', 'At least one duration is required.');
+      return;
+    }
 
-    setPlans(prevPlans =>
-      prevPlans.map((plan, i) => {
-        if (i !== index) return plan;
+    showConfirmationAlert({
+      title: 'Are you sure?',
+      text: 'Do you want to remove this duration?',
+      confirmButtonText: 'Yes, remove it!',
+      cancelButtonText: 'No, keep it',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setDurations(prev => prev.filter((_, i) => i !== index));
+        showSuccessAlert('Duration removed');
+      }
+    });
+  };
 
-        if (field === 'price' && value !== '' && !/^[0-9]*\.?[0-9]*$/.test(value)) {
-          return plan;
+  const addPlan = (durationIndex) => {
+    setDurations(prevDurations => prevDurations.map((duration, idx) => {
+      if (idx !== durationIndex) return duration;
+
+      if (duration.plans.length >= 4) {
+        showErrorAlert('Limit reached', 'You can add up to 4 plan types per duration.');
+        return duration;
+      }
+
+      return {
+        ...duration,
+        plans: [...duration.plans, createEmptyPlan()]
+      };
+    }));
+  };
+
+  const removePlan = (durationIndex, planIndex) => {
+    const currentDuration = durations[durationIndex];
+    if (!currentDuration) return;
+
+    if (currentDuration.plans.length === 1) {
+      showErrorAlert('Not allowed', 'Each duration must have at least one plan.');
+      return;
+    }
+
+    showConfirmationAlert({
+      title: 'Are you sure?',
+      text: 'Do you want to remove this plan?',
+      confirmButtonText: 'Yes, remove it!',
+      cancelButtonText: 'No, keep it',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setDurations(prevDurations => prevDurations.map((duration, idx) => {
+          if (idx !== durationIndex) return duration;
+          return {
+            ...duration,
+            plans: duration.plans.filter((_, i) => i !== planIndex)
+          };
+        }));
+        showSuccessAlert('Plan removed');
+      }
+    });
+  };
+
+  const normalizePrice = (value) => {
+    let sanitized = value.replace(/[^0-9.]/g, '');
+    const dotCount = (sanitized.match(/\./g) || []).length;
+    if (dotCount > 1) return null;
+
+    if (sanitized.includes('.')) {
+      const [integerPart, decimalPart] = sanitized.split('.');
+      if (decimalPart && decimalPart.length > 2) return null;
+      sanitized = `${integerPart}.${decimalPart ?? ''}`;
+    }
+
+    if (sanitized === '.') {
+      sanitized = '0.';
+    }
+
+    return sanitized;
+  };
+
+  const handlePlanChange = (durationIndex, planIndex, field, rawValue) => {
+    setDurations(prevDurations => prevDurations.map((duration, idx) => {
+      if (idx !== durationIndex) return duration;
+
+      const updatedPlans = duration.plans.map((plan, pIdx) => {
+        if (pIdx !== planIndex) return plan;
+
+        if (field === 'price') {
+          const normalized = normalizePrice(rawValue);
+          if (normalized === null) return plan;
+          return { ...plan, price: normalized };
         }
 
-        const updatedPlan = { ...plan, [field]: value };
+        if (field === 'capacity') {
+          const numericValue = rawValue.replace(/[^0-9]/g, '');
+          return { ...plan, capacity: numericValue };
+        }
 
         if (field === 'label') {
-          switch (value) {
+          const label = rawValue.toLowerCase();
+          let updated = { ...plan, label };
+
+          switch (label) {
             case 'solo':
-              updatedPlan.capacity = '1';
+              updated = { ...updated, capacity: '1' };
               break;
             case 'couple':
-              updatedPlan.capacity = '2';
+              updated = { ...updated, capacity: '2' };
               break;
             case 'family':
-              updatedPlan.capacity = '4';
+              updated = { ...updated, capacity: '4' };
               break;
             case 'unlimited':
-              updatedPlan.capacity = '';
+              updated = { ...updated, capacity: '' };
               break;
             default:
-              updatedPlan.capacity = '';
+              updated = { ...updated, capacity: '' };
               break;
           }
+          return updated;
         }
 
-        return updatedPlan;
-      })
-    );
-  };
+        return { ...plan, [field]: rawValue };
+      });
 
-  const addDuration = () => {
-    setDurations([...durations, {
-      duration_id: Date.now(),
-      duration_time_limit: '',
-      gst: '',
-      discount: '',
-      security_deposit: ''
-    }]);
+      return {
+        ...duration,
+        plans: updatedPlans
+      };
+    }));
   };
 
   const handleDurationChange = (index, field, value) => {
-    if (['gst', 'discount', 'security_deposit'].includes(field)) {
-      if (value === '' || (/^\d*\.?\d*$/.test(value) && Number(value) >= 0)) {
-        const updated = durations.map((duration, i) =>
-          i === index ? { ...duration, [field]: value } : duration
-        );
-        setDurations(updated);
-      }
-    } else {
-      const updated = durations.map((duration, i) =>
-        i === index ? { ...duration, [field]: value } : duration
-      );
-      setDurations(updated);
+    const configMap = {
+      gst: { allowDecimal: true, maxDecimals: 2, max: 100 },
+      discount: { allowDecimal: true, maxDecimals: 2, max: 100 },
+      security_deposit: { allowDecimal: true, maxDecimals: 2 }
+    };
+
+    if (field === 'duration_time_limit') {
+      const normalizedValue = typeof value === 'string' ? value.trim() : value;
+      setDurations(prevDurations => prevDurations.map((duration, idx) =>
+        idx === index ? { ...duration, [field]: normalizedValue } : duration
+      ));
+      return;
     }
+
+    if (['gst', 'discount', 'security_deposit'].includes(field)) {
+      let sanitized = value.replace(/[^0-9.]/g, '');
+      if ((sanitized.match(/\./g) || []).length > 1) return;
+      if (sanitized.includes('.')) {
+        const [intPart, decimalPart] = sanitized.split('.');
+        if (decimalPart.length > 2) return;
+        sanitized = `${intPart}.${decimalPart}`;
+      }
+      if (sanitized === '.') sanitized = '0.';
+      const numericValue = sanitized === '' ? '' : Number(sanitized);
+      const max = configMap[field].max;
+      if (max !== null && numericValue > max) return;
+
+      setDurations(prevDurations => prevDurations.map((duration, idx) =>
+        idx === index ? { ...duration, [field]: sanitized } : duration
+      ));
+      return;
+    }
+
+    setDurations(prevDurations => prevDurations.map((duration, idx) =>
+      idx === index ? { ...duration, [field]: value } : duration
+    ));
   };
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
     setLoading(true);
 
+    const sanitizedConnectivity = Array.from(
+      new Set(
+        connectivity
+          .filter((item) => typeof item === 'string' && item.trim() !== '')
+          .map((item) => item.trim())
+      )
+    );
+
     if (!modelName || !productDetails || !mainImage) {
-      setErrorMessage("All required fields must be filled.");
+      setErrorMessage('All required fields must be filled.');
       setLoading(false);
       return;
     }
 
-    // Validate PDF file if a new file is provided
     if (productSpecifications instanceof File && productSpecifications.type !== 'application/pdf') {
-      showErrorAlert("Invalid File", "Product Specifications must be a PDF file.");
+      showErrorAlert('Invalid File', 'Product Specifications must be a PDF file.');
       setLoading(false);
       return;
     }
 
-    if (connectivity.length === 0) {
-      showErrorAlert("Missing Data", "Please select at least one connectivity option.");
+    if (sanitizedConnectivity.length === 0) {
+      showErrorAlert('Missing Data', 'Please select at least one connectivity option.');
       setLoading(false);
       return;
     }
 
-    if (plans.length === 0 || durations.length === 0) {
-      showErrorAlert("Missing Data", "Please add at least one plan and one duration.");
+    if (!durations.length) {
+      showErrorAlert('Missing Data', 'Please add at least one duration.');
       setLoading(false);
       return;
     }
 
-    for (let plan of plans) {
-      const requiresCapacity = plan.label !== 'unlimited';
-      if (
-        !plan.label ||
-        (requiresCapacity && !plan.capacity) ||
-        plan.price === '' ||
-        isNaN(Number(plan.price))
-      ) {
-        showErrorAlert(
-          "Invalid Plan",
-          "Each plan must have a label, numeric price, and capacity when applicable."
-        );
+    for (const duration of durations) {
+      if (!duration.duration_time_limit) {
+        showErrorAlert('Invalid Duration', 'Each duration must include a time limit.');
         setLoading(false);
         return;
       }
-    }
 
-    for (let dur of durations) {
       if (
-        !dur.duration_time_limit ||
-        dur.gst === '' || isNaN(Number(dur.gst)) ||
-        dur.discount === '' || isNaN(Number(dur.discount)) ||
-        dur.security_deposit === '' || isNaN(Number(dur.security_deposit))
+        duration.gst === '' || isNaN(Number(duration.gst)) ||
+        duration.discount === '' || isNaN(Number(duration.discount)) ||
+        duration.security_deposit === '' || isNaN(Number(duration.security_deposit))
       ) {
-        showErrorAlert("Invalid Duration", "Each duration must have valid data.");
+        showErrorAlert('Invalid Duration', 'GST, discount, and security deposit must be valid numbers.');
         setLoading(false);
         return;
+      }
+
+      if (!duration.plans.length) {
+        showErrorAlert('Invalid Duration', 'Each duration must contain at least one plan.');
+        setLoading(false);
+        return;
+      }
+
+      for (const plan of duration.plans) {
+        const label = plan.label?.toLowerCase();
+        const requiresCapacity = label && label !== 'unlimited';
+        if (
+          !label ||
+          (requiresCapacity && !plan.capacity) ||
+          plan.price === '' ||
+          isNaN(Number(plan.price))
+        ) {
+          showErrorAlert(
+            'Invalid Plan',
+            'Each plan must include a label, numeric price, and capacity unless it is unlimited.'
+          );
+          setLoading(false);
+          return;
+        }
       }
     }
 
@@ -324,7 +424,7 @@ const useEditProducts = (userInfo) => {
     }
     formData.append('existing_product_specifications', originalDataRef.current?.productSpecifications || '');
     formData.append('wp_device_quantity', wpDeviceQuantity);
-    formData.append('connectivity', connectivity.join(', '));
+    formData.append('connectivity', sanitizedConnectivity.join(', '));
     formData.append('main_img', mainImage);
     formData.append('createdby', userInfo.email);
     formData.append('modifiedby', userInfo.email);
@@ -334,17 +434,21 @@ const useEditProducts = (userInfo) => {
       if (img) formData.append(`sub_img_${i + 1}`, img);
     });
 
-    formData.append('plans', JSON.stringify(plans.map(plan => ({
-      ...plan,
-      price: Number(plan.price)
-    }))));
-    formData.append('duration', JSON.stringify(durations.map(dur => ({
-      ...dur,
-      duration_time_limit: dur.duration_time_limit.toLowerCase(),
-      gst: Number(dur.gst),
-      discount: Number(dur.discount),
-      security_deposit: Number(dur.security_deposit)
-    }))));
+    const normalizedDurations = durations.map(duration => ({
+      duration_id: duration.duration_id,
+      duration_time_limit: duration.duration_time_limit.toLowerCase(),
+      gst: Number(duration.gst),
+      discount: Number(duration.discount),
+      security_deposit: Number(duration.security_deposit),
+      plans: duration.plans.map(plan => ({
+        plans_id: plan.plans_id,
+        label: plan.label.toLowerCase(),
+        capacity: plan.label.toLowerCase() === 'unlimited' ? '' : plan.capacity,
+        price: Number(plan.price)
+      }))
+    }));
+
+    formData.append('duration', JSON.stringify(normalizedDurations));
 
     try {
       const response = await axiosInstance.post('api/admin/UpdateProductModels', formData, {
@@ -354,15 +458,15 @@ const useEditProducts = (userInfo) => {
       setLoading(false);
 
       if (response.data.status === 'Success') {
-        showSuccessAlert("Product updated successfully");
+        showSuccessAlert('Product updated successfully');
         backToManagePage();
       } else {
-        showErrorAlert("Failed", response.data.message || "Update failed.");
+        showErrorAlert('Failed', response.data.message || 'Update failed.');
       }
     } catch (error) {
       setLoading(false);
       const errMsg = error?.response?.data?.message || error.message;
-      showErrorAlert("Error", `An error occurred: ${errMsg}`);
+      showErrorAlert('Error', `An error occurred: ${errMsg}`);
     }
   };
 
@@ -383,17 +487,16 @@ const useEditProducts = (userInfo) => {
     handleSubImageChange,
     connectivity,
     setConnectivity,
-    plans,
-    addPlan,
-    handlePlanChange,
     durations,
     addDuration,
     handleDurationChange,
     removeDuration,
+    addPlan,
+    removePlan,
+    handlePlanChange,
     wpDeviceQuantity,
     setWpDeviceQuantity,
     handleAddProduct,
-    removePlan,
     status,
     setStatus,
   };

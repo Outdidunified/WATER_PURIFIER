@@ -9,6 +9,8 @@ import { getDistricts } from "india-state-district";
 
 const Home = ({ userInfo, token, handleLogout }) => {
     const durationRef = useRef(null);
+    const scrollRef = useRef(null);
+    let scrollInterval;
     const [hoveredQR, setHoveredQR] = useState(null);
     const [showSummaryModal, setShowSummaryModal] = useState(false);
     const [showModal, setShowModal] = useState(false);
@@ -38,6 +40,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
     const [selectedDurationIndex, setSelectedDurationIndex] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [showAllModels, setShowAllModels] = useState(false);
 
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
@@ -133,26 +136,25 @@ const Home = ({ userInfo, token, handleLogout }) => {
         setDistrict("");
     }, [state, country]);
 
-    // Calculate price details
+    // Updated: Calculate price details (matches modal logic)
     const calculatePriceDetails = () => {
         const selectedProduct = products[selectedModelIndex];
-        const selectedPlan = selectedProduct?.plans[selectedPlanIndex];
-        const selectedDuration = selectedProduct?.duration[selectedDurationIndex];
+        const selectedDuration = selectedProduct?.duration?.[selectedDurationIndex];
+        const selectedPlan = selectedDuration?.plans?.[selectedPlanIndex];
 
-        if (!selectedProduct || !selectedPlan || !selectedDuration) return null;
+        if (!selectedProduct || !selectedDuration || !selectedPlan) return null;
 
         // Base values
         const basePrice = selectedPlan?.price || 0;
         const gstRate = selectedDuration?.gst || 0;
         const discountRate = selectedDuration?.discount || 0;
 
-        // Duration
+        // Duration handling
         const durationText = selectedDuration?.duration_time_limit || "28 days";
         const durationDays = parseInt(durationText.replace(/[^\d]/g, ""), 10) || 28;
-        const baseDays = 28;
 
-        // Step — Base total for duration
-        const totalPrice = (basePrice / baseDays) * durationDays;
+        // Step — Base total for selected duration
+        const totalPrice = (basePrice);
 
         // Step — GST
         const gstAmount = (totalPrice * gstRate) / 100;
@@ -162,13 +164,15 @@ const Home = ({ userInfo, token, handleLogout }) => {
         const discountAmount = (priceWithGST * discountRate) / 100;
         const subtotal = priceWithGST - discountAmount;
 
-        // Step — Security Deposit
-        const securityDeposit = !userInfo?.security_deposit ? selectedDuration?.security_deposit || 0 : 0;
+        // Step — Security Deposit (skip if user already has one)
+        const securityDeposit = !userInfo?.security_deposit
+            ? selectedDuration?.security_deposit || 0
+            : 0;
 
-        // Step — Final total
+        // Step — Final total (without COD)
         const grandTotal = subtotal + securityDeposit;
 
-        // Step — Monthly equivalent (for display only)
+        // Step — Monthly equivalent (display only)
         const finalMonthlyPrice = (subtotal / durationDays) * 28;
 
         return {
@@ -578,6 +582,51 @@ const Home = ({ userInfo, token, handleLogout }) => {
         stateNameMap[s.isoCode.toUpperCase()] = s.name;
     });
 
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+
+        let autoScroll;
+        let direction = 1;
+        let isUserScrolling = false;
+        let scrollTimeout;
+
+        // --- Detect manual scroll ---
+        const handleUserScroll = () => {
+            isUserScrolling = true;
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                isUserScrolling = false;
+            }, 2500); // resume auto-scroll after 2.5s of inactivity
+        };
+
+        // --- Auto scroll loop ---
+        const startScroll = () => {
+            autoScroll = setInterval(() => {
+                if (!isUserScrolling) {
+                    el.scrollLeft += 1.5 * direction;
+
+                    // reverse direction on edges
+                    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 5) direction = -1;
+                    else if (el.scrollLeft <= 0) direction = 1;
+                }
+            }, 20); // small smooth interval
+        };
+
+        const stopScroll = () => clearInterval(autoScroll);
+
+        startScroll();
+        el.addEventListener("scroll", handleUserScroll);
+        el.addEventListener("mouseenter", stopScroll);
+        el.addEventListener("mouseleave", startScroll);
+
+        return () => {
+            clearInterval(autoScroll);
+            el.removeEventListener("scroll", handleUserScroll);
+            el.removeEventListener("mouseenter", stopScroll);
+            el.removeEventListener("mouseleave", startScroll);
+        };
+    }, []);
 
     return (
         <div>
@@ -773,128 +822,262 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             </div>
                                         </div>
                                     </div>
+                                    {!showAllModels && (
+                                        <div className="row mt-4 align-items-start">
+                                            <div className="col-lg-6 col-12" style={{ padding: '20px' }}>
+                                                <div className="d-flex justify-content-center flex-column align-items-center section-title">
+                                                    <div className="text-center mb-3">
+                                                        <h2>Select Model</h2>
+                                                    </div>
+                                                    <ul className="nav nav-tabs flex-wrap" style={{ justifyContent: 'center' }}>
+                                                        <li className="nav-item">
+                                                            <button
+                                                                className={`nav-link text-center ${selectedModelIndex === -1 ? 'active' : ''}`}
+                                                                onClick={() => setShowAllModels(true)}
+                                                                style={{
+                                                                    minWidth: '150px',
+                                                                    margin: '5px',
+                                                                    backgroundColor: selectedModelIndex === -1 ? '#0d6efd' : '#e8f1ff',
+                                                                    color: selectedModelIndex === -1 ? '#fff' : '#0d6efd',
+                                                                    border: '1px solid #0d6efd',
+                                                                    borderRadius: '15px',
+                                                                    fontWeight: '600',
+                                                                    transition: 'all 0.3s ease'
+                                                                }}
+                                                            >
+                                                                <h4 style={{ margin: 0, fontSize: '16px' }}>All Model's</h4>
+                                                            </button>
+                                                        </li>
+                                                        {products.map((product, index) => {
+                                                            const isSelected = selectedModelIndex === index;
+                                                            const isOutOfStock = !product?.wp_device_id; // check if out of stock
 
-                                    <div className="row mt-4 align-items-start">
-                                        <div className="col-lg-6 col-12" style={{ padding: '20px' }}>
-                                            <div className="d-flex justify-content-center flex-column align-items-center section-title">
-                                                <div className="text-center mb-3">
-                                                    <h2>Select Model</h2>
+                                                            return (
+                                                                <li key={product._id} className="nav-item">
+                                                                    <button
+                                                                        className={`nav-link text-center ${isSelected ? 'active' : ''}`}
+                                                                        onClick={() => {
+                                                                            setSelectedModelIndex(index);
+                                                                            setSelectedPlanIndex(0);
+                                                                            setSelectedDurationIndex(0);
+                                                                            setTimeout(() => {
+                                                                                durationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                                                            }, 100);
+                                                                        }}
+                                                                        style={{
+                                                                            minWidth: '150px',
+                                                                            margin: '5px',
+                                                                            backgroundColor: isSelected
+                                                                                ? isOutOfStock ? '#dc3545' : '#0d6efd' // red if selected & out of stock
+                                                                                : isOutOfStock ? '#f8d7da' : '#e8f1ff', // light red if not selected
+                                                                            color: isSelected ? '#fff' : isOutOfStock ? '#721c24' : '#0d6efd',
+                                                                            border: '1px solid',
+                                                                            borderColor: isOutOfStock ? '#f5c6cb' : '#0d6efd',
+                                                                            borderRadius: '15px',
+                                                                            fontWeight: '600',
+                                                                            transition: 'all 0.3s ease'
+                                                                        }}
+                                                                    >
+                                                                        <h4 style={{ margin: 0, fontSize: '16px' }}>
+                                                                            {product.model_name} {isOutOfStock && '(Out of Stock)'}
+                                                                        </h4>
+                                                                    </button>
+                                                                </li>
+                                                            );
+                                                        })}
+
+                                                    </ul>
+
                                                 </div>
-                                                <ul className="nav nav-tabs flex-wrap" style={{ justifyContent: 'center' }}>
-                                                    {products.map((product, index) => {
-                                                        const isSelected = selectedModelIndex === index;
-                                                        return (
-                                                            <li key={product._id} className="nav-item">
-                                                                <button
-                                                                    className={`nav-link text-center ${isSelected ? 'active' : ''}`}
-                                                                    onClick={() => {
-                                                                        setSelectedModelIndex(index);
-                                                                        setSelectedPlanIndex(0);
-                                                                        setSelectedDurationIndex(0);
-                                                                        setTimeout(() => {
-                                                                            durationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                                                                        }, 100);
-                                                                    }}
-                                                                    style={{
-                                                                        minWidth: '150px',
-                                                                        margin: '5px',
-                                                                        backgroundColor: isSelected ? '#0d6efd' : '#e8f1ff', // blue for active, light-blue for others
-                                                                        color: isSelected ? '#fff' : '#0d6efd',              // white text for active, blue text for others
-                                                                        border: '1px solid #0d6efd',
-                                                                        borderRadius: '15px',
-                                                                        fontWeight: '600',
-                                                                        transition: 'all 0.3s ease'
-                                                                    }}
-                                                                >
-                                                                    <h4 style={{ margin: 0, fontSize: '16px' }}>{product.model_name}</h4>
-                                                                </button>
-                                                            </li>
-                                                        );
-                                                    })}
-                                                </ul>
-
                                             </div>
-                                        </div>
 
-                                        <div className="col-lg-6 col-12 text-center" style={{ padding: '20px' }}>
-                                            <img
-                                                src={`/upload/img/${mainImage || products[selectedModelIndex]?.main_img}`}
-                                                alt="Main Product"
-                                                className="img-fluid mb-3"
-                                                style={{
-                                                    boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
-                                                    borderRadius: '20px',
-                                                    maxWidth: '100%',
-                                                    width: '400px',
-                                                    height: '300px',
-                                                    objectFit: 'contain',
-                                                }}
-                                            />
-                                            <div className="d-flex justify-content-center align-items-center flex-wrap gap-3 mt-3">
-                                                {[1, 2, 3, 4].map((num) => {
-                                                    const subImg = products[selectedModelIndex]?.[`sub_img_${num}`];
-                                                    return subImg ? (
+                                            <div className="col-lg-6 col-12 text-center" style={{ padding: '20px' }}>
+                                                <img
+                                                    src={`/upload/img/${mainImage || products[selectedModelIndex]?.main_img}`}
+                                                    alt="Main Product"
+                                                    className="img-fluid mb-3"
+                                                    style={{
+                                                        boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
+                                                        borderRadius: '20px',
+                                                        maxWidth: '100%',
+                                                        width: '400px',
+                                                        height: '300px',
+                                                        objectFit: 'contain',
+                                                    }}
+                                                />
+                                                <div className="d-flex justify-content-center align-items-center flex-wrap gap-3 mt-3">
+                                                    {[1, 2, 3, 4].map((num) => {
+                                                        const subImg = products[selectedModelIndex]?.[`sub_img_${num}`];
+                                                        return subImg ? (
+                                                            <img
+                                                                key={num}
+                                                                src={`/upload/img/${subImg}`}
+                                                                alt={`Sub ${num}`}
+                                                                className="rounded"
+                                                                style={{
+                                                                    width: "80px",
+                                                                    height: "80px",
+                                                                    objectFit: "cover",
+                                                                    border: mainImage === subImg ? "2px solid #0d83fd" : "1px solid #ccc",
+                                                                    cursor: "pointer",
+                                                                }}
+                                                                onClick={() => setMainImage(subImg)}
+                                                            />
+                                                        ) : null;
+                                                    })}
+                                                    {products[selectedModelIndex]?.main_img && (
                                                         <img
-                                                            key={num}
-                                                            src={`/upload/img/${subImg}`}
-                                                            alt={`Sub ${num}`}
+                                                            src={`/upload/img/${products[selectedModelIndex].main_img}`}
+                                                            alt="Main Preview"
                                                             className="rounded"
                                                             style={{
                                                                 width: "80px",
                                                                 height: "80px",
                                                                 objectFit: "cover",
-                                                                border: mainImage === subImg ? "2px solid #0d83fd" : "1px solid #ccc",
+                                                                border: mainImage === products[selectedModelIndex].main_img ? "2px solid #0d83fd" : "2px dashed #0d83fd",
                                                                 cursor: "pointer",
                                                             }}
-                                                            onClick={() => setMainImage(subImg)}
+                                                            onClick={() => setMainImage(products[selectedModelIndex].main_img)}
                                                         />
-                                                    ) : null;
-                                                })}
-                                                {products[selectedModelIndex]?.main_img && (
-                                                    <img
-                                                        src={`/upload/img/${products[selectedModelIndex].main_img}`}
-                                                        alt="Main Preview"
-                                                        className="rounded"
-                                                        style={{
-                                                            width: "80px",
-                                                            height: "80px",
-                                                            objectFit: "cover",
-                                                            border: mainImage === products[selectedModelIndex].main_img ? "2px solid #0d83fd" : "2px dashed #0d83fd",
-                                                            cursor: "pointer",
-                                                        }}
-                                                        onClick={() => setMainImage(products[selectedModelIndex].main_img)}
-                                                    />
-                                                )}
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
+
+                                    {showAllModels && (
+                                        <div className="col-lg-12 col-12" style={{ padding: '20px' }}>
+                                            <div className="section-title text-center" style={{ paddingBottom: '10px' }}>
+                                                <h2>Select Model</h2>
+                                                <ul className="nav flex-wrap" style={{ justifyContent: 'center' }}>
+                                                    <li className="nav-item">
+                                                        <button
+                                                            className={`nav-link text-center ${selectedModelIndex === -1 ? 'active' : ''}`}
+                                                            onClick={() => setShowAllModels(false)}
+                                                            style={{
+                                                                minWidth: '150px',
+                                                                margin: '5px',
+                                                                backgroundColor: selectedModelIndex === -1 ? '#0d6efd' : '#e8f1ff',
+                                                                color: selectedModelIndex === -1 ? '#fff' : '#0d6efd',
+                                                                border: '1px solid #0d6efd',
+                                                                borderRadius: '15px',
+                                                                fontWeight: '600',
+                                                                transition: 'all 0.3s ease'
+                                                            }}
+                                                        >
+                                                            <h4 style={{ margin: 0, fontSize: '16px' }}>Back Model's</h4>
+                                                        </button>
+                                                    </li>
+                                                </ul>
+                                            </div>
+
+                                            <div
+                                                ref={scrollRef}
+                                                className="d-flex overflow-auto py-3 scroll-container"
+                                                style={{
+                                                    gap: "20px",
+                                                    scrollBehavior: "smooth",
+                                                    cursor: "grab",
+                                                    scrollSnapType: "x mandatory",
+                                                }}
+                                            >
+                                                {products.map((product, index) => {
+                                                    const isSelected = selectedModelIndex === index;
+                                                    const isOutOfStock = !product?.wp_device_id;
+
+                                                    return (
+                                                        <div
+                                                            key={product._id}
+                                                            className="card text-center flex-shrink-0"
+                                                            style={{
+                                                                width: "250px",
+                                                                borderRadius: "20px",
+                                                                border: isSelected ? "3px solid #0d6efd" : "1px solid #ddd",
+                                                                boxShadow: isSelected
+                                                                    ? "0 0 20px rgba(13,110,253,0.3)"
+                                                                    : "0 2px 8px rgba(0,0,0,0.1)",
+                                                                transform: isSelected ? "scale(1.05)" : "scale(1)",
+                                                                transition: "all 0.4s ease",
+                                                                opacity: isOutOfStock ? 0.5 : 1,
+                                                                cursor: "pointer",
+                                                                margin: "0 10px",
+                                                                scrollSnapAlign: "center",
+                                                            }}
+                                                            onClick={() => {
+                                                                setSelectedModelIndex(index);
+                                                                setActiveModelIndex(index);
+                                                                setSelectedPlanIndex(0);
+                                                                setSelectedDurationIndex(0);
+                                                                setMainImage(product.main_img);
+                                                                setTimeout(() => {
+                                                                    durationRef.current?.scrollIntoView({
+                                                                        behavior: "smooth",
+                                                                        block: "start",
+                                                                    });
+                                                                }, 300);
+                                                            }}
+                                                        >
+                                                            <img
+                                                                src={`/upload/img/${product.main_img}`}
+                                                                alt={product.model_name}
+                                                                className="card-img-top"
+                                                                style={{
+                                                                    height: "180px",
+                                                                    objectFit: "contain",
+                                                                    borderTopLeftRadius: "20px",
+                                                                    borderTopRightRadius: "20px",
+                                                                    animation: isSelected ? "slideIn 0.5s ease-in-out" : "none",
+                                                                }}
+                                                            />
+                                                            <div className="card-body">
+                                                                <h5
+                                                                    style={{
+                                                                        color: isSelected ? "#0d6efd" : "#000",
+                                                                        fontWeight: "600",
+                                                                        fontSize: "16px",
+                                                                    }}
+                                                                >
+                                                                    {product.model_name}{" "}
+                                                                    {isOutOfStock && (
+                                                                        <span style={{ color: "red", fontWeight: "600" }}>
+                                                                            (Out of Stock)
+                                                                        </span>
+                                                                    )}
+                                                                </h5>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+
+                                        </div>
+                                    )}
 
                                     <div ref={durationRef}>
                                         <div className="row mt-4">
                                             <div className="col-lg-12">
                                                 <div style={{ textAlign: "center" }}>
                                                     <h2>Flexible Rental Plans</h2>
-                                                    {/* --- BLUE CENTER BORDER --- */}
                                                     <div
                                                         style={{
-                                                            width: "50px", height: "3px",
+                                                            width: "50px",
+                                                            height: "3px",
                                                             backgroundColor: "#0d6efd",
-                                                            borderRadius: "2px", margin: "10px auto 0 auto",
+                                                            borderRadius: "2px",
+                                                            margin: "10px auto 0 auto",
                                                         }}
                                                     ></div>
                                                     <p className="fst-italic mt-2">
                                                         Security deposit of ₹{products[selectedModelIndex]?.duration[selectedDurationIndex]?.security_deposit || 0} will be 100% refundable
                                                     </p>
                                                     <h5>Choose Duration</h5>
-                                                    <div className="d-flex flex-wrap gap-2 mb-3 justify-content-center" style={{ textAlign: "center" }}>
-                                                        {products[selectedModelIndex]?.duration.map((duration, durationIndex) => (
+
+                                                    <div className="d-flex flex-wrap gap-2 mb-3 justify-content-center">
+                                                        {products[selectedModelIndex]?.duration.map((duration, index) => (
                                                             <button
                                                                 key={duration.duration_id}
-                                                                className={`btn ${selectedDurationIndex === durationIndex
-                                                                    ? "btn-primary"
-                                                                    : "btn-outline-primary"
-                                                                    }`}
-                                                                onClick={() => setSelectedDurationIndex(durationIndex)}
+                                                                className={`btn ${selectedDurationIndex === index ? "btn-primary" : "btn-outline-primary"}`}
+                                                                onClick={() => setSelectedDurationIndex(index)}
                                                             >
                                                                 {duration.duration_time_limit}
                                                             </button>
@@ -903,14 +1086,43 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 </div>
 
                                                 <div className="row justify-content-center" style={{ padding: "20px" }}>
-                                                    {products[selectedModelIndex]?.plans.map((plan, planIndex) => {
-                                                        const priceDetails = calculatePriceDetails();
-                                                        if (!priceDetails) return null;
+                                                    {products[selectedModelIndex]?.duration?.[selectedDurationIndex]?.plans?.map((plan, planIndex) => {
+                                                        const product = products[selectedModelIndex];
+                                                        const selectedDuration = product?.duration?.[selectedDurationIndex];
 
-                                                        const selectedDuration = priceDetails.selectedDuration?.duration_time_limit || "N/A";
-                                                        const durationNumber = parseInt(selectedDuration);
-                                                        const isPopular = plan.label.toLowerCase() === "couple";
-                                                        const connectivity = products[selectedModelIndex]?.connectivity?.trim();
+                                                        if (!product || !selectedDuration) return null;
+
+                                                        const durationText = selectedDuration?.duration_time_limit || "28 days";
+                                                        const durationDays = parseInt(durationText) || 28;
+                                                        const baseDays = 28;
+
+                                                        // If plan.price belongs to that duration (like in your JSON), just use it directly
+                                                        // Otherwise (for older data with 28-day base), multiply proportionally
+                                                        const totalPrice =
+                                                            selectedDuration?.plans?.length > 0
+                                                                ? plan.price // already specific for this duration
+                                                                : (plan.price / baseDays) * durationDays;
+
+                                                        const formattedPrice = new Intl.NumberFormat("en-IN", {
+                                                            style: "currency",
+                                                            currency: "INR",
+                                                            minimumFractionDigits: 0,
+                                                            maximumFractionDigits: 0,
+                                                        }).format(totalPrice);
+
+                                                        const isPopular = plan.label?.toLowerCase() === "couple";
+                                                        const isOutOfStock = !product?.wp_device_id;
+
+                                                        // Normalize connectivity (array or string)
+                                                        const connectivityRaw = product?.connectivity;
+                                                        const connectivity = Array.isArray(connectivityRaw)
+                                                            ? connectivityRaw.join(", ")
+                                                            : (connectivityRaw || "").toString().trim();
+
+                                                        // Pull GST, Discount, Deposit from duration
+                                                        const discountRate = selectedDuration?.discount || 0;
+                                                        const gstRate = selectedDuration?.gst || 0;
+                                                        const securityDeposit = selectedDuration?.security_deposit || 0;
 
                                                         return (
                                                             <div className="col-md-3 mb-4" key={plan.plans_id}>
@@ -955,7 +1167,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                     )}
 
                                                                     {/* HEADER */}
-                                                                    <div className="card-header bg-white text-center pt-4 border-0" style={{ borderRadius: '20px', }}>
+                                                                    <div className="card-header bg-white text-center pt-4 border-0" style={{ borderRadius: '20px' }}>
                                                                         <h5
                                                                             style={{
                                                                                 color: "#000",
@@ -972,8 +1184,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                                 <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
                                                                             ) : (
                                                                                 <>
-                                                                                    {plan.capacity}/
-                                                                                    <span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
+                                                                                    {plan.capacity}/<span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
                                                                                 </>
                                                                             )}
                                                                         </p>
@@ -981,159 +1192,90 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                                                                     {/* PRICE */}
                                                                     <div className="text-center mt-2">
-                                                                        <h4
-                                                                            style={{
-                                                                                color: "#000", fontWeight: "700",
-                                                                                fontSize: "32px", marginBottom: "5px",
-                                                                            }}
-                                                                        >
-                                                                            {/* PRICE */}
-                                                                            <div className="text-center mt-2">
-                                                                                {(() => {
-                                                                                    const basePrice = plan.price || 0;
-                                                                                    const durationText = selectedDuration || "28 days";
-
-                                                                                    // Extract number part from duration (e.g. "90 days" → 90)
-                                                                                    const durationDays = parseInt(durationText);
-                                                                                    const baseDays = 28; // base duration for price calculation
-
-                                                                                    // Calculate multiplied total
-                                                                                    const totalPrice = (basePrice / baseDays) * durationDays;
-
-                                                                                    //  Format with Indian comma style and no decimals
-                                                                                    const formattedPrice = new Intl.NumberFormat("en-IN", {
-                                                                                        style: "currency",
-                                                                                        currency: "INR",
-                                                                                        minimumFractionDigits: 0,
-                                                                                        maximumFractionDigits: 0,
-                                                                                    }).format(totalPrice);
-
-                                                                                    return (
-                                                                                        <>
-                                                                                            <span style={{ color: "#0d6efd", fontWeight: "700", fontSize: "32px" }}>
-                                                                                                {formattedPrice}
-                                                                                            </span>
-                                                                                            <p
-                                                                                                style={{
-                                                                                                    color: "#666",
-                                                                                                    fontWeight: "500",
-                                                                                                    fontSize: "15px",
-                                                                                                    marginBottom: "0px",
-                                                                                                }}
-                                                                                            >
-                                                                                                / per {durationText.toLowerCase().includes("day") ? durationText : "month"}
-                                                                                            </p>
-                                                                                        </>
-                                                                                    );
-                                                                                })()}
-                                                                            </div>
-
-                                                                            <p
-                                                                                style={{
-                                                                                    marginTop: "8px", color: "#333",
-                                                                                    fontWeight: "600", fontSize: "13px",
-                                                                                }}
-                                                                            >
-                                                                                {priceDetails.discountRate ? `${priceDetails.discountRate}% OFF` : "No Discount"}
-                                                                                <br />
-                                                                                <span style={{ fontSize: "12px", color: "#777" }}>(Inclusive of GST)</span>
-                                                                            </p>
-                                                                            {/* --- BLUE CENTER BORDER --- */}
-                                                                            <div
-                                                                                style={{
-                                                                                    width: "200px", height: "2px",
-                                                                                    backgroundColor: "#0d6efd",
-                                                                                    borderRadius: "2px", margin: "10px auto 0 auto",
-                                                                                }}
-                                                                            ></div>
+                                                                        <h4 style={{ color: "#000", fontWeight: "700", fontSize: "32px", marginBottom: "5px" }}>
+                                                                            <span style={{ color: "#0d6efd" }}>{formattedPrice}</span>
                                                                         </h4>
+                                                                        <p style={{ color: "#666", fontWeight: "500", fontSize: "15px", marginBottom: "0" }}>
+                                                                            / for {durationText}
+                                                                        </p>
+
+                                                                        <p style={{ marginTop: "8px", color: "#333", fontWeight: "600", fontSize: "13px" }}>
+                                                                            {discountRate ? `${discountRate}% OFF` : "No Discount"}
+                                                                            <br />
+                                                                            <span style={{ fontSize: "12px", color: "#777" }}>(Inclusive of GST)</span>
+                                                                        </p>
+
+                                                                        <div
+                                                                            style={{
+                                                                                width: "200px",
+                                                                                height: "2px",
+                                                                                backgroundColor: "#0d6efd",
+                                                                                borderRadius: "2px",
+                                                                                margin: "10px auto 0 auto",
+                                                                            }}
+                                                                        ></div>
                                                                     </div>
+
                                                                     {/* FEATURES */}
                                                                     <div className="card-body text-left px-4" style={{ paddingTop: "0px" }}>
                                                                         <ul style={{ listStyle: "none", paddingLeft: "0", margin: "5px 0" }}>
-                                                                            <li className="mb-2">
-                                                                                <span className="text-success">✓</span> Lifetime Maintenance
-                                                                            </li>
-                                                                            <li className="mb-2">
-                                                                                <span className="text-success">✓</span> Security ₹{products[selectedModelIndex]?.duration[selectedDurationIndex]?.security_deposit || 0}
-                                                                            </li>
-                                                                            <li className="mb-2">
-                                                                                <span className="text-success">✓</span> 24–48 Hour Installation
-                                                                            </li>
-                                                                            {durationNumber >= 90 && (
-                                                                                <li className="mb-2">
-                                                                                    <span className="text-success">✓</span> Filter Replacement Every 3 Months
-                                                                                </li>
+                                                                            <li className="mb-2"><span className="text-success">✓</span> Lifetime Maintenance</li>
+                                                                            <li className="mb-2"><span className="text-success">✓</span> Security ₹ {securityDeposit}</li>
+                                                                            <li className="mb-2"><span className="text-success">✓</span> 24–48 Hour Installation</li>
+                                                                            {durationDays >= 90 && (
+                                                                                <li className="mb-2"><span className="text-success">✓</span> Filter Replacement Every 3 Months</li>
                                                                             )}
 
-                                                                            {/* --- CONNECTIVITY --- */}
+                                                                            {/* CONNECTIVITY */}
                                                                             {connectivity ? (
                                                                                 <li className="mb-2">
                                                                                     <span className="text-success">✓</span> Connectivity:
-                                                                                    <ul
-                                                                                        style={{
-                                                                                            listStyleType: "disc",
-                                                                                            paddingLeft: "25px",
-                                                                                            marginTop: "5px",
-                                                                                        }}
-                                                                                    >
+                                                                                    <ul style={{ listStyleType: "disc", paddingLeft: "25px", marginTop: "5px" }}>
                                                                                         {connectivity.split(",").map((conn, i) => (
                                                                                             <li key={i}>{conn.trim()}</li>
                                                                                         ))}
                                                                                     </ul>
                                                                                 </li>
                                                                             ) : (
-                                                                                <li className="mb-2 text-danger">
-                                                                                    ❌ No Connectivity
-                                                                                </li>
+                                                                                <li className="mb-2 text-danger">❌ No Connectivity</li>
                                                                             )}
 
-                                                                            <li className="mb-2">
-                                                                                <span className="text-success">✓</span> Discount: {priceDetails.discountRate || 0}%
-                                                                            </li>
-                                                                            <li className="mb-2">
-                                                                                <span className="text-success">✓</span> GST:{" "}
-                                                                                {products[selectedModelIndex]?.duration[selectedDurationIndex]?.gst || 0}%
-                                                                            </li>
+                                                                            <li className="mb-2"><span className="text-success">✓</span> Discount: {discountRate}%</li>
+                                                                            <li className="mb-2"><span className="text-success">✓</span> GST: {gstRate}%</li>
                                                                             <li className="text-warning">
-                                                                                <span className="text-warning">✓</span> Includes ₹
-                                                                                {priceDetails.securityDeposit || 0} refundable deposit
+                                                                                <span className="text-warning">✓</span> Includes ₹{securityDeposit} refundable deposit
                                                                             </li>
+
+                                                                            {isOutOfStock && (
+                                                                                <li className="text-danger" style={{ textAlign: "center" }}>
+                                                                                    <span className="text-danger">❌</span> Out of Stock
+                                                                                </li>
+                                                                            )}
                                                                         </ul>
                                                                     </div>
 
                                                                     {/* BUTTON */}
                                                                     <div className="card-footer text-center pb-4 border-0 bg-white" style={{ borderRadius: '20px' }}>
-                                                                        {(() => {
-                                                                            const product = products[selectedModelIndex];
-                                                                            const isOutOfStock = !product?.wp_device_id;
-                                                                            if (isOutOfStock) {
-                                                                                return (
-                                                                                    <button className="btn btn-danger px-4 py-2 rounded-pill" disabled>
-                                                                                        Out of Stock
-                                                                                    </button>
-                                                                                );
-                                                                            }
-                                                                            return (
-                                                                                <button
-                                                                                    className="btn px-4 py-2 rounded-pill"
-                                                                                    style={{
-                                                                                        background: isPopular ? "#0d6efd" : "#0d6efd",
-                                                                                        border: "none",
-                                                                                        color: "#fff",
-                                                                                        transition: "0.3s",
-                                                                                    }}
-                                                                                    onMouseEnter={(e) => (e.currentTarget.style.background = "#0b5ed7")}
-                                                                                    onMouseLeave={(e) => (e.currentTarget.style.background = "#0d6efd")}
-                                                                                    onClick={() => {
-                                                                                        setSelectedPlanIndex(planIndex);
-                                                                                        handleSubscribeClick();
-                                                                                    }}
-                                                                                >
-                                                                                    Subscribe Now
-                                                                                </button>
-                                                                            );
-                                                                        })()}
+                                                                        <button
+                                                                            className="btn px-4 py-2 rounded-pill"
+                                                                            style={{
+                                                                                background: "#0d6efd",
+                                                                                border: "none",
+                                                                                color: "#fff",
+                                                                                transition: "0.3s",
+                                                                            }}
+                                                                            disabled={isOutOfStock}
+                                                                            onMouseEnter={(e) => (e.currentTarget.style.background = "#0b5ed7")}
+                                                                            onMouseLeave={(e) => (e.currentTarget.style.background = "#0d6efd")}
+                                                                            onClick={() => {
+                                                                                if (!isOutOfStock) {
+                                                                                    setSelectedPlanIndex(planIndex);
+                                                                                    handleSubscribeClick();
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            {isOutOfStock ? "Out of Stock" : "Buy Now"}
+                                                                        </button>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1144,6 +1286,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             </div>
                                         </div>
                                     </div>
+
                                 </div>
                             </div>
                         </div>
@@ -1159,7 +1302,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                             tabIndex="-1"
                             style={{
                                 backgroundColor: "rgba(0,0,0,0.5)",
-                                padding: "20px",
+                                padding: "10px",
                                 display: "flex",
                                 justifyContent: "center",
                                 alignItems: "center",
@@ -1169,14 +1312,14 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                 width: "100%",
                                 height: "100%",
                                 zIndex: 1050,
-                                paddingTop: '5%'
+                                overflowY: "auto",
                             }}
                         >
                             <div
                                 className="modal-dialog modal-lg"
                                 style={{
-                                    maxWidth: "700px",
-                                    width: "60%",
+                                    width: window.innerWidth < 768 ? "90%" : "60%",
+                                    maxWidth: window.innerWidth < 768 ? "95%" : "700px",
                                 }}
                             >
                                 <div
@@ -1187,8 +1330,16 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                         boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
                                     }}
                                 >
-                                    <div className="modal-header" style={{ backgroundColor: 'aliceblue' }}>
-                                        <h5 className="modal-title" style={{ color: "#0d6efd" }}>
+                                    <div className="modal-header"
+                                        style={{
+                                            backgroundColor: "aliceblue",
+                                            padding: window.innerWidth < 768 ? "10px 15px" : "15px 25px",
+                                        }}>
+                                        <h5 className="modal-title"
+                                            style={{
+                                                color: "#0d6efd",
+                                                fontSize: window.innerWidth < 768 ? "16px" : "18px",
+                                            }}>
                                             Subscription Summary
                                         </h5>
                                         <button
@@ -1201,14 +1352,19 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                     <div
                                         className="modal-body"
                                         style={{
-                                            fontSize: "16px",
-                                            lineHeight: "1.8",
-                                            padding: "20px 30px",
+                                            fontSize: window.innerWidth < 768 ? "14px" : "16px",
+                                            lineHeight: "1.6",
+                                            padding: window.innerWidth < 768 ? "15px 20px" : "20px 30px",
+                                            maxHeight: "80vh",
+                                            overflowY: "auto",
                                         }}
                                     >
                                         {(() => {
-                                            const priceDetails = calculatePriceDetails();
-                                            if (!priceDetails)
+                                            const product = products[selectedModelIndex];
+                                            const duration = product?.duration?.[selectedDurationIndex];
+                                            const plan = duration?.plans?.[selectedPlanIndex];
+
+                                            if (!product || !duration || !plan)
                                                 return <p>Error loading summary. Please try again.</p>;
 
                                             const textRow = (label, value, isBold = false, isBlue = false) => (
@@ -1233,7 +1389,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                         style={{
                                                             fontWeight: isBold ? "700" : "500",
                                                             color: isBlue ? "#0d6efd" : "#333",
-                                                            fontSize: "14px", // smaller than label
+                                                            fontSize: "14px",
                                                         }}
                                                     >
                                                         {value}
@@ -1241,40 +1397,39 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 </div>
                                             );
 
-                                            //  Price Calculations
-                                            const basePrice = priceDetails.basePrice || 0;
-                                            const durationText = priceDetails.selectedDuration?.duration_time_limit || "28 days";
-                                            const durationDays = parseInt(durationText) || 28;
-                                            const baseDays = 28;
-                                            const totalPrice = (basePrice / baseDays) * durationDays;
-
-                                            const gstRate = priceDetails.gstRate || 0;
-                                            const gstAmount = (totalPrice * gstRate) / 100;
-                                            const priceWithGST = totalPrice + gstAmount;
-
-                                            const discountRate = priceDetails.discountRate || 0;
-                                            const discountAmount = (priceWithGST * discountRate) / 100;
-                                            const subtotal = priceWithGST - discountAmount;
-                                            const securityDeposit = priceDetails.securityDeposit || 0;
-
-                                            //  COD Fee Logic
-                                            const codFee = selectedPaymentType === "cod" ? 100 : 0;
-                                            const grandTotal = subtotal + securityDeposit + codFee;
-
                                             const formatINR = (val) =>
-                                                `₹${val.toLocaleString("en-IN", {
+                                                `₹${val?.toLocaleString("en-IN", {
                                                     minimumFractionDigits: 0,
                                                     maximumFractionDigits: 2,
                                                 })}`;
 
-                                            const formattedPrice = formatINR(totalPrice);
+                                            // === PRICE CALCULATION BASED ON SELECTED DURATION & PLAN ===
+                                            const durationText = duration.duration_time_limit || "28 days";
+                                            const durationDays = parseInt(durationText) || 28;
+                                            const totalPrice = (plan.price);
+
+                                            const gstRate = duration.gst || 0;
+                                            const gstAmount = (totalPrice * gstRate) / 100;
+
+                                            const discountRate = duration.discount || 0;
+                                            const discountAmount = ((totalPrice + gstAmount) * discountRate) / 100;
+
+                                            const priceWithGST = totalPrice + gstAmount;
+                                            const subtotal = priceWithGST - discountAmount;
+                                            const securityDeposit = duration.security_deposit || 0;
+
+                                            const codFee = selectedPaymentType === "cod" ? 100 : 0;
+                                            const grandTotal = subtotal + securityDeposit + codFee;
 
                                             return (
                                                 <>
-                                                    {textRow("Model", priceDetails.selectedProduct?.model_name, false, true)}
-                                                    {textRow("Plan", priceDetails.selectedPlan?.label, false, true)}
+                                                    {textRow("Model", product.model_name, true, true)}
+                                                    {textRow("Connectivity", product.connectivity || "N/A")}
+                                                    <hr style={{ color: "#0d6efd" }} />
 
-                                                    {/* Capacity */}
+                                                    {textRow("Selected Duration", duration.duration_time_limit, false, true)}
+                                                    {textRow("Selected Plan", plan.label.toUpperCase(), false, true)}
+
                                                     <div
                                                         style={{
                                                             display: "flex",
@@ -1284,15 +1439,12 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                     >
                                                         <span style={{ fontWeight: "600", color: "#000" }}>Capacity</span>
                                                         <span style={{ fontWeight: "500" }}>
-                                                            {priceDetails.selectedPlan?.label?.toLowerCase() === "unlimited" ||
-                                                                !priceDetails.selectedPlan?.capacity ? (
+                                                            {plan.label.toLowerCase() === "unlimited" || !plan.capacity ? (
                                                                 <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
                                                             ) : (
                                                                 <>
-                                                                    {priceDetails.selectedPlan?.capacity}/
-                                                                    <span style={{
-                                                                        color: "rgb(13, 110, 253)"
-                                                                    }}>Ltr</span>
+                                                                    {plan.capacity}/
+                                                                    <span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
                                                                 </>
                                                             )}
                                                         </span>
@@ -1300,11 +1452,11 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                                                     <hr style={{ color: "#0d6efd" }} />
 
-                                                    {textRow("Price", formattedPrice)}
+                                                    {textRow("Base Price", formatINR(plan.price))}
                                                     {textRow("Duration", `${durationDays} days`)}
                                                     {textRow(`GST (${gstRate}%)`, formatINR(gstAmount))}
-                                                    {textRow("Price with GST", formatINR(priceWithGST))}
                                                     {textRow(`Discount (${discountRate}%)`, formatINR(discountAmount))}
+                                                    {textRow("Price with GST", formatINR(priceWithGST))}
 
                                                     <hr style={{ color: "#0d6efd" }} />
 
@@ -1317,8 +1469,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                         })()}
                                     </div>
 
-                                    {/* Footer Section */}
-                                    {/* Footer Section */}
+                                    {/* Footer */}
                                     <div
                                         className="modal-footer"
                                         style={{
@@ -1330,43 +1481,38 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             backgroundColor: "aliceblue",
                                         }}
                                     >
-                                        {/* Payment Type Selection */}
-                                        <div style={{ display: "flex", gap: "20px", justifyContent: "center" }}>
+                                        {/* Payment buttons */}
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                flexWrap: "wrap",
+                                                gap: "15px",
+                                                justifyContent: "center",
+                                                width: "100%",
+                                            }}
+                                        >
                                             {["online", "cod"].map((type) => (
                                                 <label
                                                     key={type}
                                                     style={{
                                                         cursor: "pointer",
-                                                        padding: "12px 20px",
+                                                        padding: "10px 15px",
                                                         border: selectedPaymentType === type
                                                             ? type === "online"
                                                                 ? "2px solid #0d6efd"
                                                                 : "2px solid #198754"
                                                             : "1px solid #ccc",
-                                                        borderRadius: "10px",
+                                                        borderRadius: "8px",
                                                         backgroundColor:
                                                             selectedPaymentType === type
                                                                 ? type === "online"
                                                                     ? "#e7f1ff"
                                                                     : "#e9f9ee"
                                                                 : "#fff",
-                                                        boxShadow:
-                                                            selectedPaymentType === type
-                                                                ? "0 0 10px rgba(13,110,253,0.3)"
-                                                                : "none",
+                                                        fontSize: window.innerWidth < 768 ? "13px" : "15px",
+                                                        width: window.innerWidth < 768 ? "100%" : "auto",
+                                                        textAlign: "center",
                                                         transition: "all 0.2s ease-in-out",
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        gap: "10px",
-                                                        minWidth: "200px",
-                                                        justifyContent: "center",
-                                                        fontWeight: "600",
-                                                        color:
-                                                            selectedPaymentType === type
-                                                                ? type === "online"
-                                                                    ? "#0d6efd"
-                                                                    : "#198754"
-                                                                : "#333",
                                                     }}
                                                     onClick={() => setSelectedPaymentType(type)}
                                                 >
@@ -1376,7 +1522,10 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                         value={type}
                                                         checked={selectedPaymentType === type}
                                                         onChange={() => setSelectedPaymentType(type)}
-                                                        style={{ accentColor: type === "online" ? "#0d6efd" : "#198754" }}
+                                                        style={{
+                                                            accentColor: type === "online" ? "#0d6efd" : "#198754",
+                                                            marginRight: "6px",
+                                                        }}
                                                     />
                                                     {type === "online" ? "Online Payment" : "Cash on Delivery"}
                                                 </label>
@@ -1398,24 +1547,29 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             </div>
                                         )}
 
-                                        {/* Action Buttons */}
-                                        <div style={{ marginTop: "20px", display: "flex", gap: "15px" }}>
+                                        {/* Action buttons */}
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                flexWrap: "wrap",
+                                                justifyContent: "center",
+                                                gap: "10px",
+                                                width: "100%",
+                                            }}
+                                        >
                                             <button
                                                 className="btn btn-secondary"
+                                                style={{ width: window.innerWidth < 768 ? "45%" : "auto" }}
                                                 onClick={() => setShowSummaryModal(false)}
                                             >
                                                 Cancel
                                             </button>
-
                                             <button
-                                                className={`btn ${selectedPaymentType ? "btn-primary" : "btn-outline-primary"}`}
+                                                className={`btn ${selectedPaymentType ? "btn-primary" : "btn-outline-primary"
+                                                    }`}
                                                 style={{
-                                                    padding: "10px 30px",
+                                                    width: window.innerWidth < 768 ? "45%" : "auto",
                                                     fontWeight: "700",
-                                                    opacity: selectedPaymentType ? 1 : 0.7,
-                                                    cursor: selectedPaymentType ? "pointer" : "not-allowed",
-                                                    boxShadow: selectedPaymentType ? "0 0 10px rgba(13,110,253,0.4)" : "none",
-                                                    transition: "all 0.3s ease",
                                                 }}
                                                 disabled={!selectedPaymentType}
                                                 onClick={() => {
@@ -1424,10 +1578,10 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 }}
                                             >
                                                 {selectedPaymentType === "cod"
-                                                    ? "Proceed to COD Checkout"
+                                                    ? "Proceed to COD"
                                                     : selectedPaymentType === "online"
-                                                        ? "Proceed to Online Checkout"
-                                                        : "Select Payment Type"}
+                                                        ? "Proceed to Online"
+                                                        : "Select Payment"}
                                             </button>
                                         </div>
                                     </div>
@@ -1435,7 +1589,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
                             </div>
                         </div>
                     )}
-
 
                     {showModal && (
                         <div
@@ -1459,8 +1612,8 @@ const Home = ({ userInfo, token, handleLogout }) => {
                             <div
                                 className="modal-dialog modal-lg"
                                 style={{
-                                    width: "60%",
-                                    maxWidth: "800px",
+                                    width: window.innerWidth < 768 ? "90%" : "60%",
+                                    maxWidth: window.innerWidth < 768 ? "95%" : "800px",
                                 }}
                             >
                                 <div
@@ -1493,10 +1646,10 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                     <div
                                         className="modal-body"
                                         style={{
-                                            height: "600px",
+                                            height: window.innerWidth < 768 ? "auto" : "600px",
+                                            maxHeight: "80vh",
                                             overflowY: "auto",
-                                            padding: "25px 30px",
-                                            fontSize: "15px",
+                                            padding: window.innerWidth < 768 ? "15px 20px" : "25px 30px",
                                         }}
                                     >
                                         <form onSubmit={handleSubmit}>
@@ -1504,8 +1657,9 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             <div
                                                 style={{
                                                     display: "grid",
-                                                    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-                                                    gap: "20px 30px",
+                                                    gridTemplateColumns:
+                                                        window.innerWidth < 768 ? "1fr" : "repeat(auto-fit, minmax(250px, 1fr))",
+                                                    gap: "15px 20px",
                                                 }}
                                             >
                                                 {/* Name */}

@@ -320,6 +320,26 @@ const AddProductModels = async (req, res) => {
         const uploadedFiles = req.files || {};
         const docsToInsert = [];
 
+        const lastPlanIdDoc = await collection.aggregate([
+            { $unwind: { path: '$duration', preserveNullAndEmptyArrays: true } },
+            { $match: { 'duration.duration_id': { $exists: true } } },
+            { $unwind: { path: '$duration.plans', preserveNullAndEmptyArrays: true } },
+            { $match: { 'duration.plans.plans_id': { $exists: true } } },
+            { $sort: { 'duration.plans.plans_id': -1 } },
+            { $limit: 1 },
+            { $project: { _id: 0, plans_id: '$duration.plans.plans_id' } }
+        ]).toArray();
+        let nextPlansId = lastPlanIdDoc.length > 0 ? lastPlanIdDoc[0].plans_id + 1 : 1;
+
+        const lastDurationIdDoc = await collection.aggregate([
+            { $unwind: { path: '$duration', preserveNullAndEmptyArrays: true } },
+            { $match: { 'duration.duration_id': { $exists: true } } },
+            { $sort: { 'duration.duration_id': -1 } },
+            { $limit: 1 },
+            { $project: { _id: 0, duration_id: '$duration.duration_id' } }
+        ]).toArray();
+        let nextDurationId = lastDurationIdDoc.length > 0 ? lastDurationIdDoc[0].duration_id + 1 : 1;
+
         for (let i = 0; i < productModels.length; i++) {
             const product = productModels[i];
 
@@ -331,11 +351,13 @@ const AddProductModels = async (req, res) => {
                 createdby
             } = product;
 
-            const plans = parseArray(product.plans);
-            const duration = parseArray(product.duration);
+            const duration = parseArray(product.duration).map(durationItem => ({
+                ...durationItem,
+                plans: parseArray(durationItem.plans),
+            }));
 
-            if (!model_name || !plans.length || !duration.length || !createdby) {
-                return res.status(400).json({ status: 'Failed', message: 'Missing required fields in product' });
+            if (!model_name || !duration.length || duration.some(d => !d.plans || !d.plans.length) || !createdby) {
+                return res.status(400).json({ status: 'Failed', message: 'Missing required fields in product or duration without plans' });
             }
 
             const quantityInt = parseInt(wp_device_quantity);
@@ -361,31 +383,30 @@ const AddProductModels = async (req, res) => {
             const sub_img_4 = uploadedFiles['sub_img_4']?.[0]?.filename || product.sub_img_4 || "";
             const product_specifications = uploadedFiles['product_specifications']?.[0]?.filename || product.product_specifications || "";
 
-            // Auto-assign missing plans_id (global across all models)
-            const lastPlanIdDoc = await collection.aggregate([
-                { $unwind: '$plans' },
-                { $sort: { 'plans.plans_id': -1 } },
-                { $limit: 1 },
-                { $project: { _id: 0, plans_id: '$plans.plans_id' } }
-            ]).toArray();
-            let nextPlansId = lastPlanIdDoc.length > 0 ? lastPlanIdDoc[0].plans_id + 1 : 1;
+            const updatedDuration = duration.map(durationItem => {
+                const normalizedDurationId = Number(durationItem.duration_id);
+                const duration_id = Number.isInteger(normalizedDurationId) && normalizedDurationId > 0
+                    ? normalizedDurationId
+                    : nextDurationId++;
 
-            const updatedPlans = plans.map(p =>
-                p.plans_id && Number.isInteger(p.plans_id) ? p : { ...p, plans_id: nextPlansId++ }
-            );
+                const plans = (durationItem.plans || []).map(planItem => {
+                    const normalizedPlanId = Number(planItem.plans_id);
+                    const plans_id = Number.isInteger(normalizedPlanId) && normalizedPlanId > 0
+                        ? normalizedPlanId
+                        : nextPlansId++;
 
-            // Auto-assign missing duration_id (global across all models)
-            const lastDurationIdDoc = await collection.aggregate([
-                { $unwind: '$duration' },
-                { $sort: { 'duration.duration_id': -1 } },
-                { $limit: 1 },
-                { $project: { _id: 0, duration_id: '$duration.duration_id' } }
-            ]).toArray();
-            let nextDurationId = lastDurationIdDoc.length > 0 ? lastDurationIdDoc[0].duration_id + 1 : 1;
+                    return {
+                        ...planItem,
+                        plans_id,
+                    };
+                });
 
-            const updatedDuration = duration.map(d =>
-                d.duration_id && Number.isInteger(d.duration_id) ? d : { ...d, duration_id: nextDurationId++ }
-            );
+                return {
+                    ...durationItem,
+                    duration_id,
+                    plans,
+                };
+            });
 
             docsToInsert.push({
                 model_id,
@@ -396,10 +417,9 @@ const AddProductModels = async (req, res) => {
                 sub_img_3,
                 sub_img_4,
                 product_specifications,
-                wp_device_quantity: quantityInt, 
+                wp_device_quantity: quantityInt,
                 product_details,
                 connectivity: connectivity || '',
-                plans: updatedPlans,
                 duration: updatedDuration,
                 createdby,
                 createddate: now,
@@ -605,6 +625,26 @@ const UpdateProductModels = async (req, res) => {
         const db = await database.connectToDatabase();
         const collection = db.collection('product_models');
 
+        const lastPlanIdDoc = await collection.aggregate([
+            { $unwind: { path: '$duration', preserveNullAndEmptyArrays: true } },
+            { $match: { 'duration.duration_id': { $exists: true } } },
+            { $unwind: { path: '$duration.plans', preserveNullAndEmptyArrays: true } },
+            { $match: { 'duration.plans.plans_id': { $exists: true } } },
+            { $sort: { 'duration.plans.plans_id': -1 } },
+            { $limit: 1 },
+            { $project: { _id: 0, plans_id: '$duration.plans.plans_id' } }
+        ]).toArray();
+        let nextPlansId = lastPlanIdDoc.length > 0 ? lastPlanIdDoc[0].plans_id + 1 : 1;
+
+        const lastDurationIdDoc = await collection.aggregate([
+            { $unwind: { path: '$duration', preserveNullAndEmptyArrays: true } },
+            { $match: { 'duration.duration_id': { $exists: true } } },
+            { $sort: { 'duration.duration_id': -1 } },
+            { $limit: 1 },
+            { $project: { _id: 0, duration_id: '$duration.duration_id' } }
+        ]).toArray();
+        let nextDurationId = lastDurationIdDoc.length > 0 ? lastDurationIdDoc[0].duration_id + 1 : 1;
+
         for (const product of productModels) {
             let {
                 model_id,
@@ -636,11 +676,13 @@ const UpdateProductModels = async (req, res) => {
                 status = false;
             }
 
-            const plans = parseArray(product.plans);
-            const duration = parseArray(product.duration);
+            const duration = parseArray(product.duration).map(durationItem => ({
+                ...durationItem,
+                plans: parseArray(durationItem.plans),
+            }));
 
-            if (!model_id || !model_name || !plans.length || !duration.length || !modifiedby || typeof status !== 'boolean') {
-                return res.status(400).json({ status: 'Failed', message: 'Missing or invalid required fields in product' });
+            if (!model_id || !model_name || !duration.length || duration.some(d => !d.plans || !d.plans.length) || !modifiedby || typeof status !== 'boolean') {
+                return res.status(400).json({ status: 'Failed', message: 'Missing required fields in product or duration without plans' });
             }
 
             // Duplicate check excluding current model_id
@@ -663,31 +705,30 @@ const UpdateProductModels = async (req, res) => {
             const sub_img_4 = req.files?.['sub_img_4']?.[0]?.filename || product.sub_img_4 || '';
             const product_specifications = req.files?.['product_specifications']?.[0]?.filename || req.body.existing_product_specifications || '';
 
-            // Auto-assign missing plans_id
-            const lastPlanIdDoc = await collection.aggregate([
-                { $unwind: '$plans' },
-                { $sort: { 'plans.plans_id': -1 } },
-                { $limit: 1 },
-                { $project: { _id: 0, plans_id: '$plans.plans_id' } }
-            ]).toArray();
-            let nextPlansId = lastPlanIdDoc.length > 0 ? lastPlanIdDoc[0].plans_id + 1 : 1;
+            const updatedDuration = duration.map(durationItem => {
+                const normalizedDurationId = Number(durationItem.duration_id);
+                const duration_id = Number.isInteger(normalizedDurationId) && normalizedDurationId > 0
+                    ? normalizedDurationId
+                    : nextDurationId++;
 
-            const updatedPlans = plans.map(p =>
-                p.plans_id && Number.isInteger(p.plans_id) ? p : { ...p, plans_id: nextPlansId++ }
-            );
+                const plans = (durationItem.plans || []).map(planItem => {
+                    const normalizedPlanId = Number(planItem.plans_id);
+                    const plans_id = Number.isInteger(normalizedPlanId) && normalizedPlanId > 0
+                        ? normalizedPlanId
+                        : nextPlansId++;
 
-            // Auto-assign missing duration_id
-            const lastDurationIdDoc = await collection.aggregate([
-                { $unwind: '$duration' },
-                { $sort: { 'duration.duration_id': -1 } },
-                { $limit: 1 },
-                { $project: { _id: 0, duration_id: '$duration.duration_id' } }
-            ]).toArray();
-            let nextDurationId = lastDurationIdDoc.length > 0 ? lastDurationIdDoc[0].duration_id + 1 : 1;
+                    return {
+                        ...planItem,
+                        plans_id,
+                    };
+                });
 
-            const updatedDuration = duration.map(d =>
-                d.duration_id && Number.isInteger(d.duration_id) ? d : { ...d, duration_id: nextDurationId++ }
-            );
+                return {
+                    ...durationItem,
+                    duration_id,
+                    plans,
+                };
+            });
 
             const now = new Date();
 
@@ -705,7 +746,6 @@ const UpdateProductModels = async (req, res) => {
                         product_details,
                         connectivity: connectivity || '',
                         product_specifications,
-                        plans: updatedPlans,
                         duration: updatedDuration,
                         modifiedby,
                         modifieddate: now,
@@ -969,6 +1009,129 @@ const FetchOrders = async (req, res) => {
         console.error("Error in FetchOrders:", error);
         logger?.error?.(error);
         return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+const ConfirmCodPayment = async (req, res) => {
+    try {
+        const { wp_device_id } = req.body || {};
+
+        if (!wp_device_id) {
+            console.error('wp_device_id is missing from request body');
+            return res.status(400).json({
+                status: "failure",
+                message: "wp_device_id is required",
+            });
+        }
+
+        console.log('ConfirmCodPayment API called with wp_device_id:', wp_device_id);
+
+        const db = await database.connectToDatabase();
+        const ordersCollection = db.collection("orders");
+        const serviceRecordsCollection = db.collection("service_records");
+
+        // ✅ Find order first (primary source of truth)
+        console.log('Looking for order with wp_device_id:', wp_device_id);
+        const order = await ordersCollection.findOne({ wp_device_id });
+        
+        if (!order) {
+            console.error('No order found for wp_device_id:', wp_device_id);
+            return res.status(404).json({
+                status: "failure",
+                message: "Order not found for this device",
+            });
+        }
+
+        console.log('Order found:', { 
+            _id: order._id, 
+            customOrderId: order.customOrderId,
+            paymentType: order.paymentType,
+            paymentStatus: order.paymentStatus,
+            moneyReceived: order.moneyReceived 
+        });
+
+        // ✅ Check if order is COD payment type
+        const paymentType = order?.paymentType;
+        
+        if (paymentType !== "COD") {
+            console.error('Order payment type is not COD:', paymentType);
+            return res.status(400).json({
+                status: "failure",
+                message: "This order is not a COD payment. Payment type is: " + paymentType,
+            });
+        }
+
+        // ✅ Check if payment status is already completed
+        if (order?.paymentStatus === "Completed") {
+            console.log('Payment already completed for order:', order._id);
+            return res.status(400).json({
+                status: "failure",
+                message: "Payment is already confirmed for this order",
+            });
+        }
+
+        const now = new Date();
+
+        // ✅ Update order with COD payment confirmation
+        console.log('Updating order with wp_device_id:', wp_device_id);
+        const updateResult = await ordersCollection.updateOne(
+            { wp_device_id },
+            {
+                $set: {
+                    moneyReceived: true,
+                    paymentStatus: "Completed",
+                    paymentCollectedAt: now,
+                    adminPaymentConfirmedAt: now,
+                    updatedAt: now,
+                },
+            }
+        );
+
+        console.log('Order update result:', { 
+            matchedCount: updateResult.matchedCount, 
+            modifiedCount: updateResult.modifiedCount 
+        });
+
+        // ✅ Also update service record if it exists
+        const serviceRecord = await serviceRecordsCollection.findOne({ wp_device_id });
+        if (serviceRecord) {
+            console.log('Updating service record for wp_device_id:', wp_device_id);
+            await serviceRecordsCollection.updateOne(
+                { _id: serviceRecord._id },
+                {
+                    $set: {
+                        "order_snapshot.moneyReceived": true,
+                        "order_snapshot.paymentStatus": "Completed",
+                        collectPayment: false,
+                        snapshot: true,
+                        modified_date: now,
+                    },
+                }
+            );
+        } else {
+            console.log('No service record found for wp_device_id:', wp_device_id);
+        }
+        
+        console.log('Successfully confirmed COD payment for device:', wp_device_id);
+        return res.status(200).json({
+            status: "success",
+            message: "COD payment confirmed successfully.",
+            data: {
+                wp_device_id,
+                paymentType: "COD",
+                moneyReceived: true,
+                paymentStatus: "Completed",
+                confirmedAt: now,
+            },
+        });
+    } catch (error) {
+        console.error("Error confirming COD payment:", error);
+        logger?.error?.(error);
+        return res.status(500).json({
+            status: "failure",
+            message: "Internal server error",
+            error: error.message,
+        });
     }
 };
 
@@ -1557,6 +1720,15 @@ const FetchInstallationService = async (req, res) => {
 
         const installations = await ordersCollection.aggregate([
             {
+                $match: {
+                    orderStatus: "Confirmed",
+                    $or: [
+                        { paymentType: "COD" },
+                        { $and: [{ paymentType: "Online" }, { paymentStatus: "Completed" }] }
+                    ]
+                }
+            },
+            {
                 $lookup: {
                     from: "service_records",
                     let: { deviceId: "$wp_device_id" },
@@ -1566,7 +1738,7 @@ const FetchInstallationService = async (req, res) => {
                                 $expr: {
                                     $and: [
                                         { $eq: ["$wp_device_id", "$$deviceId"] },
-                                        { $eq: ["$task_type", 1] }
+                                        { $eq: ["$task_type", 1] } // installation task only
                                     ]
                                 }
                             }
@@ -1607,6 +1779,9 @@ const FetchInstallationService = async (req, res) => {
             },
             {
                 $project: { user: 0 }
+            },
+            {
+                $sort: { createdAt: -1 }
             }
         ]).toArray();
 
@@ -1624,6 +1799,7 @@ const FetchInstallationService = async (req, res) => {
         });
     }
 };
+
 
 // FetchSelectUserOrders
 const FetchSelectUserOrders = async (req, res) => {
@@ -2041,7 +2217,21 @@ const FetchSelectInstallationTask = async (req, res) => {
             {
                 $match: {
                     orderStatus: "Confirmed",
-                    paymentStatus: "Completed"
+                    $or: [
+                        { paymentStatus: "Completed" },
+                        {
+                            $expr: {
+                                $eq: [
+                                    {
+                                        $toUpper: {
+                                            $ifNull: ["$paymentType", ""]
+                                        }
+                                    },
+                                    "COD"
+                                ]
+                            }
+                        }
+                    ]
                 }
             },
             {
@@ -2694,26 +2884,11 @@ const GetInstallationsByDistrict = async (req, res) => {
     const ordersCollection = db.collection("orders");
 
     const matchStage = {
-      $expr: {
-        $and: [
-          { $eq: ["$orderStatus", "Confirmed"] },
-          {
-            $or: [
-              {
-                $eq: [
-                  {
-                    $toUpper: {
-                      $ifNull: ["$paymentType", ""]
-                    }
-                  },
-                  "COD"
-                ]
-              },
-              { $eq: ["$paymentStatus", "Completed"] }
-            ]
-          }
-        ]
-      }
+      orderStatus: "Confirmed",
+      $or: [
+        { paymentStatus: "Completed" },
+        { paymentType: { $regex: /^cod$/i } }
+      ]
     };
 
     if (district && String(district).trim() !== '') {
@@ -4045,7 +4220,7 @@ module.exports = {
     FetchSelectServiceTask, AssignService, ReAssignService, assignPermissions, fetchPermissionsByRole,
     GetUsersByDistrict, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
     AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchEndUserDevices, FetchOrdersByUserId, FetchTechnicianTasksByUserId, GetAnalytics,
-    GetAnalyticsByDistrict,GetDistrictsWithSellers
+    GetAnalyticsByDistrict,GetDistrictsWithSellers,ConfirmCodPayment
     // UpdateOrdersStatus,
 
 };

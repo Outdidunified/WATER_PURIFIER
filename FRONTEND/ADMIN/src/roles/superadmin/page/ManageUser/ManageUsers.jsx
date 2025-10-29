@@ -494,6 +494,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                             <th>Role Name</th>
                             <th>User Name</th>
                             <th>Technican Id</th>
+                            <th>District</th>
                             <th>Email ID</th>
                             <th>Status</th>
                             {userInfo?.role_id !== 4 && <th>Assign</th>}
@@ -512,6 +513,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                                 <td>{dataItem.role_name || '-'}</td>
                                 <td>{dataItem.name || '-'}</td>
                                 <td>{dataItem.technician_id || '-'}</td>
+                                <td>{dataItem.district || '-'}</td>
                                 <td>{dataItem.email || '-'}</td>
                                 <td>{dataItem.status ? <span className="text-success">Active</span> : <span className="text-danger">DeActive</span>}</td>
                                 {userInfo?.role_id !== 4 && <td>

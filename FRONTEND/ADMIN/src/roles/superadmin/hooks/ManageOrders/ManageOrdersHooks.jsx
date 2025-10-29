@@ -14,6 +14,7 @@ const useManageOrders = (userInfo) => {
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [showEditForm, setShowEditForm] = useState(false);
     const [modalStyle, setModalStyle] = useState({ display: 'none' });
+    const [codConfirmationLoading, setCodConfirmationLoading] = useState(false);
 
     const fetchOrdersCalled = useRef(false);
 
@@ -26,8 +27,25 @@ const useManageOrders = (userInfo) => {
               ? await axiosInstance.get(url, { params: { district: userInfo?.district } })
               : await axiosInstance.post(url);
             if (res.data.status === 'Success') {
-                setOrders(res.data.data);
-                setFilteredOrders(res.data.data);
+                const sortedOrders = [...res.data.data].sort((a, b) => {
+                    const toTimestamp = (order) => {
+                        const rawDate =
+                            order?.createdAt ||
+                            order?.createddate ||
+                            order?.orderDate ||
+                            order?.order_snapshot?.createdAt ||
+                            order?.order_snapshot?.orderDate;
+
+                        if (!rawDate) return 0;
+                        const date = new Date(rawDate);
+                        return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+                    };
+
+                    return toTimestamp(b) - toTimestamp(a);
+                });
+
+                setOrders(sortedOrders);
+                setFilteredOrders(sortedOrders);
             } else {
                 showErrorAlert('Error', 'Failed to fetch orders');
             }
@@ -38,6 +56,57 @@ const useManageOrders = (userInfo) => {
             setLoading(false);
         }
     };
+
+    const confirmCodPayment = async ({ wp_device_id, onSuccess } = {}) => {
+        console.log('confirmCodPayment called with:', { wp_device_id });
+        
+        if (!wp_device_id) {
+            const errorMsg = 'Device ID missing. Unable to confirm payment.';
+            console.error(errorMsg);
+            showErrorAlert('Error', errorMsg);
+            return false;
+        }
+
+        try {
+            setCodConfirmationLoading(true);
+            console.log('Sending request to /api/admin/ConfirmCodPayment with wp_device_id:', wp_device_id);
+            
+            const response = await axiosInstance.post('/api/admin/ConfirmCodPayment', {
+                wp_device_id,
+            });
+
+            console.log('API Response:', response.data);
+            const responseStatus = (response?.data?.status || '').toString().toLowerCase();
+
+            if (responseStatus === 'success') {
+                showSuccessAlert('Success', response?.data?.message || 'COD payment confirmed successfully');
+                if (typeof onSuccess === 'function') {
+                    onSuccess();
+                }
+                await fetchOrders();
+                return true;
+            } else {
+                const errorMsg = response?.data?.message || 'Failed to confirm COD payment';
+                console.error('API returned non-success status:', errorMsg);
+                showErrorAlert('Error', errorMsg);
+                return false;
+            }
+        } catch (error) {
+            console.error('Error confirming COD payment:', error);
+            const message = error?.response?.data?.message || error?.message || 'An error occurred while confirming COD payment';
+            console.error('Full error:', { 
+                status: error?.response?.status,
+                data: error?.response?.data,
+                message 
+            });
+            showErrorAlert('Error', message);
+            return false;
+        } finally {
+            setCodConfirmationLoading(false);
+        }
+    };
+
+    const resolveDeviceId = (order = {}) => order.wp_device_id || order?.order_snapshot?.wp_device_id || null;
 
     useEffect(() => {
         if (!fetchOrdersCalled.current) {
@@ -109,11 +178,14 @@ const useManageOrders = (userInfo) => {
         editOrderStatus,
         editLoading,
         modalStyle,
+        codConfirmationLoading,
         setEditOrderStatus,
         handleSearchInputChange,
         handleEditOrder,
         closeEditModal,
         updateOrderStatus,
+        resolveDeviceId,
+        confirmCodPayment,
     };
 };
 
