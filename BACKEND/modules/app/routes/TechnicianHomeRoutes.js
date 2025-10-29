@@ -22,4 +22,7 @@ router.post('/requestLeave', techhome.requestLeave);
 router.post('/getTechnicianLeaveRequests', techhome.getTechnicianLeaveRequests);
 router.post('/updateInProgressTaskLeaveAction', techhome.updateInProgressTaskLeaveAction);
 
+// ============ BLE CONNECTION SETUP ROUTE ============
+router.post('/setupBleConnection', authMiddleware, techhome.setupBleConnection);
+
 module.exports = router;

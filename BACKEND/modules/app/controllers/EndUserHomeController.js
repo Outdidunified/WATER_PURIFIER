@@ -75,16 +75,38 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
       });
     }
 
-    // ✅ Add installation_status from service_records for each order
+    // ✅ Add tasks (installation & service) with technician details from service_records for each order
     const ordersWithStatus = await Promise.all(
       orders.map(async (order) => {
-        const serviceRecord = await serviceRecordsCollection.findOne({
+        const serviceRecords = await serviceRecordsCollection.find({
           wp_device_id: order.wp_device_id
-        });
+        }).toArray();
+        
+        // Map all records to tasks array with technician details
+        const tasks = await Promise.all(
+          serviceRecords.map(async (record) => {
+            let technician = null;
+            if (record.assigned_technician_id) {
+              technician = await usersCollection.findOne({
+                technician_id: record.assigned_technician_id
+              });
+            }
+            
+            return {
+              task_type: record.task_type,
+              task_status: record.task_status,
+              technician: technician ? {
+                name: technician.name,
+                phone: technician.phone
+              } : null,
+              estimated_end: record.estimated_end || null
+            };
+          })
+        );
         
         return {
           ...order,
-          installation_status: serviceRecord?.task_status || null
+          tasks: tasks
         };
       })
     );
@@ -169,4 +191,4 @@ exports.getLatestFeatureValues = async (req, res) => {
     });
   }
 };
-  
+

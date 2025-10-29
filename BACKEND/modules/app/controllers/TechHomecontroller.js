@@ -387,6 +387,112 @@ exports.updateInProgressTaskLeaveAction = async (req, res) => {
 };
 
 
+exports.setupBleConnection = async (req, res) => {
+  const { wp_device_id, mac_id, technician_id, task_id } = req.body;
+
+  // ✅ Validate required fields
+  if (!wp_device_id || !mac_id) {
+    return res.status(400).json({
+      error: true,
+      message: 'wp_device_id and mac_id are required'
+    });
+  }
+
+  // ✅ Validate MAC ID format (XX:XX:XX:XX:XX:XX)
+  const macIdRegex = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
+  if (!macIdRegex.test(mac_id)) {
+    return res.status(400).json({
+      error: true,
+      message: 'Invalid MAC ID format. Expected format: XX:XX:XX:XX:XX:XX'
+    });
+  }
+
+  try {
+    const db = await connectToDatabase();
+    const deviceDetailsCollection = db.collection('device_details');
+    const serviceRecordsCollection = db.collection('service_records');
+
+    // ✅ Check if device exists
+    const device = await deviceDetailsCollection.findOne({
+      wp_device_id: { $regex: new RegExp(`^${wp_device_id}$`, 'i') }
+    });
+
+    if (!device) {
+      return res.status(404).json({
+        error: true,
+        message: 'Device not found in device_details'
+      });
+    }
+
+    // ✅ Normalize MAC ID to uppercase with colons
+    const normalizedMacId = mac_id.toUpperCase().replace(/:/g, ':');
+    const now = new Date();
+
+    // ✅ Update device_details with MAC ID and timestamp
+    const deviceUpdateResult = await deviceDetailsCollection.updateOne(
+      { wp_device_id: { $regex: new RegExp(`^${wp_device_id}$`, 'i') } },
+      {
+        $set: {
+          mac_id: normalizedMacId,
+          ble_setup_timestamp: now,
+          ...(technician_id && { assigned_technician_id: technician_id })
+        }
+      }
+    );
+
+    if (deviceUpdateResult.modifiedCount === 0) {
+      return res.status(500).json({
+        error: true,
+        message: 'Failed to update device with MAC ID'
+      });
+    }
+
+    // ✅ Update service_records with MAC ID (if task_id provided)
+    let serviceRecordUpdate = null;
+    if (task_id) {
+      serviceRecordUpdate = await serviceRecordsCollection.updateOne(
+        { 
+          task_id: parseInt(task_id),
+          wp_device_id: wp_device_id
+        },
+        {
+          $set: {
+            mac_id: normalizedMacId,
+            ble_setup_timestamp: now,
+            task_status: 'In Progress', // ✅ Ensure task status is In Progress
+            ...(technician_id && { assigned_technician_id: technician_id })
+          }
+        }
+      );
+
+      if (serviceRecordUpdate.modifiedCount === 0) {
+        console.warn(`Warning: Service record not found for task_id: ${task_id}`);
+      }
+    }
+
+    return res.status(200).json({
+      error: false,
+      message: 'MAC ID stored successfully',
+      data: {
+        wp_device_id,
+        mac_id: normalizedMacId,
+        ble_setup_timestamp: now,
+        device_updated: deviceUpdateResult.modifiedCount > 0,
+        service_record_updated: serviceRecordUpdate ? serviceRecordUpdate.modifiedCount > 0 : false,
+        task_status: 'In Progress'
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in setupBleConnection:', error);
+    return res.status(500).json({
+      error: true,
+      message: 'Server error while storing MAC ID'
+    });
+  }
+};
+
+
 exports.updateTaskDetails = async (req, res) => {
   console.log('----- Incoming Request to /updateTaskDetails -----');
   console.log('➡️ Body:', req.body);
