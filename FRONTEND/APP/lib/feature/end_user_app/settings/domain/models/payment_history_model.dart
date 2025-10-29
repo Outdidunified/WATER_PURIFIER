@@ -103,6 +103,9 @@ class Order {
   final String? installationStatus;
   final DateTime? modifiedDate;
   final String? modifiedBy;
+  final String? paymentType;
+  final double? grandTotal;
+  final int? codFee;
 
   Order({
     this.id,
@@ -126,6 +129,9 @@ class Order {
     this.installationStatus,
     this.modifiedDate,
     this.modifiedBy,
+    this.paymentType,
+    this.grandTotal,
+    this.codFee,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -160,6 +166,9 @@ class Order {
           ? DateTime.parse(json['modifiedDate'] as String)
           : null,
       modifiedBy: json['modified_by'] as String?,
+      paymentType: json['paymentType'] as String?,
+      grandTotal: (json['grandTotal'] as num?)?.toDouble(),
+      codFee: json['codFee'] as int?,
     );
   }
 }
@@ -220,6 +229,8 @@ class DeliveryAddress {
   final String? name;
   final String? phone;
   final String? addressLine1;
+  final String? street;
+  final String? landmark;
   final String? city;
   final String? state;
   final String? pincode;
@@ -228,6 +239,8 @@ class DeliveryAddress {
     this.name,
     this.phone,
     this.addressLine1,
+    this.street,
+    this.landmark,
     this.city,
     this.state,
     this.pincode,
@@ -238,6 +251,8 @@ class DeliveryAddress {
       name: json['name'] as String?,
       phone: json['phone'] as String?,
       addressLine1: json['addressLine1'] as String?,
+      street: json['street'] as String?,
+      landmark: json['landmark'] as String?,
       city: json['city'] as String?,
       state: json['state'] as String?,
       pincode: json['pincode'] as String?,

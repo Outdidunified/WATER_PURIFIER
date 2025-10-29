@@ -1,27 +1,80 @@
 import 'package:ionhive_water_purifier/feature/end_user_app/settings/data/urls.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/home/presentation/controllers/subscription_controller.dart';
-import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/controllers/settings_controller.dart';
-import 'package:ionhive_water_purifier/feature/end_user_app/analytics/presentation/controllers/telemetry_controller.dart';
 import 'package:ionhive_water_purifier/utils/widgets/error/error_display_widget.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/models/home_model.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:get/get.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:open_file/open_file.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/pages/ContactSupportPage/contact_support_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/controllers/settings_controller.dart';
 
-class DashedLinePainter extends CustomPainter {
+class CustomAppBarOrders extends StatelessWidget {
+  const CustomAppBarOrders({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: MediaQuery.of(context).size.width * 0.04,
+        vertical: MediaQuery.of(context).size.height * 0.015,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            "Order History",
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: Colors.black,
+              fontWeight: FontWeight.w600,
+              fontSize: MediaQuery.of(context).size.width * 0.05,
+            ),
+          ),
+          IconButton(
+            onPressed: () {
+              Get.lazyPut(() => SettingsController());
+              Get.to(
+                () => ContactSupportPage(),
+                transition: Transition.rightToLeft,
+                duration: const Duration(milliseconds: 300),
+              );
+            },
+            icon: Icon(
+              Icons.headphones,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class DashedLinePainterOrders extends CustomPainter {
   final Color color;
   final double strokeWidth;
   final double dashWidth;
   final double dashSpace;
 
-  DashedLinePainter({
+  DashedLinePainterOrders({
     required this.color,
     required this.strokeWidth,
     required this.dashWidth,
@@ -52,8 +105,8 @@ class DashedLinePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class SubscriptionPlanPage extends StatelessWidget {
-  const SubscriptionPlanPage({super.key});
+class OrdersPage extends StatelessWidget {
+  const OrdersPage({super.key});
 
   Widget _buildShimmerLoading(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -64,8 +117,7 @@ class SubscriptionPlanPage extends StatelessWidget {
         vertical: screenHeight * 0.02,
         horizontal: screenWidth * 0.04,
       ),
-      itemCount:
-          2,
+      itemCount: 2,
       itemBuilder: (context, index) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,7 +243,7 @@ class SubscriptionPlanPage extends StatelessWidget {
       separatorBuilder: (context, index) => Padding(
         padding: EdgeInsets.symmetric(vertical: screenHeight * 0.01),
         child: CustomPaint(
-          painter: DashedLinePainter(
+          painter: DashedLinePainterOrders(
             color: Colors.grey.shade300,
             strokeWidth: 1,
             dashWidth: 5,
@@ -331,20 +383,23 @@ class SubscriptionPlanPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Center(
-                          child: Text(
-                            'Order Details',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: screenWidth * 0.042,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                        ),
+                     Center(
+  child: Text(
+    'Order Details',
+    textAlign: TextAlign.center,
+    style: TextStyle(
+      fontSize: screenWidth * 0.042,
+      fontWeight: FontWeight.bold,
+      color: theme.colorScheme.primary,
+    ),
+  ),
+),
+
+SizedBox(height: 8),
+
                         SizedBox(height: screenHeight * 0.02),
 
-
+                     
 
                         Text(
                           'Delivery Address',
@@ -661,45 +716,6 @@ class SubscriptionPlanPage extends StatelessWidget {
                                 ],
                               ),
 
-                              if (order.tasks.isNotEmpty) ...[
-                                SizedBox(height: screenWidth * 0.03),
-                                _buildInstallationServiceStatusSection(
-                                  context,
-                                  order: order,
-                                ),
-                              ] else ...[
-                                SizedBox(height: screenWidth * 0.03),
-                                Text(
-                                  'Installation Status',
-                                  style: TextStyle(
-                                    fontSize: screenWidth * 0.032,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                SizedBox(height: screenHeight * 0.01),
-                                Container(
-                                  width: double.infinity,
-                                  padding: EdgeInsets.all(screenWidth * 0.04),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary.withOpacity(0.08),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    order.installationStatus ?? 'Pending',
-                                    style: TextStyle(
-                                      fontSize: screenWidth * 0.04,
-                                      fontWeight: FontWeight.w600,
-                                      color: (order.installationStatus ?? 'Pending').toLowerCase() == 'completed'
-                                          ? Colors.green
-                                          : (order.installationStatus ?? 'Pending').toLowerCase() == 'in progress'
-                                          ? Colors.orange
-                                          : Colors.blue,
-                                    ),
-                                  ),
-                                ),
-                              ],
-
                               if (order.paymentStatus.toLowerCase() == 'confirmed' ||
                                   order.paymentStatus.toLowerCase() == 'completed') ...[
                                 SizedBox(height: screenWidth * 0.03),
@@ -729,6 +745,15 @@ class SubscriptionPlanPage extends StatelessWidget {
                             ],
                           ),
                         ),
+
+                        if (order.tasks.isNotEmpty) ...[
+                          SizedBox(height: screenWidth * 0.03),
+                          _buildInstallationServiceStatusSection(
+                            context,
+                            order: order,
+                          ),
+                        ],
+
                         SizedBox(height: screenHeight * 0.02),
                       ],
                     ),
@@ -875,14 +900,11 @@ class SubscriptionPlanPage extends StatelessWidget {
                       ],
                     ),
                   ),
-                  
                   Padding(
                     padding: EdgeInsets.all(screenWidth * 0.04),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-
-                        
                         Text(
                           'Assigned Technician',
                           style: TextStyle(
@@ -999,7 +1021,29 @@ class SubscriptionPlanPage extends StatelessWidget {
                             ],
                           ),
                         ),
-                        
+                        SizedBox(height: screenWidth * 0.03),
+                        Row(
+                          children: [
+                            Text(
+                              'Estimated Completion: ',
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.03,
+                                color: Colors.black54,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              task.estimatedEnd != null && task.estimatedEnd!.isNotEmpty
+                                  ? DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.parse(task.estimatedEnd!))
+                                  : 'Not set',
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w700,
+                                fontSize: screenWidth * 0.03,
+                              ),
+                            ),
+                          ],
+                        ),
                         if (isCompleted) ...[
                           SizedBox(height: screenWidth * 0.03),
                           Container(
@@ -1043,8 +1087,7 @@ class SubscriptionPlanPage extends StatelessWidget {
                                         'OTP shared with technician',
                                         style: TextStyle(
                                           fontSize: screenWidth * 0.028,
-                                          color: Colors.green.withOpacity(0.7),
-                                          fontWeight: FontWeight.w500,
+                                          color: Colors.black54,
                                         ),
                                       ),
                                     ],
@@ -1092,53 +1135,46 @@ class SubscriptionPlanPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Get.lazyPut(() => SubscriptionListController());
-    Get.lazyPut(() => SettingsController());
-    final settingsController = Get.find<SettingsController>();
     final subscriptionController = Get.find<SubscriptionListController>();
     final theme = Theme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Order History'),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
-      ),
-      body: Obx(() {
-        if (subscriptionController.isLoading.value) {
-          return _buildShimmerLoading(context);
-        } else if (subscriptionController.errorMessage.isNotEmpty) {
-          return Center(
-            child: ErrorDisplayWidget(
-              errorMessage: subscriptionController.errorMessage.value,
-              onRetry: () {
-                subscriptionController.fetchOrders();
-              },
-            ),
-          );
-        }
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const CustomAppBarOrders(),
+            Expanded(
+              child: Obx(() {
+                if (subscriptionController.isLoading.value) {
+                  return _buildShimmerLoading(context);
+                } else if (subscriptionController.errorMessage.isNotEmpty) {
+                  return Center(
+                    child: ErrorDisplayWidget(
+                      errorMessage: subscriptionController.errorMessage.value,
+                      onRetry: () {
+                        subscriptionController.fetchOrders();
+                      },
+                    ),
+                  );
+                }
 
-        final activeSubscriptions = subscriptionController.orders;
+                final activeSubscriptions = subscriptionController.orders;
 
-        if (activeSubscriptions.isEmpty) {
-          return Center(
-            child: DisplayWidget(
-              errorMessage: "No active subscription found.",
-              assetPath: 'assets/icons/subscription_not_found.png',
-            ),
-          );
-        }
+                if (activeSubscriptions.isEmpty) {
+                  return Center(
+                    child: DisplayWidget(
+                      errorMessage: "No active subscription found.",
+                      assetPath: 'assets/icons/subscription_not_found.png',
+                    ),
+                  );
+                }
 
-        activeSubscriptions.sort((a, b) => DateTime.parse(b.createdAt).compareTo(DateTime.parse(a.createdAt)));
+                activeSubscriptions.sort((a, b) => DateTime.parse(b.createdAt).compareTo(DateTime.parse(a.createdAt)));
 
-        if (settingsController.deliveryAddressVisibility.length !=
-            activeSubscriptions.length) {
-          settingsController.deliveryAddressVisibility.value =
-              List<bool>.filled(activeSubscriptions.length, false);
-        }
-
-        return ListView.separated(
+                return ListView.separated(
           padding: EdgeInsets.symmetric(
             vertical: screenHeight * 0.02,
             horizontal: screenWidth * 0.04,
@@ -1287,12 +1323,11 @@ class SubscriptionPlanPage extends StatelessWidget {
                 ),
               ],
             );
-
           },
           separatorBuilder: (context, index) => Padding(
             padding: EdgeInsets.symmetric(vertical: screenHeight * 0.01),
             child: CustomPaint(
-              painter: DashedLinePainter(
+              painter: DashedLinePainterOrders(
                 color: Colors.grey.shade300,
                 strokeWidth: 1,
                 dashWidth: 5,
@@ -1305,7 +1340,11 @@ class SubscriptionPlanPage extends StatelessWidget {
             ),
           ),
         );
-      }),
+              }),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

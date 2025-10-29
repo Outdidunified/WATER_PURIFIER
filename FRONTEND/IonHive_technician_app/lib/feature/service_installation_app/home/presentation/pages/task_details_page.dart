@@ -2,10 +2,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:ionhive_technician_app/utils/widgets/snackbar/custom_snackbar.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Added for FilteringTextInputFormatter
+import 'package:flutter/services.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart' as fbs;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:barcode_scan2/barcode_scan2.dart' as bs;
+import 'package:ionhive_technician_app/core/controllers/session_controller.dart';
 import 'package:ionhive_technician_app/feature/service_installation_app/home/domain/models/home_model.dart';
 import 'package:ionhive_technician_app/feature/service_installation_app/home/presentation/controllers/home_controller.dart';
 
@@ -34,11 +39,29 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   String? _qrCode;
   bool _isGeneratingQR = false;
   late Task _currentTask;
+  
+  bool _isTechnicianOnLeave = false;
+  bool _checkingLeave = true;
+  bool _waitingActionSelected = false;
+  String _macId = '';
+  bool _macIdStored = false;
+  bool _isStoringMacId = false;
+  bool _showMacIdInput = false;
+  bool _isScanning = false;
+  bool _isBleConnecting = false;
+  List<ScanResult> _bleDevices = [];
+  List<fbs.BluetoothDiscoveryResult> _classicDevices = [];
+  BluetoothDevice? _connectedDevice;
+  bool _bleEnabled = false;
+  String _connectionType = '';
+  fbs.BluetoothConnection? _bluetoothConnection;
 
   final TextEditingController _pendingReasonController =
       TextEditingController();
   final TextEditingController _otpController = TextEditingController();
+  final TextEditingController _macIdController = TextEditingController();
   final TechnicianController controller = Get.find<TechnicianController>();
+  final SessionController sessionController = Get.find<SessionController>();
 
   @override
   void initState() {
@@ -48,24 +71,100 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     if (_currentTask.taskStatus == 'In Progress') {
       _accepted = true;
       _selectedStatus = 'In Progress';
+    } else if (_currentTask.taskStatus == 'Rejected') {
+      _declined = true;
+      _declineReason = _currentTask.pendingReason ?? '';
     } else if (_currentTask.taskStatus == 'Pending' && _currentTask.pendingReason != null) {
       _declined = true;
       _declineReason = _currentTask.pendingReason!;
     }
-    // Initialize payment collected status
     _codCollected = _currentTask.orderPaymentStatus?.toLowerCase() == 'completed' || _currentTask.paymentCollected == true;
     
-    // Initialize payment method if already collected
     if (_codCollected && _currentTask.paymentMethod != null) {
       _selectedPaymentMethod = _currentTask.paymentMethod!;
     }
+    
+    _checkTechnicianLeaveStatus();
   }
 
   @override
   void dispose() {
     _pendingReasonController.dispose();
     _otpController.dispose();
+    _macIdController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkTechnicianLeaveStatus() async {
+    try {
+      final leaveRequests = await controller.getTechnicianLeaveRequests(
+        technicianId: sessionController.technicianId.value,
+        email: sessionController.emailId.value,
+      );
+
+      final now = DateTime.now();
+      
+      for (var leaveReq in leaveRequests) {
+        final fromDate = DateTime.parse(leaveReq['from_date'] as String);
+        final toDate = DateTime.parse(leaveReq['to_date'] as String);
+        final status = leaveReq['status'] as String?;
+
+        if (status?.toLowerCase() == 'approved' &&
+            now.isAfter(fromDate) &&
+            now.isBefore(toDate.add(const Duration(days: 1)))) {
+          setState(() {
+            _isTechnicianOnLeave = true;
+            _checkingLeave = false;
+          });
+          return;
+        }
+      }
+
+      setState(() {
+        _isTechnicianOnLeave = false;
+        _checkingLeave = false;
+      });
+    } catch (e) {
+      debugPrint('Error checking leave status: $e');
+      setState(() {
+        _isTechnicianOnLeave = false;
+        _checkingLeave = false;
+      });
+    }
+  }
+
+  Future<void> _handleLeaveAction(String action) async {
+    if (widget.task.taskId == null) {
+      CustomSnackbar.showError(message: 'Task ID is missing');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await controller.updateInProgressTaskLeaveAction(
+        technicianId: sessionController.technicianId.value,
+        email: sessionController.emailId.value,
+        taskId: widget.task.taskId!,
+        action: action,
+      );
+
+      final updatedTask = controller.allTasks.firstWhere(
+        (task) => task.taskId == widget.task.taskId,
+        orElse: () => widget.task,
+      );
+
+      setState(() {
+        _currentTask = updatedTask;
+      });
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      debugPrint('Error in _handleLeaveAction: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _pickImage(String type) async {
@@ -88,10 +187,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       return;
     }
 
-    // --- Convert assigned date to local for UI ---
     final DateTime assignedDateUtc = widget.task.assignedDate!;
-    final DateTime assignedDate = assignedDateUtc.toLocal(); // For display & picker
-    final DateTime threeDaysLater = assignedDate.add(const Duration(days: 3));
+    final DateTime assignedDate = assignedDateUtc.toLocal();
+    final DateTime twoDaysLater = assignedDate.add(const Duration(days: 2));
 
     DateTime? estimatedEnd;
 
@@ -103,8 +201,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           builder: (context, setState) {
             return Dialog(
               backgroundColor: Colors.white,
-              shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Container(
                 width: MediaQuery.of(context).size.width * 0.85,
                 padding: const EdgeInsets.all(20),
@@ -120,14 +217,12 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                     ),
                     const SizedBox(height: 16),
 
-                    // END DATE & TIME PICKER
                     GestureDetector(
                       onTap: () async {
                         final DateTime today = DateTime.now();
                         final DateTime startDate =
                         assignedDate.isAfter(today) ? assignedDate : today;
 
-                        // --- Date Picker ---
                         DateTime? pickedDate = await showDialog<DateTime>(
                           context: context,
                           builder: (context) {
@@ -153,7 +248,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                       child: CalendarDatePicker(
                                         initialDate: startDate,
                                         firstDate: startDate,
-                                        lastDate: threeDaysLater,
+                                        lastDate: twoDaysLater,
                                         onDateChanged: (date) {
                                           tempDate = date;
                                         },
@@ -196,7 +291,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
                         if (pickedDate == null) return;
 
-                        // --- Time Picker ---
                         TimeOfDay? pickedTime = await showDialog<TimeOfDay>(
                           context: context,
                           builder: (context) {
@@ -222,12 +316,10 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                         ),
                                         const SizedBox(height: 16),
 
-                                        // Hour, Minute, AM/PM
                                         Row(
                                           mainAxisAlignment:
                                           MainAxisAlignment.spaceEvenly,
                                           children: [
-                                            // Hour
                                             Column(
                                               children: [
                                                 const Text('Hour',
@@ -252,25 +344,28 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                                         height: 22,
                                                         alignment:
                                                         Alignment.center,
-                                                        child: Text(
-                                                            (i + 1)
-                                                                .toString()
-                                                                .padLeft(2, '0')),
+                                                        child: Text((i + 1)
+                                                            .toString()
+                                                            .padLeft(2, '0')),
                                                       ),
                                                     );
                                                   }),
                                                   onChanged: (value) {
                                                     if (value != null) {
                                                       setTimeState(() {
-                                                        final newHour = time.period ==
+                                                        final newHour =
+                                                        time.period ==
                                                             DayPeriod.am
-                                                            ? (value == 12 ? 0 : value)
+                                                            ? (value == 12
+                                                            ? 0
+                                                            : value)
                                                             : (value == 12
                                                             ? 12
                                                             : value + 12);
                                                         time = TimeOfDay(
                                                             hour: newHour,
-                                                            minute: time.minute);
+                                                            minute:
+                                                            time.minute);
                                                       });
                                                     }
                                                   },
@@ -278,7 +373,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                               ],
                                             ),
 
-                                            // Minute
                                             Column(
                                               children: [
                                                 const Text('Min',
@@ -301,8 +395,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                                         height: 22,
                                                         alignment:
                                                         Alignment.center,
-                                                        child: Text(
-                                                            i.toString().padLeft(2, '0')),
+                                                        child: Text(i
+                                                            .toString()
+                                                            .padLeft(2, '0')),
                                                       ),
                                                     );
                                                   }),
@@ -319,7 +414,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                               ],
                                             ),
 
-                                            // AM/PM
                                             Column(
                                               children: [
                                                 const Text('AM/PM',
@@ -347,7 +441,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                                     if (value != null) {
                                                       setTimeState(() {
                                                         final currentHour =
-                                                        time.hourOfPeriod == 0
+                                                        time.hourOfPeriod ==
+                                                            0
                                                             ? 12
                                                             : time.hourOfPeriod;
                                                         final newHour =
@@ -355,9 +450,11 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                                             ? (currentHour == 12
                                                             ? 0
                                                             : currentHour)
-                                                            : (currentHour == 12
+                                                            : (currentHour ==
+                                                            12
                                                             ? 12
-                                                            : currentHour + 12);
+                                                            : currentHour +
+                                                            12);
                                                         time = TimeOfDay(
                                                             hour: newHour,
                                                             minute: time.minute);
@@ -371,7 +468,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                                         ),
                                         const SizedBox(height: 16),
 
-                                        // Buttons
                                         Row(
                                           mainAxisAlignment: MainAxisAlignment.end,
                                           children: [
@@ -424,8 +520,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                         }
                       },
                       child: Container(
-                        padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 12),
                         decoration: BoxDecoration(
                           color: Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(12),
@@ -453,13 +549,13 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
                     const SizedBox(height: 20),
 
-                    // Bottom Buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel', style: TextStyle(fontSize: 13)),
+                          child:
+                          const Text('Cancel', style: TextStyle(fontSize: 13)),
                         ),
                         const SizedBox(width: 10),
                         ElevatedButton(
@@ -477,10 +573,10 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                               return;
                             }
 
-                            // --- Validation in local time ---
                             final DateTime minAllowed = assignedDate;
-                            final DateTime maxAllowed = threeDaysLater;
-                            if (end!.isBefore(minAllowed) || end!.isAfter(maxAllowed)) {
+                            final DateTime maxAllowed = twoDaysLater;
+                            if (end!.isBefore(minAllowed) ||
+                                end!.isAfter(maxAllowed)) {
                               CustomSnackbar.showError(
                                 message:
                                 'Estimated end must be between ${DateFormat('MMM dd, yyyy hh:mm a').format(minAllowed)} and ${DateFormat('MMM dd, yyyy hh:mm a').format(maxAllowed)}',
@@ -492,7 +588,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                             Navigator.pop(context);
                           },
                           child: const Text('Accept',
-                              style: TextStyle(fontSize: 13, color: Colors.white)),
+                              style:
+                              TextStyle(fontSize: 13, color: Colors.white)),
                         ),
                       ],
                     ),
@@ -509,16 +606,14 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
     setState(() => _isLoading = true);
     try {
-      // --- Send UTC to backend ---
       await controller.acceptDeclineTask(
         taskId: widget.task.taskId!,
         action: 'accept',
         estimatedEnd: estimatedEnd!.toUtc(),
       );
 
-      // ✅ Refresh task data from controller after acceptance
       final updatedTask = controller.allTasks.firstWhere(
-        (task) => task.taskId == widget.task.taskId,
+            (task) => task.taskId == widget.task.taskId,
         orElse: () => widget.task,
       );
 
@@ -526,10 +621,10 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         _currentTask = updatedTask;
         _accepted = true;
         _selectedStatus = updatedTask.taskStatus ?? 'In Progress';
-        
-        // Update payment status if changed
-        _codCollected = updatedTask.orderPaymentStatus?.toLowerCase() == 'completed' || 
-                       updatedTask.paymentCollected == true;
+
+        _codCollected =
+            updatedTask.orderPaymentStatus?.toLowerCase() == 'completed' ||
+                updatedTask.paymentCollected == true;
         if (_codCollected && updatedTask.paymentMethod != null) {
           _selectedPaymentMethod = updatedTask.paymentMethod!;
         }
@@ -541,22 +636,12 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     }
   }
 
-
-
-
-
-
-
-
-
-
   Future<void> _declineTask() async {
     if (widget.task.taskId == null) {
       CustomSnackbar.showError(message: 'Task ID is missing');
       return;
     }
 
-    // Show dialog for decline reason
     final reason = await showDialog<String>(
       context: context,
       builder: (context) {
@@ -656,7 +741,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         declineReason: reason,
       );
       
-      // ✅ Refresh task data from controller after declining
       final updatedTask = controller.allTasks.firstWhere(
         (task) => task.taskId == widget.task.taskId,
         orElse: () => widget.task,
@@ -675,8 +759,221 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     }
   }
 
+  Future<void> _setupBleConnection() async {
+    if (_macId.trim().isEmpty) {
+      CustomSnackbar.showError(message: 'Please enter or scan MAC ID');
+      return;
+    }
+
+    setState(() => _isStoringMacId = true);
+    try {
+      final response = await controller.setupBleConnection(
+        wpDeviceId: _currentTask.wpDeviceId ?? '',
+        macId: _macId,
+        taskId: (_currentTask.taskId ?? '').toString(),
+        technicianId: sessionController.technicianId.value,
+      );
+
+      if (response['error'] == false) {
+        setState(() {
+          _macIdStored = true;
+        });
+        CustomSnackbar.showSuccess(message: 'MAC ID stored successfully');
+      } else {
+        CustomSnackbar.showError(message: response['message'] ?? 'Failed to store MAC ID');
+      }
+    } catch (e) {
+      CustomSnackbar.showError(message: 'Error storing MAC ID: $e');
+    } finally {
+      setState(() => _isStoringMacId = false);
+    }
+  }
+
+  Future<void> _scanMacId() async {
+    try {
+      final result = await bs.BarcodeScanner.scan();
+
+      if (result.rawContent.isNotEmpty) {
+        setState(() {
+          _macId = result.rawContent;
+          _macIdController.text = result.rawContent;
+        });
+      }
+    } catch (e) {
+      CustomSnackbar.showError(message: 'Error scanning MAC ID: $e');
+    }
+  }
+
+  Future<void> _requestPermissionsAndScan() async {
+    try {
+      await Permission.location.request();
+      await Permission.bluetoothScan.request();
+      await Permission.bluetoothConnect.request();
+      
+      await _enableBluetoothAndScan();
+    } catch (e) {
+      CustomSnackbar.showError(message: 'Error: $e');
+    }
+  }
+
+  Future<void> _enableBluetoothAndScan() async {
+    try {
+      bool isBluetoothOn = await FlutterBluePlus.isOn;
+      
+      if (!isBluetoothOn) {
+        await FlutterBluePlus.turnOn();
+        await Future.delayed(const Duration(seconds: 1));
+      }
+      
+      await fbs.FlutterBluetoothSerial.instance.requestEnable();
+      
+      setState(() => _isScanning = true);
+      _bleDevices.clear();
+      _classicDevices.clear();
+      
+      CustomSnackbar.showSuccess(message: 'Scanning for BLE & Classic devices...');
+      
+      await FlutterBluePlus.startScan(
+        timeout: const Duration(seconds: 12),
+        androidScanMode: AndroidScanMode.lowLatency,
+      );
+      
+      FlutterBluePlus.scanResults.listen((results) {
+        setState(() {
+          _bleDevices = results
+              .where((result) => 
+                  result.device.name.isNotEmpty ||
+                  result.device.remoteId.toString().contains(_macId.replaceAll(':', '').toLowerCase()))
+              .toList();
+        });
+      });
+      
+      fbs.FlutterBluetoothSerial.instance.startDiscovery().listen(
+        (fbs.BluetoothDiscoveryResult result) {
+          setState(() {
+            _classicDevices.add(result);
+          });
+        },
+      );
+      
+      await Future.delayed(const Duration(seconds: 12));
+      await FlutterBluePlus.stopScan();
+      
+      if (_bleDevices.isEmpty && _classicDevices.isEmpty) {
+        CustomSnackbar.showError(message: 'No devices found. Turn on your Bluetooth device and keep it nearby');
+      } else {
+        if (_bleDevices.isNotEmpty) {
+          CustomSnackbar.showSuccess(message: 'Found ${_bleDevices.length} BLE device(s)');
+        }
+        if (_classicDevices.isNotEmpty) {
+          CustomSnackbar.showSuccess(message: 'Found ${_classicDevices.length} Classic Bluetooth device(s)');
+        }
+      }
+    } catch (e) {
+      CustomSnackbar.showError(message: 'Error scanning: $e');
+    } finally {
+      setState(() => _isScanning = false);
+    }
+  }
+
+  Future<void> _connectToBleDevice(BluetoothDevice device) async {
+    setState(() => _isBleConnecting = true);
+    try {
+      await device.connect(autoConnect: false);
+      CustomSnackbar.showSuccess(message: 'Connected to BLE device');
+      
+      await Future.delayed(const Duration(seconds: 1));
+      
+      List<BluetoothService> services = await device.discoverServices();
+      
+      final Map<String, dynamic> planConfig = {
+        "wp_device_id": _currentTask.wpDeviceId ?? '',
+        "mac_id": _macId,
+        "totalWaterLimit": 150,
+        "startDate": DateTime.now().toIso8601String().split('T')[0],
+        "endDate": DateTime.now().add(const Duration(days: 180)).toIso8601String().split('T')[0],
+        "renewal": 0,
+        "connectivity": {"ble": 1, "wifi": 0, "4g": 0, "ethernet": 0},
+        "timestamp": DateTime.now().toIso8601String()
+      };
+      
+      final String payload = jsonEncode(planConfig);
+      
+      for (BluetoothService service in services) {
+        for (BluetoothCharacteristic characteristic in service.characteristics) {
+          if (characteristic.properties.write) {
+            await characteristic.write(utf8.encode(payload), withoutResponse: false);
+            CustomSnackbar.showSuccess(message: 'Configuration sent to device');
+            break;
+          }
+        }
+      }
+      
+      await Future.delayed(const Duration(seconds: 2));
+      
+      setState(() {
+        _macIdStored = true;
+        _showMacIdInput = false;
+        _bleDevices.clear();
+        _classicDevices.clear();
+        _connectedDevice = device;
+      });
+      
+      CustomSnackbar.showSuccess(message: 'Device configured successfully');
+      
+      await device.disconnect();
+    } catch (e) {
+      CustomSnackbar.showError(message: 'Error: $e');
+    } finally {
+      setState(() => _isBleConnecting = false);
+    }
+  }
+
+  Future<void> _connectToClassicDevice(fbs.BluetoothDevice device) async {
+    setState(() => _isBleConnecting = true);
+    try {
+      _bluetoothConnection = await fbs.BluetoothConnection.toAddress(device.address);
+      CustomSnackbar.showSuccess(message: 'Connected to Classic Bluetooth device');
+      
+      await Future.delayed(const Duration(seconds: 1));
+      
+      final Map<String, dynamic> planConfig = {
+        "wp_device_id": _currentTask.wpDeviceId ?? '',
+        "mac_id": _macId,
+        "totalWaterLimit": 150,
+        "startDate": DateTime.now().toIso8601String().split('T')[0],
+        "endDate": DateTime.now().add(const Duration(days: 180)).toIso8601String().split('T')[0],
+        "renewal": 0,
+        "connectivity": {"ble": 0, "wifi": 0, "4g": 0, "ethernet": 0},
+        "timestamp": DateTime.now().toIso8601String()
+      };
+      
+      final String payload = jsonEncode(planConfig);
+      _bluetoothConnection?.output.add(utf8.encode(payload));
+      await _bluetoothConnection?.output.allSent;
+      
+      CustomSnackbar.showSuccess(message: 'Configuration sent to device');
+      
+      await Future.delayed(const Duration(seconds: 2));
+      
+      setState(() {
+        _macIdStored = true;
+        _showMacIdInput = false;
+        _bleDevices.clear();
+        _classicDevices.clear();
+      });
+      
+      CustomSnackbar.showSuccess(message: 'Device configured successfully');
+      
+      await _bluetoothConnection?.close();
+    } catch (e) {
+      CustomSnackbar.showError(message: 'Error: $e');
+    } finally {
+      setState(() => _isBleConnecting = false);
+    }
+  }
+
   Future<void> _updateTask() async {
-    // ✅ When task is accepted (In Progress), force status to "Completed"
     String statusToSend = _accepted ? 'Completed' : _selectedStatus;
     
     if (statusToSend == 'Pending' && _pendingReason.trim().isEmpty) {
@@ -688,10 +985,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       return;
     }
 
-    // Validate images based on task type when completing task
     if (statusToSend == 'Completed') {
       if (widget.task.taskType == 2) {
-        // Service task - require both before and after images
         if (_beforeImage == null) {
           CustomSnackbar.showError(message: 'Before Service Image is required to complete the task');
           return;
@@ -701,14 +996,12 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           return;
         }
       } else {
-        // Installation task - require only after installation image
         if (_afterImage == null) {
           CustomSnackbar.showError(message: 'After Installation Image is required to complete the task');
           return;
         }
       }
 
-      // Ensure COD payment has been collected when required
       final paymentInfo = widget.task.paymentSnapshot;
       if (paymentInfo != null &&
           paymentInfo.paymentType != null &&
@@ -730,11 +1023,11 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     try {
       await controller.updateTask(
         taskId: widget.task.taskId!,
-        taskStatus: statusToSend,  // ✅ Send "Completed" when accepted
+        taskStatus: statusToSend,
         pendingReason: statusToSend == 'Pending' ? _pendingReason : null,
         otp: statusToSend == 'Completed' ? _otp : null,
         beforeImage:
-            widget.task.taskType == 2 ? _beforeImage : null, // Only send before image for service tasks
+            widget.task.taskType == 2 ? _beforeImage : null,
         afterImage: _afterImage,
         collectPayment: false,
         paymentMethod: null,
@@ -832,16 +1125,40 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     return addressParts.isNotEmpty ? addressParts.join(', ') : 'N/A';
   }
 
+  String _formatAddressWithoutPhone(Address address) {
+    List<String> addressParts = [];
+    if (address.name != null && address.name!.isNotEmpty) {
+      addressParts.add(address.name!);
+    }
+    if (address.street != null && address.street!.isNotEmpty) {
+      addressParts.add(address.street!);
+    }
+    if (address.landmark != null && address.landmark!.isNotEmpty) {
+      addressParts.add('Near ${address.landmark!}');
+    }
+    if (address.city != null && address.city!.isNotEmpty) {
+      addressParts.add(address.city!);
+    }
+    if (address.district != null && address.district!.isNotEmpty) {
+      addressParts.add(address.district!);
+    }
+    if (address.state != null && address.state!.isNotEmpty) {
+      addressParts.add(address.state!);
+    }
+    if (address.pincode != null && address.pincode!.isNotEmpty) {
+      addressParts.add(address.pincode!);
+    }
+    return addressParts.isNotEmpty ? addressParts.join(', ') : 'N/A';
+  }
+
   Widget _buildDropdown() {
     List<String> statusOptions;
     String displayValue;
     
     if (_accepted) {
-      // ✅ Task is already "In Progress", only show "Completed" option
       statusOptions = ['Completed'];
       displayValue = 'Completed';
     } else {
-      // Task is not accepted yet, show all options
       statusOptions = ['Pending', 'In Progress', 'Completed'];
       displayValue = _selectedStatus;
     }
@@ -872,7 +1189,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     required String label,
     TextInputType? keyboardType,
     required Function(String) onChanged,
-    List<TextInputFormatter>? inputFormatters, // Added for OTP restrictions
+    List<TextInputFormatter>? inputFormatters,
     int? maxLength,
   }) {
     return TextField(
@@ -945,6 +1262,74 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         ),
         onPressed: _isLoading ? null : _updateTask,
       ),
+    );
+  }
+
+  Widget _buildLeaveActionButtons(dynamic theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.amber.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.amber.shade300),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.amber.shade800, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'you’re on leave. Forward this task or Wait to Complete.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.amber.shade900,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                icon: const Icon(Icons.assignment_return),
+                label: const Text('Forward'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: _isLoading ? null : () => _handleLeaveAction('forward'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton.icon(
+                icon: const Icon(Icons.schedule),
+                label: const Text('Waiting'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: _isLoading ? null : () => _handleLeaveAction('waiting'),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -1094,7 +1479,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     if (paymentInfo.paymentMethod != null) paymentWidgets.add(_buildCompactInfoItem('Method', paymentInfo.paymentMethod!));
     if (paymentInfo.paymentCollectedAt != null) paymentWidgets.add(_buildCompactInfoItem('Collected', DateFormat('MMM dd, yyyy').format(paymentInfo.paymentCollectedAt!.toLocal())));
 
-    // Group payment into rows of 2
     List<Widget> paymentRows = [];
     for (int i = 0; i < paymentWidgets.length; i += 2) {
       paymentRows.add(Row(
@@ -1131,13 +1515,367 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     );
   }
 
+  Widget _buildTaskDetailsCard(ThemeData theme, Task task) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade300, width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task.taskDescription ?? "No description available",
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: Colors.grey.shade200),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionTitle('📅 Assigned Date', compact: true),
+                const SizedBox(height: 12),
+                _buildSimpleDetail(
+                  label: '',
+                  value: task.assignedDate != null
+                      ? DateFormat('MMM dd, yyyy – hh:mm a').format(task.assignedDate!.toLocal())
+                      : 'Not assigned',
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: Colors.grey.shade200),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionTitle('🔧 Device Information'),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildSimpleDetail(
+                        label: 'Model',
+                        value: task.product?.modelName ?? 'N/A',
+                        compact: true,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildSimpleDetail(
+                        label: 'Device ID',
+                        value: task.wpDeviceId ?? 'N/A',
+                        compact: true,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                _buildSimpleDetail(
+                  label: 'Task Type',
+                  value: task.taskType == 1 ? 'Installation' : (task.taskType == 2 ? 'Service' : 'Unknown'),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: Colors.grey.shade200),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionTitle('👤 Customer & Location'),
+                const SizedBox(height: 14),
+                _buildSimpleDetail(
+                  label: 'Customer Email',
+                  value: task.taskCreatedByUserEmail ?? 'N/A',
+                ),
+                if (task.address != null) ...[
+                  const SizedBox(height: 14),
+                  _buildSectionTitle('📍 Delivery Address', compact: true),
+                  const SizedBox(height: 8),
+                  _buildSimpleDetail(
+                    label: '',
+                    value: _formatAddressWithoutPhone(task.address!),
+                  ),
+                  if (task.address!.phone != null && task.address!.phone!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _buildSimpleDetail(
+                      label: 'Phone Number',
+                      value: task.address!.phone!,
+                      compact: true,
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          ),
+          if (task.paymentSnapshot != null) ...[
+            Divider(height: 1, color: Colors.grey.shade200),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionTitle('💳 Payment Summary'),
+                  const SizedBox(height: 14),
+                  _buildPaymentDetailRow(theme, task.paymentSnapshot!),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, {bool compact = false}) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 12,
+        vertical: compact ? 6 : 8,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: compact ? 11 : 13,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSimpleDetail({
+    required String label,
+    required String value,
+    bool compact = false,
+  }) {
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: Colors.black87,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: Colors.black87,
+          ),
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPaymentDetailRow(ThemeData theme, PaymentInfo paymentInfo) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (paymentInfo.paymentStatus != null) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Status',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: paymentInfo.paymentStatus!.toLowerCase() == 'completed'
+                      ? Colors.green.shade50
+                      : Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: paymentInfo.paymentStatus!.toLowerCase() == 'completed'
+                        ? Colors.green.shade200
+                        : Colors.orange.shade200,
+                  ),
+                ),
+                child: Text(
+                  paymentInfo.paymentStatus!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: paymentInfo.paymentStatus!.toLowerCase() == 'completed'
+                        ? Colors.green.shade700
+                        : Colors.orange.shade700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Subtotal',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            ),
+            Text(
+              paymentInfo.subtotal != null ? '₹${paymentInfo.subtotal!.toStringAsFixed(2)}' : 'N/A',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (paymentInfo.gstAmount != null) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'GST',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              ),
+              Text(
+                '₹${paymentInfo.gstAmount!.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+        ],
+        if (paymentInfo.securityDeposit != null) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Security Deposit',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              ),
+              Text(
+                '₹${paymentInfo.securityDeposit!.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+        ],
+        Container(
+          height: 1,
+          color: Colors.grey.shade200,
+          margin: const EdgeInsets.symmetric(vertical: 8),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Total Amount',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade800,
+              ),
+            ),
+            Text(
+              paymentInfo.totalPrice != null ? '₹${paymentInfo.totalPrice!.toStringAsFixed(2)}' : 'N/A',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.green.shade700,
+              ),
+            ),
+          ],
+        ),
+        if (paymentInfo.paymentType != null) ...[
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Payment Type',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Text(
+                  paymentInfo.paymentType!,
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.blue.shade700),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
   Future<void> _generateQR(Task task) async {
     setState(() => _isGeneratingQR = true);
     try {
-      // ✅ Use _selectedStatus to ensure correct status is sent when generating QR
       final qr = await controller.generateQR(task.taskId!, _selectedStatus);
       
-      // ✅ Strip the data URL prefix if present (e.g., "data:image/png;base64,")
       String base64String = qr ?? '';
       if (base64String.contains(',')) {
         base64String = base64String.split(',').last;
@@ -1149,7 +1887,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     } catch (e) {
       CustomSnackbar.showError(message: 'Failed to generate QR: $e');
       setState(() {
-        _selectedPaymentMethod = 'Cash'; // revert
+        _selectedPaymentMethod = 'Cash';
       });
     } finally {
       setState(() => _isGeneratingQR = false);
@@ -1164,8 +1902,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
     setState(() => _isPaymentCollecting = true);
     try {
-      // ✅ Use _selectedStatus instead of task.taskStatus to ensure correct status is sent
-      // When task is accepted, _selectedStatus will be "In Progress"
       await controller.updateTask(
         taskId: task.taskId!,
         taskStatus: _selectedStatus,
@@ -1175,7 +1911,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         paymentMethod: _selectedPaymentMethod,
       );
 
-      // ✅ Refresh task data from controller after payment collection
       final updatedTask = controller.allTasks.firstWhere(
         (t) => t.taskId == task.taskId,
         orElse: () => task,
@@ -1185,7 +1920,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         _codCollected = true;
         _currentTask = updatedTask;
         
-        // Update payment status from refreshed task
         _codCollected = updatedTask.orderPaymentStatus?.toLowerCase() == 'completed' || 
                        updatedTask.paymentCollected == true;
         if (_codCollected && updatedTask.paymentMethod != null) {
@@ -1219,28 +1953,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(task.taskDescription ?? "No description available",
-                    style: theme.textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 24),
-                _buildInfoItem(
-                    'Assigned Date',
-                    task.assignedDate != null
-                        ? DateFormat('MMM dd, yyyy – hh:mm a')
-                            .format(task.assignedDate!.toLocal())
-                        : 'Not assigned'),
-                _buildInfoItem("Customer's email", task.taskCreatedByUserEmail),
-                if (task.wpDeviceId != null)
-                  _buildInfoItem('WP Device ID', task.wpDeviceId),
-                if (task.product?.modelName != null)
-                  _buildInfoItem('Model Name', task.product!.modelName),
-                if (task.paymentSnapshot != null) ...[
-                  _buildPaymentSummaryPending(theme, task.paymentSnapshot!, task),
-                ],
-                if (task.address != null) ...[
-                  _buildInfoItem('Delivery Address', _formatAddress(task.address!)),
-                ],
-                const SizedBox(height: 30),
+                _buildTaskDetailsCard(theme, task),
+                const SizedBox(height: 20),
                 if (!_accepted && !_declined) ...[
                   Text('Accept or Decline Task',
                       style: theme.textTheme.titleMedium
@@ -1282,64 +1996,326 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                   ),
                   const SizedBox(height: 30),
                 ] else if (_accepted) ...[
-                  if (task.paymentSnapshot != null &&
-                      task.paymentSnapshot!.paymentType != null &&
-                      task.paymentSnapshot!.paymentType!.toUpperCase() == 'COD')
-                    _buildCodCollectionCard(theme, task),
-                  const SizedBox(height: 24),
-                  Text('Update Task Status',
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 12),
-                  _buildDropdown(),
-                  if (_selectedStatus == 'Pending') ...[
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      controller: _pendingReasonController,
-                      label: 'Pending Reason',
-                      onChanged: (val) => _pendingReason = val,
-                    ),
+                  if (!_checkingLeave && _isTechnicianOnLeave && !_waitingActionSelected && _currentTask.waitingStatus != true)
+                    _buildLeaveActionButtons(theme),
+                  if (!_checkingLeave && _isTechnicianOnLeave && !_waitingActionSelected && _currentTask.waitingStatus != true)
+                    const SizedBox(height: 24),
+                  if (!_isTechnicianOnLeave || _waitingActionSelected || _currentTask.waitingStatus == true) ...[
+                    if (task.paymentSnapshot != null &&
+                        task.paymentSnapshot!.paymentType != null &&
+                        task.paymentSnapshot!.paymentType!.toUpperCase() == 'COD')
+                      _buildCodCollectionCard(theme, task),
+                    const SizedBox(height: 24),
+                    if (_accepted && !_macIdStored) ...[
+                      Text('Device Setup',
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      setState(() => _showMacIdInput = !_showMacIdInput);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 6),
+                                      elevation: 0,
+                                    ),
+                                    child: const Text('Enter Manually', style: TextStyle(fontSize: 12)),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: _isStoringMacId ? null : _scanMacId,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue,
+                                      foregroundColor: Colors.white,
+                                      disabledBackgroundColor: Colors.grey.shade400,
+                                      padding: const EdgeInsets.symmetric(vertical: 6),
+                                      elevation: 0,
+                                    ),
+                                    child: const Text('Scan MAC ID', style: TextStyle(fontSize: 12)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_showMacIdInput) ...[
+                              const SizedBox(height: 12),
+                              _buildTextField(
+                                controller: _macIdController,
+                                label: 'MAC ID (e.g., A1:B2:C3:D4:E5:F6)',
+                                onChanged: (val) => _macId = val,
+                              ),
+                              const SizedBox(height: 10),
+                              Center(
+                                child: SizedBox(
+                                  width: 100,
+                                  child: ElevatedButton(
+                                    onPressed: _isStoringMacId ? null : _setupBleConnection,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green.shade600,
+                                      foregroundColor: Colors.white,
+                                      disabledBackgroundColor: Colors.grey.shade300,
+                                      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                      elevation: 0,
+                                    ),
+                                    child: _isStoringMacId
+                                        ? const SizedBox(
+                                            height: 14,
+                                            width: 14,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                            ),
+                                          )
+                                        : const Text('Save', style: TextStyle(fontSize: 11)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                            if (_macIdController.text.isNotEmpty && !_showMacIdInput) ...[
+                              const SizedBox(height: 10),
+                              Center(
+                                child: SizedBox(
+                                  width: 100,
+                                  child: ElevatedButton(
+                                    onPressed: _isStoringMacId ? null : _setupBleConnection,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green.shade600,
+                                      foregroundColor: Colors.white,
+                                      disabledBackgroundColor: Colors.grey.shade300,
+                                      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                      elevation: 0,
+                                    ),
+                                    child: _isStoringMacId
+                                        ? const SizedBox(
+                                            height: 14,
+                                            width: 14,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                            ),
+                                          )
+                                        : const Text('Save', style: TextStyle(fontSize: 11)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                    if (_accepted && _macIdStored) ...[
+                      Text('Bluetooth Connection',
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _isScanning || _isBleConnecting ? null : _requestPermissionsAndScan,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white,
+                                  disabledBackgroundColor: Colors.grey.shade400,
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  elevation: 0,
+                                ),
+                                child: _isScanning
+                                    ? const SizedBox(
+                                        height: 18,
+                                        width: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        ),
+                                      )
+                                    : const Text('Connect to Bluetooth', style: TextStyle(fontSize: 13)),
+                              ),
+                            ),
+                            if (_bleDevices.isNotEmpty || _classicDevices.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              Column(
+                                children: [
+                                  for (var scanResult in _bleDevices)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton(
+                                          onPressed: _isBleConnecting ? null : () => _connectToBleDevice(scanResult.device),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.blue.shade50,
+                                            foregroundColor: Colors.black87,
+                                            disabledBackgroundColor: Colors.grey.shade300,
+                                            side: BorderSide(color: Colors.blue.shade300),
+                                            padding: const EdgeInsets.symmetric(vertical: 10),
+                                            elevation: 0,
+                                          ),
+                                          child: _isBleConnecting
+                                              ? const SizedBox(
+                                                  height: 18,
+                                                  width: 18,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                                                  ),
+                                                )
+                                              : Column(
+                                                  children: [
+                                                    Text(scanResult.device.name.isNotEmpty ? scanResult.device.name : 'BLE Device', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                                                    const SizedBox(height: 4),
+                                                    Row(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        Container(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.blue.shade100,
+                                                            borderRadius: BorderRadius.circular(3),
+                                                          ),
+                                                          child: const Text('BLE', style: TextStyle(fontSize: 8, color: Colors.blue)),
+                                                        ),
+                                                        const SizedBox(width: 8),
+                                                        Text('${scanResult.device.remoteId}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                        ),
+                                      ),
+                                    ),
+                                  for (var classicDevice in _classicDevices)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton(
+                                          onPressed: _isBleConnecting ? null : () => _connectToClassicDevice(classicDevice.device),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.green.shade50,
+                                            foregroundColor: Colors.black87,
+                                            disabledBackgroundColor: Colors.grey.shade300,
+                                            side: BorderSide(color: Colors.green.shade300),
+                                            padding: const EdgeInsets.symmetric(vertical: 10),
+                                            elevation: 0,
+                                          ),
+                                          child: _isBleConnecting
+                                              ? const SizedBox(
+                                                  height: 18,
+                                                  width: 18,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                                                  ),
+                                                )
+                                              : Column(
+                                                  children: [
+                                                    Text(classicDevice.device.name ?? 'Classic BT Device', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                                                    const SizedBox(height: 4),
+                                                    Row(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        Container(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.green.shade100,
+                                                            borderRadius: BorderRadius.circular(3),
+                                                          ),
+                                                          child: const Text('Classic', style: TextStyle(fontSize: 8, color: Colors.green)),
+                                                        ),
+                                                        const SizedBox(width: 8),
+                                                        Text('${classicDevice.device.address}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                    Text('Update Task Status',
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 12),
+                    _buildDropdown(),
+                    if (_selectedStatus == 'Pending') ...[
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _pendingReasonController,
+                        label: 'Pending Reason',
+                        onChanged: (val) => _pendingReason = val,
+                      ),
+                    ],
+                    if (_selectedStatus == 'Completed') ...[
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _otpController,
+                        label: 'Enter OTP',
+                        keyboardType: TextInputType.number,
+                        onChanged: (val) => _otp = val,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(6),
+                        ],
+                        maxLength: 6,
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    if (widget.task.taskType == 2) ...[
+                      _buildImageUploadRow(
+                        label: 'Before Service Image',
+                        file: _beforeImage,
+                        onPressed: () => _pickImage('before'),
+                      ),
+                      _buildImageUploadRow(
+                        label: 'After Service Image',
+                        file: _afterImage,
+                        onPressed: () => _pickImage('after'),
+                      ),
+                    ] else ...[
+                      _buildImageUploadRow(
+                        label: 'After Installation Image',
+                        file: _afterImage,
+                        onPressed: () => _pickImage('after'),
+                      ),
+                    ],
+                    const SizedBox(height: 36),
+                    _buildSubmitButton(theme),
                   ],
-                  if (_selectedStatus == 'Completed') ...[
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      controller: _otpController,
-                      label: 'Enter OTP',
-                      keyboardType: TextInputType.number,
-                      onChanged: (val) => _otp = val,
-                      inputFormatters: [
-                        FilteringTextInputFormatter
-                            .digitsOnly, // Allow only digits
-                        LengthLimitingTextInputFormatter(
-                            6), // Limit to 6 characters
-                      ],
-                      maxLength: 6, // Visual length limit with counter
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  // Show different images based on task type
-                  if (widget.task.taskType == 2) ...[
-                    // Service task - show both before and after images
-                    _buildImageUploadRow(
-                      label: 'Before Service Image',
-                      file: _beforeImage,
-                      onPressed: () => _pickImage('before'),
-                    ),
-                    _buildImageUploadRow(
-                      label: 'After Service Image',
-                      file: _afterImage,
-                      onPressed: () => _pickImage('after'),
-                    ),
-                  ] else ...[
-                    // Installation task - show only after installation image
-                    _buildImageUploadRow(
-                      label: 'After Installation Image',
-                      file: _afterImage,
-                      onPressed: () => _pickImage('after'),
-                    ),
-                  ],
-                  const SizedBox(height: 36),
-                  _buildSubmitButton(theme),
                 ] else if (_declined) ...[
                   Text('Task Declined',
                       style: theme.textTheme.titleMedium

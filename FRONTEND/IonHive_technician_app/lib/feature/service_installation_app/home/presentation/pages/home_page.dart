@@ -79,22 +79,24 @@ class _TechnicianHomePageState extends State<TechnicianHomePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Task Type Selector
-                              TaskTypeSelectorWidget(
-                                controller: controller,
-                                isSmallScreen: isSmallScreen,
+                              Text(
+                                'Tasks Assigned',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
                               ),
-                              SizedBox(height: padding),
-                              // Reactive Task Section based on selected type
+                              SizedBox(height: padding / 2),
                               Obx(() {
-                                final selectedType = controller.selectedTaskType.value;
-                                return TaskTypeSectionWidget(
-                                  taskType: selectedType,
-                                  taskTypeName: controller.taskTypes[selectedType] ?? 'Unknown',
+                                return TaskSummaryWidget(
                                   isSmallScreen: isSmallScreen,
-                                  controller: controller,
-                                  cardWidth: cardWidth,
-                                  isShimmer: controller.isRefreshing.value,
+                                  onFilter: (status) => controller.filterTasks(status),
+                                  selectedStatusFilter: controller.selectedStatusFilter.value,
+                                  completedCount: controller.allTasks.where((t) => t.taskStatus == 'Completed').length,
+                                  inProgressCount: controller.allTasks.where((t) => t.taskStatus == 'In Progress').length,
+                                  pendingCount: controller.allTasks.where((t) => t.taskStatus == 'Pending').length,
+                                  rejectedCount: controller.allTasks.where((t) => t.taskStatus == 'Rejected').length,
                                 );
                               }),
                             ],
@@ -154,22 +156,24 @@ class _TechnicianHomePageState extends State<TechnicianHomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Task Type Selector
-                        TaskTypeSelectorWidget(
-                          controller: controller,
-                          isSmallScreen: isSmallScreen,
+                        Text(
+                          'Tasks Assigned',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
                         ),
-                        SizedBox(height: padding),
-                        // Reactive Task Section based on selected type
+                        SizedBox(height: padding / 2),
                         Obx(() {
-                          final selectedType = controller.selectedTaskType.value;
-                          return TaskTypeSectionWidget(
-                            taskType: selectedType,
-                            taskTypeName: controller.taskTypes[selectedType] ?? 'Unknown',
+                          return TaskSummaryWidget(
                             isSmallScreen: isSmallScreen,
-                            controller: controller,
-                            cardWidth: cardWidth,
-                            isShimmer: controller.isRefreshing.value,
+                            onFilter: (status) => controller.filterTasks(status),
+                            selectedStatusFilter: controller.selectedStatusFilter.value,
+                            completedCount: controller.allTasks.where((t) => t.taskStatus == 'Completed').length,
+                            inProgressCount: controller.allTasks.where((t) => t.taskStatus == 'In Progress').length,
+                            pendingCount: controller.allTasks.where((t) => t.taskStatus == 'Pending').length,
+                            rejectedCount: controller.allTasks.where((t) => t.taskStatus == 'Rejected').length,
                           );
                         }),
                         SizedBox(height: padding),
@@ -596,62 +600,6 @@ class HeaderWidget extends StatelessWidget {
   }
 }
 
-/// Widget for displaying task type sections (Installation/Service with summary cards).
-class TaskTypeSectionWidget extends StatelessWidget {
-  final int taskType;
-  final String taskTypeName;
-  final bool isSmallScreen;
-  final TechnicianController controller;
-  final double cardWidth;
-  final bool isShimmer;
-
-  const TaskTypeSectionWidget({
-    super.key,
-    required this.taskType,
-    required this.taskTypeName,
-    required this.isSmallScreen,
-    required this.controller,
-    required this.cardWidth,
-    required this.isShimmer,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final padding = isSmallScreen ? 12.0 : 16.0;
-
-    return Container(
-      padding: EdgeInsets.all(padding / 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$taskTypeName Tasks',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w600,
-              fontSize: isSmallScreen ? 16 : 18,
-            ),
-          ),
-          SizedBox(height: padding / 2),
-          isShimmer
-              ? ShimmerTaskSummaryWidget(isSmallScreen: isSmallScreen)
-              : TaskSummaryWidget(
-                  isSmallScreen: isSmallScreen,
-                  onFilter: (status) => controller.filterTasksByType(status, taskType),
-                  selectedStatusFilter: controller.selectedTaskType.value == taskType
-                      ? controller.selectedStatusFilter.value
-                      : null,
-                  completedCount: controller.getTaskCountByType('Completed', taskType),
-                  inProgressCount: controller.getTaskCountByType('In Progress', taskType),
-                  pendingCount: controller.getTaskCountByType('Pending', taskType),
-                ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Widget for displaying task summary cards (Completed, In Progress, Pending).
 class TaskSummaryWidget extends StatelessWidget {
   final bool isSmallScreen;
@@ -660,6 +608,7 @@ class TaskSummaryWidget extends StatelessWidget {
   final int completedCount;
   final int inProgressCount;
   final int pendingCount;
+  final int rejectedCount;
 
   const TaskSummaryWidget({
     super.key,
@@ -669,6 +618,7 @@ class TaskSummaryWidget extends StatelessWidget {
     required this.completedCount,
     required this.inProgressCount,
     required this.pendingCount,
+    required this.rejectedCount,
   });
 
   @override
@@ -677,25 +627,28 @@ class TaskSummaryWidget extends StatelessWidget {
 
     final List<Map<String, dynamic>> summaryData = [
       {
-        'icon': Icons.check_circle,
-        'title': 'Completed',
-        'count': completedCount.toString(),
-        'color': const Color(0xFF4CAF50),
-        'status': 'Completed',
+        'title': 'Pending',
+        'count': pendingCount.toString(),
+        'color': const Color(0xFFFF5722),
+        'status': 'Pending',
       },
       {
-        'icon': Icons.timelapse,
+        'title': 'Rejected',
+        'count': rejectedCount.toString(),
+        'color': Colors.redAccent,
+        'status': 'Rejected',
+      },
+      {
         'title': 'In Progress',
         'count': inProgressCount.toString(),
         'color': const Color(0xFFFFC107),
         'status': 'In Progress',
       },
       {
-        'icon': Icons.assignment,
-        'title': 'Pending',
-        'count': pendingCount.toString(),
-        'color': const Color(0xFFFF5722),
-        'status': 'Pending',
+        'title': 'Completed',
+        'count': completedCount.toString(),
+        'color': const Color(0xFF4CAF50),
+        'status': 'Completed',
       },
     ];
 
@@ -706,7 +659,6 @@ class TaskSummaryWidget extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: padding / 4),
             child: TaskSummaryCard(
-              icon: data['icon'],
               title: data['title'],
               count: data['count'],
               color: data['color'],
@@ -723,7 +675,6 @@ class TaskSummaryWidget extends StatelessWidget {
 
 /// Widget for an individual task summary card.
 class TaskSummaryCard extends StatelessWidget {
-  final IconData icon;
   final String title;
   final String count;
   final Color color;
@@ -733,7 +684,6 @@ class TaskSummaryCard extends StatelessWidget {
 
   const TaskSummaryCard({
     super.key,
-    required this.icon,
     required this.title,
     required this.count,
     required this.color,
@@ -777,32 +727,25 @@ class TaskSummaryCard extends StatelessWidget {
               ),
             ),
             SizedBox(height: padding),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  icon,
-                  size: 16,
-                  color: color,
+                Text(
+                  title,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 10,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                SizedBox(width: padding / 4),
-                Column(
-                  children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 10,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Container(
-                      width: 20,
-                      height: 2,
-                      color: color,
-                    ),
-                  ],
+                SizedBox(height: 2),
+                Container(
+                  width: 20,
+                  height: 2,
+                  color: color,
                 ),
               ],
             ),
@@ -909,6 +852,8 @@ class TaskTile extends StatelessWidget {
         return Icons.schedule_rounded;
       case 'completed':
         return Icons.check_circle_rounded;
+      case 'rejected':
+        return Icons.cancel_rounded;
       default:
         return Icons.task_alt_rounded;
     }
@@ -925,6 +870,8 @@ class TaskTile extends StatelessWidget {
         return const Color(0xFFFF5722);
       case 'completed':
         return const Color(0xFF4CAF50);
+      case 'rejected':
+        return Colors.redAccent;
       default:
         return Colors.grey;
     }
@@ -939,7 +886,7 @@ class TaskTile extends StatelessWidget {
 
     return Container(
       margin: EdgeInsets.only(bottom: padding / 2),
-      padding: EdgeInsets.all(padding),
+      padding: EdgeInsets.symmetric(horizontal: padding / 2, vertical: padding),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
@@ -950,6 +897,7 @@ class TaskTile extends StatelessWidget {
       ),
       child: ListTile(
         contentPadding: EdgeInsets.zero,
+        visualDensity: VisualDensity.compact,
         leading: Icon(
           _getStatusIcon(task.taskStatus),
           color: statusColor,
@@ -962,7 +910,7 @@ class TaskTile extends StatelessWidget {
               : task.taskDescription!,
           style: theme.textTheme.bodyMedium?.copyWith(
             fontWeight: FontWeight.bold,
-            fontSize: isSmallScreen ? 14 : 16,
+            fontSize: isSmallScreen ? 12 : 13,
             color: Colors.black,
           ),
           maxLines: 2,
@@ -1004,7 +952,16 @@ class TaskTile extends StatelessWidget {
                   ),
                 ],
               ),
-              SizedBox(height: padding / 4),
+              SizedBox(height: padding / 2),
+              Text(
+                'Device ID: ${task.wpDeviceId ?? 'N/A'}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontSize: 11,
+                  color: Colors.black.withOpacity(0.6),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ),
@@ -1029,65 +986,3 @@ class TaskTile extends StatelessWidget {
   }
 }
 
-/// Widget for selecting task type (Installation/Service) using a dropdown.
-class TaskTypeSelectorWidget extends StatelessWidget {
-  final TechnicianController controller;
-  final bool isSmallScreen;
-
-  const TaskTypeSelectorWidget({
-    super.key,
-    required this.controller,
-    this.isSmallScreen = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final padding = isSmallScreen ? 12.0 : 16.0;
-
-    return Container(
-      padding: EdgeInsets.all(padding / 2),
-      child: Obx(() {
-        return DropdownButtonFormField<int>(
-          
-          value: controller.selectedTaskType.value,
-          decoration: InputDecoration(
-            labelText: 'Select Task Type',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.0),
-            ),
-            contentPadding: EdgeInsets.symmetric(horizontal: padding, vertical: padding / 2),
-            filled: true,
-            fillColor: theme.colorScheme.surface,
-          ),
-          items: controller.taskTypes.entries.map((entry) {
-            return DropdownMenuItem<int>(
-              value: entry.key,
-              child: Text(
-                entry.value,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            );
-          }).toList(),
-          onChanged: (int? newValue) {
-            if (newValue != null) {
-              controller.switchTaskType(newValue);
-            }
-          },
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurface,
-          ),
-  dropdownColor: Colors.white, // ✅ Set the dropdown menu background to pure white
-          icon: Icon(
-            Icons.arrow_drop_down,
-            color: theme.colorScheme.primary,
-          ),
-          elevation: 4,
-        );
-      }),
-    );
-  }
-}

@@ -11,4 +11,14 @@ class SettingsUrl {
     url: '${Core.baseUrl}/api/app/settings/updateuserdetails',
     method: 'POST',
   );
+
+  static final Endpoint RequestLeave = Endpoint(
+    url: '${Core.baseUrl}/api/app/technicianhome/requestLeave',
+    method: 'POST',
+  );
+
+  static final Endpoint GetTechnicianLeaveRequests = Endpoint(
+    url: '${Core.baseUrl}/api/app/technicianhome/getTechnicianLeaveRequests',
+    method: 'POST',
+  );
 }

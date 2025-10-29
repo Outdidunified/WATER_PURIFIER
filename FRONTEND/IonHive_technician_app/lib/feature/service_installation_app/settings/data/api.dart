@@ -30,6 +30,7 @@ class SettingsApi extends BaseApiService {
     required String state,
     required String country,
     required String pincode,
+    required String password,
   }) async {
     return makeRequest<Map<String, dynamic>>(
       url: SettingsUrl.UpdateUserDetails.url,
@@ -47,9 +48,47 @@ class SettingsApi extends BaseApiService {
         'state': state,
         'country': country,
         'pincode': pincode,
+        'password': password,
+      },
+      responseParser: (data) => data as Map<String, dynamic>,
+    );
+  }
+
+  Future<Map<String, dynamic>> requestLeave({
+    required String technicianId,
+    required String email,
+    required String fromDate,
+    required String toDate,
+    required int numberOfDays,
+    required String reason,
+  }) async {
+    return makeRequest<Map<String, dynamic>>(
+      url: SettingsUrl.RequestLeave.url,
+      method: SettingsUrl.RequestLeave.method,
+      body: {
+        'technician_id': technicianId,
+        'email': email,
+        'from_date': fromDate,
+        'to_date': toDate,
+        'number_of_days': numberOfDays,
+        'reason': reason,
+      },
+      responseParser: (data) => data as Map<String, dynamic>,
+    );
+  }
+
+  Future<Map<String, dynamic>> getTechnicianLeaveRequests({
+    required String technicianId,
+    required String email,
+  }) async {
+    return makeRequest<Map<String, dynamic>>(
+      url: SettingsUrl.GetTechnicianLeaveRequests.url,
+      method: SettingsUrl.GetTechnicianLeaveRequests.method,
+      body: {
+        'technician_id': technicianId,
+        'email': email,
       },
       responseParser: (data) => data as Map<String, dynamic>,
     );
   }
 }
-

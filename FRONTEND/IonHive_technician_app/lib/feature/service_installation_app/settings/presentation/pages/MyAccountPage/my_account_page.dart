@@ -26,12 +26,15 @@ class _EditAccountPageState extends State<EditAccountPage> {
   late final FocusNode stateFocusNode;
   late final FocusNode countryFocusNode;
   late final FocusNode pincodeFocusNode;
+  late final FocusNode passwordFocusNode;
 
   // State and District data
   Map<String, List<String>> stateDistrictData = {};
   String? selectedState;
   String? selectedDistrict;
   List<String> availableDistricts = [];
+  
+  bool _isPasswordVisible = false;
 
   @override
   void initState() {
@@ -45,6 +48,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
     stateFocusNode = FocusNode();
     countryFocusNode = FocusNode();
     pincodeFocusNode = FocusNode();
+    passwordFocusNode = FocusNode();
     
     // Load state-district data and then initialize form
     _loadStateDistrictData();
@@ -219,9 +223,6 @@ class _EditAccountPageState extends State<EditAccountPage> {
           );
         }
 
-        final formattedDate = DateFormat('MMMM dd, yyyy')
-            .format(controller.technicianData.value!.createdDate);
-
         return SingleChildScrollView(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -231,7 +232,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
               Stack(
                 children: [
                   Container(
-                    height: 200,
+                    height: 140,
                     width: double.infinity,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -246,56 +247,45 @@ class _EditAccountPageState extends State<EditAccountPage> {
                   ),
                   Positioned.fill(
                     child: Align(
-                      alignment: Alignment.topCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 20),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: CircleAvatar(
-                                radius: 50,
-                                backgroundColor:
-                                theme.colorScheme.primary.withOpacity(0.1),
-                                child: const Icon(
-                                  Icons.person,
-                                  size: 70,
-                                  color: Colors.white,
+                      alignment: Alignment.center,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  offset: const Offset(0, 4),
                                 ),
-                              ),
+                              ],
                             ),
-                            SizedBox(height: screenHeight * 0.01),
-                            Text(
-                              (controller.technicianData.value?.name ?? '')
-                                  .isEmpty
-                                  ? 'Complete your profile'
-                                  : controller.technicianData.value!.name!,
-                              style: TextStyle(
+                            child: CircleAvatar(
+                              radius: 40,
+                              backgroundColor:
+                              theme.colorScheme.primary.withOpacity(0.1),
+                              child: const Icon(
+                                Icons.person,
+                                size: 55,
                                 color: Colors.white,
-                                fontSize: screenWidth * 0.045,
-                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            Text(
-                              'Last updated: $formattedDate',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: screenWidth * 0.035,
-                                fontWeight: FontWeight.w400,
-                              ),
+                          ),
+                          SizedBox(height: screenHeight * 0.008),
+                          Text(
+                            (controller.technicianData.value?.name ?? '')
+                                .isEmpty
+                                ? 'Complete your profile'
+                                : controller.technicianData.value!.name!,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: screenWidth * 0.04,
+                              fontWeight: FontWeight.bold,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -524,14 +514,78 @@ class _EditAccountPageState extends State<EditAccountPage> {
         controller: controller.editPincodeController,
         focusNode: pincodeFocusNode,
         keyboardType: TextInputType.number,
-        textInputAction: TextInputAction.done,
+        textInputAction: TextInputAction.next,
         decoration: _styledDecoration(
             context: context, label: 'Pincode', icon: Icons.pin_drop_outlined),
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         maxLength: 6,
         buildCounter: (context, {required currentLength, required isFocused, required maxLength}) => null,
         onChanged: (_) => controller.validateForm(),
+        onSubmitted: (_) => FocusScope.of(context).requestFocus(passwordFocusNode),
       ),
+      SizedBox(height: screenHeight * 0.02),
+      Obx(() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: controller.editPasswordController,
+            focusNode: passwordFocusNode,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              labelText: 'Enter 4-digit PIN',
+              labelStyle: theme.textTheme.bodyMedium,
+              filled: true,
+              fillColor: theme.colorScheme.surface,
+              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: theme.dividerColor, width: 2.0),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: theme.dividerColor, width: 2.0),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: theme.primaryColor, width: 2.0),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: theme.colorScheme.error, width: 2.0),
+              ),
+              prefixIcon: Icon(Icons.lock_outlined, color: theme.colorScheme.onSurface.withOpacity(0.6)),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                ),
+                onPressed: () {
+                  setState(() {
+                    _isPasswordVisible = !_isPasswordVisible;
+                  });
+                },
+              ),
+            ),
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            maxLength: 4,
+            buildCounter: (context, {required currentLength, required isFocused, required maxLength}) => null,
+            obscureText: !_isPasswordVisible,
+            onChanged: (_) => controller.validateForm(),
+          ),
+          if (controller.passwordError.value.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: screenHeight * 0.01),
+              child: Text(
+                controller.passwordError.value,
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: screenWidth * 0.03,
+                ),
+              ),
+            ),
+        ],
+      )),
       SizedBox(height: screenHeight * 0.04),
       Center(
         child: Obx(() {

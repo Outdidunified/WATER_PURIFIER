@@ -181,6 +181,8 @@ class Task {
   final String? orderPaymentStatus;
   final bool? paymentCollected;
   final String? paymentMethod;
+  final bool? waitingStatus;
+  final String? leaveAction;
 
   Task({
     this.id,
@@ -208,6 +210,8 @@ class Task {
     this.orderPaymentStatus,
     this.paymentCollected,
     this.paymentMethod,
+    this.waitingStatus,
+    this.leaveAction,
   });
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -319,6 +323,12 @@ class Task {
       paymentMethod: json['paymentMethod'] != null
           ? safeToString(json['paymentMethod'])
           : null,
+      waitingStatus: json['waiting_status'] is bool
+          ? json['waiting_status'] as bool?
+          : null,
+      leaveAction: json['leave_action'] != null
+          ? safeToString(json['leave_action'])
+          : null,
     );
   }
 
@@ -348,6 +358,8 @@ class Task {
       'address': address?.toJson(),
       'product': product?.toJson(),
       'payment_snapshot': paymentSnapshot?.toJson(),
+      'waiting_status': waitingStatus,
+      'leave_action': leaveAction,
     };
   }
 

@@ -69,8 +69,8 @@ class UserData {
       state: json['state'] as String?,
       country: json['country'] as String?,
       pincode: json['pincode'] as String?,
-      status: json['status'] as bool,
-      isSubscribed: json['is_subscribed'] as bool,
+      status: (json['status'] as bool?) ?? true,
+      isSubscribed: (json['is_subscribed'] as bool?) ?? false,
       createdDate: DateTime.parse(json['createdDate'] as String),
       modified_date: json['modifiedDate'] != null
           ? DateTime.parse(json['modifiedDate'] as String)
@@ -132,8 +132,8 @@ class UserDetailsModel {
 
   factory UserDetailsModel.fromJson(Map<String, dynamic> json) {
     return UserDetailsModel(
-      error: json['error'] as bool,
-      message: json['message'] as String,
+      error: (json['error'] as bool?) ?? false,
+      message: (json['message'] as String?) ?? 'Unknown error',
       data: UserData.fromJson(json['data'] as Map<String, dynamic>),
     );
   }

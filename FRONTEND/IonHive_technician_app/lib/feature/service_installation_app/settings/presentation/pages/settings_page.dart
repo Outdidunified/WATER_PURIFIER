@@ -12,6 +12,7 @@ import 'package:ionhive_technician_app/feature/service_installation_app/settings
 import 'package:ionhive_technician_app/feature/service_installation_app/settings/presentation/pages/PrivacyPage/privacy_page.dart';
 import 'package:ionhive_technician_app/utils/animation/animated_scale_button.dart';
 import 'package:ionhive_technician_app/feature/service_installation_app/settings/presentation/pages/task_details_page.dart';
+import 'package:ionhive_technician_app/feature/service_installation_app/settings/presentation/pages/LeaveRequestPage/leave_request_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -248,28 +249,30 @@ class _SettingsPageState extends State<SettingsPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen =
-        screenWidth < 600; // Threshold for small screens (e.g., phones)
+        screenWidth < 600;
 
     final totalTasks = settingsController.allTasks.length;
     final completedTasks = settingsController.getTaskCount('Completed');
+    final inProgressTasks = settingsController.getTaskCount('In Progress');
     final pendingTasks = settingsController.getTaskCount('Pending');
-    final progressTasks = totalTasks - (completedTasks + pendingTasks);
+    final rejectedTasks = settingsController.getTaskCount('Rejected');
 
-    // Calculate percentages for dynamic coloring
     final double completedPercent =
         totalTasks > 0 ? completedTasks / totalTasks : 0.0;
+    final double inProgressPercent =
+        totalTasks > 0 ? inProgressTasks / totalTasks : 0.0;
     final double pendingPercent =
         totalTasks > 0 ? pendingTasks / totalTasks : 0.0;
-    final double progressPercent =
-        totalTasks > 0 ? progressTasks / totalTasks : 0.0;
+    final double rejectedPercent =
+        totalTasks > 0 ? rejectedTasks / totalTasks : 0.0;
 
-    // Dynamic colors based on percentages
     final Color completedColor =
         completedPercent > 0.5 ? Colors.green : Colors.green[300]!;
+    final Color inProgressColor =
+        inProgressPercent > 0.3 ? Colors.amber[600]! : Colors.amber;
     final Color pendingColor =
         pendingPercent > 0.3 ? Colors.orange[700]! : Colors.orange;
-    final Color progressColor =
-        progressPercent > 0.3 ? Colors.amber[600]! : Colors.yellow;
+    final Color rejectedColor = Colors.red[400]!;
 
     // Responsive padding and height based on screen size
     final double padding =
@@ -318,7 +321,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 TextButton(
                   onPressed: () {
-                    settingsController.selectedStatusFilter.value = 'All';
+                    Get.find<TechnicianLandingPageController>().pageIndex.value = 0;
                   },
                   child: Text(
                     'View All',
@@ -333,82 +336,126 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 8), // Reduced from 12 for responsiveness
-            // Use Wrap instead of FittedBox for better wrapping on small screens
-            Wrap(
-              spacing: padding / 2,
-              runSpacing: padding / 2,
-              alignment: WrapAlignment.spaceBetween,
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: completedColor,
-                        shape: BoxShape.circle,
-                      ),
+                if (completedTasks > 0)
+                  Flexible(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: completedColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'Completed $completedTasks',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.white,
+                              fontSize: isSmallScreen
+                                  ? screenWidth * 0.024
+                                  : screenWidth * 0.02,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Completed: $completedTasks',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.white,
-                        fontSize: isSmallScreen
-                            ? screenWidth * 0.033
-                            : screenWidth * 0.025,
-                      ),
+                  ),
+                if (inProgressTasks > 0)
+                  Flexible(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: inProgressColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'In Progress $inProgressTasks',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.white,
+                              fontSize: isSmallScreen
+                                  ? screenWidth * 0.024
+                                  : screenWidth * 0.02,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: pendingColor,
-                        shape: BoxShape.circle,
-                      ),
+                  ),
+                if (pendingTasks > 0)
+                  Flexible(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: pendingColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'Pending $pendingTasks',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.white,
+                              fontSize: isSmallScreen
+                                  ? screenWidth * 0.024
+                                  : screenWidth * 0.02,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Pending: $pendingTasks',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.white,
-                        fontSize: isSmallScreen
-                            ? screenWidth * 0.033
-                            : screenWidth * 0.025,
-                      ),
+                  ),
+                if (rejectedTasks > 0)
+                  Flexible(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: rejectedColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'Rejected $rejectedTasks',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.white,
+                              fontSize: isSmallScreen
+                                  ? screenWidth * 0.024
+                                  : screenWidth * 0.02,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: progressColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Progress: $progressTasks',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.white,
-                        fontSize: isSmallScreen
-                            ? screenWidth * 0.033
-                            : screenWidth * 0.025,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -423,73 +470,73 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               child: Row(
                 children: [
-                  Flexible(
-                    flex: completedTasks,
-                    child: Container(
-                      height: double.maxFinite,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            completedColor,
-                            completedColor.withOpacity(0.7)
-                          ],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(8),
-                          bottomLeft: Radius.circular(8),
-                          topRight: pendingTasks == 0 && progressTasks == 0
-                              ? Radius.circular(8)
-                              : Radius.zero,
-                          bottomRight: pendingTasks == 0 && progressTasks == 0
-                              ? Radius.circular(8)
-                              : Radius.zero,
+                  if (completedTasks > 0)
+                    Flexible(
+                      flex: completedTasks,
+                      child: Container(
+                        height: double.maxFinite,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              completedColor,
+                              completedColor.withOpacity(0.7)
+                            ],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(8),
+                            bottomLeft: Radius.circular(8),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  Flexible(
-                    flex: pendingTasks,
-                    child: Container(
-                      height: double.maxFinite,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [pendingColor, pendingColor.withOpacity(0.7)],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        borderRadius: BorderRadius.only(
-                          topRight: completedTasks > 0 && progressTasks == 0
-                              ? Radius.circular(8)
-                              : Radius.zero,
-                          bottomRight: completedTasks > 0 && progressTasks == 0
-                              ? Radius.circular(8)
-                              : Radius.zero,
+                  if (inProgressTasks > 0)
+                    Flexible(
+                      flex: inProgressTasks,
+                      child: Container(
+                        height: double.maxFinite,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [inProgressColor, inProgressColor.withOpacity(0.7)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  Flexible(
-                    flex: progressTasks,
-                    child: Container(
-                      height: double.maxFinite,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            progressColor,
-                            progressColor.withOpacity(0.7)
-                          ],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(8),
-                          bottomRight: Radius.circular(8),
+                  if (pendingTasks > 0)
+                    Flexible(
+                      flex: pendingTasks,
+                      child: Container(
+                        height: double.maxFinite,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [pendingColor, pendingColor.withOpacity(0.7)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  if (rejectedTasks > 0)
+                    Flexible(
+                      flex: rejectedTasks,
+                      child: Container(
+                        height: double.maxFinite,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [rejectedColor, rejectedColor.withOpacity(0.7)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.only(
+                            topRight: Radius.circular(8),
+                            bottomRight: Radius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -724,6 +771,19 @@ class _SettingsPageState extends State<SettingsPage> {
                         onPressed: () {
                           Get.to(
                             () => const AboutAppPage(),
+                            transition: Transition.rightToLeft,
+                            duration: const Duration(milliseconds: 300),
+                          );
+                        },
+                      ),
+                      SizedBox(height: screenHeight * 0.009),
+                      _buildListButton(
+                        context: context,
+                        label: "Request Leave",
+                        icon: Icons.calendar_month,
+                        onPressed: () {
+                          Get.to(
+                            () => const LeaveRequestPage(),
                             transition: Transition.rightToLeft,
                             duration: const Duration(milliseconds: 300),
                           );

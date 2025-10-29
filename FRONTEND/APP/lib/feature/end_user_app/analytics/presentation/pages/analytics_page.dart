@@ -1300,8 +1300,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: screenWidth * 0.08,
-              interval: 50,
+              reservedSize: screenWidth * 0.1,
+              interval: null,
               getTitlesWidget: (value, _) => Text(
                 value.toInt().toString(),
                 style: TextStyle(fontSize: screenWidth * 0.025),
@@ -1314,7 +1314,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         gridData: FlGridData(
           show: true, 
           drawVerticalLine: false,
-          horizontalInterval: 50,
+          horizontalInterval: null,
           getDrawingHorizontalLine: (value) {
             return FlLine(
               color: Colors.grey.withOpacity(0.2),
@@ -1376,8 +1376,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: screenWidth * 0.08,
-              interval: 50,
+              reservedSize: screenWidth * 0.1,
+              interval: null,
               getTitlesWidget: (value, _) => Text(
                 value.toInt().toString(),
                 style: TextStyle(fontSize: screenWidth * 0.025),
@@ -1391,7 +1391,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         gridData: FlGridData(
           show: true, 
           drawVerticalLine: false,
-          horizontalInterval: 50,
+          horizontalInterval: null,
           getDrawingHorizontalLine: (value) {
             return FlLine(
               color: Colors.grey.withOpacity(0.2),
@@ -1525,8 +1525,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: screenWidth * 0.08,
-              interval: 50,
+              reservedSize: screenWidth * 0.1,
+              interval: null,
               getTitlesWidget: (value, _) => Text(
                 value.toInt().toString(),
                 style: TextStyle(fontSize: screenWidth * 0.025),
@@ -1540,7 +1540,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         gridData: FlGridData(
           show: true, 
           drawVerticalLine: false,
-          horizontalInterval: 50,
+          horizontalInterval: null,
           getDrawingHorizontalLine: (value) {
             return FlLine(
               color: Colors.grey.withOpacity(0.2),

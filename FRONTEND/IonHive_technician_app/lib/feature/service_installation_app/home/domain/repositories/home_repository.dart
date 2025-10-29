@@ -78,4 +78,62 @@ class TaskRepository {
       throw Exception('Error accepting/declining task: $e');
     }
   }
+
+  Future<List<dynamic>> getTechnicianLeaveRequests({
+    required String technicianId,
+    required String email,
+  }) async {
+    try {
+      final response = await _api.getTechnicianLeaveRequests(
+        technicianId: technicianId,
+        email: email,
+      );
+
+      if (response['error'] == false) {
+        return response['data'] as List<dynamic>;
+      } else {
+        throw Exception(response['message'] ?? 'Failed to fetch leave requests');
+      }
+    } catch (e) {
+      throw Exception('Error fetching leave requests: $e');
+    }
+  }
+
+  Future<TaskUpdateResponse> updateInProgressTaskLeaveAction({
+    required String technicianId,
+    required String email,
+    required int taskId,
+    required String action,
+  }) async {
+    try {
+      final response = await _api.updateInProgressTaskLeaveAction(
+        technicianId: technicianId,
+        email: email,
+        taskId: taskId,
+        action: action,
+      );
+      return TaskUpdateResponse.fromJson(response);
+    } catch (e) {
+      throw Exception('Error updating task leave action: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> setupBleConnection({
+    required String wpDeviceId,
+    required String macId,
+    required String taskId,
+    required String technicianId,
+  }) async {
+    try {
+      final response = await _api.setupBleConnection(
+        wpDeviceId: wpDeviceId,
+        macId: macId,
+        taskId: taskId,
+        technicianId: technicianId,
+      );
+      return response as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception('Error setting up BLE connection: $e');
+    }
+  }
 }

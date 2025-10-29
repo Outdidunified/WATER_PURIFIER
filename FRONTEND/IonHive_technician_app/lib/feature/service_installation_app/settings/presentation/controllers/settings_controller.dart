@@ -30,6 +30,7 @@ class TechnicianSettingsController extends GetxController {
   final editStateController = TextEditingController();
   final editCountryController = TextEditingController();
   final editPincodeController = TextEditingController();
+  final editPasswordController = TextEditingController();
 
   // Original values for change detection
   String _originalName = '';
@@ -41,6 +42,7 @@ class TechnicianSettingsController extends GetxController {
   String _originalState = '';
   String _originalCountry = '';
   String _originalPincode = '';
+  String _originalPassword = '';
 
   final formKey = GlobalKey<FormState>();
   var isFormValid = false.obs;
@@ -55,6 +57,7 @@ class TechnicianSettingsController extends GetxController {
   var stateError = ''.obs;
   var countryError = ''.obs;
   var pincodeError = ''.obs;
+  var passwordError = ''.obs;
 
   // Notification settings
   var pushNotificationsEnabled = true.obs;
@@ -92,6 +95,7 @@ class TechnicianSettingsController extends GetxController {
     editStateController.dispose();
     editCountryController.dispose();
     editPincodeController.dispose();
+    editPasswordController.dispose();
     super.onClose();
   }
 
@@ -106,6 +110,7 @@ class TechnicianSettingsController extends GetxController {
       _originalState = technicianData.value?.state ?? '';
       _originalCountry = technicianData.value?.country ?? '';
       _originalPincode = technicianData.value?.pincode ?? '';
+      _originalPassword = technicianData.value?.password?.toString() ?? '';
 
       editNameController.text = _originalName;
       editPhoneController.text = _originalPhone;
@@ -116,6 +121,7 @@ class TechnicianSettingsController extends GetxController {
       editStateController.text = _originalState;
       editCountryController.text = _originalCountry;
       editPincodeController.text = _originalPincode;
+      editPasswordController.text = _originalPassword;
     }
   }
 
@@ -128,6 +134,7 @@ class TechnicianSettingsController extends GetxController {
     final state = editStateController.text.trim();
     final country = editCountryController.text.trim();
     final pincode = editPincodeController.text.trim();
+    final password = editPasswordController.text.trim();
 
     // Reset errors
     nameError.value = '';
@@ -138,6 +145,7 @@ class TechnicianSettingsController extends GetxController {
     stateError.value = '';
     countryError.value = '';
     pincodeError.value = '';
+    passwordError.value = '';
 
     // Name
     if (name.isEmpty) {
@@ -183,6 +191,13 @@ class TechnicianSettingsController extends GetxController {
       pincodeError.value = 'Pincode is required';
     }
 
+    // Password
+    if (password.isEmpty) {
+      passwordError.value = 'Password is required';
+    } else if (password.length != 4 || !RegExp(r'^[0-9]+$').hasMatch(password)) {
+      passwordError.value = 'Password must be exactly 4 digits';
+    }
+
     // Check if all fields are valid
     final isValid = nameError.value.isEmpty &&
         phoneError.value.isEmpty &&
@@ -191,7 +206,8 @@ class TechnicianSettingsController extends GetxController {
         districtError.value.isEmpty &&
         stateError.value.isEmpty &&
         countryError.value.isEmpty &&
-        pincodeError.value.isEmpty;
+        pincodeError.value.isEmpty &&
+        passwordError.value.isEmpty;
 
     // Check if there are any changes from original values
     final hasChanges = name != _originalName ||
@@ -202,7 +218,8 @@ class TechnicianSettingsController extends GetxController {
         district != _originalDistrict ||
         state != _originalState ||
         country != _originalCountry ||
-        pincode != _originalPincode;
+        pincode != _originalPincode ||
+        password != _originalPassword;
 
     isFormValid.value = isValid && hasChanges;
   }
@@ -246,6 +263,7 @@ class TechnicianSettingsController extends GetxController {
     required String state,
     required String country,
     required String pincode,
+    required String password,
   }) async {
     try {
       isEditLoading(true);
@@ -262,6 +280,7 @@ class TechnicianSettingsController extends GetxController {
         state: state,
         country: country,
         pincode: pincode,
+        password: password,
       );
 
       if (!response.error) {
@@ -275,9 +294,11 @@ class TechnicianSettingsController extends GetxController {
           state: state,
           country: country,
           pincode: pincode,
+          password: int.tryParse(password),
         );
         // Update original values after successful save
         initializeEditForm();
+        validateForm();
         CustomSnackbar.showSuccess(message: 'Details updated successfully');
         await Future.delayed(const Duration(seconds: 2));
         Get.back();
@@ -306,6 +327,7 @@ class TechnicianSettingsController extends GetxController {
     final state = editStateController.text.trim();
     final country = editCountryController.text.trim();
     final pincode = editPincodeController.text.trim();
+    final password = editPasswordController.text.trim();
 
     if (phoneText.length != 10 || !RegExp(r'^[0-9]+$').hasMatch(phoneText)) {
       phoneError.value = 'Phone number must be exactly 10 digits';
@@ -332,6 +354,7 @@ class TechnicianSettingsController extends GetxController {
       state: state,
       country: country,
       pincode: pincode,
+      password: password,
     );
   }
 

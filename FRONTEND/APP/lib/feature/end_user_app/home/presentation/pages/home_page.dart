@@ -14,7 +14,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:ionhive_water_purifier/core/core.dart';
 
-
 class CustomAppBar extends StatelessWidget {
   final DeviceData? deviceData;
   final bool isLoading;
@@ -80,11 +79,11 @@ class CustomAppBar extends StatelessWidget {
             size: MediaQuery.of(context).size.width * 0.06,
           ),
           SizedBox(width: MediaQuery.of(context).size.width * 0.02),
-          Icon(
-            Icons.notifications_none,
-            color: Colors.black,
-            size: MediaQuery.of(context).size.width * 0.06,
-          ),
+          // Icon(
+          //   Icons.notifications_none,
+          //   color: Colors.black,
+          //   size: MediaQuery.of(context).size.width * 0.06,
+          // ),
         ],
       ),
     );
@@ -1350,7 +1349,7 @@ class _PlanDetailsState extends State<PlanDetails> {
     final screenHeight = MediaQuery.of(context).size.height;
 
     final double waterUsed = widget.deviceData?.waterConsumed ?? 0.0;
-    final int waterLimit = widget.deviceData?.totalWaterLimit ?? 500;
+    final int waterLimit = widget.subscription?.totalLitre ?? widget.deviceData?.totalWaterLimit ?? 500;
     final String capacityStr = "${waterLimit}L";
     final planName = widget.subscription?.selectedPlan.label ?? "Silver";
     final model = widget.subscription?.modelName ?? "Bolt";
@@ -1657,6 +1656,10 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
+    if (widget.deviceData == null || widget.deviceData?.deviceId == null) {
+      return SizedBox.shrink();
+    }
+
     final deviceId = widget.deviceData?.deviceId ?? "Unknown";
     final litresDispensed = widget.deviceData?.totalWaterUsed ?? 0.0;
     final tdsIn = widget.deviceData?.tdsIn ?? 0;
@@ -1666,6 +1669,187 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
     final pressure = widget.deviceData?.pressure ?? 0.0;
     final temperature = widget.deviceData?.temperature ?? 0.0;
     final flowRate = widget.deviceData?.flowRate ?? 0.0;
+
+    final hasDeviceId = deviceId != "Unknown";
+    final hasLitresDispensed = litresDispensed > 0.0;
+    final hasTds = tdsIn > 0 || tdsOut > 0;
+    final hasTemperature = temperature > 0.0;
+    final hasPressure = pressure > 0.0;
+    final hasTankLevel = tankLevel > 0.0;
+    final hasFlowRate = flowRate > 0.0;
+
+    final hasAnyData = hasDeviceId || hasLitresDispensed || hasTds || hasTemperature || hasPressure || hasTankLevel || hasFlowRate;
+
+    if (!hasAnyData) {
+      return SizedBox.shrink();
+    }
+
+    final statRows = <Widget>[];
+
+    if (hasDeviceId || hasLitresDispensed) {
+      statRows.add(Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          if (hasDeviceId)
+            Expanded(
+              child: _buildStatItem(
+                theme,
+                icon: Icons.device_hub,
+                label: "Device ID",
+                value: deviceId,
+                screenWidth: screenWidth,
+                tooltip: "Unique identifier for the device",
+              ),
+            ),
+          if (hasDeviceId && hasLitresDispensed) SizedBox(width: screenWidth * 0.02),
+          if (hasLitresDispensed)
+            Expanded(
+              child: _buildStatItem(
+                theme,
+                icon: Icons.local_drink,
+                label: "Litres Dispensed",
+                value: litresDispensed < 1.0
+                    ? "${(litresDispensed * 1000).toStringAsFixed(1)} ml"
+                    : "${litresDispensed.toStringAsFixed(2)} L",
+                screenWidth: screenWidth,
+                tooltip: "Total water dispensed by the device",
+              ),
+            ),
+        ],
+      ));
+    }
+
+    if (hasTds) {
+      if (statRows.isNotEmpty) {
+        statRows.add(SizedBox(height: screenHeight * 0.02));
+        statRows.add(Divider(
+          color: theme.colorScheme.primary.withOpacity(0.2),
+          thickness: 1,
+        ));
+      }
+      statRows.add(SizedBox(height: screenHeight * 0.02));
+      statRows.add(Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Expanded(
+            child: _buildStatItem(
+              theme,
+              icon: Icons.water_drop,
+              label: "TDS Level",
+              value: "In: ${tdsIn == 0 ? '-' : tdsIn} | Out: ${tdsOut == 0 ? '-' : tdsOut} ppm",
+              screenWidth: screenWidth,
+              statusColor: tdsOut < 50
+                  ? Colors.blue
+                  : tdsOut < 150
+                  ? Colors.yellow[700]
+                  : Colors.red,
+              tooltip: "Total Dissolved Solids (ideal: <50 ppm)",
+            ),
+          ),
+        ],
+      ));
+    }
+
+    if (hasTemperature || hasPressure) {
+      if (statRows.isNotEmpty) {
+        statRows.add(SizedBox(height: screenHeight * 0.02));
+        statRows.add(Divider(
+          color: theme.colorScheme.primary.withOpacity(0.2),
+          thickness: 1,
+        ));
+      }
+      statRows.add(SizedBox(height: screenHeight * 0.02));
+      statRows.add(Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          if (hasTemperature)
+            Expanded(
+              child: _buildStatItem(
+                theme,
+                icon: Icons.thermostat,
+                label: "Temperature",
+                value: "${temperature.toStringAsFixed(1)}°C",
+                screenWidth: screenWidth,
+                statusColor: temperature < 30 ? Colors.green : Colors.orange,
+                tooltip: "Current water temperature",
+              ),
+            ),
+          if (hasTemperature && hasPressure) SizedBox(width: screenWidth * 0.02),
+          if (hasPressure)
+            Expanded(
+              child: _buildStatItem(
+                theme,
+                icon: Icons.speed,
+                label: "Pressure",
+                value: "${pressure.toStringAsFixed(1)} bar",
+                screenWidth: screenWidth,
+                statusColor: pressure > 1.0 ? Colors.green : Colors.orange,
+                tooltip: "Current water pressure",
+              ),
+            ),
+        ],
+      ));
+    }
+
+    if (hasTankLevel) {
+      if (statRows.isNotEmpty) {
+        statRows.add(SizedBox(height: screenHeight * 0.02));
+        statRows.add(Divider(
+          color: theme.colorScheme.primary.withOpacity(0.2),
+          thickness: 1,
+        ));
+      }
+      statRows.add(SizedBox(height: screenHeight * 0.02));
+      statRows.add(Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Expanded(
+            child: _buildStatItem(
+              theme,
+              icon: Icons.storage,
+              label: "Tank Level",
+              value: "$tankLevelStatus (${tankLevel.toStringAsFixed(0)}%)",
+              screenWidth: screenWidth,
+              statusColor: tankLevelStatus == "FULL"
+                  ? Colors.green
+                  : tankLevelStatus == "MEDIUM"
+                  ? Colors.orange
+                  : Colors.red,
+              showProgress: true,
+              progressValue: tankLevel / 100,
+              tooltip: "Remaining water in the tank",
+            ),
+          ),
+        ],
+      ));
+    }
+
+    if (hasFlowRate) {
+      if (statRows.isNotEmpty) {
+        statRows.add(SizedBox(height: screenHeight * 0.02));
+        statRows.add(Divider(
+          color: theme.colorScheme.primary.withOpacity(0.2),
+          thickness: 1,
+        ));
+      }
+      statRows.add(SizedBox(height: screenHeight * 0.02));
+      statRows.add(Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Expanded(
+            child: _buildStatItem(
+              theme,
+              icon: Icons.speed,
+              label: "Flow Rate",
+              value: "${flowRate.toStringAsFixed(1)} L/min",
+              screenWidth: screenWidth,
+              statusColor: flowRate > 1.0 ? Colors.green : Colors.orange,
+              tooltip: "Rate of water dispensing",
+            ),
+          ),
+        ],
+      ));
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -1681,151 +1865,7 @@ class _DeviceStatsSectionState extends State<DeviceStatsSection>
       child: Padding(
         padding: EdgeInsets.all(screenWidth * 0.04),
         child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    theme,
-                    icon: Icons.device_hub,
-                    label: "Device ID",
-                    value: deviceId == "Unknown" ? "-" : deviceId,
-                    screenWidth: screenWidth,
-                    tooltip: "Unique identifier for the device",
-                  ),
-                ),
-                SizedBox(width: screenWidth * 0.02),
-                Expanded(
-                  child: _buildStatItem(
-                    theme,
-                    icon: Icons.local_drink,
-                    label: "Litres Dispensed",
-                    value: litresDispensed == 0.0 ? "-" : litresDispensed < 1.0
-                        ? "${(litresDispensed * 1000).toStringAsFixed(1)} ml"
-                        : "${litresDispensed.toStringAsFixed(2)} L",
-                    screenWidth: screenWidth,
-                    tooltip: "Total water dispensed by the device",
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: screenHeight * 0.02),
-            Divider(
-              color: theme.colorScheme.primary.withOpacity(0.2),
-              thickness: 1,
-            ),
-            SizedBox(height: screenHeight * 0.02),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    theme,
-                    icon: Icons.water_drop,
-                    label: "TDS Level",
-                    value: "In: ${tdsIn == 0 ? '-' : tdsIn} | Out: ${tdsOut == 0 ? '-' : tdsOut} ppm",
-                    screenWidth: screenWidth,
-                    statusColor: tdsOut < 50
-                        ? Colors.blue
-                        : tdsOut < 150
-                        ? Colors.yellow[700]
-                        : Colors.red,
-                    tooltip: "Total Dissolved Solids (ideal: <50 ppm)",
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: screenHeight * 0.02),
-            Divider(
-              color: theme.colorScheme.primary.withOpacity(0.2),
-              thickness: 1,
-            ),
-            SizedBox(height: screenHeight * 0.02),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    theme,
-                    icon: Icons.thermostat,
-                    label: "Temperature",
-                    value: temperature == 0.0 ? "-" : "${temperature.toStringAsFixed(1)}°C",
-                    screenWidth: screenWidth,
-                    statusColor:
-                    temperature < 30 ? Colors.green : Colors.orange,
-                    tooltip: "Current water temperature",
-                  ),
-                ),
-                SizedBox(width: screenWidth * 0.02),
-                Expanded(
-                  child: _buildStatItem(
-                    theme,
-                    icon: Icons.speed,
-                    label: "Pressure",
-                    value: pressure == 0.0 ? "-" : "${pressure.toStringAsFixed(1)} bar",
-                    screenWidth: screenWidth,
-                    statusColor: pressure > 1.0 ? Colors.green : Colors.orange,
-                    tooltip: "Current water pressure",
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: screenHeight * 0.02),
-            Divider(
-              color: theme.colorScheme.primary.withOpacity(0.2),
-              thickness: 1,
-            ),
-            SizedBox(height: screenHeight * 0.02),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    theme,
-                    icon: Icons.storage,
-                    label: "Tank Level",
-                    value:
-                    "$tankLevelStatus (${tankLevel == 0.0 ? '-' : tankLevel.toStringAsFixed(0)}%)",
-                    screenWidth: screenWidth,
-                    statusColor: tankLevelStatus == "FULL"
-                        ? Colors.green
-                        : tankLevelStatus == "MEDIUM"
-                        ? Colors.orange
-                        : Colors.red,
-                    showProgress: true,
-                    progressValue: tankLevel / 100,
-                    tooltip: "Remaining water in the tank",
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: screenHeight * 0.02),
-            Divider(
-              color: theme.colorScheme.primary.withOpacity(0.2),
-              thickness: 1,
-            ),
-            SizedBox(height: screenHeight * 0.02),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    theme,
-                    icon: Icons.speed,
-                    label: "Flow Rate",
-                    value:
-                    flowRate == 0.0 ? "-" : "${flowRate.toStringAsFixed(1)} L/min",
-                    screenWidth: screenWidth,
-                    statusColor: flowRate > 1.0
-                        ? Colors.green
-                        : Colors.orange,
-                    tooltip: "Rate of water dispensing",
-                  ),
-                ),
-              ],
-            ),
-          ],
+          children: statRows,
         ),
       ),
     );
@@ -1969,6 +2009,10 @@ class _SmartFeatureSectionState extends State<SmartFeatureSection> {
     final theme = Theme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+
+    if (widget.deviceData == null || widget.deviceData?.deviceId == null) {
+      return SizedBox.shrink();
+    }
 
     final filterStatus = widget.deviceData?.filterStatus ?? "Good";
     final uvStatus = widget.deviceData?.uvStatus ?? true;

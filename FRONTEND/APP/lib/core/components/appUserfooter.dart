@@ -15,10 +15,8 @@ class Footer extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Calculate responsive icon size based on screen width
     final double iconSize = ResponsiveUtils.getResponsiveIconSize(context, 22);
 
-    // Calculate responsive font size for labels
     final double fontSize = ResponsiveUtils.getResponsiveFontSize(context, 12);
 
     return Container(
@@ -38,8 +36,8 @@ class Footer extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Image.asset(
               currentIndex == 0
-                  ? 'assets/icons/home.png' // Active icon
-                  : 'assets/icons/home_n.png', // Inactive icon
+                  ? 'assets/icons/home.png'
+                  : 'assets/icons/home_n.png',
               width: iconSize,
               height: iconSize,
               color: currentIndex == 0
@@ -51,8 +49,8 @@ class Footer extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Image.asset(
               currentIndex == 1
-                  ? 'assets/icons/Analytics_Active.png' // Active icon
-                  : 'assets/icons/Analytics.png', // Inactive icon
+                  ? 'assets/icons/Analytics_Active.png'
+                  : 'assets/icons/Analytics.png',
               width: iconSize,
               height: iconSize,
               color: currentIndex == 1
@@ -64,24 +62,36 @@ class Footer extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Image.asset(
               currentIndex == 2
-                  ? 'assets/icons/Shop_Active.png' // Active icon
-                  : 'assets/icons/Shop.png', // Inactive icon
+                  ? 'assets/icons/Shop_Active.png'
+                  : 'assets/icons/Shop.png',
               width: iconSize,
               height: iconSize,
               color: currentIndex == 2
                   ? theme.primaryColor
                   : theme.iconTheme.color,
             ),
-            label: 'shop',
+            label: 'Shop',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(
+              currentIndex == 3
+                  ? Icons.history
+                  : Icons.history_outlined,
+              size: iconSize,
+              color: currentIndex == 3
+                  ? theme.primaryColor
+                  : theme.iconTheme.color,
+            ),
+            label: 'Orders',
           ),
           BottomNavigationBarItem(
             icon: Image.asset(
-              currentIndex == 3
-                  ? 'assets/icons/Settings_Active.png' // Active icon
-                  : 'assets/icons/Settings.png', // Inactive icon
+              currentIndex == 4
+                  ? 'assets/icons/Settings_Active.png'
+                  : 'assets/icons/Settings.png',
               width: iconSize,
               height: iconSize,
-              color: currentIndex == 3
+              color: currentIndex == 4
                   ? theme.primaryColor
                   : theme.iconTheme.color,
             ),

@@ -11,6 +11,7 @@ class TechnicianDetailsModel {
   final String state;
   final String country;
   final String pincode;
+  final int? password;
   final bool status;
   final bool issubscribed;
   final DateTime createdDate;
@@ -28,6 +29,7 @@ class TechnicianDetailsModel {
     required this.state,
     required this.country,
     required this.pincode,
+    this.password,
     required this.status,
     required this.issubscribed,
     required this.createdDate,
@@ -47,6 +49,7 @@ class TechnicianDetailsModel {
       state: json['state'] ?? '',
       country: json['country'] ?? '',
       pincode: json['pincode'] ?? '',
+      password: int.tryParse(json['password']?.toString() ?? ''),
       status: json['status'] ?? false,
       issubscribed: json['issubscribed'] ?? false,
       createdDate: DateTime.tryParse(json['createdDate'] ?? '') ?? DateTime.now(),
@@ -67,6 +70,7 @@ class TechnicianDetailsModel {
       'state': state,
       'country': country,
       'pincode': pincode,
+      'password': password,
       'status': status,
       'issubscribed': issubscribed,
       'createdDate': createdDate.toIso8601String(),
@@ -86,6 +90,7 @@ class TechnicianDetailsModel {
     String? state,
     String? country,
     String? pincode,
+    int? password,
     bool? status,
     bool? issubscribed,
     DateTime? createdDate,
@@ -103,6 +108,7 @@ class TechnicianDetailsModel {
       state: state ?? this.state,
       country: country ?? this.country,
       pincode: pincode ?? this.pincode,
+      password: password ?? this.password,
       status: status ?? this.status,
       issubscribed: issubscribed ?? this.issubscribed,
       createdDate: createdDate ?? this.createdDate,
