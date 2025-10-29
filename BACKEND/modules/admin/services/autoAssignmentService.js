@@ -1762,6 +1762,11 @@ async function autoReassignRejectedTasksImmediate() {
                     continue;
                 }
 
+                if (technician.technician_id === currentTechnicianId) {
+                    await logEvent(`[REJECTED] Task ${task.task_id} - Only previously rejected technician ${currentTechnicianId} available. Skipping reassignment`);
+                    continue;
+                }
+
                 const otp = Math.floor(100000 + Math.random() * 900000);
                 const reassignmentReason = `Task Rejected by ${currentTechnicianId}. Immediately reassigned`;
 
