@@ -45,7 +45,6 @@ const useEditDevice = (userInfo) => {
 
     e.preventDefault();
     setLoading(true);
-    alert("update")
     setErrorMessage('');
 
     if (!wpDeviceId || !modelId || !modelName) {
@@ -86,7 +85,6 @@ const useEditDevice = (userInfo) => {
     modelId, setModelId,
     modelName, setModelName,
     status, setStatus,
-    isModified,
     updateDevice,
     goBackToManageDevices
   };

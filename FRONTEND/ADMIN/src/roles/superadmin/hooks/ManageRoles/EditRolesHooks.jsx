@@ -37,7 +37,7 @@ const useEditRoles = (userInfo) => {
     };
 
     const backManageUser = () => {
-        navigate('/superadmin/ViewRoles');
+        navigate('/superadmin/ManageRoles');
     };
 
     const editManageUser = async (e) => {

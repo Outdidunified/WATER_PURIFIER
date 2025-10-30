@@ -83,6 +83,38 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
     return '-';
   };
 
+  const normalizeHistoryEntries = (input) => {
+    if (!input) return [];
+    if (Array.isArray(input)) return input.filter(Boolean).map((entry) => ({ ...entry }));
+    if (typeof input === 'object') return Object.values(input).filter(Boolean).map((entry) => ({ ...entry }));
+    return [];
+  };
+
+  const collectAssignmentHistoryEntries = (task) => {
+    const combined = [];
+    const append = (value) => {
+      const normalized = normalizeHistoryEntries(value);
+      if (normalized.length > 0) combined.push(...normalized);
+    };
+    append(task.assignment_history);
+    append(task.assignmentHistory);
+    append(task.assignment_history_map);
+    append(task.assignmentHistoryMap);
+    append(task.assignmentHistoryList);
+    append(task.order_snapshot?.assignment_history);
+    append(task.order_snapshot?.assignmentHistory);
+    append(task.order_snapshot?.assignment_history_map);
+    append(task.order_snapshot?.assignmentHistoryMap);
+    return combined;
+  };
+
+  const toValidTimestamp = (value) => {
+    const resolved = extractDateValue(value);
+    if (!resolved) return 0;
+    const timestamp = new Date(resolved).getTime();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
+  };
+
   return (
     <div className="container-scroller">
       <Header userInfo={userInfo} handleLogout={handleLogout} />

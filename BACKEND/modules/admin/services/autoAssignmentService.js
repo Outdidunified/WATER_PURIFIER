@@ -1779,6 +1779,7 @@ async function autoReassignRejectedTasksImmediate() {
                             assigned_date: now,
                             otp,
                             task_status: "Pending",
+                            pending_reason: null,
                             modified_by: 'system',
                             modified_date: now
                         },
@@ -1900,6 +1901,11 @@ async function autoReassignForwardedTasksImmediate() {
                     continue;
                 }
 
+                if (technician.technician_id === currentTechnicianId) {
+                    await logEvent(`[FORWARDED] Task ${task.task_id} - Only previously assigned technician ${currentTechnicianId} available. Skipping reassignment`);
+                    continue;
+                }
+
                 const otp = Math.floor(100000 + Math.random() * 900000);
                 const reassignmentReason = `Task Forwarded by ${currentTechnicianId}. Immediately reassigned`;
 
@@ -1912,6 +1918,7 @@ async function autoReassignForwardedTasksImmediate() {
                             assigned_date: now,
                             otp,
                             task_status: "Pending",
+                            pending_reason: null,
                             modified_by: 'system',
                             modified_date: now
                         },
