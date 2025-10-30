@@ -373,6 +373,7 @@ async function autoAssignInstallation(order) {
             user_id: order?.user_id ?? null,
             productModelId: order?.productModelId ?? null,
             modelName: order?.modelName ?? null,
+            modeltype: order?.modeltype ?? null,
             main_image: order?.main_image ?? null,
             sub_images: Array.isArray(order?.sub_images) ? order.sub_images : [],
             wp_device_id: order?.wp_device_id ?? null,
@@ -455,6 +456,7 @@ async function autoAssignInstallation(order) {
             address: normalizedAddress,
             product: {
                 model_name: order.modelName,
+                modeltype: order.modeltype ?? null,
                 wp_device_id: order.wp_device_id,
                 selectedPlan: order.selectedPlan,
                 selectedDuration: sanitizeDuration(order.selectedDuration)
