@@ -31,6 +31,7 @@ const useAddProducts = (userInfo) => {
   const [loading, setLoading] = useState(false);
 
   const [modelName, setModelName] = useState('');
+  const [modelType, setModelType] = useState('');
   const [productDetails, setProductDetails] = useState('');
   const [productSpecifications, setProductSpecifications] = useState(null);
   const [mainImage, setMainImage] = useState(null);
@@ -275,6 +276,7 @@ const useAddProducts = (userInfo) => {
 
   const resetForm = () => {
     setModelName('');
+    setModelType('');
     setProductDetails('');
     setProductSpecifications(null);
     setMainImage(null);
@@ -297,7 +299,7 @@ const useAddProducts = (userInfo) => {
       )
     );
 
-    if (!modelName || !productDetails || !mainImage) {
+    if (!modelName || !modelType || !productDetails || !mainImage) {
       setErrorMessage('All required fields must be filled.');
       setLoading(false);
       return;
@@ -365,6 +367,7 @@ const useAddProducts = (userInfo) => {
 
     const formData = new FormData();
     formData.append('model_name', modelName);
+    formData.append('model_type', modelType);
     formData.append('product_details', productDetails);
     if (productSpecifications) {
       formData.append('product_specifications', productSpecifications);
@@ -443,6 +446,8 @@ const useAddProducts = (userInfo) => {
     wpDeviceQuantity,
     setWpDeviceQuantity,
     handleAddProduct,
+    modelType,
+    setModelType,
   };
 };
 

@@ -21,6 +21,7 @@ export const useViewProducts = () => {
     status: '',
     model_id: '',
     model_name: '',
+    model_type: '',
     wp_device_quantity: '',
     connectivity: '',
   });
@@ -45,6 +46,7 @@ export const useViewProducts = () => {
         status: dataItem.status ?? '',
         model_id: dataItem.model_id || '',
         model_name: dataItem.model_name || '',
+        model_type: dataItem.model_type || '',
         wp_device_quantity: dataItem.wp_device_quantity || '',
         connectivity: dataItem.connectivity || '',
       };

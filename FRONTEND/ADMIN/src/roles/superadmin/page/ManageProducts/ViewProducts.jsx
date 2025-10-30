@@ -120,6 +120,7 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
 
                 <div className="d-flex justify-content-between text-start mb-4 flex-wrap">
                   <div><strong>Model Name:</strong> {product.model_name || '-'}</div>
+                  <div><strong>Model Type:</strong> {product.model_type || '-'}</div>
                   <div><strong>Status:</strong> {product.status ? 'Active' : 'Deactive'}</div>
                   <div><strong>Quantity:</strong> {product.wp_device_quantity || '-'}</div>
                   <div><strong>Created By:</strong> {product.createdby || '-'}</div>

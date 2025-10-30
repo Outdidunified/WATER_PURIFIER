@@ -361,6 +361,12 @@ async function autoAssignInstallation(order) {
         const normalizeId = (value) =>
             value && typeof value.toString === 'function' ? value.toString() : value ?? null;
 
+        const sanitizeDuration = (duration) => {
+            if (!duration || typeof duration !== 'object') return duration ?? null;
+            const { plans, ...rest } = duration;
+            return rest;
+        };
+
         const orderSnapshot = {
             orderId: normalizeId(order?._id),
             customOrderId: order?.customOrderId ?? null,
@@ -371,7 +377,7 @@ async function autoAssignInstallation(order) {
             sub_images: Array.isArray(order?.sub_images) ? order.sub_images : [],
             wp_device_id: order?.wp_device_id ?? null,
             selectedPlan: order?.selectedPlan ?? null,
-            selectedDuration: order?.selectedDuration ?? null,
+            selectedDuration: sanitizeDuration(order?.selectedDuration ?? null),
             grandTotal: order?.grandTotal ?? null,
             price: order?.price ?? null,
             subtotal: order?.subtotal ?? null,
@@ -451,7 +457,7 @@ async function autoAssignInstallation(order) {
                 model_name: order.modelName,
                 wp_device_id: order.wp_device_id,
                 selectedPlan: order.selectedPlan,
-                selectedDuration: order.selectedDuration
+                selectedDuration: sanitizeDuration(order.selectedDuration)
             },
             order_snapshot: orderSnapshot,
             payment_snapshot: paymentSnapshot

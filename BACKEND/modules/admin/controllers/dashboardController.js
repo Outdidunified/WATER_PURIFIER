@@ -348,7 +348,8 @@ const AddProductModels = async (req, res) => {
                 wp_device_quantity,
                 product_details,
                 connectivity,
-                createdby
+                createdby,
+                model_type
             } = product;
 
             const duration = parseArray(product.duration).map(durationItem => ({
@@ -364,6 +365,12 @@ const AddProductModels = async (req, res) => {
             if (isNaN(quantityInt)) {
                 return res.status(400).json({ status: 'Failed', message: 'wp_device_quantity must be a valid number' });
             }
+
+            const normalizedModelType = typeof model_type === 'string' ? model_type.trim().toLowerCase() : '';
+            if (!['base', 'smart'].includes(normalizedModelType)) {
+                return res.status(400).json({ status: 'Failed', message: "model_type must be either 'Base' or 'Smart'" });
+            }
+            const formattedModelType = normalizedModelType === 'smart' ? 'Smart' : 'Base';
 
             // Check for duplicate model name
             const existing = await collection.findOne({ model_name: model_name.trim() });
@@ -420,6 +427,7 @@ const AddProductModels = async (req, res) => {
                 wp_device_quantity: quantityInt,
                 product_details,
                 connectivity: connectivity || '',
+                model_type: formattedModelType,
                 duration: updatedDuration,
                 createdby,
                 createddate: now,
@@ -653,7 +661,8 @@ const UpdateProductModels = async (req, res) => {
                 product_details,
                 connectivity,
                 modifiedby,
-                status: rawStatus
+                status: rawStatus,
+                model_type
             } = product;
 
             model_id = Number(model_id);
@@ -675,6 +684,12 @@ const UpdateProductModels = async (req, res) => {
             } else {
                 status = false;
             }
+
+            const normalizedModelType = typeof model_type === 'string' ? model_type.trim().toLowerCase() : '';
+            if (!['base', 'smart'].includes(normalizedModelType)) {
+                return res.status(400).json({ status: 'Failed', message: "model_type must be either 'Base' or 'Smart'" });
+            }
+            const formattedModelType = normalizedModelType === 'smart' ? 'Smart' : 'Base';
 
             const duration = parseArray(product.duration).map(durationItem => ({
                 ...durationItem,
@@ -746,6 +761,7 @@ const UpdateProductModels = async (req, res) => {
                         product_details,
                         connectivity: connectivity || '',
                         product_specifications,
+                        model_type: formattedModelType,
                         duration: updatedDuration,
                         modifiedby,
                         modifieddate: now,

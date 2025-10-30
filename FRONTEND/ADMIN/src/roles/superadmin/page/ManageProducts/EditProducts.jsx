@@ -41,6 +41,8 @@ const EditProducts = ({ userInfo, handleLogout }) => {
     setStatus,
     errorMessage,
     removeSubImage,
+    modelType,
+    setModelType,
   } = useEditProducts(userInfo);
 
   const backManageDevice = () => navigate('/superadmin/ManageProducts');
@@ -157,7 +159,7 @@ const EditProducts = ({ userInfo, handleLogout }) => {
               <div className="card-body">
                 <form className="form-sample" onSubmit={handleAddProduct} noValidate>
                   <div className="row mb-4">
-                    <div className="col-md-6">
+                    <div className="col-md-4">
                       <label className="input-label" htmlFor="modelName">Model Name</label>
                       <InputField
                         id="modelName"
@@ -170,7 +172,21 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                         title="Model Name must contain only letters, numbers, spaces, or hyphens."
                       />
                     </div>
-                    <div className="col-md-6">
+                    <div className="col-md-4">
+                      <label className="input-label" htmlFor="modelType">Model Type</label>
+                      <select
+                        id="modelType"
+                        className="form-control"
+                        value={modelType}
+                        onChange={(e) => setModelType(e.target.value)}
+                        required
+                      >
+                        <option value="">Select Model Type</option>
+                        <option value="Base">Base</option>
+                        <option value="Smart">Smart</option>
+                      </select>
+                    </div>
+                    <div className="col-md-4">
                       <label className="input-label" htmlFor="wpDeviceQuantity">WP Device Quantity</label>
                       <InputField
                         type="text"
