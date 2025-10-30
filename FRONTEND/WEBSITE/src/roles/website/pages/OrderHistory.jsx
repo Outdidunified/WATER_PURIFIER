@@ -243,6 +243,7 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                             Order ID: {order.customOrderId || payment.orderId || "N/A"}
                                                         </h5>
                                                         <p><strong>Model Name:</strong> {order.modelName || "N/A"}</p>
+                                                        <p><strong>Model Type:</strong> {order.modeltype || "N/A"}</p>
                                                         <p><strong>WP Device ID:</strong> {order.wp_device_id || "N/A"}</p>
                                                     </div>
                                                 </div>

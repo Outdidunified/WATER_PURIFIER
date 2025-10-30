@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Country, State, City } from "country-state-city";
 import { getDistricts } from "india-state-district";
+import { Modal, Button } from "react-bootstrap";
 
 const Home = ({ userInfo, token, handleLogout }) => {
     const durationRef = useRef(null);
@@ -62,14 +63,14 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
     const RAZORPAY_KEY = "rzp_test_oHoZ3Q1fF6pYEI";
 
+    const hasFetched = useRef(false);
+
     // Fetch products
     useEffect(() => {
-        let hasFetched = false;
-
         const fetchProducts = async () => {
-            if (hasFetched) return; // Prevent duplicate calls in dev Strict Mode
-            hasFetched = true;
-
+            if (hasFetched.current) return; // Prevent duplicate calls
+            hasFetched.current = true;
+            setLoading(true);
             try {
                 const response = await axios.get('/api/website/products/productswithplan');
                 const productArray = response.data?.data || [];
@@ -84,7 +85,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
         fetchProducts();
     }, []);
-
 
     // Load countries
     useEffect(() => {
@@ -384,7 +384,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                             Swal.fire({
                                 icon: "success",
                                 title: "Payment Successful",
-                                text: "Subscription activated!",
+                                text: "Order placed!",
                                 iconHtml: '<i class="bi bi-bag-check-fill"></i>',
                                 timer: 3000,
                                 showConfirmButton: false,
@@ -554,9 +554,13 @@ const Home = ({ userInfo, token, handleLogout }) => {
     };
 
     const [districts, setDistricts] = useState([]);
+    const hasGetDistrictsWithSellers = useRef(false);
 
     useEffect(() => {
         const fetchDistricts = async () => {
+            if (hasGetDistrictsWithSellers.current) return; // Prevent duplicate calls
+            hasGetDistrictsWithSellers.current = true;
+
             try {
                 const response = await axios.get("/api/admin/GetDistrictsWithSellers");
                 if (response.data?.status === "Success" && Array.isArray(response.data.data)) {
@@ -627,6 +631,28 @@ const Home = ({ userInfo, token, handleLogout }) => {
             el.removeEventListener("mouseleave", startScroll);
         };
     }, []);
+
+    const [showBaseModelPopup, setShowBaseModelPopup] = useState(false);
+
+    const handleModelSelect = (index) => {
+        const model = products[index];
+        setSelectedModelIndex(index);
+        setSelectedPlanIndex(0);
+        setSelectedDurationIndex(0);
+
+        //  Check if model type is "Base"
+        if (model?.model_type === "Base") {
+            setShowBaseModelPopup(true);
+        }
+
+        // scroll into view after short delay
+        setTimeout(() => {
+            document.getElementById("duration-section")?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+            });
+        }, 100);
+    };
 
     return (
         <div>
@@ -794,46 +820,219 @@ const Home = ({ userInfo, token, handleLogout }) => {
                         <p>Each of our smart water purifiers comes with advanced multi-stage purification and IoT technology.</p>
                     </div>
 
-                    {products.length > 0 ? (
-                        <div className="container">
-                            <div className="tab-content">
-                                <div className="tab-pane fade active show">
-                                    <div className="container" data-aos="fade-up">
-                                        <div className="row gy-4">
-                                            <div className="col-lg-3 col-md-6">
-                                                <div className="stats-item text-center w-100 h-100">
-                                                    <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Multistage Universal Water purifier</p>
+                    {loading ? (
+                        // Loading Spinner Section
+                        <div className="container text-center my-5 py-5">
+                            <div className="spinner-border text-primary" style={{ width: "3rem", height: "3rem" }} role="status"></div>
+                            <p className="mt-3 fw-semibold text-primary">Loading products...</p>
+                        </div>
+                    ) : error ? (
+                        // Error Section
+                        <div className="container text-center my-5 py-5">
+                            <h4 className="text-danger mb-3">Something went wrong 😔</h4>
+                            <p>{error}</p>
+                            <button
+                                className="btn btn-outline-primary mt-3"
+                                onClick={() => window.location.reload()}
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    ) :
+                        products.length > 0 ? (
+                            <div className="container">
+                                <div className="tab-content">
+                                    <div className="tab-pane fade active show">
+                                        <div className="container" data-aos="fade-up">
+                                            <div className="row gy-4">
+                                                <div className="col-lg-3 col-md-6">
+                                                    <div className="stats-item text-center w-100 h-100">
+                                                        <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Multistage Universal Water purifier</p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="col-lg-3 col-md-6">
-                                                <div className="stats-item text-center w-100 h-100">
-                                                    <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Goodness of copper</p>
+                                                <div className="col-lg-3 col-md-6">
+                                                    <div className="stats-item text-center w-100 h-100">
+                                                        <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> Goodness of copper</p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="col-lg-3 col-md-6">
-                                                <div className="stats-item text-center w-100 h-100">
-                                                    <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> RO Purification</p>
+                                                <div className="col-lg-3 col-md-6">
+                                                    <div className="stats-item text-center w-100 h-100">
+                                                        <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> RO Purification</p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="col-lg-3 col-md-6">
-                                                <div className="stats-item text-center w-100 h-100">
-                                                    <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> In-line UV purification</p>
+                                                <div className="col-lg-3 col-md-6">
+                                                    <div className="stats-item text-center w-100 h-100">
+                                                        <p style={{ color: '#0d83fd' }}><i className="bi bi-check2-circle"></i> In-line UV purification</p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    {!showAllModels && (
-                                        <div className="row mt-4 align-items-start">
-                                            <div className="col-lg-6 col-12" style={{ padding: '20px' }}>
-                                                <div className="d-flex justify-content-center flex-column align-items-center section-title">
-                                                    <div className="text-center mb-3">
-                                                        <h2>Select Model</h2>
+                                        {!showAllModels && (
+                                            <div className="row mt-4 align-items-start">
+                                                <div className="col-lg-6 col-12" style={{ padding: '20px' }}>
+                                                    <div className="d-flex justify-content-center flex-column align-items-center section-title">
+                                                        <div className="text-center mb-3">
+                                                            <h2>Select Model</h2>
+                                                        </div>
+                                                        <ul className="nav nav-tabs flex-wrap" style={{ justifyContent: 'center' }}>
+                                                            <li className="nav-item">
+                                                                <button
+                                                                    className={`nav-link text-center ${selectedModelIndex === -1 ? 'active' : ''}`}
+                                                                    onClick={() => setShowAllModels(true)}
+                                                                    style={{
+                                                                        minWidth: '150px',
+                                                                        margin: '5px',
+                                                                        backgroundColor: selectedModelIndex === -1 ? '#0d6efd' : '#e8f1ff',
+                                                                        color: selectedModelIndex === -1 ? '#fff' : '#0d6efd',
+                                                                        border: '1px solid #0d6efd',
+                                                                        borderRadius: '15px',
+                                                                        fontWeight: '600',
+                                                                        transition: 'all 0.3s ease'
+                                                                    }}
+                                                                >
+                                                                    <h4 style={{ margin: 0, fontSize: '16px' }}>All Model's</h4>
+                                                                </button>
+                                                            </li>
+                                                            {products.map((product, index) => {
+                                                                const isSelected = selectedModelIndex === index;
+                                                                const isOutOfStock = !product?.wp_device_id; // check if out of stock
+
+                                                                return (
+                                                                    <li key={product._id} className="nav-item">
+                                                                        <button
+                                                                            className={`nav-link text-center ${isSelected ? 'active' : ''}`}
+                                                                            onClick={() => {
+                                                                                setSelectedModelIndex(index);
+                                                                                handleModelSelect(index)
+                                                                                setSelectedPlanIndex(0);
+                                                                                setSelectedDurationIndex(0);
+                                                                                setTimeout(() => {
+                                                                                    durationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                                                                }, 100);
+                                                                            }}
+                                                                            style={{
+                                                                                minWidth: '150px',
+                                                                                margin: '5px',
+                                                                                backgroundColor: isSelected
+                                                                                    ? isOutOfStock ? '#dc3545' : '#0d6efd' // red if selected & out of stock
+                                                                                    : isOutOfStock ? '#f8d7da' : '#e8f1ff', // light red if not selected
+                                                                                color: isSelected ? '#fff' : isOutOfStock ? '#721c24' : '#0d6efd',
+                                                                                border: '1px solid',
+                                                                                borderColor: isOutOfStock ? '#f5c6cb' : '#0d6efd',
+                                                                                borderRadius: '15px',
+                                                                                fontWeight: '600',
+                                                                                transition: 'all 0.3s ease'
+                                                                            }}
+                                                                        >
+                                                                            <h4 style={{ margin: 0, fontSize: '16px' }}>
+                                                                                {product.model_name} {isOutOfStock && '(Out of Stock)'}
+                                                                            </h4>
+                                                                        </button>
+                                                                    </li>
+                                                                );
+                                                            })}
+
+                                                        </ul>
+
                                                     </div>
-                                                    <ul className="nav nav-tabs flex-wrap" style={{ justifyContent: 'center' }}>
+                                                </div>
+
+                                                <div className="col-lg-6 col-12 text-center" style={{ padding: '20px' }}>
+                                                    <img
+                                                        src={`/upload/img/${mainImage || products[selectedModelIndex]?.main_img}`}
+                                                        alt="Main Product"
+                                                        className="img-fluid mb-3"
+                                                        style={{
+                                                            boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
+                                                            borderRadius: '20px',
+                                                            maxWidth: '100%',
+                                                            width: '400px',
+                                                            height: '300px',
+                                                            objectFit: 'contain',
+                                                        }}
+                                                    />
+                                                    <div className="d-flex justify-content-center align-items-center flex-wrap gap-3 mt-3">
+                                                        {[1, 2, 3, 4].map((num) => {
+                                                            const subImg = products[selectedModelIndex]?.[`sub_img_${num}`];
+                                                            return subImg ? (
+                                                                <img
+                                                                    key={num}
+                                                                    src={`/upload/img/${subImg}`}
+                                                                    alt={`Sub ${num}`}
+                                                                    className="rounded"
+                                                                    style={{
+                                                                        width: "80px",
+                                                                        height: "80px",
+                                                                        objectFit: "cover",
+                                                                        border: mainImage === subImg ? "2px solid #0d83fd" : "1px solid #ccc",
+                                                                        cursor: "pointer",
+                                                                    }}
+                                                                    onClick={() => setMainImage(subImg)}
+                                                                />
+                                                            ) : null;
+                                                        })}
+                                                        {products[selectedModelIndex]?.main_img && (
+                                                            <img
+                                                                src={`/upload/img/${products[selectedModelIndex].main_img}`}
+                                                                alt="Main Preview"
+                                                                className="rounded"
+                                                                style={{
+                                                                    width: "80px",
+                                                                    height: "80px",
+                                                                    objectFit: "cover",
+                                                                    border: mainImage === products[selectedModelIndex].main_img ? "2px solid #0d83fd" : "2px dashed #0d83fd",
+                                                                    cursor: "pointer",
+                                                                }}
+                                                                onClick={() => setMainImage(products[selectedModelIndex].main_img)}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* === Popup Modal for Base Model === */}
+                                        <Modal show={showBaseModelPopup} onHide={() => setShowBaseModelPopup(false)} centered style={{
+                                            border: "2px solid #0d6efd",
+                                            borderRadius: "12px",
+                                            boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+                                        }}>
+                                            <Modal.Header closeButton style={{ backgroundColor: "aliceblue" }}>
+                                                <Modal.Title style={{ color: '#0d6efd' }}>Base Model Information</Modal.Title>
+                                            </Modal.Header>
+                                            <Modal.Body>
+                                                <p>
+                                                    This is our <b>Base Model</b> water purifier device. Once you buy this device, our
+                                                    service team will install it for you.
+                                                </p>
+                                                <p className="mb-2">
+                                                    Please note that the app <b>does not provide live data</b> or remote access for this base
+                                                    model.
+                                                </p>
+                                                <p>
+                                                    For any <b>plan renewals</b> or <b>service requests</b>, please contact our seller
+                                                    support team directly.
+                                                </p>
+                                            </Modal.Body>
+                                            <Modal.Footer style={{ backgroundColor: "aliceblue" }}>
+                                                <Button variant="secondary" onClick={() => setShowBaseModelPopup(false)}>
+                                                    Cancel
+                                                </Button>
+                                                <Button variant="primary" onClick={() => setShowBaseModelPopup(false)}>
+                                                    OK, Got It
+                                                </Button>
+                                            </Modal.Footer>
+                                        </Modal>
+
+                                        {showAllModels && (
+                                            <div className="col-lg-12 col-12" style={{ padding: '20px' }}>
+                                                <div className="section-title text-center" style={{ paddingBottom: '10px' }}>
+                                                    <h2>Select Model</h2>
+                                                    <ul className="nav flex-wrap" style={{ justifyContent: 'center' }}>
                                                         <li className="nav-item">
                                                             <button
                                                                 className={`nav-link text-center ${selectedModelIndex === -1 ? 'active' : ''}`}
-                                                                onClick={() => setShowAllModels(true)}
+                                                                onClick={() => setShowAllModels(false)}
                                                                 style={{
                                                                     minWidth: '150px',
                                                                     margin: '5px',
@@ -845,438 +1044,86 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                     transition: 'all 0.3s ease'
                                                                 }}
                                                             >
-                                                                <h4 style={{ margin: 0, fontSize: '16px' }}>All Model's</h4>
+                                                                <h4 style={{ margin: 0, fontSize: '16px' }}>Back Model's</h4>
                                                             </button>
                                                         </li>
-                                                        {products.map((product, index) => {
-                                                            const isSelected = selectedModelIndex === index;
-                                                            const isOutOfStock = !product?.wp_device_id; // check if out of stock
-
-                                                            return (
-                                                                <li key={product._id} className="nav-item">
-                                                                    <button
-                                                                        className={`nav-link text-center ${isSelected ? 'active' : ''}`}
-                                                                        onClick={() => {
-                                                                            setSelectedModelIndex(index);
-                                                                            setSelectedPlanIndex(0);
-                                                                            setSelectedDurationIndex(0);
-                                                                            setTimeout(() => {
-                                                                                durationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                                                                            }, 100);
-                                                                        }}
-                                                                        style={{
-                                                                            minWidth: '150px',
-                                                                            margin: '5px',
-                                                                            backgroundColor: isSelected
-                                                                                ? isOutOfStock ? '#dc3545' : '#0d6efd' // red if selected & out of stock
-                                                                                : isOutOfStock ? '#f8d7da' : '#e8f1ff', // light red if not selected
-                                                                            color: isSelected ? '#fff' : isOutOfStock ? '#721c24' : '#0d6efd',
-                                                                            border: '1px solid',
-                                                                            borderColor: isOutOfStock ? '#f5c6cb' : '#0d6efd',
-                                                                            borderRadius: '15px',
-                                                                            fontWeight: '600',
-                                                                            transition: 'all 0.3s ease'
-                                                                        }}
-                                                                    >
-                                                                        <h4 style={{ margin: 0, fontSize: '16px' }}>
-                                                                            {product.model_name} {isOutOfStock && '(Out of Stock)'}
-                                                                        </h4>
-                                                                    </button>
-                                                                </li>
-                                                            );
-                                                        })}
-
                                                     </ul>
-
                                                 </div>
-                                            </div>
 
-                                            <div className="col-lg-6 col-12 text-center" style={{ padding: '20px' }}>
-                                                <img
-                                                    src={`/upload/img/${mainImage || products[selectedModelIndex]?.main_img}`}
-                                                    alt="Main Product"
-                                                    className="img-fluid mb-3"
+                                                <div
+                                                    ref={scrollRef}
+                                                    className="d-flex overflow-auto py-3 scroll-container"
                                                     style={{
-                                                        boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
-                                                        borderRadius: '20px',
-                                                        maxWidth: '100%',
-                                                        width: '400px',
-                                                        height: '300px',
-                                                        objectFit: 'contain',
+                                                        gap: "20px",
+                                                        scrollBehavior: "smooth",
+                                                        cursor: "grab",
+                                                        scrollSnapType: "x mandatory",
                                                     }}
-                                                />
-                                                <div className="d-flex justify-content-center align-items-center flex-wrap gap-3 mt-3">
-                                                    {[1, 2, 3, 4].map((num) => {
-                                                        const subImg = products[selectedModelIndex]?.[`sub_img_${num}`];
-                                                        return subImg ? (
-                                                            <img
-                                                                key={num}
-                                                                src={`/upload/img/${subImg}`}
-                                                                alt={`Sub ${num}`}
-                                                                className="rounded"
-                                                                style={{
-                                                                    width: "80px",
-                                                                    height: "80px",
-                                                                    objectFit: "cover",
-                                                                    border: mainImage === subImg ? "2px solid #0d83fd" : "1px solid #ccc",
-                                                                    cursor: "pointer",
-                                                                }}
-                                                                onClick={() => setMainImage(subImg)}
-                                                            />
-                                                        ) : null;
-                                                    })}
-                                                    {products[selectedModelIndex]?.main_img && (
-                                                        <img
-                                                            src={`/upload/img/${products[selectedModelIndex].main_img}`}
-                                                            alt="Main Preview"
-                                                            className="rounded"
-                                                            style={{
-                                                                width: "80px",
-                                                                height: "80px",
-                                                                objectFit: "cover",
-                                                                border: mainImage === products[selectedModelIndex].main_img ? "2px solid #0d83fd" : "2px dashed #0d83fd",
-                                                                cursor: "pointer",
-                                                            }}
-                                                            onClick={() => setMainImage(products[selectedModelIndex].main_img)}
-                                                        />
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {showAllModels && (
-                                        <div className="col-lg-12 col-12" style={{ padding: '20px' }}>
-                                            <div className="section-title text-center" style={{ paddingBottom: '10px' }}>
-                                                <h2>Select Model</h2>
-                                                <ul className="nav flex-wrap" style={{ justifyContent: 'center' }}>
-                                                    <li className="nav-item">
-                                                        <button
-                                                            className={`nav-link text-center ${selectedModelIndex === -1 ? 'active' : ''}`}
-                                                            onClick={() => setShowAllModels(false)}
-                                                            style={{
-                                                                minWidth: '150px',
-                                                                margin: '5px',
-                                                                backgroundColor: selectedModelIndex === -1 ? '#0d6efd' : '#e8f1ff',
-                                                                color: selectedModelIndex === -1 ? '#fff' : '#0d6efd',
-                                                                border: '1px solid #0d6efd',
-                                                                borderRadius: '15px',
-                                                                fontWeight: '600',
-                                                                transition: 'all 0.3s ease'
-                                                            }}
-                                                        >
-                                                            <h4 style={{ margin: 0, fontSize: '16px' }}>Back Model's</h4>
-                                                        </button>
-                                                    </li>
-                                                </ul>
-                                            </div>
-
-                                            <div
-                                                ref={scrollRef}
-                                                className="d-flex overflow-auto py-3 scroll-container"
-                                                style={{
-                                                    gap: "20px",
-                                                    scrollBehavior: "smooth",
-                                                    cursor: "grab",
-                                                    scrollSnapType: "x mandatory",
-                                                }}
-                                            >
-                                                {products.map((product, index) => {
-                                                    const isSelected = selectedModelIndex === index;
-                                                    const isOutOfStock = !product?.wp_device_id;
-
-                                                    return (
-                                                        <div
-                                                            key={product._id}
-                                                            className="card text-center flex-shrink-0"
-                                                            style={{
-                                                                width: "250px",
-                                                                borderRadius: "20px",
-                                                                border: isSelected ? "3px solid #0d6efd" : "1px solid #ddd",
-                                                                boxShadow: isSelected
-                                                                    ? "0 0 20px rgba(13,110,253,0.3)"
-                                                                    : "0 2px 8px rgba(0,0,0,0.1)",
-                                                                transform: isSelected ? "scale(1.05)" : "scale(1)",
-                                                                transition: "all 0.4s ease",
-                                                                opacity: isOutOfStock ? 0.5 : 1,
-                                                                cursor: "pointer",
-                                                                margin: "0 10px",
-                                                                scrollSnapAlign: "center",
-                                                            }}
-                                                            onClick={() => {
-                                                                setSelectedModelIndex(index);
-                                                                setActiveModelIndex(index);
-                                                                setSelectedPlanIndex(0);
-                                                                setSelectedDurationIndex(0);
-                                                                setMainImage(product.main_img);
-                                                                setTimeout(() => {
-                                                                    durationRef.current?.scrollIntoView({
-                                                                        behavior: "smooth",
-                                                                        block: "start",
-                                                                    });
-                                                                }, 300);
-                                                            }}
-                                                        >
-                                                            <img
-                                                                src={`/upload/img/${product.main_img}`}
-                                                                alt={product.model_name}
-                                                                className="card-img-top"
-                                                                style={{
-                                                                    height: "180px",
-                                                                    objectFit: "contain",
-                                                                    borderTopLeftRadius: "20px",
-                                                                    borderTopRightRadius: "20px",
-                                                                    animation: isSelected ? "slideIn 0.5s ease-in-out" : "none",
-                                                                }}
-                                                            />
-                                                            <div className="card-body">
-                                                                <h5
-                                                                    style={{
-                                                                        color: isSelected ? "#0d6efd" : "#000",
-                                                                        fontWeight: "600",
-                                                                        fontSize: "16px",
-                                                                    }}
-                                                                >
-                                                                    {product.model_name}{" "}
-                                                                    {isOutOfStock && (
-                                                                        <span style={{ color: "red", fontWeight: "600" }}>
-                                                                            (Out of Stock)
-                                                                        </span>
-                                                                    )}
-                                                                </h5>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-
-                                        </div>
-                                    )}
-
-                                    <div ref={durationRef}>
-                                        <div className="row mt-4">
-                                            <div className="col-lg-12">
-                                                <div style={{ textAlign: "center" }}>
-                                                    <h2>Flexible Rental Plans</h2>
-                                                    <div
-                                                        style={{
-                                                            width: "50px",
-                                                            height: "3px",
-                                                            backgroundColor: "#0d6efd",
-                                                            borderRadius: "2px",
-                                                            margin: "10px auto 0 auto",
-                                                        }}
-                                                    ></div>
-                                                    <p className="fst-italic mt-2">
-                                                        Security deposit of ₹{products[selectedModelIndex]?.duration[selectedDurationIndex]?.security_deposit || 0} will be 100% refundable
-                                                    </p>
-                                                    <h5>Choose Duration</h5>
-
-                                                    <div className="d-flex flex-wrap gap-2 mb-3 justify-content-center">
-                                                        {products[selectedModelIndex]?.duration.map((duration, index) => (
-                                                            <button
-                                                                key={duration.duration_id}
-                                                                className={`btn ${selectedDurationIndex === index ? "btn-primary" : "btn-outline-primary"}`}
-                                                                onClick={() => setSelectedDurationIndex(index)}
-                                                            >
-                                                                {duration.duration_time_limit}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-
-                                                <div className="row justify-content-center" style={{ padding: "20px" }}>
-                                                    {products[selectedModelIndex]?.duration?.[selectedDurationIndex]?.plans?.map((plan, planIndex) => {
-                                                        const product = products[selectedModelIndex];
-                                                        const selectedDuration = product?.duration?.[selectedDurationIndex];
-
-                                                        if (!product || !selectedDuration) return null;
-
-                                                        const durationText = selectedDuration?.duration_time_limit || "28 days";
-                                                        const durationDays = parseInt(durationText) || 28;
-                                                        const baseDays = 28;
-
-                                                        // If plan.price belongs to that duration (like in your JSON), just use it directly
-                                                        // Otherwise (for older data with 28-day base), multiply proportionally
-                                                        const totalPrice =
-                                                            selectedDuration?.plans?.length > 0
-                                                                ? plan.price // already specific for this duration
-                                                                : (plan.price / baseDays) * durationDays;
-
-                                                        const formattedPrice = new Intl.NumberFormat("en-IN", {
-                                                            style: "currency",
-                                                            currency: "INR",
-                                                            minimumFractionDigits: 0,
-                                                            maximumFractionDigits: 0,
-                                                        }).format(totalPrice);
-
-                                                        const isPopular = plan.label?.toLowerCase() === "couple";
+                                                >
+                                                    {products.map((product, index) => {
+                                                        const isSelected = selectedModelIndex === index;
                                                         const isOutOfStock = !product?.wp_device_id;
 
-                                                        // Normalize connectivity (array or string)
-                                                        const connectivityRaw = product?.connectivity;
-                                                        const connectivity = Array.isArray(connectivityRaw)
-                                                            ? connectivityRaw.join(", ")
-                                                            : (connectivityRaw || "").toString().trim();
-
-                                                        // Pull GST, Discount, Deposit from duration
-                                                        const discountRate = selectedDuration?.discount || 0;
-                                                        const gstRate = selectedDuration?.gst || 0;
-                                                        const securityDeposit = selectedDuration?.security_deposit || 0;
-
                                                         return (
-                                                            <div className="col-md-3 mb-4" key={plan.plans_id}>
-                                                                <div
-                                                                    className="card h-100 shadow-sm position-relative"
+                                                            <div
+                                                                key={product._id}
+                                                                className="card text-center flex-shrink-0"
+                                                                style={{
+                                                                    width: "250px",
+                                                                    borderRadius: "20px",
+                                                                    border: isSelected ? "3px solid #0d6efd" : "1px solid #ddd",
+                                                                    boxShadow: isSelected
+                                                                        ? "0 0 20px rgba(13,110,253,0.3)"
+                                                                        : "0 2px 8px rgba(0,0,0,0.1)",
+                                                                    transform: isSelected ? "scale(1.05)" : "scale(1)",
+                                                                    transition: "all 0.4s ease",
+                                                                    opacity: isOutOfStock ? 0.5 : 1,
+                                                                    cursor: "pointer",
+                                                                    margin: "0 10px",
+                                                                    scrollSnapAlign: "center",
+                                                                }}
+                                                                onClick={() => {
+                                                                    setSelectedModelIndex(index);
+                                                                    handleModelSelect(index);
+                                                                    setActiveModelIndex(index);
+                                                                    setSelectedPlanIndex(0);
+                                                                    setSelectedDurationIndex(0);
+                                                                    setMainImage(product.main_img);
+                                                                    setTimeout(() => {
+                                                                        durationRef.current?.scrollIntoView({
+                                                                            behavior: "smooth",
+                                                                            block: "start",
+                                                                        });
+                                                                    }, 300);
+                                                                }}
+                                                            >
+                                                                <img
+                                                                    src={`/upload/img/${product.main_img}`}
+                                                                    alt={product.model_name}
+                                                                    className="card-img-top"
                                                                     style={{
-                                                                        borderRadius: "20px",
-                                                                        overflow: "visible",
-                                                                        border: isPopular ? "2px solid #0d6efd" : "2px solid #e0e0e0",
-                                                                        transition: "all 0.3s ease-in-out",
-                                                                        transform: "scale(1)",
+                                                                        height: "180px",
+                                                                        objectFit: "contain",
+                                                                        borderTopLeftRadius: "20px",
+                                                                        borderTopRightRadius: "20px",
+                                                                        animation: isSelected ? "slideIn 0.5s ease-in-out" : "none",
                                                                     }}
-                                                                    onMouseEnter={(e) => {
-                                                                        e.currentTarget.style.transform = "scale(1.05)";
-                                                                        e.currentTarget.style.boxShadow = "0 0 25px rgba(13, 110, 253, 0.3)";
-                                                                    }}
-                                                                    onMouseLeave={(e) => {
-                                                                        e.currentTarget.style.transform = "scale(1)";
-                                                                        e.currentTarget.style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.1)";
-                                                                    }}
-                                                                >
-                                                                    {/* --- MOST POPULAR BADGE --- */}
-                                                                    {isPopular && (
-                                                                        <div
-                                                                            style={{
-                                                                                position: "absolute",
-                                                                                top: "-14px",
-                                                                                left: "50%",
-                                                                                transform: "translateX(-50%)",
-                                                                                background: "#0d6efd",
-                                                                                color: "#fff",
-                                                                                borderRadius: "20px",
-                                                                                padding: "4px 16px",
-                                                                                fontSize: "13px",
-                                                                                fontWeight: "600",
-                                                                                boxShadow: "0 2px 6px rgba(13,110,253,0.3)",
-                                                                                zIndex: "10",
-                                                                            }}
-                                                                        >
-                                                                            Most Popular
-                                                                        </div>
-                                                                    )}
-
-                                                                    {/* HEADER */}
-                                                                    <div className="card-header bg-white text-center pt-4 border-0" style={{ borderRadius: '20px' }}>
-                                                                        <h5
-                                                                            style={{
-                                                                                color: "#000",
-                                                                                textTransform: "capitalize",
-                                                                                fontWeight: "700",
-                                                                                marginBottom: "5px",
-                                                                                fontSize: "20px",
-                                                                            }}
-                                                                        >
-                                                                            {plan.label} Plan
-                                                                        </h5>
-                                                                        <p style={{ fontWeight: "600" }}>
-                                                                            {plan.label?.toLowerCase() === "unlimited" || !plan.capacity ? (
-                                                                                <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
-                                                                            ) : (
-                                                                                <>
-                                                                                    {plan.capacity}/<span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
-                                                                                </>
-                                                                            )}
-                                                                        </p>
-                                                                    </div>
-
-                                                                    {/* PRICE */}
-                                                                    <div className="text-center mt-2">
-                                                                        <h4 style={{ color: "#000", fontWeight: "700", fontSize: "32px", marginBottom: "5px" }}>
-                                                                            <span style={{ color: "#0d6efd" }}>{formattedPrice}</span>
-                                                                        </h4>
-                                                                        <p style={{ color: "#666", fontWeight: "500", fontSize: "15px", marginBottom: "0" }}>
-                                                                            / for {durationText}
-                                                                        </p>
-
-                                                                        <p style={{ marginTop: "8px", color: "#333", fontWeight: "600", fontSize: "13px" }}>
-                                                                            {discountRate ? `${discountRate}% OFF` : "No Discount"}
-                                                                            <br />
-                                                                            <span style={{ fontSize: "12px", color: "#777" }}>(Inclusive of GST)</span>
-                                                                        </p>
-
-                                                                        <div
-                                                                            style={{
-                                                                                width: "200px",
-                                                                                height: "2px",
-                                                                                backgroundColor: "#0d6efd",
-                                                                                borderRadius: "2px",
-                                                                                margin: "10px auto 0 auto",
-                                                                            }}
-                                                                        ></div>
-                                                                    </div>
-
-                                                                    {/* FEATURES */}
-                                                                    <div className="card-body text-left px-4" style={{ paddingTop: "0px" }}>
-                                                                        <ul style={{ listStyle: "none", paddingLeft: "0", margin: "5px 0" }}>
-                                                                            <li className="mb-2"><span className="text-success">✓</span> Lifetime Maintenance</li>
-                                                                            <li className="mb-2"><span className="text-success">✓</span> Security ₹ {securityDeposit}</li>
-                                                                            <li className="mb-2"><span className="text-success">✓</span> 24–48 Hour Installation</li>
-                                                                            {durationDays >= 90 && (
-                                                                                <li className="mb-2"><span className="text-success">✓</span> Filter Replacement Every 3 Months</li>
-                                                                            )}
-
-                                                                            {/* CONNECTIVITY */}
-                                                                            {connectivity ? (
-                                                                                <li className="mb-2">
-                                                                                    <span className="text-success">✓</span> Connectivity:
-                                                                                    <ul style={{ listStyleType: "disc", paddingLeft: "25px", marginTop: "5px" }}>
-                                                                                        {connectivity.split(",").map((conn, i) => (
-                                                                                            <li key={i}>{conn.trim()}</li>
-                                                                                        ))}
-                                                                                    </ul>
-                                                                                </li>
-                                                                            ) : (
-                                                                                <li className="mb-2 text-danger">❌ No Connectivity</li>
-                                                                            )}
-
-                                                                            <li className="mb-2"><span className="text-success">✓</span> Discount: {discountRate}%</li>
-                                                                            <li className="mb-2"><span className="text-success">✓</span> GST: {gstRate}%</li>
-                                                                            <li className="text-warning">
-                                                                                <span className="text-warning">✓</span> Includes ₹{securityDeposit} refundable deposit
-                                                                            </li>
-
-                                                                            {isOutOfStock && (
-                                                                                <li className="text-danger" style={{ textAlign: "center" }}>
-                                                                                    <span className="text-danger">❌</span> Out of Stock
-                                                                                </li>
-                                                                            )}
-                                                                        </ul>
-                                                                    </div>
-
-                                                                    {/* BUTTON */}
-                                                                    <div className="card-footer text-center pb-4 border-0 bg-white" style={{ borderRadius: '20px' }}>
-                                                                        <button
-                                                                            className="btn px-4 py-2 rounded-pill"
-                                                                            style={{
-                                                                                background: "#0d6efd",
-                                                                                border: "none",
-                                                                                color: "#fff",
-                                                                                transition: "0.3s",
-                                                                            }}
-                                                                            disabled={isOutOfStock}
-                                                                            onMouseEnter={(e) => (e.currentTarget.style.background = "#0b5ed7")}
-                                                                            onMouseLeave={(e) => (e.currentTarget.style.background = "#0d6efd")}
-                                                                            onClick={() => {
-                                                                                if (!isOutOfStock) {
-                                                                                    setSelectedPlanIndex(planIndex);
-                                                                                    handleSubscribeClick();
-                                                                                }
-                                                                            }}
-                                                                        >
-                                                                            {isOutOfStock ? "Out of Stock" : "Buy Now"}
-                                                                        </button>
-                                                                    </div>
+                                                                />
+                                                                <div className="card-body">
+                                                                    <h5
+                                                                        style={{
+                                                                            color: isSelected ? "#0d6efd" : "#000",
+                                                                            fontWeight: "600",
+                                                                            fontSize: "16px",
+                                                                        }}
+                                                                    >
+                                                                        {product.model_name}{" "}
+                                                                        {isOutOfStock && (
+                                                                            <span style={{ color: "red", fontWeight: "600" }}>
+                                                                                (Out of Stock)
+                                                                            </span>
+                                                                        )}
+                                                                    </h5>
                                                                 </div>
                                                             </div>
                                                         );
@@ -1284,17 +1131,251 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 </div>
 
                                             </div>
-                                        </div>
-                                    </div>
+                                        )}
 
+                                        <div ref={durationRef}>
+                                            <div className="row mt-4">
+                                                <div className="col-lg-12">
+                                                    <div style={{ textAlign: "center" }}>
+                                                        <h2>Flexible Rental Plans</h2>
+                                                        <div
+                                                            style={{
+                                                                width: "50px",
+                                                                height: "3px",
+                                                                backgroundColor: "#0d6efd",
+                                                                borderRadius: "2px",
+                                                                margin: "10px auto 0 auto",
+                                                            }}
+                                                        ></div>
+                                                        <p className="fst-italic mt-2">
+                                                            Security deposit of ₹{products[selectedModelIndex]?.duration[selectedDurationIndex]?.security_deposit || 0} will be 100% refundable
+                                                        </p>
+                                                        <h5>Choose Duration</h5>
+
+                                                        <div className="d-flex flex-wrap gap-2 mb-3 justify-content-center">
+                                                            {products[selectedModelIndex]?.duration.map((duration, index) => (
+                                                                <button
+                                                                    key={duration.duration_id}
+                                                                    className={`btn ${selectedDurationIndex === index ? "btn-primary" : "btn-outline-primary"}`}
+                                                                    onClick={() => setSelectedDurationIndex(index)}
+                                                                >
+                                                                    {duration.duration_time_limit}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="row justify-content-center" style={{ padding: "20px" }}>
+                                                        {products[selectedModelIndex]?.duration?.[selectedDurationIndex]?.plans?.map((plan, planIndex) => {
+                                                            const product = products[selectedModelIndex];
+                                                            const selectedDuration = product?.duration?.[selectedDurationIndex];
+
+                                                            if (!product || !selectedDuration) return null;
+
+                                                            const durationText = selectedDuration?.duration_time_limit || "28 days";
+                                                            const durationDays = parseInt(durationText) || 28;
+                                                            const baseDays = 28;
+
+                                                            // If plan.price belongs to that duration (like in your JSON), just use it directly
+                                                            // Otherwise (for older data with 28-day base), multiply proportionally
+                                                            const totalPrice =
+                                                                selectedDuration?.plans?.length > 0
+                                                                    ? plan.price // already specific for this duration
+                                                                    : (plan.price / baseDays) * durationDays;
+
+                                                            const formattedPrice = new Intl.NumberFormat("en-IN", {
+                                                                style: "currency",
+                                                                currency: "INR",
+                                                                minimumFractionDigits: 0,
+                                                                maximumFractionDigits: 0,
+                                                            }).format(totalPrice);
+
+                                                            const isPopular = plan.label?.toLowerCase() === "couple";
+                                                            const isOutOfStock = !product?.wp_device_id;
+
+                                                            // Normalize connectivity (array or string)
+                                                            const connectivityRaw = product?.connectivity;
+                                                            const connectivity = Array.isArray(connectivityRaw)
+                                                                ? connectivityRaw.join(", ")
+                                                                : (connectivityRaw || "").toString().trim();
+
+                                                            // Pull GST, Discount, Deposit from duration
+                                                            const discountRate = selectedDuration?.discount || 0;
+                                                            const gstRate = selectedDuration?.gst || 0;
+                                                            const securityDeposit = selectedDuration?.security_deposit || 0;
+
+                                                            return (
+                                                                <div className="col-md-3 mb-4" key={plan.plans_id}>
+                                                                    <div
+                                                                        className="card h-100 shadow-sm position-relative"
+                                                                        style={{
+                                                                            borderRadius: "20px",
+                                                                            overflow: "visible",
+                                                                            border: isPopular ? "2px solid #0d6efd" : "2px solid #e0e0e0",
+                                                                            transition: "all 0.3s ease-in-out",
+                                                                            transform: "scale(1)",
+                                                                        }}
+                                                                        onMouseEnter={(e) => {
+                                                                            e.currentTarget.style.transform = "scale(1.05)";
+                                                                            e.currentTarget.style.boxShadow = "0 0 25px rgba(13, 110, 253, 0.3)";
+                                                                        }}
+                                                                        onMouseLeave={(e) => {
+                                                                            e.currentTarget.style.transform = "scale(1)";
+                                                                            e.currentTarget.style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.1)";
+                                                                        }}
+                                                                    >
+                                                                        {/* --- MOST POPULAR BADGE --- */}
+                                                                        {isPopular && (
+                                                                            <div
+                                                                                style={{
+                                                                                    position: "absolute",
+                                                                                    top: "-14px",
+                                                                                    left: "50%",
+                                                                                    transform: "translateX(-50%)",
+                                                                                    background: "#0d6efd",
+                                                                                    color: "#fff",
+                                                                                    borderRadius: "20px",
+                                                                                    padding: "4px 16px",
+                                                                                    fontSize: "13px",
+                                                                                    fontWeight: "600",
+                                                                                    boxShadow: "0 2px 6px rgba(13,110,253,0.3)",
+                                                                                    zIndex: "10",
+                                                                                }}
+                                                                            >
+                                                                                Most Popular
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* HEADER */}
+                                                                        <div className="card-header bg-white text-center pt-4 border-0" style={{ borderRadius: '20px' }}>
+                                                                            <h5
+                                                                                style={{
+                                                                                    color: "#000",
+                                                                                    textTransform: "capitalize",
+                                                                                    fontWeight: "700",
+                                                                                    marginBottom: "5px",
+                                                                                    fontSize: "20px",
+                                                                                }}
+                                                                            >
+                                                                                {plan.label} Plan
+                                                                            </h5>
+                                                                            <p style={{ fontWeight: "600" }}>
+                                                                                {plan.label?.toLowerCase() === "unlimited" || !plan.capacity ? (
+                                                                                    <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
+                                                                                ) : (
+                                                                                    <>
+                                                                                        {plan.capacity}/<span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
+                                                                                    </>
+                                                                                )}
+                                                                            </p>
+                                                                        </div>
+
+                                                                        {/* PRICE */}
+                                                                        <div className="text-center mt-2">
+                                                                            <h4 style={{ color: "#000", fontWeight: "700", fontSize: "32px", marginBottom: "5px" }}>
+                                                                                <span style={{ color: "#0d6efd" }}>{formattedPrice}</span>
+                                                                            </h4>
+                                                                            <p style={{ color: "#666", fontWeight: "500", fontSize: "15px", marginBottom: "0" }}>
+                                                                                / for {durationText}
+                                                                            </p>
+
+                                                                            <p style={{ marginTop: "8px", color: "#333", fontWeight: "600", fontSize: "13px" }}>
+                                                                                {discountRate ? `${discountRate}% OFF` : "No Discount"}
+                                                                                <br />
+                                                                                <span style={{ fontSize: "12px", color: "#777" }}>(Inclusive of GST)</span>
+                                                                            </p>
+
+                                                                            <div
+                                                                                style={{
+                                                                                    width: "200px",
+                                                                                    height: "2px",
+                                                                                    backgroundColor: "#0d6efd",
+                                                                                    borderRadius: "2px",
+                                                                                    margin: "10px auto 0 auto",
+                                                                                }}
+                                                                            ></div>
+                                                                        </div>
+
+                                                                        {/* FEATURES */}
+                                                                        <div className="card-body text-left px-4" style={{ paddingTop: "0px" }}>
+                                                                            <ul style={{ listStyle: "none", paddingLeft: "0", margin: "5px 0" }}>
+                                                                                <li className="mb-2"><span className="text-success">✓</span> Lifetime Maintenance</li>
+                                                                                <li className="mb-2"><span className="text-success">✓</span> Security ₹ {securityDeposit}</li>
+                                                                                <li className="mb-2"><span className="text-success">✓</span> 24–48 Hour Installation</li>
+                                                                                {durationDays >= 90 && (
+                                                                                    <li className="mb-2"><span className="text-success">✓</span> Filter Replacement Every 3 Months</li>
+                                                                                )}
+
+                                                                                {/* CONNECTIVITY */}
+                                                                                {connectivity ? (
+                                                                                    <li className="mb-2">
+                                                                                        <span className="text-success">✓</span> Connectivity:
+                                                                                        <ul style={{ listStyleType: "disc", paddingLeft: "25px", marginTop: "5px" }}>
+                                                                                            {connectivity.split(",").map((conn, i) => (
+                                                                                                <li key={i}>{conn.trim()}</li>
+                                                                                            ))}
+                                                                                        </ul>
+                                                                                    </li>
+                                                                                ) : (
+                                                                                    <li className="mb-2 text-danger">❌ No Connectivity</li>
+                                                                                )}
+
+                                                                                <li className="mb-2"><span className="text-success">✓</span> Model Type: {product.model_type}</li>
+                                                                                <li className="mb-2"><span className="text-success">✓</span> Discount: {discountRate}%</li>
+                                                                                <li className="mb-2"><span className="text-success">✓</span> GST: {gstRate}%</li>
+                                                                                <li className="text-warning">
+                                                                                    <span className="text-warning">✓</span> Includes ₹{securityDeposit} refundable deposit
+                                                                                </li>
+
+                                                                                {isOutOfStock && (
+                                                                                    <li className="text-danger" style={{ textAlign: "center" }}>
+                                                                                        <span className="text-danger">❌</span> Out of Stock
+                                                                                    </li>
+                                                                                )}
+                                                                            </ul>
+                                                                        </div>
+
+                                                                        {/* BUTTON */}
+                                                                        <div className="card-footer text-center pb-4 border-0 bg-white" style={{ borderRadius: '20px' }}>
+                                                                            <button
+                                                                                className="btn px-4 py-2 rounded-pill"
+                                                                                style={{
+                                                                                    background: "#0d6efd",
+                                                                                    border: "none",
+                                                                                    color: "#fff",
+                                                                                    transition: "0.3s",
+                                                                                }}
+                                                                                disabled={isOutOfStock}
+                                                                                onMouseEnter={(e) => (e.currentTarget.style.background = "#0b5ed7")}
+                                                                                onMouseLeave={(e) => (e.currentTarget.style.background = "#0d6efd")}
+                                                                                onClick={() => {
+                                                                                    if (!isOutOfStock) {
+                                                                                        setSelectedPlanIndex(planIndex);
+                                                                                        handleSubscribeClick();
+                                                                                    }
+                                                                                }}
+                                                                            >
+                                                                                {isOutOfStock ? "Out of Stock" : "Buy Now"}
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ) : (
-                        <div className="container text-center my-5">
-                            <h3>No products available at the moment.</h3>
-                        </div>
-                    )}
+                        ) : (
+                            <div className="container text-center my-5">
+                                <h3>No products available at the moment.</h3>
+                            </div>
+                        )}
 
                     {showSummaryModal && (
                         <div
@@ -1424,6 +1505,8 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             return (
                                                 <>
                                                     {textRow("Model", product.model_name, true, true)}
+                                                    {textRow("Model Type", product.model_type || "N/A")}
+
                                                     {textRow("Connectivity", product.connectivity || "N/A")}
                                                     <hr style={{ color: "#0d6efd" }} />
 
@@ -1907,14 +1990,19 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 {/* <!-- /Features Section --> */}
 
                 {/* <!-- Start Product detail Section --> */}
-                {products.length > 0 ? (
+                {loading ? (
+                    <div className="text-center my-5">
+                        {/* <div className="spinner-border text-primary" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                        </div> */}
+                    </div>
+                ) : products.length > 0 ? (
                     <section id="features" className="features section" style={{ padding: '0px' }}>
-
-                        {/* <!-- Section Title --> */}
                         <div className="container section-title" data-aos="fade-up">
-
-                            <h3 style={{ textAlign: 'left', }}>Product details</h3>
-                            <p style={{ textAlign: 'left' }}> {products[selectedModelIndex].product_details}</p>
+                            <h3 style={{ textAlign: 'left' }}>Product details</h3>
+                            <p style={{ textAlign: 'left' }}>
+                                {products[selectedModelIndex]?.product_details}
+                            </p>
                             {products[selectedModelIndex]?.product_specifications && (
                                 <p style={{ padding: '20px' }}>
                                     <a
@@ -1928,13 +2016,13 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                 </p>
                             )}
                         </div>
-                        {/* <!-- End Section Title --> */}
                     </section>
                 ) : (
                     <div className="container text-center my-5">
                         <h3>No products available at the moment.</h3>
                     </div>
                 )}
+
                 {/* <!-- Start Product detail Section --> */}
 
                 {/* <!-- Start Advantage Section --> */}
