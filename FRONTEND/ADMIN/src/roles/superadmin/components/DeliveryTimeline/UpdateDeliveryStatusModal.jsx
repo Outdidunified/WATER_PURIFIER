@@ -77,7 +77,7 @@ const UpdateDeliveryStatusModal = ({ isOpen, orderId, currentStatus, onClose, on
       console.log('Updating delivery status for order:', orderId);
       
       const response = await fetch(
-        `http://192.168.0.19:5001/api/website/orders/${orderId}/update-delivery-status`,
+        `http://192.168.0.29:5001/api/website/orders/${orderId}/update-delivery-status`,
         {
           method: 'POST',
           headers: {
@@ -113,7 +113,7 @@ const UpdateDeliveryStatusModal = ({ isOpen, orderId, currentStatus, onClose, on
       if (!updatedOrder.deliveryHistory) {
         updatedOrder.deliveryHistory = [];
       }
-      
+
       // Add new status entry to history
       const newEntry = {
         status: selectedStatus,
@@ -121,9 +121,16 @@ const UpdateDeliveryStatusModal = ({ isOpen, orderId, currentStatus, onClose, on
         note: notes || `Updated from ${currentStatus} to ${selectedStatus}`,
         updatedBy: 'System'
       };
-      
+
       updatedOrder.deliveryHistory = [...updatedOrder.deliveryHistory, newEntry];
       console.log('Added new status to delivery history:', newEntry);
+
+      // Update timestamps for key statuses
+      if (selectedStatus === 'accepted') {
+        updatedOrder.deliveryAcceptanceTimestamp = newEntry.timestamp;
+      } else if (selectedStatus === 'completed') {
+        updatedOrder.deliveryCompletionTimestamp = newEntry.timestamp;
+      }
       
       // Show success message
       setSuccess('✅ Delivery status updated successfully!');

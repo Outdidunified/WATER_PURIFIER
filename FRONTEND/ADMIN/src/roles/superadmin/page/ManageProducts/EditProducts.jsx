@@ -101,9 +101,9 @@ const EditProducts = ({ userInfo, handleLogout }) => {
 
                 {plan.label !== 'unlimited' && (
                   <div className="col-md-3">
-                    <label className="input-label">Capacity</label>
+                    <label className="input-label">Capacity (Litres)</label>
                     <InputField
-                      placeholder="Capacity"
+                      placeholder="Capacity (Litres)"
                       value={plan.capacity}
                       onChange={(e) => handlePlanChange(durationIndex, planIndex, 'capacity', e.target.value)}
                       required

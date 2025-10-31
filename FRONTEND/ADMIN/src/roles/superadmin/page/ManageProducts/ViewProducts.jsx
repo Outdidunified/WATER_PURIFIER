@@ -152,10 +152,25 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
                           <h6 className="mb-0">{duration.duration_time_limit || 'Duration'}</h6>
                         </div>
 
-                        <div className="d-flex flex-wrap text-start mt-3 mb-2">
-                          <div className="me-3"><strong>GST:</strong> {duration.gst ?? '-'}</div>
-                          <div className="me-3"><strong>Discount:</strong> {duration.discount ?? '-'}</div>
-                          <div className="me-3"><strong>Security Deposit:</strong> {duration.security_deposit ?? '-'}</div>
+                        <div className="row text-start mt-3 mb-2 align-items-center">
+                          <div className="col-12 col-md-4 mb-2 mb-md-0">
+                            <div className="d-flex flex-column flex-md-row align-items-md-center">
+                              <strong className="me-0 me-md-2">GST:</strong>
+                              <span>{duration.gst ?? '-'}</span>
+                            </div>
+                          </div>
+                          <div className="col-12 col-md-4 mb-2 mb-md-0 text-md-center">
+                            <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-md-center">
+                              <strong className="me-0 me-md-2">Discount:</strong>
+                              <span>{duration.discount ?? '-'}</span>
+                            </div>
+                          </div>
+                          <div className="col-12 col-md-4 text-md-end">
+                            <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-md-end">
+                              <strong className="me-0 me-md-2">Security Deposit:</strong>
+                              <span>{duration.security_deposit ?? '-'}</span>
+                            </div>
+                          </div>
                         </div>
 
                         {renderPlansForDuration(duration)}

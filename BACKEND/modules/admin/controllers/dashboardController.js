@@ -8,6 +8,275 @@ const nodemailer = require('nodemailer');
 const MODULES = require('./modules.config');
 const { normalizeDeliveryAddress } = require('../../../modules/website/models/DeliveryAddress');
 
+const resolvePlanDuration = (planConfig) => {
+    if (!planConfig || typeof planConfig !== 'object') {
+        return null;
+    }
+    const pickFirst = (...values) => {
+        for (const value of values) {
+            if (value === undefined || value === null) {
+                continue;
+            }
+            if (typeof value === 'string') {
+                const trimmed = value.trim();
+                if (trimmed) {
+                    return trimmed;
+                }
+            } else if (typeof value === 'number' && !Number.isNaN(value)) {
+                return String(value);
+            }
+        }
+        return null;
+    };
+    const nestedSources = [];
+    const addNestedSource = (source) => {
+        if (Array.isArray(source)) {
+            if (source.length > 0 && typeof source[0] === 'object') {
+                nestedSources.push(source[0]);
+            }
+            return;
+        }
+        if (source && typeof source === 'object') {
+            nestedSources.push(source);
+        }
+    };
+    addNestedSource(planConfig.duration);
+    addNestedSource(planConfig.duration_details);
+    addNestedSource(planConfig.durationDetails);
+    addNestedSource(planConfig.selectedDuration);
+    addNestedSource(planConfig.durationConfig);
+    addNestedSource(planConfig.duration_info);
+    addNestedSource(planConfig.durationInfo);
+    addNestedSource(planConfig.plan_duration);
+    addNestedSource(planConfig.planDuration);
+    const nestedValues = [];
+    nestedSources.forEach((src) => {
+        nestedValues.push(
+            src.duration_time_limit,
+            src.durationTimeLimit,
+            src.duration_label,
+            src.durationLabel,
+            src.duration,
+            src.label,
+            src.name
+        );
+    });
+    return pickFirst(
+        planConfig.duration_time_limit,
+        planConfig.durationTimeLimit,
+        planConfig.duration_label,
+        planConfig.durationLabel,
+        planConfig.duration,
+        planConfig.plan_duration,
+        planConfig.planDuration,
+        planConfig.validity,
+        planConfig.tenure,
+        planConfig.subscription_duration,
+        planConfig.subscriptionDuration,
+        ...nestedValues
+    );
+};
+
+const resolvePlanDurationFromSources = (...sources) => {
+    for (const source of sources) {
+        if (!source) {
+            continue;
+        }
+        if (Array.isArray(source)) {
+            const nestedDuration = resolvePlanDurationFromSources(...source);
+            if (nestedDuration) {
+                return nestedDuration;
+            }
+            continue;
+        }
+        if (typeof source === "object") {
+            const direct = resolvePlanDuration(source);
+            if (direct) {
+                return direct;
+            }
+            const nestedCandidates = [
+                source.selectedDuration,
+                source.plan_config,
+                source.planConfig,
+                source.planDetails,
+                source.plan_details,
+                source.durationConfig,
+                source.duration_config,
+                source.durationDetails,
+                source.duration_details
+            ].filter(Boolean);
+            if (nestedCandidates.length) {
+                const nestedDuration = resolvePlanDurationFromSources(...nestedCandidates);
+                if (nestedDuration) {
+                    return nestedDuration;
+                }
+            }
+        }
+    }
+    return null;
+};
+
+const pickFirstValue = (...values) => {
+    for (const value of values) {
+        if (value === undefined || value === null) {
+            continue;
+        }
+        if (typeof value === "string") {
+            const trimmed = value.trim();
+            if (trimmed) {
+                return trimmed;
+            }
+            continue;
+        }
+        return value;
+    }
+    return null;
+};
+
+const resolveSelectedPlanSnapshot = (...sources) => {
+    for (const source of sources) {
+        if (!source) {
+            continue;
+        }
+        if (Array.isArray(source)) {
+            const nested = resolveSelectedPlanSnapshot(...source);
+            if (nested) {
+                return nested;
+            }
+            continue;
+        }
+        if (typeof source !== "object") {
+            continue;
+        }
+        const plansId = pickFirstValue(source.plans_id, source.plan_id, source.planId, source.id);
+        const label = pickFirstValue(source.label, source.plan_label, source.planLabel, source.name);
+        const capacity = pickFirstValue(source.capacity, source.plan_capacity, source.totalWaterLimit, source.total_water_limit, source.totalLitre, source.total_litre);
+        const price = pickFirstValue(source.price, source.plan_price, source.total_price, source.amount, source.gross_price);
+        if (plansId !== null || label !== null || capacity !== null || price !== null) {
+            const snapshot = {};
+            if (plansId !== null) {
+                snapshot.plans_id = plansId;
+            }
+            if (label !== null) {
+                snapshot.label = label;
+            }
+            if (capacity !== null) {
+                snapshot.capacity = capacity;
+            }
+            if (price !== null) {
+                snapshot.price = price;
+            }
+            return snapshot;
+        }
+        const nested = resolveSelectedPlanSnapshot(
+            source.selectedPlan,
+            source.plan,
+            source.plan_details,
+            source.planDetails,
+            source.plan_config,
+            source.planConfig
+        );
+        if (nested) {
+            return nested;
+        }
+    }
+    return null;
+};
+
+const resolveSelectedDurationSnapshot = (...sources) => {
+    for (const source of sources) {
+        if (!source) {
+            continue;
+        }
+        if (Array.isArray(source)) {
+            const nested = resolveSelectedDurationSnapshot(...source);
+            if (nested) {
+                return nested;
+            }
+            continue;
+        }
+        if (typeof source !== "object") {
+            continue;
+        }
+        const durationId = pickFirstValue(source.duration_id, source.durationId, source.id);
+        let durationLimit = pickFirstValue(
+            source.duration_time_limit,
+            source.durationTimeLimit,
+            source.duration_label,
+            source.durationLabel,
+            source.duration,
+            source.label,
+            source.name
+        );
+        const gst = pickFirstValue(source.gst, source.gst_amount, source.gstPercentage, source.gst_percentage);
+        const discount = pickFirstValue(source.discount, source.discount_percentage, source.discountPercentage);
+        const securityDeposit = pickFirstValue(source.security_deposit, source.securityDeposit);
+        if (!durationLimit) {
+            durationLimit = resolvePlanDurationFromSources(source);
+        }
+        const hasId = durationId !== null && durationId !== undefined;
+        const hasLimit = Boolean(durationLimit);
+        const hasGst = gst !== null && gst !== undefined;
+        const hasDiscount = discount !== null && discount !== undefined;
+        const hasSecurityDeposit = securityDeposit !== null && securityDeposit !== undefined;
+        if (hasId || hasLimit || hasGst || hasDiscount || hasSecurityDeposit) {
+            const snapshot = {};
+            if (hasId) {
+                snapshot.duration_id = durationId;
+            }
+            if (hasLimit) {
+                snapshot.duration_time_limit = durationLimit;
+            }
+            if (hasGst) {
+                snapshot.gst = gst;
+            }
+            if (hasDiscount) {
+                snapshot.discount = discount;
+            }
+            if (hasSecurityDeposit) {
+                snapshot.security_deposit = securityDeposit;
+            }
+            if (Object.keys(snapshot).length) {
+                return snapshot;
+            }
+        }
+        const nested = resolveSelectedDurationSnapshot(
+            source.selectedDuration,
+            source.duration,
+            source.duration_config,
+            source.durationConfig,
+            source.duration_details,
+            source.durationDetails,
+            source.plan_duration,
+            source.planDuration
+        );
+        if (nested) {
+            return nested;
+        }
+    }
+    const fallbackLimit = resolvePlanDurationFromSources(...sources);
+    if (fallbackLimit) {
+        return {
+            duration_time_limit: fallbackLimit
+        };
+    }
+    return null;
+};
+
+const buildProductSnapshot = ({ deviceId, modelName, planSources = [], durationSources = [] }) => {
+    const selectedPlan = resolveSelectedPlanSnapshot(...planSources);
+    const selectedDuration = resolveSelectedDurationSnapshot(...durationSources);
+    if (!deviceId && !modelName && !selectedPlan && !selectedDuration) {
+        return null;
+    }
+    return {
+        model_name: modelName || null,
+        wp_device_id: deviceId || null,
+        selectedPlan: selectedPlan || null,
+        selectedDuration: selectedDuration || null
+    };
+};
+
 // Email transporter setup
 const transporter = nodemailer.createTransport({
     host: 'smtppro.zoho.in', // SMTP server address
@@ -2157,13 +2426,18 @@ const ReAssignInstallation = async (req, res) => {
     const relatedOrder = await ordersCollection.findOne({
       wp_device_id: existingTask.wp_device_id || existingTask.device_id,
     });
+    
+if (
+  !relatedOrder ||
+  (relatedOrder.paymentType?.toLowerCase() !== 'cod' &&
+   relatedOrder.paymentStatus?.toLowerCase() !== 'completed')
+) {
+  return res.status(400).json({
+    status: 'Failed',
+    message: 'Cannot reassign installation: related order is not paid.',
+  });
+}
 
-    if (!relatedOrder || relatedOrder.paymentStatus?.toLowerCase() !== 'completed') {
-      return res.status(400).json({
-        status: 'Failed',
-        message: 'Cannot reassign installation: related order is not paid.',
-      });
-    }
 
     // 5️⃣ Fetch technician user to validate district
     const usersCollection = db.collection("users");
@@ -3126,6 +3400,851 @@ const GetServicesByDistrict = async (req, res) => {
 };
 
 
+const FetchInstalledDevicesForRequests = async (req, res) => {
+  try {
+    const { district } = req.body || {};
+    const db = await database.connectToDatabase();
+    const serviceRecordsCollection = db.collection("service_records");
+    const ordersCollection = db.collection("orders");
+    const usersCollection = db.collection("users");
+
+    const installations = await serviceRecordsCollection.find({
+      task_type: 1,
+      task_status: { $regex: /^completed$/i }
+    }).toArray();
+
+    if (!installations.length) {
+      return res.status(200).json({ status: 'Success', data: [] });
+    }
+
+    const normalizeDeviceKey = (value) => {
+      if (value === null || value === undefined) {
+        return '';
+      }
+      const stringValue = String(value).trim();
+      return stringValue.toLowerCase();
+    };
+
+    const deviceIds = installations
+      .map(item => item.wp_device_id || item.device_id)
+      .filter(Boolean);
+
+    const manualTasks = deviceIds.length
+      ? await serviceRecordsCollection.find(
+          {
+            task_type: 3,
+            $or: [
+              { wp_device_id: { $in: deviceIds } },
+              { device_id: { $in: deviceIds } }
+            ]
+          },
+          { projection: { wp_device_id: 1, device_id: 1, task_status: 1 } }
+        ).toArray()
+      : [];
+
+    const blockedDeviceIds = new Set();
+    manualTasks.forEach(task => {
+      const status = String(task?.task_status || '').trim().toLowerCase();
+      if (status !== 'completed') {
+        const id = task?.wp_device_id || task?.device_id;
+        const normalized = normalizeDeviceKey(id);
+        if (normalized) {
+          blockedDeviceIds.add(normalized);
+        }
+      }
+    });
+
+    const orders = deviceIds.length
+      ? await ordersCollection.find({ wp_device_id: { $in: deviceIds } }).toArray()
+      : [];
+
+    const deviceDetailsCollection = db.collection("device_details");
+    const deviceDetails = deviceIds.length
+      ? await deviceDetailsCollection.find({ wp_device_id: { $in: deviceIds } }).toArray()
+      : [];
+
+    const orderMap = new Map();
+    orders.forEach(order => {
+      if (order?.wp_device_id) {
+        orderMap.set(order.wp_device_id, order);
+      }
+    });
+
+    const deviceDetailMap = new Map();
+    deviceDetails.forEach(detail => {
+      if (detail?.wp_device_id) {
+        deviceDetailMap.set(detail.wp_device_id, detail);
+      }
+    });
+
+    const userIdsSet = new Set();
+    installations.forEach(item => {
+      if (item.task_created_by_user_id) {
+        userIdsSet.add(item.task_created_by_user_id);
+      }
+      const order = orderMap.get(item.wp_device_id || item.device_id);
+      if (order?.user_id) {
+        userIdsSet.add(order.user_id);
+      }
+    });
+
+    const userIds = Array.from(userIdsSet);
+    const users = userIds.length
+      ? await usersCollection.find({ user_id: { $in: userIds } }).toArray()
+      : [];
+    const userMap = new Map();
+    users.forEach(user => {
+      userMap.set(user.user_id, user);
+    });
+
+    const normalizedDistrict = String(district || '').trim().toLowerCase();
+
+    const devices = installations
+      .map(item => {
+        const deviceId = item.wp_device_id || item.device_id || '';
+        const normalizedDeviceKey = normalizeDeviceKey(deviceId);
+        if (blockedDeviceIds.has(normalizedDeviceKey)) {
+          return null;
+        }
+        const order = orderMap.get(deviceId) || null;
+        const detail = deviceDetailMap.get(deviceId) || null;
+        const ownerUserId = item.task_created_by_user_id || order?.user_id || null;
+        const owner = ownerUserId !== null ? userMap.get(ownerUserId) || null : null;
+        const addressSource = item.deliveryAddress || item.address || order?.deliveryAddress || {};
+        const normalizedAddress = normalizeDeliveryAddress(addressSource || {});
+        const planConfig = detail?.plan_config || {};
+        const currentPlan =
+          planConfig?.name ||
+          planConfig?.planName ||
+          planConfig?.plan ||
+          planConfig?.totalWaterLimit ||
+          null;
+        const currentPlanEndDate = planConfig?.endDate || null;
+        const currentDuration = resolvePlanDurationFromSources(
+          planConfig,
+          detail?.selectedDuration,
+          order?.selectedDuration,
+          item?.selectedDuration
+        );
+        const macId = detail?.mac_id || detail?.enter_mac_id || null;
+        const modelName =
+          detail?.model_name ||
+          order?.modelName ||
+          item.product?.model_name ||
+          null;
+        const modelType =
+          detail?.model_type ||
+          order?.modelType ||
+          null;
+        const modelId =
+          detail?.model_id ||
+          order?.model_id ||
+          null;
+        const detailId = detail?._id ? detail._id.toString() : null;
+
+        return {
+          task_id: item.task_id || null,
+          wp_device_id: deviceId,
+          user_id: ownerUserId,
+          customer_name: owner?.name || null,
+          customer_email: owner?.email || null,
+          customer_phone: owner?.phone || null,
+          district: normalizedAddress.district || '',
+          state: normalizedAddress.state || '',
+          city: normalizedAddress.city || '',
+          deliveryAddress: addressSource || {},
+          model_id: modelId,
+          model_name: modelName,
+          model_type: modelType,
+          current_plan: currentPlan,
+          current_plan_end_date: currentPlanEndDate,
+          current_duration: currentDuration,
+          mac_id: macId,
+          device_detail_id: detailId,
+          customOrderId: order?.customOrderId || null,
+          order_id: order?._id ? order._id.toString() : null
+        };
+      })
+      .filter(record => {
+        if (!record) {
+          return false;
+        }
+        if (!normalizedDistrict) {
+          return true;
+        }
+        return record.district && record.district.toLowerCase() === normalizedDistrict;
+      });
+
+    return res.status(200).json({ status: 'Success', data: devices });
+  } catch (error) {
+    console.error('Error in FetchInstalledDevicesForRequests:', error);
+    logger?.error?.(error);
+    return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+  }
+};
+
+const CreateManualRequest = async (req, res) => {
+  try {
+    const {
+      wp_device_id,
+      customer_user_id,
+      request_source,
+      priority,
+      preferred_schedule,
+      address,
+      assigned_technician_id,
+      technician_id,
+      request_type
+    } = req.body || {};
+
+    const deviceId = typeof wp_device_id === 'string' ? wp_device_id.trim() : '';
+    const parsedCustomerId = Number(customer_user_id);
+    const requestedTechnicianId = typeof assigned_technician_id === 'string' && assigned_technician_id.trim()
+      ? assigned_technician_id.trim()
+      : typeof technician_id === 'string' && technician_id.trim()
+        ? technician_id.trim()
+        : '';
+
+    const normalizedRequestType = typeof request_type === 'string' ? request_type.trim().toLowerCase() : '';
+    const requestTypeValue = normalizedRequestType === 'return' || normalizedRequestType === 'renewal' ? normalizedRequestType : '';
+
+    if (!deviceId || !Number.isInteger(parsedCustomerId)) {
+      return res.status(400).json({ status: 'Failed', message: 'wp_device_id and customer_user_id are required' });
+    }
+
+    const db = await database.connectToDatabase();
+    const serviceRecordsCollection = db.collection("service_records");
+    const ordersCollection = db.collection("orders");
+    const usersCollection = db.collection("users");
+    const deviceDetailsCollection = db.collection("device_details");
+    const technicianDetailsCollection = db.collection("technician_details");
+
+    const customerUser = await usersCollection.findOne({ user_id: parsedCustomerId });
+    if (!customerUser) {
+      return res.status(404).json({ status: 'Failed', message: 'Customer not found' });
+    }
+
+    const installationRecord = await serviceRecordsCollection.findOne({ wp_device_id: deviceId, task_type: 1 });
+    if (!installationRecord) {
+      return res.status(404).json({ status: 'Failed', message: 'Installation record not found for the device' });
+    }
+    if (!installationRecord.task_status || installationRecord.task_status.toLowerCase() !== 'completed') {
+      return res.status(400).json({ status: 'Failed', message: 'Installation is not completed for the selected device' });
+    }
+
+    const orderDoc = await ordersCollection.findOne({ wp_device_id: deviceId });
+    const deviceDetail = await deviceDetailsCollection.findOne({ wp_device_id: deviceId });
+
+    if (!deviceDetail) {
+      return res.status(404).json({ status: 'Failed', message: 'Device details not found for the selected device' });
+    }
+
+    const addressSource = address && typeof address === 'object'
+      ? address
+      : installationRecord.deliveryAddress || installationRecord.address || orderDoc?.deliveryAddress || {};
+    const normalizedAddress = normalizeDeliveryAddress(addressSource || {});
+
+    let requester = null;
+    if (req.user?.userId) {
+      try {
+        requester = await usersCollection.findOne({ _id: new ObjectId(req.user.userId) });
+      } catch (err) {
+        requester = null;
+      }
+    }
+
+    if (req.user?.role_id === 4) {
+      const sellerDistrict = String(requester?.assigned_district || requester?.district || '').trim().toLowerCase();
+      const requestDistrict = String(normalizedAddress.district || '').trim().toLowerCase();
+      if (sellerDistrict && requestDistrict && sellerDistrict !== requestDistrict) {
+        return res.status(403).json({ status: 'Failed', message: 'Seller can only create requests within assigned district' });
+      }
+    }
+
+    let technician = null;
+    if (requestedTechnicianId) {
+      technician = await usersCollection.findOne({ technician_id: requestedTechnicianId });
+      if (!technician) {
+        return res.status(404).json({ status: 'Failed', message: 'Technician not found' });
+      }
+    }
+
+    if (requestedTechnicianId) {
+      const technicianDistrict = normalizeDeliveryAddress({ district: technician.district || technician.assigned_district || '' }).district;
+      const requestDistrict = normalizedAddress.district || '';
+      if (technicianDistrict && requestDistrict && technicianDistrict.toLowerCase() !== requestDistrict.toLowerCase()) {
+        return res.status(400).json({ status: 'Failed', message: 'Technician district does not match request district' });
+      }
+    }
+
+    const lastTask = await serviceRecordsCollection.find().sort({ task_id: -1 }).limit(1).toArray();
+    const nextTaskId = lastTask.length > 0 ? lastTask[0].task_id + 1 : 1;
+    const now = new Date();
+
+    const planConfig = deviceDetail?.plan_config || {};
+    const currentPlan =
+      planConfig?.name ||
+      planConfig?.planName ||
+      planConfig?.plan ||
+      planConfig?.totalWaterLimit ||
+      null;
+    const currentPlanEndDate = planConfig?.endDate || null;
+    const currentDuration = resolvePlanDuration(planConfig);
+    const macId = deviceDetail?.mac_id || deviceDetail?.enter_mac_id || null;
+    const modelName = deviceDetail?.model_name || orderDoc?.modelName || installationRecord?.product?.model_name || null;
+    const modelType = deviceDetail?.model_type || orderDoc?.modelType || null;
+    const modelId = deviceDetail?.model_id || orderDoc?.model_id || null;
+    const detailId = deviceDetail?._id ? deviceDetail._id.toString() : null;
+
+    const productSnapshot = buildProductSnapshot({
+      deviceId,
+      modelName,
+      planSources: [
+        req.body?.product?.selectedPlan,
+        req.body?.selectedPlan,
+        installationRecord?.product?.selectedPlan,
+        orderDoc?.selectedPlan,
+        deviceDetail?.selectedPlan,
+        deviceDetail?.plan_config?.selectedPlan,
+        deviceDetail?.plan_config?.plan,
+        deviceDetail?.plan_config?.plans,
+        deviceDetail?.plan_config
+      ],
+      durationSources: [
+        req.body?.product?.selectedDuration,
+        req.body?.selectedDuration,
+        installationRecord?.product?.selectedDuration,
+        orderDoc?.selectedDuration,
+        deviceDetail?.selectedDuration,
+        deviceDetail?.plan_config?.selectedDuration,
+        deviceDetail?.plan_config?.duration,
+        deviceDetail?.plan_config?.duration_details,
+        deviceDetail?.plan_config?.durationDetails
+      ]
+    });
+
+    let taskStatus = 'Unassigned';
+    let assignedDate = null;
+    let assignmentHistory = [];
+    let assignedBy = null;
+    let modifiedBy = null;
+    let modifiedDate = null;
+    let otp = null;
+
+    if (requestedTechnicianId) {
+      taskStatus = 'Pending';
+      assignedDate = now;
+      assignedBy = requester?.email || 'system';
+      modifiedBy = assignedBy;
+      modifiedDate = now;
+      otp = Math.floor(100000 + Math.random() * 900000);
+      assignmentHistory = [
+        {
+          technician_id: requestedTechnicianId,
+          assigned_by: assignedBy,
+          assigned_date: now
+        }
+      ];
+    }
+
+    const newTask = {
+      task_id: nextTaskId,
+      task_type: 3,
+      task_status: taskStatus,
+      wp_device_id: deviceId,
+      task_created_by_user_id: customerUser.user_id,
+      task_created_by_user_email: customerUser.email,
+      customer_phone: customerUser.phone || null,
+      created_date: now,
+      created_by: requester?.email || customerUser.email,
+      created_by_user_id: requester?.user_id || null,
+      created_by_role_id: req.user?.role_id || null,
+      request_source: request_source || 'manual',
+      request_type: requestTypeValue || null,
+      priority: priority || 'normal',
+      preferred_schedule: preferred_schedule || null,
+      assigned_technician_id: requestedTechnicianId || null,
+      assigned_date: assignedDate,
+      pending_reason: null,
+      assignment_history: assignmentHistory,
+      deliveryAddress: addressSource || {},
+      district: normalizedAddress.district || '',
+      state: normalizedAddress.state || '',
+      city: normalizedAddress.city || '',
+      customOrderId: orderDoc?.customOrderId || null,
+      order_user_id: orderDoc?.user_id || customerUser.user_id,
+      order_reference_id: orderDoc?._id ? orderDoc._id.toString() : null,
+      model_id: modelId,
+      model_name: modelName,
+      model_type: modelType,
+      current_plan: currentPlan,
+      current_plan_end_date: currentPlanEndDate,
+      current_duration: currentDuration,
+      mac_id: macId,
+      device_detail_id: detailId,
+      assigned_by: assignedBy,
+      modified_by: modifiedBy,
+      modified_date: modifiedDate,
+      otp,
+      ...(productSnapshot ? { product: productSnapshot } : {})
+    };
+
+    Object.keys(newTask).forEach(key => {
+      if (newTask[key] === undefined) {
+        delete newTask[key];
+      }
+    });
+
+    const insertResult = await serviceRecordsCollection.insertOne(newTask);
+    newTask._id = insertResult.insertedId;
+
+    if (requestedTechnicianId) {
+      await technicianDetailsCollection.updateOne(
+        { technician_id: requestedTechnicianId },
+        {
+          $set: {
+            user_id: technician.user_id,
+            role_id: technician.role_id,
+            email: technician.email,
+            technician_id: requestedTechnicianId,
+            status: true
+          },
+          $inc: { total_assigned_services: 1 }
+        },
+        { upsert: true }
+      );
+
+      let customerEmail = newTask.task_created_by_user_email || null;
+      if (!customerEmail && newTask.task_created_by_user_id) {
+        const customer = await usersCollection.findOne({ user_id: newTask.task_created_by_user_id });
+        if (customer?.email) {
+          customerEmail = customer.email;
+        }
+      }
+
+      if (customerEmail && otp) {
+        await sendAssignServiceEmail(customerEmail, otp);
+      }
+    }
+
+    return res.status(200).json({ status: 'Success', message: 'Manual request created successfully', data: newTask });
+  } catch (error) {
+    console.error('Error in CreateManualRequest:', error);
+    logger?.error?.(error);
+    return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+  }
+};
+
+const FetchManualRequests = async (req, res) => {
+  try {
+    const { district } = req.body || {};
+    const db = await database.connectToDatabase();
+    const serviceRecordsCollection = db.collection("service_records");
+    const ordersCollection = db.collection("orders");
+    const usersCollection = db.collection("users");
+    const deviceDetailsCollection = db.collection("device_details");
+
+    const tasks = await serviceRecordsCollection.find({ task_type: 3 }).sort({ created_date: -1 }).toArray();
+
+    if (!tasks.length) {
+      return res.status(200).json({ status: 'Success', data: [] });
+    }
+
+    const deviceIds = tasks
+      .map(task => task.wp_device_id || task.device_id)
+      .filter(Boolean);
+
+    const orders = deviceIds.length
+      ? await ordersCollection.find({ wp_device_id: { $in: deviceIds } }).toArray()
+      : [];
+
+    const deviceDetails = deviceIds.length
+      ? await deviceDetailsCollection.find({ wp_device_id: { $in: deviceIds } }).toArray()
+      : [];
+
+    const orderMap = new Map();
+    orders.forEach(order => {
+      if (order?.wp_device_id) {
+        orderMap.set(order.wp_device_id, order);
+      }
+    });
+
+    const deviceDetailMap = new Map();
+    deviceDetails.forEach(detail => {
+      if (detail?.wp_device_id) {
+        deviceDetailMap.set(detail.wp_device_id, detail);
+      }
+    });
+
+    const technicianIds = tasks
+      .map(task => task.assigned_technician_id)
+      .filter(Boolean);
+
+    const technicians = technicianIds.length
+      ? await usersCollection.find({ technician_id: { $in: technicianIds } }).toArray()
+      : [];
+
+    const technicianMap = new Map();
+    technicians.forEach(tech => {
+      if (tech?.technician_id) {
+        technicianMap.set(tech.technician_id, tech);
+      }
+    });
+
+    const requestDistrict = String(district || '').trim().toLowerCase();
+
+    const response = tasks
+      .map(task => {
+        const deviceId = task.wp_device_id || task.device_id || '';
+        const order = orderMap.get(deviceId) || null;
+        const detail = deviceDetailMap.get(deviceId) || null;
+        const addressSource = task.deliveryAddress || task.address || order?.deliveryAddress || {};
+        const normalizedAddress = normalizeDeliveryAddress(addressSource || {});
+        const technician = task.assigned_technician_id ? technicianMap.get(task.assigned_technician_id) || null : null;
+        const planConfig = detail?.plan_config || {};
+        const currentPlan =
+          task.current_plan ||
+          planConfig?.name ||
+          planConfig?.planName ||
+          planConfig?.plan ||
+          planConfig?.totalWaterLimit ||
+          null;
+        const currentPlanEndDate = task.current_plan_end_date || planConfig?.endDate || null;
+        const currentDuration = task.current_duration || resolvePlanDuration(planConfig);
+        const macId = task.mac_id || detail?.mac_id || detail?.enter_mac_id || null;
+        const modelName = task.model_name || detail?.model_name || order?.modelName || null;
+        const modelType = task.model_type || detail?.model_type || order?.modelType || null;
+        const modelId = task.model_id || detail?.model_id || order?.model_id || null;
+        const detailId = task.device_detail_id || (detail?._id ? detail._id.toString() : null);
+
+        const sanitizedTask = { ...task };
+        delete sanitizedTask.address;
+        delete sanitizedTask.task_description;
+        delete sanitizedTask.metadata;
+        delete sanitizedTask.modelName;
+        delete sanitizedTask.modelType;
+        delete sanitizedTask.currentPlan;
+        delete sanitizedTask.currentPlanEndDate;
+        delete sanitizedTask.currentDuration;
+        delete sanitizedTask.macId;
+        delete sanitizedTask.deviceDetailId;
+        delete sanitizedTask.product;
+
+        const productSnapshot = buildProductSnapshot({
+          deviceId,
+          modelName,
+          planSources: [
+            task.product?.selectedPlan,
+            task.selectedPlan,
+            order?.selectedPlan,
+            detail?.selectedPlan,
+            detail?.plan_config?.selectedPlan,
+            detail?.plan_config?.plan,
+            detail?.plan_config?.plans,
+            detail?.plan_config
+          ],
+          durationSources: [
+            task.product?.selectedDuration,
+            task.selectedDuration,
+            order?.selectedDuration,
+            detail?.selectedDuration,
+            detail?.plan_config?.selectedDuration,
+            detail?.plan_config?.duration,
+            detail?.plan_config?.duration_details,
+            detail?.plan_config?.durationDetails,
+            task.current_duration ? { duration_time_limit: task.current_duration } : null
+          ]
+        });
+
+        return {
+          ...sanitizedTask,
+          deliveryAddress: addressSource || {},
+          order_snapshot: order
+            ? {
+                ...order,
+                _id: order._id ? order._id.toString() : null
+              }
+            : null,
+          district: normalizedAddress.district || task.district || '',
+          state: normalizedAddress.state || task.state || '',
+          city: normalizedAddress.city || task.city || '',
+          model_id: modelId,
+          model_name: modelName,
+          model_type: modelType,
+          current_plan: currentPlan,
+          current_plan_end_date: currentPlanEndDate,
+          current_duration: currentDuration,
+          mac_id: macId,
+          device_detail_id: detailId,
+          product: productSnapshot || null,
+          assignedTechnician: technician
+            ? {
+                technician_id: technician.technician_id,
+                name: technician.name,
+                email: technician.email,
+                phone: technician.phone || technician.mobile || null,
+                user_id: technician.user_id || null,
+                role_id: technician.role_id || null,
+                district: technician.district || technician.assigned_district || null
+              }
+            : null
+        };
+      })
+      .filter(task => {
+        if (!requestDistrict) {
+          return true;
+        }
+        return task.district && task.district.toLowerCase() === requestDistrict;
+      });
+
+    return res.status(200).json({ status: 'Success', data: response });
+  } catch (error) {
+    console.error('Error in FetchManualRequests:', error);
+    logger?.error?.(error);
+    return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+  }
+};
+
+const AssignManualRequest = async (req, res) => {
+  try {
+    const { task_id, technician_id } = req.body || {};
+
+    const numericTaskId = Number(task_id);
+    if (!Number.isInteger(numericTaskId) || !technician_id) {
+      return res.status(400).json({ status: 'Failed', message: 'task_id and technician_id are required' });
+    }
+
+    const db = await database.connectToDatabase();
+    const serviceRecordsCollection = db.collection("service_records");
+    const usersCollection = db.collection("users");
+    const technicianDetailsCollection = db.collection("technician_details");
+
+    const task = await serviceRecordsCollection.findOne({ task_id: numericTaskId, task_type: 3 });
+    if (!task) {
+      return res.status(404).json({ status: 'Failed', message: 'Manual request not found' });
+    }
+
+    if (task.task_status && task.task_status.toLowerCase() === 'completed') {
+      return res.status(400).json({ status: 'Failed', message: 'Completed requests cannot be assigned' });
+    }
+
+    const technician = await usersCollection.findOne({ technician_id });
+    if (!technician) {
+      return res.status(404).json({ status: 'Failed', message: 'Technician not found' });
+    }
+
+    let requester = null;
+    if (req.user?.userId) {
+      try {
+        requester = await usersCollection.findOne({ _id: new ObjectId(req.user.userId) });
+      } catch (err) {
+        requester = null;
+      }
+    }
+
+    if (req.user?.role_id === 4) {
+      const sellerDistrict = String(requester?.assigned_district || requester?.district || '').trim().toLowerCase();
+      const normalizedTaskAddress = normalizeDeliveryAddress(task.deliveryAddress || task.address || {});
+      const requestDistrict = String(normalizedTaskAddress.district || '').trim().toLowerCase();
+      if (sellerDistrict && requestDistrict && sellerDistrict !== requestDistrict) {
+        return res.status(403).json({ status: 'Failed', message: 'Seller can only assign requests within assigned district' });
+      }
+    }
+
+    const technicianDistrict = normalizeDeliveryAddress({ district: technician.district || technician.assigned_district || '' }).district;
+    const taskDistrict = normalizeDeliveryAddress(task.deliveryAddress || task.address || {}).district;
+    if (taskDistrict && technicianDistrict && taskDistrict.toLowerCase() !== technicianDistrict.toLowerCase()) {
+      return res.status(400).json({ status: 'Failed', message: 'Technician district does not match request district' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    const assignedBy = requester?.email || 'system';
+    const now = new Date();
+
+    const updateResult = await serviceRecordsCollection.updateOne(
+      { task_id: numericTaskId },
+      {
+        $set: {
+          task_status: "Pending",
+          assigned_technician_id: technician_id,
+          assigned_date: now,
+          assigned_by: assignedBy,
+          modified_by: assignedBy,
+          modified_date: now,
+          otp
+        },
+        $push: {
+          assignment_history: {
+            technician_id,
+            assigned_by: assignedBy,
+            assigned_date: now
+          }
+        }
+      }
+    );
+
+    if (!updateResult.matchedCount) {
+      return res.status(404).json({ status: 'Failed', message: 'Manual request not found' });
+    }
+
+    await technicianDetailsCollection.updateOne(
+      { technician_id },
+      {
+        $set: {
+          user_id: technician.user_id,
+          role_id: technician.role_id,
+          email: technician.email,
+          technician_id,
+          status: true
+        },
+        $inc: { total_assigned_services: 1 }
+      },
+      { upsert: true }
+    );
+
+    let customerEmail = task.task_created_by_user_email || null;
+    if (!customerEmail && task.task_created_by_user_id) {
+      const customer = await usersCollection.findOne({ user_id: task.task_created_by_user_id });
+      if (customer?.email) {
+        customerEmail = customer.email;
+      }
+    }
+
+    if (customerEmail) {
+      await sendAssignServiceEmail(customerEmail, otp);
+    }
+
+    return res.status(200).json({ status: 'Success', message: 'Manual request assigned successfully' });
+  } catch (error) {
+    console.error('Error in AssignManualRequest:', error);
+    logger?.error?.(error);
+    return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+  }
+};
+
+const ReAssignManualRequest = async (req, res) => {
+  try {
+    const { task_id, technician_id } = req.body || {};
+
+    const numericTaskId = Number(task_id);
+    if (!Number.isInteger(numericTaskId) || !technician_id) {
+      return res.status(400).json({ status: 'Failed', message: 'task_id and technician_id are required' });
+    }
+
+    const db = await database.connectToDatabase();
+    const serviceRecordsCollection = db.collection("service_records");
+    const usersCollection = db.collection("users");
+    const technicianDetailsCollection = db.collection("technician_details");
+
+    const task = await serviceRecordsCollection.findOne({ task_id: numericTaskId, task_type: 3 });
+    if (!task) {
+      return res.status(404).json({ status: 'Failed', message: 'Manual request not found' });
+    }
+
+    if (task.task_status && task.task_status.toLowerCase() === 'completed') {
+      return res.status(400).json({ status: 'Failed', message: 'Completed requests cannot be reassigned' });
+    }
+
+    if (task.assigned_technician_id && task.assigned_technician_id === technician_id) {
+      return res.status(400).json({ status: 'Failed', message: 'Request is already assigned to the selected technician' });
+    }
+
+    const technician = await usersCollection.findOne({ technician_id });
+    if (!technician) {
+      return res.status(404).json({ status: 'Failed', message: 'Technician not found' });
+    }
+
+    let requester = null;
+    if (req.user?.userId) {
+      try {
+        requester = await usersCollection.findOne({ _id: new ObjectId(req.user.userId) });
+      } catch (err) {
+        requester = null;
+      }
+    }
+
+    if (req.user?.role_id === 4) {
+      const sellerDistrict = String(requester?.assigned_district || requester?.district || '').trim().toLowerCase();
+      const normalizedTaskAddress = normalizeDeliveryAddress(task.deliveryAddress || task.address || {});
+      const requestDistrict = String(normalizedTaskAddress.district || '').trim().toLowerCase();
+      if (sellerDistrict && requestDistrict && sellerDistrict !== requestDistrict) {
+        return res.status(403).json({ status: 'Failed', message: 'Seller can only reassign requests within assigned district' });
+      }
+    }
+
+    const technicianDistrict = normalizeDeliveryAddress({ district: technician.district || technician.assigned_district || '' }).district;
+    const taskDistrict = normalizeDeliveryAddress(task.deliveryAddress || task.address || {}).district;
+    if (taskDistrict && technicianDistrict && taskDistrict.toLowerCase() !== technicianDistrict.toLowerCase()) {
+      return res.status(400).json({ status: 'Failed', message: 'Technician district does not match request district' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    const assignedBy = requester?.email || 'system';
+    const now = new Date();
+
+    const updateResult = await serviceRecordsCollection.updateOne(
+      { task_id: numericTaskId },
+      {
+        $set: {
+          task_status: "Pending",
+          assigned_technician_id: technician_id,
+          assigned_date: now,
+          assigned_by: assignedBy,
+          modified_by: assignedBy,
+          modified_date: now,
+          otp,
+          pending_reason: null
+        },
+        $push: {
+          assignment_history: {
+            technician_id,
+            assigned_by: assignedBy,
+            assigned_date: now,
+            reassigned_from: task.assigned_technician_id || null
+          }
+        }
+      }
+    );
+
+    if (!updateResult.matchedCount) {
+      return res.status(404).json({ status: 'Failed', message: 'Manual request not found' });
+    }
+
+    await technicianDetailsCollection.updateOne(
+      { technician_id },
+      {
+        $set: {
+          user_id: technician.user_id,
+          role_id: technician.role_id,
+          email: technician.email,
+          technician_id,
+          status: true
+        },
+        $inc: { total_assigned_services: 1 }
+      },
+      { upsert: true }
+    );
+
+    let customerEmail = task.task_created_by_user_email || null;
+    if (!customerEmail && task.task_created_by_user_id) {
+      const customer = await usersCollection.findOne({ user_id: task.task_created_by_user_id });
+      if (customer?.email) {
+        customerEmail = customer.email;
+      }
+    }
+
+    if (customerEmail) {
+      await sendAssignServiceEmail(customerEmail, otp);
+    }
+
+    return res.status(200).json({ status: 'Success', message: 'Manual request reassigned successfully' });
+  } catch (error) {
+    console.error('Error in ReAssignManualRequest:', error);
+    logger?.error?.(error);
+    return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+  }
+};
+
 
 
 
@@ -3531,7 +4650,10 @@ const FetchEndUserDevices = async (req, res) => {
                 subscriptionExpiryDate,
                 planLabel: order.selectedPlan?.label || payment?.planLabel || null,
                 planDuration: order.selectedDuration?.duration_time_limit || payment?.duration_time_limit || null,
-                razorpayOrderId: payment?.razorpayOrderId || order.razorpayOrderId || null
+                razorpayOrderId: payment?.razorpayOrderId || order.razorpayOrderId || null,
+                customOrderId: order.customOrderId || null,
+                orderId: order._id?.toString() || null,
+                order_id: order._id || null
             };
         });
 
@@ -4302,7 +5424,7 @@ module.exports = {
     getModules, authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
     UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders, AddUserRoles, FetchUserRoles, UpdateUserRoles,
     AddUsers, FetchUsers, FetchSellers, FetchOrdersByDistrict, FetchTechniciansByDistrict, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
-    FetchSelectServiceTask, AssignService, ReAssignService, assignPermissions, fetchPermissionsByRole,
+    FetchSelectServiceTask, AssignService, ReAssignService, FetchInstalledDevicesForRequests, CreateManualRequest, FetchManualRequests, AssignManualRequest, ReAssignManualRequest, assignPermissions, fetchPermissionsByRole,
     GetUsersByDistrict, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
     AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchEndUserDevices, FetchOrdersByUserId, FetchTechnicianTasksByUserId, GetAnalytics,
     GetAnalyticsByDistrict,GetDistrictsWithSellers,ConfirmCodPayment

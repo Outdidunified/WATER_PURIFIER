@@ -269,26 +269,8 @@ const useEditProducts = (userInfo) => {
 
         if (field === 'label') {
           const label = rawValue.toLowerCase();
-          let updated = { ...plan, label };
-
-          switch (label) {
-            case 'solo':
-              updated = { ...updated, capacity: '1' };
-              break;
-            case 'couple':
-              updated = { ...updated, capacity: '2' };
-              break;
-            case 'family':
-              updated = { ...updated, capacity: '4' };
-              break;
-            case 'unlimited':
-              updated = { ...updated, capacity: '' };
-              break;
-            default:
-              updated = { ...updated, capacity: '' };
-              break;
-          }
-          return updated;
+          const capacity = label === 'unlimited' ? '' : plan.capacity || '';
+          return { ...plan, label, capacity };
         }
 
         return { ...plan, [field]: rawValue };

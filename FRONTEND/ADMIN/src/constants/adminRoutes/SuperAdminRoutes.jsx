@@ -19,6 +19,8 @@ import ViewRoles from '../../roles/superadmin/page/ManageRoles/ViewRoles';
 import EditRoles from '../../roles/superadmin/page/ManageRoles/EditRoles';
 import ManageServices from '../../roles/superadmin/page/ManageServices/ManageServices';
 import ViewServices from '../../roles/superadmin/page/ManageServices/ViewServices';
+import ManageRequests from '../../roles/superadmin/page/ManageRequests/ManageRequests';
+import ViewManageRequests from '../../roles/superadmin/page/ManageRequests/ViewManageRequests';
 import ManageInstallations from '../../roles/superadmin/page/ManageInstallations/ManageInstallations';
 import ViewInstallations from '../../roles/superadmin/page/ManageInstallations/ViewInstallations';
 import AddProducts from '../../roles/superadmin/page/ManageProducts/AddProducts';
@@ -163,6 +165,13 @@ const SuperAdminApp = () => {
           <>
             <Route path="/ManageServices" element={<ManageServices userInfo={userInfo} handleLogout={handleLogout} />} />
             <Route path="/ViewServices" element={<ViewServices userInfo={userInfo} handleLogout={handleLogout} />} />
+          </>
+        )}
+
+        {canView('manage_requests') && (
+          <>
+            <Route path="/ManageRequests" element={<ManageRequests userInfo={userInfo} handleLogout={handleLogout} />} />
+            <Route path="/ViewManageRequests" element={<ViewManageRequests userInfo={userInfo} handleLogout={handleLogout} />} />
           </>
         )}
 

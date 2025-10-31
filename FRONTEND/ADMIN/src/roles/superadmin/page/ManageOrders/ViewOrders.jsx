@@ -78,6 +78,19 @@ const ViewOrders = ({ userInfo, handleLogout }) => {
       const isReached = status === currentDeliveryStatus || DELIVERY_STATUS_ORDER.indexOf(status) <= DELIVERY_STATUS_ORDER.indexOf(currentDeliveryStatus);
       const isActive = status === currentDeliveryStatus;
 
+      // Use order timestamps for accepted and completed if no updates
+      let timestamp = latestUpdate?.timestamp;
+      if (!timestamp) {
+        if (status === 'accepted' && order.deliveryAcceptanceTimestamp) {
+          timestamp = order.deliveryAcceptanceTimestamp;
+        } else if (status === 'completed' && order.deliveryCompletionTimestamp) {
+          timestamp = order.deliveryCompletionTimestamp;
+        } else if (isReached && order.deliveryCompletionTimestamp) {
+          // For other completed statuses, use completion timestamp
+          timestamp = order.deliveryCompletionTimestamp;
+        }
+      }
+
       return {
         status,
         label: DELIVERY_STATUS_LABELS[status] || status,
@@ -85,6 +98,7 @@ const ViewOrders = ({ userInfo, handleLogout }) => {
         isActive,
         updates,
         latestUpdate,
+        timestamp,
       };
     });
   }, [deliveryHistory, currentDeliveryStatus]);
@@ -194,11 +208,15 @@ const ViewOrders = ({ userInfo, handleLogout }) => {
                       />
 
                       <div className="text-center mt-4 mb-4">
-                        <button 
-                          type="button" 
-                          className="btn btn-warning"
+                        <button
+                          type="button"
+                          className={classNames("btn", {
+                            "btn-warning": currentDeliveryStatus !== 'completed',
+                            "btn-secondary": currentDeliveryStatus === 'completed'
+                          })}
                           onClick={handleUpdateStatusClick}
-                          title="Update delivery status"
+                          disabled={currentDeliveryStatus === 'completed'}
+                          title={currentDeliveryStatus === 'completed' ? "Delivery is completed" : "Update delivery status"}
                         >
                           📝 Update Delivery Status
                         </button>

@@ -124,6 +124,16 @@ const useViewManageUser = () => {
     navigate('/superadmin/EditManageUsers', { state: { user } });
   };
 
+  const handleDeviceNavigate = (device) => {
+    if (!device) return;
+    navigate('/superadmin/ViewManageDevice', { state: { dataItem: device } });
+  };
+
+  const handleOrderNavigate = (order) => {
+    if (!order) return;
+    navigate('/superadmin/ViewOrders', { state: { dataItem: order } });
+  };
+
   return {
     user,
     setUser,
@@ -135,6 +145,8 @@ const useViewManageUser = () => {
     error,
     handleBack,
     handleEditUser,
+    handleDeviceNavigate,
+    handleOrderNavigate,
   };
 };
 

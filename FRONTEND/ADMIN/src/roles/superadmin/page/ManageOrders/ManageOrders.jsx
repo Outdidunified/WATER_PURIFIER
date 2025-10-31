@@ -34,6 +34,9 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
 
   const [codConfirmation, setCodConfirmation] = useState({});
 
+  // Initialize codConfirmation state based on order data
+  // For COD orders: checked if moneyReceived is true
+  // For non-COD orders: checked if paymentStatus is 'completed'
   useEffect(() => {
     const confirmationState = (filteredOrders || []).reduce((accumulator, order) => {
       const stateKey = buildConfirmationStateKey(order);
@@ -56,18 +59,26 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
     setCodConfirmation(confirmationState);
   }, [filteredOrders]);
 
-  const mapOrderToConfirmationKey = (order) => order.customOrderId || order._id;
+  // Helper functions for Money Received checkbox logic
+  const mapOrderToConfirmationKey = (order) => order.customOrderId || order._id; // Use customOrderId if available, else _id
 
   const buildConfirmationStateKey = (order) => {
     const keyBase = mapOrderToConfirmationKey(order);
-    return keyBase ? `${keyBase}-money` : null;
+    return keyBase ? `${keyBase}-money` : null; // Unique key for codConfirmation state
   };
 
-  const isCodPaymentEligible = (order) => (order.paymentType || '').toUpperCase() === 'COD';
+  const isCodPaymentEligible = (order) => (order.paymentType || '').toUpperCase() === 'COD'; // Check if order is Cash on Delivery
 
+  // Handle checkbox toggle for Money Received
+  // Logic:
+  // - If order already has moneyReceived=true or paymentStatus='completed', set checked
+  // - If unchecking, ignore (prevents undoing confirmation)
+  // - If not COD eligible, set unchecked
+  // - For COD orders, call confirmCodPayment API to confirm payment
+  // - On success, set checked; on failure, set unchecked
   const handleMoneyReceivedToggle = async (order, isChecked) => {
-    console.log('handleMoneyReceivedToggle called:', { 
-      orderId: order._id, 
+    console.log('handleMoneyReceivedToggle called:', {
+      orderId: order._id,
       customOrderId: order.customOrderId,
       isChecked,
       paymentType: order.paymentType,
@@ -85,6 +96,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
       return;
     }
 
+    // If already confirmed in backend, ensure UI reflects this
     if (order.moneyReceived || (order.paymentStatus || '').toLowerCase() === 'completed') {
       console.log('Order already marked as received or payment completed');
       setCodConfirmation((previousState) => ({
@@ -94,15 +106,13 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
       return;
     }
 
+    // Prevent unchecking once payment is confirmed
     if (!isChecked) {
-      console.log('Checkbox unchecked, resetting confirmation state');
-      setCodConfirmation((previousState) => ({
-        ...previousState,
-        [stateKey]: false,
-      }));
+      console.log('Checkbox unchecked, but payment already confirmed - ignoring');
       return;
     }
 
+    // Only allow confirmation for COD payments
     if (!isCodPaymentEligible(order)) {
       console.log('Order is not COD payment eligible');
       setCodConfirmation((previousState) => ({
@@ -115,6 +125,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
     const deviceId = resolveDeviceId(order);
     console.log('Resolved device ID:', deviceId);
 
+    // Call API to confirm COD payment
     const confirmationSucceeded = await confirmCodPayment({
       wp_device_id: deviceId,
       onSuccess: () => {
@@ -334,12 +345,15 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                                    
                                   </td>
                                   <td className="align-middle">
+                                    {/* Money Received Checkbox for COD payments */}
+                                    {/* Disabled for: non-COD orders, during loading, or once confirmed */}
+                                    {/* Checked based on codConfirmation state */}
                                     <div className="form-check d-flex justify-content-center">
                                       <input
                                         className="form-check-input"
                                         type="checkbox"
                                         id={`money-received-${order._id}`}
-                                        disabled={!isCodPaymentEligible(order) || codConfirmationLoading}
+                                        disabled={!isCodPaymentEligible(order) || codConfirmationLoading || Boolean(codConfirmation[buildConfirmationStateKey(order)])}
                                         checked={Boolean(codConfirmation[buildConfirmationStateKey(order)])}
                                         onChange={(event) => {
                                           const isChecked = event.target.checked;
