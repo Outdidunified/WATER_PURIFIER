@@ -259,17 +259,34 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                             }}
                                                         >
                                                             {(() => {
-                                                                // 1️⃣ If explicitly true
+                                                                //   If deliveryCurrentStatus exists, show it directly
+                                                                if (order.deliveryCurrentStatus) {
+                                                                    const statusMap = {
+                                                                        accepted: "Order Accepted",
+                                                                        packed: "Order Packed",
+                                                                        intransit: "Shipped",
+                                                                        outfordelivery: "Out For Delivery",
+                                                                        completed: "Delivered",
+                                                                        cancelled: "Order Cancelled",
+                                                                        returned: "Returned",
+                                                                        failed: "Delivery Failed",
+                                                                    };
+
+                                                                    const normalized = order.deliveryCurrentStatus.toLowerCase();
+                                                                    return statusMap[normalized] ||
+                                                                        (order.deliveryCurrentStatus.charAt(0).toUpperCase() +
+                                                                            order.deliveryCurrentStatus.slice(1));
+                                                                }
+
+                                                                //   Else fallback to deliveryAcceptanceStatus logic
                                                                 if (order.deliveryAcceptanceStatus === true) {
                                                                     return "Order Confirmed";
                                                                 }
 
-                                                                // 2️⃣ If explicitly false
                                                                 if (order.deliveryAcceptanceStatus === false) {
                                                                     return "Awaiting Confirmation";
                                                                 }
 
-                                                                // 3️⃣ If it's a string value — use known map or fallback to raw value
                                                                 if (typeof order.deliveryAcceptanceStatus === "string") {
                                                                     const statusMap = {
                                                                         accepted: "Order Accepted",
@@ -284,13 +301,12 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
 
                                                                     return (
                                                                         statusMap[order.deliveryAcceptanceStatus.toLowerCase()] ||
-                                                                        // Fallback: show original string, but capitalized
                                                                         order.deliveryAcceptanceStatus.charAt(0).toUpperCase() +
                                                                         order.deliveryAcceptanceStatus.slice(1)
                                                                     );
                                                                 }
 
-                                                                // 4️⃣ Fallback
+                                                                //   Final fallback
                                                                 return "N/A";
                                                             })()}
                                                         </span>
