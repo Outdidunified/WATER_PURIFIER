@@ -58,6 +58,9 @@ dependencies:
   cached_network_image: ^3.4.1
   flutter_time_picker_spinner: ^2.0.0
   dropdown_button2: ^1.9.1
+  barcode_scan2: ^4.3.0
+  flutter_blue_plus: ^1.33.0
+  flutter_bluetooth_serial: ^0.4.0
 
 dev_dependencies:
   flutter_test:

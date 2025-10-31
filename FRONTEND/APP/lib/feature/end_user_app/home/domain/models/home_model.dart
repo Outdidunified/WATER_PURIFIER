@@ -70,15 +70,26 @@ class Subscription extends Equatable {
   final SelectedPlan selectedPlan;
   final SelectedDuration selectedDuration;
   final double price;
+  final double grandTotal;
   final DeliveryAddress deliveryAddress;
   final String paymentStatus;
+  final String paymentType;
   final String orderStatus;
   final String razorpayOrderId;
   final int totalLitre;
+  final int codFee;
+  final String installationStatus;
   final String createdAt;
   final String updatedAt;
   final String razorpayPaymentId;
   final String subscriptionExpiryDate;
+  final List<Task> tasks;
+  final String? deliveryAcceptanceStatus;
+  final String? deliveryAcceptanceTimestamp;
+  final String? deliveryCompletionTimestamp;
+  final String? deliveryCurrentStatus;
+  final List<DeliveryHistory> deliveryHistory;
+  final bool? deliveryCompletionStatus;
 
   const Subscription({
     required this.id,
@@ -92,15 +103,26 @@ class Subscription extends Equatable {
     required this.selectedPlan,
     required this.selectedDuration,
     required this.price,
+    required this.grandTotal,
     required this.deliveryAddress,
     required this.paymentStatus,
+    required this.paymentType,
     required this.orderStatus,
     required this.razorpayOrderId,
     required this.totalLitre,
+    required this.codFee,
+    required this.installationStatus,
     required this.createdAt,
     required this.updatedAt,
     required this.razorpayPaymentId,
     required this.subscriptionExpiryDate,
+    required this.tasks,
+    this.deliveryAcceptanceStatus,
+    this.deliveryAcceptanceTimestamp,
+    this.deliveryCompletionTimestamp,
+    this.deliveryCurrentStatus,
+    required this.deliveryHistory,
+    this.deliveryCompletionStatus,
   });
 
   factory Subscription.fromJson(Map<String, dynamic> json) {
@@ -113,21 +135,35 @@ class Subscription extends Equatable {
       wpDeviceId: json['wp_device_id'] as String? ?? '',
       mainImage: json['main_image'] as String? ?? '',
       subImages: (json['sub_images'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
-      selectedPlan:
-          SelectedPlan.fromJson(json['selectedPlan'] as Map<String, dynamic>),
-      selectedDuration: SelectedDuration.fromJson(
-          json['selectedDuration'] as Map<String, dynamic>),
-      price: (json['grandTotal'] as num?)?.toDouble() ?? 0.0,
-      deliveryAddress: DeliveryAddress.fromJson(
-          json['deliveryAddress'] as Map<String, dynamic>),
+      selectedPlan: json['selectedPlan'] != null
+          ? SelectedPlan.fromJson(json['selectedPlan'] as Map<String, dynamic>)
+          : const SelectedPlan(plansId: 0, label: '', capacity: '', price: 0),
+      selectedDuration: json['selectedDuration'] != null
+          ? SelectedDuration.fromJson(json['selectedDuration'] as Map<String, dynamic>)
+          : const SelectedDuration(durationId: 0, durationTimeLimit: '', gst: 0, discount: 0, securityDeposit: 0),
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      grandTotal: (json['grandTotal'] as num?)?.toDouble() ?? 0.0,
+      deliveryAddress: json['deliveryAddress'] != null
+          ? DeliveryAddress.fromJson(json['deliveryAddress'] as Map<String, dynamic>)
+          : const DeliveryAddress(name: '', phone: '', street: '', landmark: '', city: '', district: '', state: '', pincode: '', email: ''),
       paymentStatus: json['paymentStatus'] as String? ?? 'unknown',
+      paymentType: json['paymentType'] as String? ?? 'COD',
       orderStatus: json['orderStatus'] as String? ?? 'unknown',
       razorpayOrderId: json['razorpayOrderId'] as String? ?? '',
       totalLitre: json['totalLitre'] as int? ?? 0,
+      codFee: json['codFee'] as int? ?? 0,
+      installationStatus: json['installation_status'] as String? ?? 'Pending',
       createdAt: json['createdAt'] as String? ?? '',
       updatedAt: json['updatedAt'] as String? ?? '',
       razorpayPaymentId: json['razorpayPaymentId'] as String? ?? '',
       subscriptionExpiryDate: json['subscriptionExpiryDate'] as String? ?? '',
+      tasks: (json['tasks'] as List<dynamic>?)?.map((e) => Task.fromJson(e as Map<String, dynamic>)).toList() ?? [],
+      deliveryAcceptanceStatus: json.containsKey('deliveryAcceptanceStatus') && json['deliveryAcceptanceStatus'] is String ? json['deliveryAcceptanceStatus'] as String : null,
+      deliveryAcceptanceTimestamp: json.containsKey('deliveryAcceptanceTimestamp') && json['deliveryAcceptanceTimestamp'] is String ? json['deliveryAcceptanceTimestamp'] as String : null,
+      deliveryCompletionTimestamp: json.containsKey('deliveryCompletionTimestamp') && json['deliveryCompletionTimestamp'] is String ? json['deliveryCompletionTimestamp'] as String : null,
+      deliveryCurrentStatus: json.containsKey('deliveryCurrentStatus') && json['deliveryCurrentStatus'] is String ? json['deliveryCurrentStatus'] as String : null,
+      deliveryHistory: (json['deliveryHistory'] as List<dynamic>?)?.map((e) => DeliveryHistory.fromJson(e as Map<String, dynamic>)).toList() ?? [],
+      deliveryCompletionStatus: json.containsKey('deliveryCompletionStatus') && json['deliveryCompletionStatus'] is bool ? json['deliveryCompletionStatus'] as bool : null,
     );
   }
 
@@ -143,16 +179,27 @@ class Subscription extends Equatable {
       'sub_images': subImages,
       'selectedPlan': selectedPlan.toJson(),
       'selectedDuration': selectedDuration.toJson(),
-      'grandTotal': price,
+      'price': price,
+      'grandTotal': grandTotal,
       'deliveryAddress': deliveryAddress.toJson(),
       'paymentStatus': paymentStatus,
+      'paymentType': paymentType,
       'orderStatus': orderStatus,
       'razorpayOrderId': razorpayOrderId,
       'totalLitre': totalLitre,
+      'codFee': codFee,
+      'installation_status': installationStatus,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
       'razorpayPaymentId': razorpayPaymentId,
       'subscriptionExpiryDate': subscriptionExpiryDate,
+      'tasks': tasks.map((t) => t.toJson()).toList(),
+      'deliveryAcceptanceStatus': deliveryAcceptanceStatus,
+      'deliveryAcceptanceTimestamp': deliveryAcceptanceTimestamp,
+      'deliveryCompletionTimestamp': deliveryCompletionTimestamp,
+      'deliveryCurrentStatus': deliveryCurrentStatus,
+      'deliveryHistory': deliveryHistory.map((h) => h.toJson()).toList(),
+      'deliveryCompletionStatus': deliveryCompletionStatus,
     };
   }
 
@@ -169,15 +216,26 @@ class Subscription extends Equatable {
         selectedPlan,
         selectedDuration,
         price,
+        grandTotal,
         deliveryAddress,
         paymentStatus,
+        paymentType,
         orderStatus,
         razorpayOrderId,
         totalLitre,
+        codFee,
+        installationStatus,
         createdAt,
         updatedAt,
         razorpayPaymentId,
         subscriptionExpiryDate,
+        tasks,
+        deliveryAcceptanceStatus,
+        deliveryAcceptanceTimestamp,
+        deliveryCompletionTimestamp,
+        deliveryCurrentStatus,
+        deliveryHistory,
+        deliveryCompletionStatus,
       ];
 }
 
@@ -197,10 +255,10 @@ class SelectedPlan extends Equatable {
 
   factory SelectedPlan.fromJson(Map<String, dynamic> json) {
     return SelectedPlan(
-      plansId: json['plans_id'] as int? ?? 0,
-      label: json['label'] as String? ?? '',
-      capacity: json['capacity'] as String? ?? '',
-      price: json['price'] as int? ?? 0,
+      plansId: json['plans_id'] is int ? json['plans_id'] as int : 0,
+      label: json['label'] is String ? json['label'] as String : '',
+      capacity: json['capacity'] is String ? json['capacity'] as String : '',
+      price: json['price'] is int ? json['price'] as int : 0,
     );
   }
 
@@ -221,9 +279,9 @@ class SelectedPlan extends Equatable {
 class SelectedDuration extends Equatable {
   final int durationId;
   final String durationTimeLimit;
-  final int gst;
-  final int discount;
-  final int securityDeposit;
+  final double gst;
+  final double discount;
+  final double securityDeposit;
 
   const SelectedDuration({
     required this.durationId,
@@ -235,11 +293,11 @@ class SelectedDuration extends Equatable {
 
   factory SelectedDuration.fromJson(Map<String, dynamic> json) {
     return SelectedDuration(
-      durationId: json['duration_id'] as int? ?? 0,
-      durationTimeLimit: json['duration_time_limit'] as String? ?? '',
-      gst: json['gst'] as int? ?? 0,
-      discount: json['discount'] as int? ?? 0,
-      securityDeposit: json['security_deposit'] as int? ?? 0,
+      durationId: json['duration_id'] is int ? json['duration_id'] as int : 0,
+      durationTimeLimit: json['duration_time_limit'] is String ? json['duration_time_limit'] as String : '',
+      gst: json['gst'] is num ? (json['gst'] as num).toDouble() : 0.0,
+      discount: json['discount'] is num ? (json['discount'] as num).toDouble() : 0.0,
+      securityDeposit: json['security_deposit'] is num ? (json['security_deposit'] as num).toDouble() : 0.0,
     );
   }
 
@@ -289,15 +347,15 @@ class DeliveryAddress extends Equatable {
 
   factory DeliveryAddress.fromJson(Map<String, dynamic> json) {
     return DeliveryAddress(
-      name: json['name'] as String? ?? '',
-      phone: json['phone'] as String? ?? '',
-      street: json['street'] as String? ?? '',
-      landmark: json['landmark'] as String? ?? '',
-      city: json['city'] as String? ?? '',
-      district: json['district'] as String? ?? '',
-      state: json['state'] as String? ?? '',
-      pincode: json['pincode'] as String? ?? '',
-      email: json['email'] as String? ?? '',
+      name: json['name'] is String ? json['name'] as String : '',
+      phone: json['phone'] is String ? json['phone'] as String : '',
+      street: json['street'] is String ? json['street'] as String : '',
+      landmark: json['landmark'] is String ? json['landmark'] as String : '',
+      city: json['city'] is String ? json['city'] as String : '',
+      district: json['district'] is String ? json['district'] as String : '',
+      state: json['state'] is String ? json['state'] as String : '',
+      pincode: json['pincode'] is String ? json['pincode'] as String : '',
+      email: json['email'] is String ? json['email'] as String : '',
     );
   }
 
@@ -331,6 +389,106 @@ class DeliveryAddress extends Equatable {
 
 // Alias for backward compatibility
 typedef Order = Subscription;
+
+/// Represents a delivery status history entry.
+class DeliveryHistory extends Equatable {
+  final String status;
+  final String timestamp;
+  final String notes;
+  final String updatedBy;
+
+  const DeliveryHistory({
+    required this.status,
+    required this.timestamp,
+    required this.notes,
+    required this.updatedBy,
+  });
+
+  factory DeliveryHistory.fromJson(Map<String, dynamic> json) {
+    return DeliveryHistory(
+      status: json['status'] is String ? json['status'] as String : '',
+      timestamp: json['timestamp'] is String ? json['timestamp'] as String : '',
+      notes: json['notes'] is String ? json['notes'] as String : '',
+      updatedBy: json['updatedBy'] is String ? json['updatedBy'] as String : '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'status': status,
+      'timestamp': timestamp,
+      'notes': notes,
+      'updatedBy': updatedBy,
+    };
+  }
+
+  @override
+  List<Object?> get props => [status, timestamp, notes, updatedBy];
+}
+
+/// Represents a task within a subscription (installation or service).
+class Task extends Equatable {
+  final int taskType;
+  final String taskStatus;
+  final Technician technician;
+  final String? estimatedEnd;
+
+  const Task({
+    required this.taskType,
+    required this.taskStatus,
+    required this.technician,
+    this.estimatedEnd,
+  });
+
+  factory Task.fromJson(Map<String, dynamic> json) {
+    return Task(
+      taskType: json['task_type'] is int ? json['task_type'] as int : 0,
+      taskStatus: json['task_status'] is String ? json['task_status'] as String : '',
+      technician: json['technician'] is Map ? Technician.fromJson(json['technician'] as Map<String, dynamic>) : const Technician(name: '', phone: ''),
+      estimatedEnd: json['estimated_end'] is String ? json['estimated_end'] as String : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'task_type': taskType,
+      'task_status': taskStatus,
+      'technician': technician.toJson(),
+      'estimated_end': estimatedEnd,
+    };
+  }
+
+  @override
+  List<Object?> get props => [taskType, taskStatus, technician, estimatedEnd];
+}
+
+/// Represents a technician assigned to a task.
+class Technician extends Equatable {
+  final String name;
+  final String phone;
+
+  const Technician({
+    required this.name,
+    required this.phone,
+  });
+
+  factory Technician.fromJson(Map<String, dynamic> json) {
+    return Technician(
+      name: json['name'] is String ? json['name'] as String : '',
+      phone: json['phone'] != null ? json['phone'].toString() : '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'phone': phone,
+    };
+  }
+
+  @override
+  List<Object?> get props => [name, phone];
+}
 
 // Response for fetching orders (multiple subscriptions)
 class OrdersResponse extends Equatable {

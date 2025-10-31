@@ -18,6 +18,7 @@ const AddProducts = ({ userInfo, handleLogout }) => {
   const {
     loading,
     modelName,
+    modelType,
     wpDeviceQuantity,
     productDetails,
     productSpecifications,
@@ -27,6 +28,7 @@ const AddProducts = ({ userInfo, handleLogout }) => {
     durations,
     errorMessage,
     setModelName,
+    setModelType,
     setWpDeviceQuantity,
     setProductDetails,
     setProductSpecifications,
@@ -101,9 +103,9 @@ const AddProducts = ({ userInfo, handleLogout }) => {
 
                 {plan.label !== 'unlimited' && (
                   <div className="col-md-3">
-                    <label className="input-label">Capacity</label>
+                    <label className="input-label">Capacity (Litres)</label>
                     <InputField
-                      placeholder="Capacity"
+                      placeholder="Capacity (Litres)"
                       value={plan.capacity}
                       onChange={(e) => handlePlanChange(durationIndex, planIndex, 'capacity', e.target.value)}
                       required
@@ -149,7 +151,7 @@ const AddProducts = ({ userInfo, handleLogout }) => {
         <div className="main-panel">
           <div className="content-wrapper">
             <div className="d-flex justify-content-between align-items-center mb-4">
-              <h3 className="font-weight-bold">Add Manage Device</h3>
+              <h3 className="font-weight-bold">Add Model</h3>
               <button type="button" className="btn btn-success" onClick={backManageDevice}>
                 Back
               </button>
@@ -158,9 +160,9 @@ const AddProducts = ({ userInfo, handleLogout }) => {
             <div className="card">
               <div className="card-body">
                 <form className="form-sample" onSubmit={handleAddProduct}>
-                  {/* Model Name & Quantity */}
+                  {/* Model Name, Type & Quantity */}
                   <div className="row mb-4">
-                    <div className="col-md-6">
+                    <div className="col-md-4">
                       <label className="input-label">Model Name</label>
                       <InputField
                         placeholder="Model Name"
@@ -173,7 +175,20 @@ const AddProducts = ({ userInfo, handleLogout }) => {
                         required
                       />
                     </div>
-                    <div className="col-md-6">
+                    <div className="col-md-4">
+                      <label className="input-label">Model Type</label>
+                      <select
+                        className="form-control"
+                        value={modelType}
+                        onChange={(e) => setModelType(e.target.value)}
+                        required
+                      >
+                        <option value="">Select Model Type</option>
+                        <option value="Base">Base</option>
+                        <option value="Smart">Smart</option>
+                      </select>
+                    </div>
+                    <div className="col-md-4">
                       <label className="input-label">WP Device Quantity</label>
                       <InputField
                         type="text"

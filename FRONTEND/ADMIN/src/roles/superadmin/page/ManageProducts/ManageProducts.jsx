@@ -94,6 +94,7 @@ const ManageProducts = ({ userInfo, handleLogout }) => {
                                                     <tr>
                                                         <th>Sl.No</th>
                                                         <th>Model Name</th>
+                                                        <th>Model Type</th>
                                                         <th>Image</th>
                                                         <th>Quantity</th>
                                                         <th>Status</th>
@@ -114,7 +115,8 @@ const ManageProducts = ({ userInfo, handleLogout }) => {
                                                             posts.map((dataItem, index) => (
                                                                 <tr key={index}>
                                                                     <td>{index + 1}</td>
-                                                                    <td >{dataItem.model_name || '-'}</td>
+                                                                    <td>{dataItem.model_name || '-'}</td>
+                                                                    <td>{dataItem.model_type || '-'}</td>
                                                                     <td className="py-1">
                                                                         <img
                                                                             src={`/upload/img/${dataItem.main_img}`}
@@ -126,9 +128,6 @@ const ManageProducts = ({ userInfo, handleLogout }) => {
                                                                                 borderRadius: '15px',
                                                                             }}
                                                                         />
-
-
-
                                                                     </td>
                                                                     <td>{dataItem.wp_device_quantity ?? '-'}</td>
                                                                     <td>
@@ -151,7 +150,7 @@ const ManageProducts = ({ userInfo, handleLogout }) => {
                                                             ))
                                                         ) : (
                                                             <tr>
-                                                                <td colSpan="6">No products found</td>
+                                                                <td colSpan="7">No products found</td>
                                                             </tr>
                                                         )
                                                     )}

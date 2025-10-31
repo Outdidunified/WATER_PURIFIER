@@ -261,6 +261,15 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                       onChange={(option) => {
                         setSelectedCountry(option);
                         setCountry(option?.value || '');
+                        setSelectedState(null);
+                        setSelectedCity(null);
+                        setSelectedDistrict(null);
+                        setState('');
+                        setCity('');
+                        setDistrict('');
+                        setStates([]);
+                        setCities([]);
+                        setDistricts([]);
                       }}
                       options={countries}
                       placeholder="Select Country"
@@ -274,6 +283,12 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                       onChange={(option) => {
                         setSelectedState(option);
                         setState(option?.value || '');
+                        setSelectedCity(null);
+                        setSelectedDistrict(null);
+                        setCity('');
+                        setDistrict('');
+                        setCities([]);
+                        setDistricts([]);
                       }}
                       options={states}
                       placeholder="Select State"

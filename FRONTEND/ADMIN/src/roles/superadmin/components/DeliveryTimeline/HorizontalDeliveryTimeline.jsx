@@ -66,9 +66,11 @@ const HorizontalDeliveryTimeline = ({
                       <h6 className="step-label">{item.label}</h6>
                       
                       <p className="step-status text-muted">
-                        {item.latestUpdate 
-                          ? formatTimestamp(item.latestUpdate.timestamp) 
-                          : 'Pending'
+                        {item.timestamp
+                          ? formatTimestamp(item.timestamp)
+                          : isCompleted
+                            ? 'Completed'
+                            : 'Pending'
                         }
                       </p>
 

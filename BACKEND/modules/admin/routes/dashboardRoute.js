@@ -139,6 +139,13 @@ router.post('/AssignService', verifyToken, Controller.AssignService);
 // Route to ReAssignService
 router.post('/ReAssignService', verifyToken, Controller.ReAssignService);
 
+// Manual request routes
+router.post('/FetchInstalledDevicesForRequests', verifyToken, Controller.FetchInstalledDevicesForRequests);
+router.post('/CreateManualRequest', verifyToken, Controller.CreateManualRequest);
+router.post('/FetchManualRequests', verifyToken, Controller.FetchManualRequests);
+router.post('/AssignManualRequest', verifyToken, Controller.AssignManualRequest);
+router.post('/ReAssignManualRequest', verifyToken, Controller.ReAssignManualRequest);
+
 // Seller assignment routes
 router.post('/AssignSeller', verifyToken, Controller.AssignSeller);
 router.post('/ReAssignSeller', verifyToken, Controller.ReAssignSeller);

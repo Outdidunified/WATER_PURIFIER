@@ -243,6 +243,7 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                             Order ID: {order.customOrderId || payment.orderId || "N/A"}
                                                         </h5>
                                                         <p><strong>Model Name:</strong> {order.modelName || "N/A"}</p>
+                                                        <p><strong>Model Type:</strong> {order.modeltype || "N/A"}</p>
                                                         <p><strong>WP Device ID:</strong> {order.wp_device_id || "N/A"}</p>
                                                     </div>
                                                 </div>
@@ -258,21 +259,58 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                             }}
                                                         >
                                                             {(() => {
+                                                                //   If deliveryCurrentStatus exists, show it directly
+                                                                if (order.deliveryCurrentStatus) {
+                                                                    const statusMap = {
+                                                                        accepted: "Order Accepted",
+                                                                        packed: "Order Packed",
+                                                                        intransit: "Shipped",
+                                                                        outfordelivery: "Out For Delivery",
+                                                                        completed: "Delivered",
+                                                                        cancelled: "Order Cancelled",
+                                                                        returned: "Returned",
+                                                                        failed: "Delivery Failed",
+                                                                    };
+
+                                                                    const normalized = order.deliveryCurrentStatus.toLowerCase();
+                                                                    return statusMap[normalized] ||
+                                                                        (order.deliveryCurrentStatus.charAt(0).toUpperCase() +
+                                                                            order.deliveryCurrentStatus.slice(1));
+                                                                }
+
+                                                                //   Else fallback to deliveryAcceptanceStatus logic
                                                                 if (order.deliveryAcceptanceStatus === true) {
                                                                     return "Order Confirmed";
                                                                 }
 
-                                                                const statusMap = {
-                                                                    accepted: "Order Accepted",
-                                                                    packed: "Order Packed",
-                                                                    intransit: "Shipped",
-                                                                    outfordelivery: "Out For Delivery",
-                                                                    completed: "Delivered",
-                                                                };
+                                                                if (order.deliveryAcceptanceStatus === false) {
+                                                                    return "Awaiting Confirmation";
+                                                                }
 
-                                                                return statusMap[order.deliveryCurrentStatus] || "N/A";
+                                                                if (typeof order.deliveryAcceptanceStatus === "string") {
+                                                                    const statusMap = {
+                                                                        accepted: "Order Accepted",
+                                                                        packed: "Order Packed",
+                                                                        intransit: "Shipped",
+                                                                        outfordelivery: "Out For Delivery",
+                                                                        completed: "Delivered",
+                                                                        cancelled: "Order Cancelled",
+                                                                        returned: "Returned",
+                                                                        failed: "Delivery Failed",
+                                                                    };
+
+                                                                    return (
+                                                                        statusMap[order.deliveryAcceptanceStatus.toLowerCase()] ||
+                                                                        order.deliveryAcceptanceStatus.charAt(0).toUpperCase() +
+                                                                        order.deliveryAcceptanceStatus.slice(1)
+                                                                    );
+                                                                }
+
+                                                                //   Final fallback
+                                                                return "N/A";
                                                             })()}
                                                         </span>
+
                                                     </p>
 
                                                     <button
@@ -298,7 +336,6 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                     >
                                                         View Delivery Status
                                                     </button>
-
                                                 </div>
                                             </div>
 
@@ -529,25 +566,29 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                         <td style={{ textAlign: "right" }}>{payment.paymentType || "N/A"}</td>
                                                                     </tr>
                                                                     <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Price</td>
-                                                                        <td style={{ textAlign: "right" }}>₹{payment.price || "N/A"}</td>
-                                                                    </tr>
-                                                                    <tr>
                                                                         <td style={{ fontWeight: "600", color: "#333" }}>Duration</td>
                                                                         <td style={{ textAlign: "right" }}>{selectedDuration.duration_time_limit || "N/A"}</td>
                                                                     </tr>
                                                                     <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>GST ({selectedDuration.gst || 0}%)</td>
-                                                                        <td style={{ textAlign: "right" }}>₹{payment.gstAmount || "N/A"}</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Price with GST</td>
-                                                                        <td style={{ textAlign: "right" }}>₹{payment.priceWithGST || "N/A"}</td>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Price</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{payment.price || "N/A"}</td>
                                                                     </tr>
                                                                     <tr>
                                                                         <td style={{ fontWeight: "600", color: "#333" }}>Discount ({selectedDuration.discount || 0}%)</td>
                                                                         <td style={{ textAlign: "right" }}>₹{payment.discountAmount || "N/A"}</td>
                                                                     </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Discounted Price {selectedDuration.discountedPrice}</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{payment.discountedPrice || "N/A"}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>GST ({selectedDuration.gst || 0}%)</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{payment.gstAmount || "N/A"}</td>
+                                                                    </tr>
+                                                                    {/* <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Price with GST</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{payment.priceWithGST || "N/A"}</td>
+                                                                    </tr> */}
                                                                     <tr>
                                                                         <td style={{ fontWeight: "600", color: "#333" }}>Subtotal</td>
                                                                         <td style={{ textAlign: "right" }}>₹{payment.subtotal || "N/A"}</td>

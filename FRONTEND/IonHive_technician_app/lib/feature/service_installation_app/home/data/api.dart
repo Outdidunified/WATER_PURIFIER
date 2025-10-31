@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:ionhive_technician_app/core/controllers/session_controller.dart';
+import 'package:ionhive_technician_app/core/core.dart';
 import 'package:ionhive_technician_app/core/services/base_api_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:get/get.dart';
@@ -129,6 +130,63 @@ class TaskApiService extends BaseApiService {
     return makeRequest<Map<String, dynamic>>(
       url: TasknUrl.acceptDeclineTask.url,
       method: TasknUrl.acceptDeclineTask.method,
+      body: body,
+      responseParser: (data) => data as Map<String, dynamic>,
+    );
+  }
+
+  Future<Map<String, dynamic>> getTechnicianLeaveRequests({
+    required String technicianId,
+    required String email,
+  }) async {
+    return makeRequest<Map<String, dynamic>>(
+      url: '${Core.baseUrl}/api/app/technicianhome/getTechnicianLeaveRequests',
+      method: 'POST',
+      body: {
+        'technician_id': technicianId,
+        'email': email,
+      },
+      responseParser: (data) => data as Map<String, dynamic>,
+    );
+  }
+
+  Future<Map<String, dynamic>> updateInProgressTaskLeaveAction({
+    required String technicianId,
+    required String email,
+    required int taskId,
+    required String action,
+  }) async {
+    final body = {
+      'technician_id': technicianId,
+      'email': email,
+      'task_id': taskId,
+      'action': action,
+    };
+
+    return makeRequest<Map<String, dynamic>>(
+      url: TasknUrl.updateInProgressTaskLeaveAction.url,
+      method: TasknUrl.updateInProgressTaskLeaveAction.method,
+      body: body,
+      responseParser: (data) => data as Map<String, dynamic>,
+    );
+  }
+
+  Future<Map<String, dynamic>> setupBleConnection({
+    required String wpDeviceId,
+    required String macId,
+    required String taskId,
+    required String technicianId,
+  }) async {
+    final body = {
+      'wp_device_id': wpDeviceId,
+      'mac_id': macId,
+      'task_id': taskId,
+      'technician_id': technicianId,
+    };
+
+    return makeRequest<Map<String, dynamic>>(
+      url: TasknUrl.setupBleConnection.url,
+      method: TasknUrl.setupBleConnection.method,
       body: body,
       responseParser: (data) => data as Map<String, dynamic>,
     );

@@ -206,57 +206,120 @@ class ContactSupportPage extends StatelessWidget {
                                   ],
                                   if (showDeviceSelection) ...[
                                     const SizedBox(height: 14),
-                                    Obx(() => Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade50,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: Colors.grey.shade300),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Select Device:',
-                                            style: theme.textTheme.bodyMedium?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.black87,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          DropdownButtonFormField<String>(
-                                            value: controller.selectedDeviceId.value,
-                                            hint: const Text('Choose a device'),
-                                            isExpanded: true,
-                                            dropdownColor: Colors.white,
-                                            items: controller.activeSubscriptions.map((subscription) {
-                                              return DropdownMenuItem<String>(
-                                                value: subscription.wpDeviceId!,
-                                                child: Text(
-                                                  '${subscription.modelName!} (${subscription.wpDeviceId!})',
-                                                  style: const TextStyle(fontSize: 14),
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              );
-                                            }).toList(),
-                                            onChanged: (value) {
-                                              if (value != null) {
-                                                controller.selectDevice(value);
-                                              }
-                                            },
-                                            decoration: InputDecoration(
-                                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                              border: OutlineInputBorder(
-                                                borderRadius: BorderRadius.circular(8),
-                                                borderSide: BorderSide(color: Colors.grey.shade400),
+                                    Obx(() {
+                                      final hasCompletedDevices =
+                                          controller.completedSubscriptions.isNotEmpty;
+                                      return Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade50,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: Colors.grey.shade300),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Select Device:',
+                                              style: theme.textTheme.bodyMedium
+                                                  ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black87,
                                               ),
-                                              filled: true,
-                                              fillColor: Colors.white,
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                    )),
+                                            const SizedBox(height: 8),
+                                            if (!hasCompletedDevices)
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.all(12),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.orange.shade50,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  border: Border.all(
+                                                    color: Colors.orange
+                                                        .shade200,
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.info_outline,
+                                                      color: Colors.orange
+                                                          .shade700,
+                                                      size: 20,
+                                                    ),
+                                                    const SizedBox(width: 12),
+                                                    Expanded(
+                                                      child: Text(
+                                                        'Installation is not Completed yet.',
+                                                        style: TextStyle(
+                                                          fontSize: 13,
+                                                          color: Colors.orange
+                                                              .shade700,
+                                                          height: 1.4,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              )
+                                            else
+                                              DropdownButtonFormField<String>(
+                                                value: controller
+                                                    .selectedDeviceId.value,
+                                                hint: const Text(
+                                                    'Choose a device'),
+                                                isExpanded: true,
+                                                dropdownColor: Colors.white,
+                                                items: controller
+                                                    .completedSubscriptions
+                                                    .map((subscription) {
+                                                  return DropdownMenuItem<
+                                                      String>(
+                                                    value:
+                                                        subscription.wpDeviceId!,
+                                                    child: Text(
+                                                      '${subscription.modelName!} (${subscription.wpDeviceId!})',
+                                                      style: const TextStyle(
+                                                          fontSize: 14),
+                                                      overflow: TextOverflow
+                                                          .ellipsis,
+                                                    ),
+                                                  );
+                                                }).toList(),
+                                                onChanged: (value) {
+                                                  if (value != null) {
+                                                    controller.selectDevice(
+                                                        value);
+                                                  }
+                                                },
+                                                decoration: InputDecoration(
+                                                  contentPadding:
+                                                      const EdgeInsets
+                                                          .symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
+                                                  border:
+                                                      OutlineInputBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            8),
+                                                    borderSide: BorderSide(
+                                                      color:
+                                                          Colors.grey.shade400,
+                                                    ),
+                                                  ),
+                                                  filled: true,
+                                                  fillColor: Colors.white,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
                                   ],
                                   if (showConfirmButtons) ...[
                                     const SizedBox(height: 14),
@@ -279,7 +342,8 @@ class ContactSupportPage extends StatelessWidget {
                                         const SizedBox(width: 10),
                                         _buildConfirmButton(
                                           text: 'Cancel',
-                                          onTap: controller.isSubmitting.value
+                                          onTap: controller.isSubmitting.value ||
+                                                  controller.hasSubmitted.value
                                               ? null
                                               : controller.cancelServiceRequest,
                                           isLoading: false,

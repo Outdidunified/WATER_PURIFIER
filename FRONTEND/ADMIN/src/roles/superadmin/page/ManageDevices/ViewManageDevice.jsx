@@ -9,6 +9,8 @@ import useViewDevice from '../../hooks/ManageDevices/ViewManageDeviceHooks';
 const ViewManageDevice = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
   const device = useViewDevice();
+  const planConfig = device.plan_config || {};
+  const connectivity = planConfig.connectivity || {};
 
   const handleBack = () => {
     navigate('/superadmin/ManageDevice');
@@ -104,6 +106,19 @@ const ViewManageDevice = ({ userInfo, handleLogout }) => {
                       <div className="col-md-4">
                         <strong>Model Assigned Date</strong>{' '}
                         <span>{device.model_assigned_date ? formatTimestamp(device.model_assigned_date) : '-'}</span>
+                      </div>
+                       <div className="col-md-4">
+                        <strong>MAC ID</strong> <span>{device.mac_id || device.enter_mac_id || '-'}</span>
+                      </div>
+                      <div className="col-md-4">
+                        <strong>Plan Start Date</strong> <span>{device.plan_config?.startDate || '-'}</span>
+                      </div>
+                    </div>
+
+                    <div className="row viewDataCss" style={{ marginTop: '10px' }}>
+                     
+                      <div className="col-md-4">
+                        <strong>Plan End Date</strong> <span>{device.plan_config?.endDate || '-'}</span>
                       </div>
                     </div>
 

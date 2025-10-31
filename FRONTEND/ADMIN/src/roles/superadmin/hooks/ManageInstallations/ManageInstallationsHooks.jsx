@@ -2,6 +2,116 @@ import { useState, useEffect, useCallback } from 'react';
 import axiosInstance from '../../../../utils/utils';
 import { showErrorAlert, showSuccessAlert } from '../../../../utils/alert';
 
+const normalizeHistoryEntries = (input) => {
+  if (!input) return [];
+  if (Array.isArray(input)) return input.filter(Boolean).map((entry) => ({ ...entry }));
+  if (typeof input === 'object') return Object.values(input).filter(Boolean).map((entry) => ({ ...entry }));
+  return [];
+};
+
+const collectAssignmentHistory = (source) => {
+  if (!source) return [];
+  const combined = [];
+  const append = (value) => {
+    const normalized = normalizeHistoryEntries(value);
+    if (normalized.length > 0) combined.push(...normalized);
+  };
+  append(source.assignment_history);
+  append(source.assignmentHistory);
+  append(source.assignment_history_map);
+  append(source.assignmentHistoryMap);
+  append(source.assignmentHistoryList);
+  return combined;
+};
+
+const extractAssignedDateValue = (value) => {
+  if (!value) return null;
+  if (typeof value === 'object') {
+    if ('$date' in value) return value.$date;
+    if ('$numberLong' in value) {
+      const millis = Number(value.$numberLong);
+      return Number.isNaN(millis) ? null : new Date(millis).toISOString();
+    }
+    return null;
+  }
+  return value;
+};
+
+const createHistoryEntryKey = (entry) => {
+  const technician =
+    entry?.technician_id ||
+    entry?.assigned_technician_id ||
+    entry?.technicianId ||
+    entry?.assignedTechnicianId ||
+    entry?.technician_device_map_id ||
+    '';
+  const assignedBy = entry?.assigned_by || entry?.assignedBy || '';
+  const assignedDate =
+    extractAssignedDateValue(entry?.assigned_date) ||
+    extractAssignedDateValue(entry?.assignedDate) ||
+    '';
+  const reason =
+    entry?.unassigned_reason ||
+    entry?.unassignedReason ||
+    entry?.pending_reason ||
+    entry?.pendingReason ||
+    entry?.pending_reason_text ||
+    entry?.pendingReasonText ||
+    entry?.reassigned_reason ||
+    entry?.reassignedReason ||
+    '';
+  return [technician, assignedBy, assignedDate, reason].join('|');
+};
+
+const dedupeHistoryEntries = (entries) => {
+  const seen = new Map();
+  return entries.filter((entry) => {
+    const key = createHistoryEntryKey(entry) || JSON.stringify(entry ?? {});
+    if (!key) return true;
+    if (seen.has(key)) {
+      const existing = seen.get(key);
+      const existingDate = extractAssignedDateValue(existing?.assigned_date) || extractAssignedDateValue(existing?.assignedDate);
+      const currentDate = extractAssignedDateValue(entry?.assigned_date) || extractAssignedDateValue(entry?.assignedDate);
+      if (existingDate && currentDate && new Date(currentDate).getTime() > new Date(existingDate).getTime()) {
+        seen.set(key, entry);
+        return true;
+      }
+      return false;
+    }
+    seen.set(key, entry);
+    return true;
+  });
+};
+
+const dedupeTasksByIdentity = (items) => {
+  const seen = new Map();
+  return items.filter((item) => {
+    const keyParts = [
+      item?.task_id,
+      item?.wp_device_id,
+      item?.customOrderId,
+      item?.order_user_id || item?.user_id,
+      extractAssignedDateValue(item?.task_assigned_date),
+    ].filter(Boolean);
+    if (keyParts.length === 0) {
+      return true;
+    }
+    const key = keyParts.join('|');
+    if (seen.has(key)) {
+      const existing = seen.get(key);
+      const existingTimestamp = existing?._timestamp || 0;
+      const currentTimestamp = item?._timestamp || 0;
+      if (currentTimestamp > existingTimestamp) {
+        seen.set(key, item);
+        return true;
+      }
+      return false;
+    }
+    seen.set(key, item);
+    return true;
+  });
+};
+
 const useManageInstallation = (userInfo) => {
   const [installationTasks, setInstallationTasks] = useState([]);
   const [technicians, setTechnicians] = useState([]);
@@ -183,30 +293,17 @@ const useManageInstallation = (userInfo) => {
               }
             : null);
 
-        const taskAssignmentHistory = Array.isArray(task?.assignment_history)
-          ? task.assignment_history.filter(Boolean)
-          : [];
-        const orderAssignmentHistory = Array.isArray(relatedOrder?.assignment_history)
-          ? relatedOrder.assignment_history.filter(Boolean)
-          : [];
-        const mergedAssignmentHistory = [...taskAssignmentHistory, ...orderAssignmentHistory];
-
-        const extractAssignedDate = (value) => {
-          if (!value) return null;
-          if (typeof value === 'object') {
-            if ('$date' in value) return value.$date;
-            if ('$numberLong' in value) {
-              const millis = Number(value.$numberLong);
-              return Number.isNaN(millis) ? null : new Date(millis).toISOString();
-            }
-            return null;
-          }
-          return value;
-        };
+        const taskAssignmentHistory = dedupeHistoryEntries(collectAssignmentHistory(task));
+        const orderAssignmentHistory = dedupeHistoryEntries(collectAssignmentHistory(relatedOrder));
+        const mergedAssignmentHistory = dedupeHistoryEntries([
+          ...taskAssignmentHistory,
+          ...orderAssignmentHistory,
+        ]);
 
         const assignmentTimestamp = (entry) => {
           const assignedValue =
-            extractAssignedDate(entry?.assigned_date) || extractAssignedDate(entry?.assignedDate);
+            extractAssignedDateValue(entry?.assigned_date) ||
+            extractAssignedDateValue(entry?.assignedDate);
           if (assignedValue) {
             return toValidTimestamp(assignedValue);
           }
@@ -271,8 +368,10 @@ const useManageInstallation = (userInfo) => {
         .sort((a, b) => (b._timestamp || 0) - (a._timestamp || 0))
         .map(({ _timestamp, ...rest }) => rest);
 
-      setEnrichedTaskList(enrichedTasks);
-      setDisplayTasks(enrichedTasks);
+      const dedupedEnrichedList = dedupeTasksByIdentity(enrichedTasks);
+
+      setEnrichedTaskList(dedupedEnrichedList);
+      setDisplayTasks(dedupedEnrichedList);
     } catch (err) {
       showErrorAlert('Failed to fetch installation data');
       setError('Failed to fetch installation data');

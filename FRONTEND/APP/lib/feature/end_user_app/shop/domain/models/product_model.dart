@@ -124,10 +124,11 @@ class Plan extends Equatable {
 class DurationOption extends Equatable {
   final int durationId;
   final String durationTimeLimit;
-  final int gst;
-  final int discount;
-  final int securityDeposit;
+  final double gst;
+  final double discount;
+  final double securityDeposit;
   final int? price;
+  final List<Plan> plans;
 
   const DurationOption({
     required this.durationId,
@@ -136,16 +137,21 @@ class DurationOption extends Equatable {
     required this.discount,
     required this.securityDeposit,
     this.price,
+    this.plans = const [],
   });
 
   factory DurationOption.fromJson(Map<String, dynamic> json) {
     return DurationOption(
       durationId: json['duration_id'] ?? 0,
       durationTimeLimit: json['duration_time_limit'] ?? '',
-      gst: json['gst'] ?? 0,
-      discount: json['discount'] ?? 0,
-      securityDeposit: json['security_deposit'] ?? 0,
+      gst: (json['gst'] as num?)?.toDouble() ?? 0.0,
+      discount: (json['discount'] as num?)?.toDouble() ?? 0.0,
+      securityDeposit: (json['security_deposit'] as num?)?.toDouble() ?? 0.0,
       price: json['price'] as int?,
+      plans: (json['plans'] as List<dynamic>?)
+              ?.map((plan) => Plan.fromJson(plan))
+              .toList() ??
+          [],
     );
   }
 
@@ -157,5 +163,6 @@ class DurationOption extends Equatable {
         discount,
         securityDeposit,
         price,
+        plans,
       ];
 }

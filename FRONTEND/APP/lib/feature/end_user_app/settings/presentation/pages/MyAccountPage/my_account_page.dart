@@ -220,13 +220,6 @@ class _EditAccountPageState extends State<EditAccountPage> {
           );
         }
 
-        // Format the modified date or use a fallback
-        final modifiedDate = controller.userData.value?.data.modified_date;
-        debugPrint("Modified Date: $modifiedDate"); // Debug log
-        final formattedDate = modifiedDate != null
-            ? DateFormat('MMMM dd, yyyy').format(modifiedDate)
-            : 'Not updated yet';
-
         return SingleChildScrollView(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom, // Adjust for keyboard
@@ -236,7 +229,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
              Stack(
   children: [
     Container(
-      height: 200,
+      height: 140,
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -251,54 +244,43 @@ class _EditAccountPageState extends State<EditAccountPage> {
     ),
     Positioned.fill(
       child: Align(
-        alignment: Alignment.topCenter,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                  child: const Icon(
-                    Icons.person,
-                    size: 70,
-                    color: Colors.white,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    offset: const Offset(0, 4),
                   ),
-                ),
+                ],
               ),
-              SizedBox(height: screenHeight * 0.01),
-              Text(
-                (controller.userData.value?.data.name ?? '').isEmpty
-                    ? 'Complete your profile'
-                    : controller.userData.value!.data.name!,
-                style: TextStyle(
+              child: CircleAvatar(
+                radius: 40,
+                backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                child: const Icon(
+                  Icons.person,
+                  size: 55,
                   color: Colors.white,
-                  fontSize: screenWidth * 0.045,
-                  fontWeight: FontWeight.bold,
                 ),
               ),
-              Text(
-                'Last updated: $formattedDate',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: screenWidth * 0.035,
-                  fontWeight: FontWeight.w400,
-                ),
+            ),
+            SizedBox(height: screenHeight * 0.008),
+            Text(
+              (controller.userData.value?.data.name ?? '').isEmpty
+                  ? 'Complete your profile'
+                  : controller.userData.value!.data.name!,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: screenWidth * 0.04,
+                fontWeight: FontWeight.bold,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     ),

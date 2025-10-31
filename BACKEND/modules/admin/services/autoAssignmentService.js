@@ -361,17 +361,24 @@ async function autoAssignInstallation(order) {
         const normalizeId = (value) =>
             value && typeof value.toString === 'function' ? value.toString() : value ?? null;
 
+        const sanitizeDuration = (duration) => {
+            if (!duration || typeof duration !== 'object') return duration ?? null;
+            const { plans, ...rest } = duration;
+            return rest;
+        };
+
         const orderSnapshot = {
             orderId: normalizeId(order?._id),
             customOrderId: order?.customOrderId ?? null,
             user_id: order?.user_id ?? null,
             productModelId: order?.productModelId ?? null,
             modelName: order?.modelName ?? null,
+            modeltype: order?.modeltype ?? null,
             main_image: order?.main_image ?? null,
             sub_images: Array.isArray(order?.sub_images) ? order.sub_images : [],
             wp_device_id: order?.wp_device_id ?? null,
             selectedPlan: order?.selectedPlan ?? null,
-            selectedDuration: order?.selectedDuration ?? null,
+            selectedDuration: sanitizeDuration(order?.selectedDuration ?? null),
             grandTotal: order?.grandTotal ?? null,
             price: order?.price ?? null,
             subtotal: order?.subtotal ?? null,
@@ -449,9 +456,10 @@ async function autoAssignInstallation(order) {
             address: normalizedAddress,
             product: {
                 model_name: order.modelName,
+                modeltype: order.modeltype ?? null,
                 wp_device_id: order.wp_device_id,
                 selectedPlan: order.selectedPlan,
-                selectedDuration: order.selectedDuration
+                selectedDuration: sanitizeDuration(order.selectedDuration)
             },
             order_snapshot: orderSnapshot,
             payment_snapshot: paymentSnapshot
@@ -1762,6 +1770,11 @@ async function autoReassignRejectedTasksImmediate() {
                     continue;
                 }
 
+                if (technician.technician_id === currentTechnicianId) {
+                    await logEvent(`[REJECTED] Task ${task.task_id} - Only previously rejected technician ${currentTechnicianId} available. Skipping reassignment`);
+                    continue;
+                }
+
                 const otp = Math.floor(100000 + Math.random() * 900000);
                 const reassignmentReason = `Task Rejected by ${currentTechnicianId}. Immediately reassigned`;
 
@@ -1774,6 +1787,7 @@ async function autoReassignRejectedTasksImmediate() {
                             assigned_date: now,
                             otp,
                             task_status: "Pending",
+                            pending_reason: null,
                             modified_by: 'system',
                             modified_date: now
                         },
@@ -1895,6 +1909,11 @@ async function autoReassignForwardedTasksImmediate() {
                     continue;
                 }
 
+                if (technician.technician_id === currentTechnicianId) {
+                    await logEvent(`[FORWARDED] Task ${task.task_id} - Only previously assigned technician ${currentTechnicianId} available. Skipping reassignment`);
+                    continue;
+                }
+
                 const otp = Math.floor(100000 + Math.random() * 900000);
                 const reassignmentReason = `Task Forwarded by ${currentTechnicianId}. Immediately reassigned`;
 
@@ -1907,6 +1926,7 @@ async function autoReassignForwardedTasksImmediate() {
                             assigned_date: now,
                             otp,
                             task_status: "Pending",
+                            pending_reason: null,
                             modified_by: 'system',
                             modified_date: now
                         },

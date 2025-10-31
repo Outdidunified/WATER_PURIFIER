@@ -89,6 +89,15 @@ const Sidebar = ({ userInfo, permissions: propsPermissions }) => {
             </div>
           </li>
         )}
+
+        {canView('manage_requests') && (
+          <li className={['/superadmin/ManageRequests','/superadmin/ViewManageRequests'].includes(location.pathname) ? 'nav-item active' : 'nav-item'}>
+            <Link className="nav-link" to="/superadmin/ManageRequests">
+              <i className="icon-head menu-icon mdi mdi-clipboard-text"></i>
+              <span className="menu-title">Manage Requests</span>
+            </Link>
+          </li>
+        )}
 {/* 
         {canView('manage_call_requests') && (
           <li className={location.pathname === '/superadmin/ManageCallRequests' ? 'nav-item active' : 'nav-item'}>

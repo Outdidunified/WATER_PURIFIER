@@ -1,8 +1,9 @@
-import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/controllers/settings_controller.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/settings/data/urls.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/home/presentation/controllers/subscription_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/controllers/settings_controller.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/analytics/presentation/controllers/telemetry_controller.dart';
 import 'package:ionhive_water_purifier/utils/widgets/error/error_display_widget.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/models/home_model.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:get/get.dart';
@@ -12,8 +13,8 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:open_file/open_file.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-// Custom painter for dashed divider
 class DashedLinePainter extends CustomPainter {
   final Color color;
   final double strokeWidth;
@@ -64,12 +65,11 @@ class SubscriptionPlanPage extends StatelessWidget {
         horizontal: screenWidth * 0.04,
       ),
       itemCount:
-          2, // Show 2 shimmer placeholders to simulate multiple subscriptions
+          2,
       itemBuilder: (context, index) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Shimmer for Subscription Card
             Shimmer.fromColors(
               baseColor: Colors.grey[300]!,
               highlightColor: Colors.grey[100]!,
@@ -77,12 +77,11 @@ class SubscriptionPlanPage extends StatelessWidget {
                 padding: EdgeInsets.all(screenWidth * 0.04),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Model Name and Order Status
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -102,28 +101,24 @@ class SubscriptionPlanPage extends StatelessWidget {
                       ],
                     ),
                     SizedBox(height: screenWidth * 0.02),
-                    // Plan Details
                     Container(
                       width: screenWidth * 0.6,
                       height: screenWidth * 0.04,
                       color: Colors.grey,
                     ),
                     SizedBox(height: screenWidth * 0.01),
-                    // Duration
                     Container(
                       width: screenWidth * 0.5,
                       height: screenWidth * 0.04,
                       color: Colors.grey,
                     ),
                     SizedBox(height: screenWidth * 0.01),
-                    // Total Price
                     Container(
                       width: screenWidth * 0.4,
                       height: screenWidth * 0.04,
                       color: Colors.grey,
                     ),
                     SizedBox(height: screenWidth * 0.01),
-                    // Expiry Date with Down Arrow
                     Row(
                       children: [
                         Container(
@@ -143,7 +138,6 @@ class SubscriptionPlanPage extends StatelessWidget {
                 ),
               ),
             ),
-            // Shimmer for Delivery Address Section
             SizedBox(height: screenHeight * 0.03),
             Shimmer.fromColors(
               baseColor: Colors.grey[300]!,
@@ -228,8 +222,9 @@ class SubscriptionPlanPage extends StatelessWidget {
         vertical: screenWidth * 0.02,
       ),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -280,7 +275,6 @@ class SubscriptionPlanPage extends StatelessWidget {
         final file = File(filePath);
         await file.writeAsBytes(response.bodyBytes);
 
-        // Try to open the PDF
         await OpenFile.open(filePath);
         Get.snackbar('Success', 'Invoice downloaded successfully');
       } else {
@@ -291,9 +285,814 @@ class SubscriptionPlanPage extends StatelessWidget {
     }
   }
 
+  void _showDetailsBottomSheet(BuildContext context, Order order) {
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black54,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.75,
+          minChildSize: 0.6,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) => Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.only(top: screenHeight * 0.015),
+                child: Center(
+                  child: Container(
+                    width: screenWidth * 0.1,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade400,
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  child: Padding(
+                    padding: EdgeInsets.all(screenWidth * 0.04),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Text(
+                            'Order Details',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.042,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: screenHeight * 0.02),
+
+
+
+                        Text(
+                          'Delivery Address',
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.039,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: screenHeight * 0.01),
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(screenWidth * 0.04),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                order.deliveryAddress.name ?? 'N/A',
+                                style: TextStyle(
+                                  fontSize: screenWidth * 0.04,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(height: screenWidth * 0.01),
+                              Text(
+                                order.deliveryAddress.phone ?? 'N/A',
+                                style: TextStyle(
+                                  fontSize: screenWidth * 0.035,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                              SizedBox(height: screenWidth * 0.01),
+                              Text(
+                                '${order.deliveryAddress.street ?? 'N/A'}${order.deliveryAddress.landmark != null && order.deliveryAddress.landmark!.isNotEmpty ? ', ${order.deliveryAddress.landmark}' : ''}, ${order.deliveryAddress.city ?? 'N/A'}, ${order.deliveryAddress.state ?? 'N/A'} - ${order.deliveryAddress.pincode ?? 'N/A'}',
+                                style: TextStyle(
+                                  fontSize: screenWidth * 0.035,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        if (order.deliveryHistory.isNotEmpty) ...[
+                          Padding(
+                            padding: EdgeInsets.only(top: screenHeight * 0.025),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Delivery Status',
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.039,
+                                    fontWeight: FontWeight.w400,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                SizedBox(height: screenHeight * 0.015),
+                                ListView.separated(
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  shrinkWrap: true,
+                                  itemCount: order.deliveryHistory.length,
+                                  separatorBuilder: (context, index) {
+                                    if (index < order.deliveryHistory.length - 1) {
+                                      return Container(
+                                        margin: EdgeInsets.symmetric(vertical: screenHeight * 0.008),
+                                        child: Row(
+                                          children: [
+                                            SizedBox(width: screenWidth * 0.055),
+                                            Container(
+                                              width: 1.5,
+                                              height: screenHeight * 0.02,
+                                              color: Colors.grey.shade300,
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }
+                                    return SizedBox.shrink();
+                                  },
+                                  itemBuilder: (context, index) {
+                                    final history = order.deliveryHistory[index];
+                                    final statusLower = history.status.toLowerCase();
+
+                                    Color circleColor;
+                                    IconData iconData;
+                                    if (statusLower.contains('completed')) {
+                                      circleColor = Colors.green.shade500;
+                                      iconData = Icons.check_circle;
+                                    } else if (statusLower.contains('intransit') || statusLower.contains('outfordelivery')) {
+                                      circleColor = Colors.blue.shade500;
+                                      iconData = Icons.local_shipping;
+                                    } else {
+                                      circleColor = Colors.orange.shade400;
+                                      iconData = Icons.schedule;
+                                    }
+
+                                    DateTime? parsedTime;
+                                    try {
+                                      parsedTime = DateTime.parse(history.timestamp);
+                                    } catch (e) {
+                                      debugPrint('Error parsing timestamp: ${history.timestamp}');
+                                    }
+                                    final formattedTime = parsedTime != null
+                                        ? DateFormat('dd MMM, hh:mm a').format(parsedTime)
+                                        : history.timestamp;
+
+                                    return Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          width: screenWidth * 0.09,
+                                          height: screenWidth * 0.09,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: circleColor.withOpacity(0.15),
+                                            border: Border.all(
+                                              color: circleColor,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: Center(
+                                            child: Icon(
+                                              iconData,
+                                              color: circleColor,
+                                              size: screenWidth * 0.045,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(width: screenWidth * 0.03),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                history.status.replaceAll(RegExp(r'([a-z])([A-Z])'), r'$1 $2').toUpperCase(),
+                                                style: TextStyle(
+                                                  fontSize: screenWidth * 0.032,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.black87,
+                                                ),
+                                              ),
+                                              SizedBox(height: screenWidth * 0.008),
+                                              Text(
+                                                formattedTime,
+                                                style: TextStyle(
+                                                  fontSize: screenWidth * 0.028,
+                                                  color: Colors.black54,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+
+                        Padding(
+                          padding: EdgeInsets.only(top: screenHeight * 0.03),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Payment Details',
+                                style: TextStyle(
+                                  fontSize: screenWidth * 0.039,
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              SizedBox(height: screenHeight * 0.01),
+
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.all(screenWidth * 0.04),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Payment Status',
+                                              style: TextStyle(
+                                                fontSize: screenWidth * 0.03,
+                                                color: Colors.black54,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            SizedBox(height: screenWidth * 0.01),
+                                            Text(
+                                              order.paymentStatus,
+                                              style: TextStyle(
+                                                fontSize: screenWidth * 0.04,
+                                                fontWeight: FontWeight.w700,
+                                                color: order.paymentStatus.toLowerCase() == 'completed'
+                                                    ? Colors.green
+                                                    : order.paymentStatus.toLowerCase() == 'confirmed'
+                                                    ? Colors.green
+                                                    : Colors.orange,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              'Total Amount',
+                                              style: TextStyle(
+                                                fontSize: screenWidth * 0.03,
+                                                color: Colors.black54,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            SizedBox(height: screenWidth * 0.01),
+                                            Text(
+                                              '₹${order.grandTotal.toStringAsFixed(2)}',
+                                              style: TextStyle(
+                                                fontSize: screenWidth * 0.04,
+                                                fontWeight: FontWeight.w700,
+                                                color: theme.colorScheme.primary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: screenWidth * 0.03),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Payment Type',
+                                          style: TextStyle(
+                                            fontSize: screenWidth * 0.03,
+                                            color: Colors.black54,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: screenWidth * 0.04,
+                                            vertical: screenWidth * 0.015,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: theme.colorScheme.primary.withOpacity(0.15),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            order.paymentType ?? 'N/A',
+                                            style: TextStyle(
+                                              fontSize: screenWidth * 0.035,
+                                              fontWeight: FontWeight.w700,
+                                              color: theme.colorScheme.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: screenHeight * 0.02),
+
+                              GridView.count(
+                                physics: const NeverScrollableScrollPhysics(),
+                                shrinkWrap: true,
+                                crossAxisCount: 2,
+                                crossAxisSpacing: screenWidth * 0.03,
+                                mainAxisSpacing: screenWidth * 0.02,
+                                childAspectRatio: 2.6,
+                                children: [
+                                  _buildInfoChip(
+                                    context,
+                                    label: 'GST',
+                                    value: '${order.selectedDuration.gst}%',
+                                    icon: Icons.percent,
+                                  ),
+                                  _buildInfoChip(
+                                    context,
+                                    label: 'Discount',
+                                    value: '${order.selectedDuration.discount}%',
+                                    icon: Icons.local_offer,
+                                  ),
+                                  _buildInfoChip(
+                                    context,
+                                    label: 'Security Deposit',
+                                    value: '₹${order.selectedDuration.securityDeposit}',
+                                    icon: Icons.security,
+                                  ),
+                                  _buildInfoChip(
+                                    context,
+                                    label: 'COD Fee',
+                                    value: '₹${order.codFee}',
+                                    icon: Icons.atm,
+                                  ),
+                                ],
+                              ),
+
+                              if (order.tasks.isNotEmpty) ...[
+                                SizedBox(height: screenWidth * 0.03),
+                                _buildInstallationServiceStatusSection(
+                                  context,
+                                  order: order,
+                                ),
+                              ] else ...[
+                                SizedBox(height: screenWidth * 0.03),
+                                Text(
+                                  'Installation Status',
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.032,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                SizedBox(height: screenHeight * 0.01),
+                                Container(
+                                  width: double.infinity,
+                                  padding: EdgeInsets.all(screenWidth * 0.04),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    order.installationStatus ?? 'Pending',
+                                    style: TextStyle(
+                                      fontSize: screenWidth * 0.04,
+                                      fontWeight: FontWeight.w600,
+                                      color: (order.installationStatus ?? 'Pending').toLowerCase() == 'completed'
+                                          ? Colors.green
+                                          : (order.installationStatus ?? 'Pending').toLowerCase() == 'in progress'
+                                          ? Colors.orange
+                                          : Colors.blue,
+                                    ),
+                                  ),
+                                ),
+                              ],
+
+                              if (order.paymentStatus.toLowerCase() == 'confirmed' ||
+                                  order.paymentStatus.toLowerCase() == 'completed') ...[
+                                SizedBox(height: screenWidth * 0.03),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => _downloadInvoice(order.customOrderId),
+                                    icon: Icon(Icons.download, size: screenWidth * 0.04),
+                                    label: Text(
+                                      'Download Invoice',
+                                      style: TextStyle(fontSize: screenWidth * 0.035),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: theme.colorScheme.primary,
+                                      foregroundColor: theme.colorScheme.onPrimary,
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: screenWidth * 0.04,
+                                        vertical: screenWidth * 0.02,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8.0),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: screenHeight * 0.02),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInstallationServiceStatusSection(
+    BuildContext context, {
+    required Order order,
+  }) {
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Installation & Service',
+          style: TextStyle(
+            fontSize: screenWidth * 0.039,
+            fontWeight: FontWeight.w400,
+            color: Colors.black87,
+          ),
+        ),
+        SizedBox(height: screenHeight * 0.01),
+        Column(
+          children: order.tasks.map((task) {
+            final isInstallation = task.taskType == 1;
+            final statusColor = _getStatusColor(task.taskStatus);
+            final isCompleted = task.taskStatus.toLowerCase() == 'completed';
+            final isInProgress = task.taskStatus.toLowerCase() == 'in progress';
+
+            return Container(
+              margin: EdgeInsets.only(bottom: screenHeight * 0.015),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: Colors.grey.shade300,
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.08),
+                    blurRadius: 8,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(screenWidth * 0.04),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.08),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(screenWidth * 0.025),
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                isInstallation ? Icons.build : Icons.build_circle,
+                                color: Colors.white,
+                                size: screenWidth * 0.05,
+                              ),
+                            ),
+                            SizedBox(width: screenWidth * 0.03),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isInstallation ? "Installation" : "Service",
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.032,
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: screenWidth * 0.01),
+                                Text(
+                                  task.taskStatus,
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.028,
+                                    color: statusColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.03,
+                            vertical: screenWidth * 0.015,
+                          ),
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isCompleted ? Icons.check_circle : 
+                                isInProgress ? Icons.update : 
+                                Icons.pending_actions,
+                                color: statusColor,
+                                size: screenWidth * 0.04,
+                              ),
+                              SizedBox(width: screenWidth * 0.01),
+                              Text(
+                                isCompleted ? 'Done' : 'In Progress',
+                                style: TextStyle(
+                                  fontSize: screenWidth * 0.028,
+                                  color: statusColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  Padding(
+                    padding: EdgeInsets.all(screenWidth * 0.04),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+
+                        
+                        Text(
+                          'Assigned Technician',
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.031,
+                            color: Colors.black54,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: screenWidth * 0.02),
+                        Container(
+                          padding: EdgeInsets.all(screenWidth * 0.03),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(screenWidth * 0.02),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primary.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.person,
+                                      color: theme.colorScheme.primary,
+                                      size: screenWidth * 0.045,
+                                    ),
+                                  ),
+                                  SizedBox(width: screenWidth * 0.03),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Name',
+                                          style: TextStyle(
+                                            fontSize: screenWidth * 0.028,
+                                            color: Colors.black54,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        SizedBox(height: screenWidth * 0.005),
+                                        Text(
+                                          task.technician.name,
+                                          style: TextStyle(
+                                            color: Colors.black87,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: screenWidth * 0.035,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: screenWidth * 0.025),
+                              GestureDetector(
+                                onTap: () => _makePhoneCall(task.technician.phone),
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: screenWidth * 0.03,
+                                    vertical: screenWidth * 0.02,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.phone,
+                                        color: theme.colorScheme.primary,
+                                        size: screenWidth * 0.045,
+                                      ),
+                                      SizedBox(width: screenWidth * 0.02),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Contact',
+                                              style: TextStyle(
+                                                fontSize: screenWidth * 0.028,
+                                                color: Colors.black54,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            SizedBox(height: screenWidth * 0.005),
+                                            Text(
+                                              task.technician.phone,
+                                              style: TextStyle(
+                                                color: theme.colorScheme.primary,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: screenWidth * 0.035,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Icon(
+                                        Icons.arrow_forward_ios,
+                                        color: theme.colorScheme.primary,
+                                        size: screenWidth * 0.04,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        if (isCompleted) ...[
+                          SizedBox(height: screenWidth * 0.03),
+                          Container(
+                            padding: EdgeInsets.all(screenWidth * 0.03),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: Colors.green.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(screenWidth * 0.02),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    Icons.security_outlined,
+                                    color: Colors.green,
+                                    size: screenWidth * 0.04,
+                                  ),
+                                ),
+                                SizedBox(width: screenWidth * 0.02),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Installation Complete',
+                                        style: TextStyle(
+                                          fontSize: screenWidth * 0.032,
+                                          color: Colors.green,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(height: screenWidth * 0.005),
+                                      Text(
+                                        'OTP shared with technician',
+                                        style: TextStyle(
+                                          fontSize: screenWidth * 0.028,
+                                          color: Colors.green.withOpacity(0.7),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return const Color(0xFF4CAF50);
+      case 'in progress':
+        return const Color(0xFFFFC107);
+      case 'pending':
+        return const Color(0xFFFF5722);
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: phoneNumber,
+    );
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     Get.lazyPut(() => SubscriptionListController());
+    Get.lazyPut(() => SettingsController());
     final settingsController = Get.find<SettingsController>();
     final subscriptionController = Get.find<SubscriptionListController>();
     final theme = Theme.of(context);
@@ -302,7 +1101,7 @@ class SubscriptionPlanPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Subscription Plan'),
+        title: const Text('Order History'),
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: theme.colorScheme.onPrimary,
       ),
@@ -353,282 +1152,138 @@ class SubscriptionPlanPage extends StatelessWidget {
               children: [
                 GestureDetector(
                   onTap: () {
-                    settingsController.toggleDeliveryAddressVisibility(index);
+                    _showDetailsBottomSheet(context, order);
                   },
                   child: Container(
-                    padding: EdgeInsets.all(screenWidth * 0.04),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 241, 239, 239),
-                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
-                          spreadRadius: 2,
-                          blurRadius: 5,
-                          offset: const Offset(0, 3),
+                          color: Colors.grey.withOpacity(0.12),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        /// --- Header: Model + Status
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              order.modelName ?? 'Unknown Model',
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.05,
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.primary,
+                    child: Padding(
+                      padding: EdgeInsets.all(screenWidth * 0.04),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      order.modelName ?? 'Unknown Model',
+                                      style: TextStyle(
+                                        fontSize: screenWidth * 0.042,
+                                        fontWeight: FontWeight.bold,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                    SizedBox(height: screenWidth * 0.008),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.devices_other,
+                                          size: screenWidth * 0.035,
+                                          color: Colors.black54,
+                                        ),
+                                        SizedBox(width: screenWidth * 0.01),
+                                        Text(
+                                          'ID: ${order.wpDeviceId ?? 'N/A'}',
+                                          style: TextStyle(
+                                            fontSize: screenWidth * 0.032,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: (order.orderStatus == 'Confirmed' ||
-                                    order.orderStatus == 'Shipped')
-                                    ? Colors.green.withOpacity(0.1)
-                                    : Colors.orange.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                order.orderStatus ?? 'Unknown',
-                                style: TextStyle(
-                                  fontSize: screenWidth * 0.035,
+                              SizedBox(width: screenWidth * 0.02),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: screenWidth * 0.03,
+                                  vertical: screenWidth * 0.015,
+                                ),
+                                decoration: BoxDecoration(
                                   color: (order.orderStatus == 'Confirmed' ||
                                       order.orderStatus == 'Shipped')
                                       ? Colors.green
                                       : Colors.orange,
-                                  fontWeight: FontWeight.w600,
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: screenWidth * 0.02),
-
-                        /// --- Basic Info (Plan, Duration, Price, Expiry)
-                        Text(
-                          'Plan: ${order.selectedPlan.label ?? 'N/A'} (${order.selectedPlan.capacity ?? 'N/A'})',
-                          style: TextStyle(fontSize: screenWidth * 0.04, color: Colors.black87),
-                        ),
-                        SizedBox(height: screenWidth * 0.01),
-                        Text(
-                          'Duration: ${order.selectedDuration.durationTimeLimit ?? 'N/A'}',
-                          style: TextStyle(fontSize: screenWidth * 0.04, color: Colors.black87),
-                        ),
-                        SizedBox(height: screenWidth * 0.01),
-                        Text(
-                          'Total Price: ₹${order.price.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: screenWidth * 0.04,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        SizedBox(height: screenWidth * 0.02),
-                        
-                        /// --- View Details Button
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Text(
-                              'View Details',
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.035,
-                                color: theme.colorScheme.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            SizedBox(width: screenWidth * 0.01),
-                            Icon(
-                              settingsController.deliveryAddressVisibility[index]
-                                  ? Icons.keyboard_arrow_up
-                                  : Icons.keyboard_arrow_down,
-                              size: screenWidth * 0.04,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                /// --- Expandable Details Section
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  child: settingsController.deliveryAddressVisibility[index]
-                      ? Padding(
-                          padding: EdgeInsets.only(top: screenHeight * 0.02),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              /// --- Delivery Address Section
-                              Text(
-                                'Delivery Address',
-                                style: TextStyle(
-                                  fontSize: screenWidth * 0.045,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              SizedBox(height: screenHeight * 0.01),
-                              Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.all(screenWidth * 0.04),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.grey.shade300),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      order.deliveryAddress.name ?? 'N/A',
-                                      style: TextStyle(
-                                        fontSize: screenWidth * 0.04,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    SizedBox(height: screenWidth * 0.01),
-                                    Text(
-                                      order.deliveryAddress.phone ?? 'N/A',
-                                      style: TextStyle(
-                                        fontSize: screenWidth * 0.035,
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                    SizedBox(height: screenWidth * 0.01),
-                                    Text(
-                                      '${order.deliveryAddress.street ?? 'N/A'}${order.deliveryAddress.landmark != null && order.deliveryAddress.landmark!.isNotEmpty ? ', ${order.deliveryAddress.landmark}' : ''}, ${order.deliveryAddress.city ?? 'N/A'}, ${order.deliveryAddress.state ?? 'N/A'} - ${order.deliveryAddress.pincode ?? 'N/A'}',
-                                      style: TextStyle(
-                                        fontSize: screenWidth * 0.035,
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              
-                              /// --- Expires On
-                              Padding(
-                                padding: EdgeInsets.only(top: screenHeight * 0.02),
                                 child: Text(
-                                  'Expires On: ${order.subscriptionExpiryDate.isNotEmpty ? DateFormat('dd MMM yyyy').format(DateTime.parse(order.subscriptionExpiryDate)) : 'N/A'}',
+                                  order.orderStatus ?? 'Unknown',
                                   style: TextStyle(
-                                    fontSize: screenWidth * 0.04,
-                                    color: Colors.black54,
-                                    fontWeight: FontWeight.w500,
+                                    fontSize: screenWidth * 0.03,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                ),
-                              ),
-                              
-                              /// --- Payment Details Section
-                              Padding(
-                                padding: EdgeInsets.only(top: screenHeight * 0.03),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Payment Details',
-                                      style: TextStyle(
-                                        fontSize: screenWidth * 0.045,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    SizedBox(height: screenHeight * 0.01),
-                                    
-                                    /// --- Two-column Info Boxes
-                                    GridView.count(
-                                      physics: const NeverScrollableScrollPhysics(),
-                                      shrinkWrap: true,
-                                      crossAxisCount: 2,
-                                      crossAxisSpacing: screenWidth * 0.03,
-                                      mainAxisSpacing: screenWidth * 0.02,
-                                      childAspectRatio: 2.6,
-                                      children: [
-                                        _buildInfoChip(
-                                          context,
-                                          label: 'Payment Type',
-                                          value: order.paymentStatus.toLowerCase() == 'cod' ? 'COD' : 'Online',
-                                          icon: Icons.atm,
-                                        ),
-                                        _buildInfoChip(
-                                          context,
-                                          label: 'Payment Status',
-                                          value: order.paymentStatus,
-                                          icon: Icons.payments,
-                                          valueColor: order.paymentStatus.toLowerCase() == 'completed'
-                                              ? Colors.green
-                                              : Colors.orange,
-                                        ),
-                                        _buildInfoChip(
-                                          context,
-                                          label: 'Grand Total',
-                                          value: '₹${order.price.toStringAsFixed(2)}',
-                                          icon: Icons.account_balance_wallet,
-                                        ),
-                                        _buildInfoChip(
-                                          context,
-                                          label: 'GST',
-                                          value: '${order.selectedDuration.gst}%',
-                                          icon: Icons.percent,
-                                        ),
-                                        _buildInfoChip(
-                                          context,
-                                          label: 'Security Deposit',
-                                          value: '₹${order.selectedDuration.securityDeposit}',
-                                          icon: Icons.security,
-                                        ),
-                                        _buildInfoChip(
-                                          context,
-                                          label: 'Discount',
-                                          value: '${order.selectedDuration.discount}%',
-                                          icon: Icons.local_offer,
-                                        ),
-                                      ],
-                                    ),
-                                    
-                                    /// --- Download Button (Only show if payment is confirmed/completed)
-                                    if (order.paymentStatus.toLowerCase() == 'confirmed' || 
-                                        order.paymentStatus.toLowerCase() == 'completed') ...[
-                                      SizedBox(height: screenWidth * 0.03),
-                                      Align(
-                                        alignment: Alignment.centerRight,
-                                        child: ElevatedButton.icon(
-                                          onPressed: () => _downloadInvoice(order.customOrderId),
-                                          icon: Icon(Icons.download, size: screenWidth * 0.04),
-                                          label: Text(
-                                            'Download Invoice',
-                                            style: TextStyle(fontSize: screenWidth * 0.035),
-                                          ),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: theme.colorScheme.primary,
-                                            foregroundColor: theme.colorScheme.onPrimary,
-                                            padding: EdgeInsets.symmetric(
-                                              horizontal: screenWidth * 0.04,
-                                              vertical: screenWidth * 0.02,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(8.0),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
                                 ),
                               ),
                             ],
                           ),
-                        )
-                      : const SizedBox.shrink(),
+                          SizedBox(height: screenWidth * 0.015),
+                          Text(
+                            'Plan: ${order.selectedPlan.label ?? 'N/A'} (${order.selectedPlan.capacity}L)',
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.035,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          SizedBox(height: screenWidth * 0.008),
+                          Text(
+                            'Duration: ${order.selectedDuration.durationTimeLimit ?? 'N/A'}',
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.035,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          SizedBox(height: screenWidth * 0.008),
+                          Text(
+                            'Total Price: ₹${order.price.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.036,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          SizedBox(height: screenWidth * 0.025),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text(
+                                'View Details',
+                                style: TextStyle(
+                                  fontSize: screenWidth * 0.032,
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(width: screenWidth * 0.015),
+                              Icon(
+                                Icons.keyboard_arrow_up,
+                                size: screenWidth * 0.05,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             );

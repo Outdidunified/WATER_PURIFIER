@@ -41,6 +41,7 @@ const useEditProducts = (userInfo) => {
   const [connectivity, setConnectivity] = useState([]);
   const [durations, setDurations] = useState([createEmptyDuration()]);
   const [status, setStatus] = useState('');
+  const [modelType, setModelType] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [productData, setProductData] = useState(null);
@@ -63,6 +64,7 @@ const useEditProducts = (userInfo) => {
       setProductDetails(data.product_details || '');
       setProductSpecifications(data.product_specifications || '');
       setWpDeviceQuantity(data.wp_device_quantity || 0);
+      setModelType(data.model_type || '');
 
       const connectivityData = data.connectivity || '';
       const connectivityArray = Array.from(
@@ -114,6 +116,7 @@ const useEditProducts = (userInfo) => {
 
       originalDataRef.current = {
         modelName: data.model_name || '',
+        modelType: data.model_type || '',
         productDetails: data.product_details || '',
         productSpecifications: data.product_specifications || '',
         wpDeviceQuantity: data.wp_device_quantity || 0,
@@ -266,26 +269,8 @@ const useEditProducts = (userInfo) => {
 
         if (field === 'label') {
           const label = rawValue.toLowerCase();
-          let updated = { ...plan, label };
-
-          switch (label) {
-            case 'solo':
-              updated = { ...updated, capacity: '1' };
-              break;
-            case 'couple':
-              updated = { ...updated, capacity: '2' };
-              break;
-            case 'family':
-              updated = { ...updated, capacity: '4' };
-              break;
-            case 'unlimited':
-              updated = { ...updated, capacity: '' };
-              break;
-            default:
-              updated = { ...updated, capacity: '' };
-              break;
-          }
-          return updated;
+          const capacity = label === 'unlimited' ? '' : plan.capacity || '';
+          return { ...plan, label, capacity };
         }
 
         return { ...plan, [field]: rawValue };
@@ -349,7 +334,7 @@ const useEditProducts = (userInfo) => {
       )
     );
 
-    if (!modelName || !productDetails || !mainImage) {
+    if (!modelName || !modelType || !productDetails || !mainImage) {
       setErrorMessage('All required fields must be filled.');
       setLoading(false);
       return;
@@ -419,6 +404,7 @@ const useEditProducts = (userInfo) => {
     formData.append('model_id', modelId);
     formData.append('model_name', modelName);
     formData.append('product_details', productDetails);
+    formData.append('model_type', modelType);
     if (productSpecifications instanceof File) {
       formData.append('product_specifications', productSpecifications);
     }
@@ -499,6 +485,8 @@ const useEditProducts = (userInfo) => {
     handleAddProduct,
     status,
     setStatus,
+    modelType,
+    setModelType,
   };
 };
 

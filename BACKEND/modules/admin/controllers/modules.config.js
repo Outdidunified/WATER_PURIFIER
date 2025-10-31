@@ -7,6 +7,7 @@ module.exports = [
   { module: "manage_orders", actions: ["create", "view", "update", "delete"] },
   { module: "manage_products", actions: ["create", "view", "update", "delete"] },
   { module: "manage_services", actions: ["create", "view", "update", "delete"] },
+  { module: "manage_requests", actions: ["create", "view", "update", "delete"] },
   { module: "manage_installations", actions: ["create", "view", "update", "delete"] },
   { module: "manage_contact", actions: ["create", "view", "update", "delete"] },
   { module: "manage_call_requests", actions: ["create", "view", "update", "delete"] },

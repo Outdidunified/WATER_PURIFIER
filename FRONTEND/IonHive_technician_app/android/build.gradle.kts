@@ -1,3 +1,5 @@
+import com.android.build.gradle.LibraryExtension
+
 buildscript {
     repositories {
         google()
@@ -24,6 +26,16 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+subprojects {
+    if (name == "flutter_bluetooth_serial") {
+        plugins.withId("com.android.library") {
+            extensions.configure<LibraryExtension> {
+                namespace = "io.github.edufolly.flutterbluetoothserial"
+            }
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

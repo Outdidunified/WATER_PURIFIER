@@ -40,9 +40,11 @@ const useManageProducts = () => {
   const handleSearchInputChange = (e) => {
     const inputValue = e.target.value.toUpperCase();
     if (Array.isArray(data)) {
-      const filtered = data.filter((item) =>
-        item.model_name.toUpperCase().includes(inputValue)
-      );
+      const filtered = data.filter((item) => {
+        const name = item.model_name?.toUpperCase() || '';
+        const type = item.model_type?.toUpperCase() || '';
+        return name.includes(inputValue) || type.includes(inputValue);
+      });
       setPosts(filtered);
     }
   };

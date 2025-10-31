@@ -28,6 +28,9 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
     approveLeave,
     rejectLeave,
     getTasksCount,
+    assignmentHistoryMap,
+    historyLoading,
+    historyError,
   } = ViewLeaveDetailsHooks(leaveRequestId, leaveFromState);
 
   const handleApprove = async () => {
@@ -104,6 +107,12 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
 
   const tasksCount = getTasksCount();
   const isProcessed = leaveDetails.status !== 'Requested';
+  const isRejected = leaveDetails.status === 'Rejected';
+  const decisionDateLabel = isRejected ? 'Rejected Date' : 'Approval Date';
+  const decisionByLabel = isRejected ? 'Rejected By' : 'Approved By';
+  const decisionColor = isRejected ? '#dc3545' : '#28a745';
+  const decisionBackground = isRejected ? '#f8d7da' : '#d4edda';
+  const decisionBorder = isRejected ? '#f5c6cb' : '#b1dfbb';
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
@@ -135,6 +144,43 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
     if (normalizedStatus === 'completed') return 'success';
     if (normalizedStatus === 'cancelled') return 'danger';
     return 'secondary';
+  };
+
+  const getTaskIdentifier = (task) => {
+    if (!task || typeof task !== 'object') {
+      return null;
+    }
+    if (task.task_id !== undefined && task.task_id !== null) {
+      return String(task.task_id);
+    }
+    if (task.wp_device_id) {
+      return String(task.wp_device_id);
+    }
+    if (task.device_id) {
+      return String(task.device_id);
+    }
+    return null;
+  };
+
+  const formatDateTime = (value) => {
+    if (!value) return '-';
+    try {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '-';
+      return date.toLocaleString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return '-';
+    }
+  };
+
+  const getHistoryNotes = (entry) => {
+    return entry?.unassigned_reason || entry?.reassigned_reason || entry?.pending_reason || entry?.notes || '-';
   };
 
   return (
@@ -278,13 +324,13 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
                           <div className="col-md-6 mb-3">
                             <div style={{ 
                               padding: '12px',
-                              backgroundColor: '#d4edda',
-                              border: '1px solid #b1dfbb',
+                              backgroundColor: decisionBackground,
+                              border: `1px solid ${decisionBorder}`,
                               borderRadius: '4px',
-                              borderLeft: '4px solid #28a745'
+                              borderLeft: `4px solid ${decisionColor}`
                             }}>
-                              <small className="text-muted d-block mb-1 font-weight-bold">Approval Date</small>
-                              <h6 className="font-weight-bold mb-0" style={{ color: '#28a745' }}>
+                              <small className="text-muted d-block mb-1 font-weight-bold">{decisionDateLabel}</small>
+                              <h6 className="font-weight-bold mb-0" style={{ color: decisionColor }}>
                                 {leaveDetails.approval_date ? formatDate(leaveDetails.approval_date) : 'N/A'}
                               </h6>
                             </div>
@@ -292,18 +338,18 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
                           <div className="col-md-6 mb-3">
                             <div style={{ 
                               padding: '12px',
-                              backgroundColor: '#d4edda',
-                              border: '1px solid #b1dfbb',
+                              backgroundColor: decisionBackground,
+                              border: `1px solid ${decisionBorder}`,
                               borderRadius: '4px',
-                              borderLeft: '4px solid #28a745'
+                              borderLeft: `4px solid ${decisionColor}`
                             }}>
-                              <small className="text-muted d-block mb-1 font-weight-bold">Approved By</small>
-                              <h6 className="font-weight-bold mb-0" style={{ color: '#28a745' }}>{leaveDetails.approved_by || 'N/A'}</h6>
+                              <small className="text-muted d-block mb-1 font-weight-bold">{decisionByLabel}</small>
+                              <h6 className="font-weight-bold mb-0" style={{ color: decisionColor }}>{leaveDetails.approved_by || leaveDetails.rejected_by || 'N/A'}</h6>
                             </div>
                           </div>
                         </div>
 
-                        {leaveDetails.status === 'Rejected' && (
+                        {isRejected && (
                           <>
                             <hr />
                             <div>
@@ -329,44 +375,88 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
               {/* Right Column - Sidebar */}
               <div className="col-12 grid-margin stretch-card">
                 {/* All Tasks Summary */}
-                <div className="card mb-3">
+
+
+                {/* <div className="card mb-3">
                   <div className="card-body">
-                    <h5 className="card-title font-weight-bold mb-3">Task Status Summary (All)</h5>
-                    
-                    {Object.entries(tasksCount).length > 0 ? (
-                      <>
-                        {Object.entries(tasksCount).map(([status, count], index) => {
-                          const getAlertClass = (s) => {
-                            const lower = s?.toLowerCase();
-                            if (lower === 'pending' || lower === 'perding') return 'alert-warning';
-                            if (lower === 'completed' || lower === 'complted') return 'alert-success';
-                            if (lower === 'in_progress') return 'alert-primary';
-                            if (lower === 'accepted') return 'alert-info';
-                            if (lower === 'waiting') return 'alert-warning';
-                            if (lower === 'rejected') return 'alert-danger';
-                            return 'alert-secondary';
-                          };
-                          
-                          return (
-                            <div className="row mb-2" key={status}>
-                              <div className="col-12">
-                                <div className={`alert ${getAlertClass(status)} mb-2`} role="alert" style={{ padding: '10px' }}>
-                                  <small className="text-muted d-block">{status}</small>
-                                  <h6 className="font-weight-bold mb-0">{count}</h6>
-                                </div>
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <h5 className="card-title font-weight-bold mb-0">Assignment History</h5>
+                      {pendingTasks.length > 0 && (
+                        <span className="badge badge-outline-primary" style={{ border: '1px solid #0078d4', color: '#0078d4', padding: '6px 10px' }}>
+                          Tasks {pendingTasks.length}
+                        </span>
+                      )}
+                    </div>
+                    {historyLoading ? (
+                      <div className="d-flex justify-content-center py-4">
+                        <div className="spinner-border" role="status">
+                          <span className="sr-only">Loading...</span>
+                        </div>
+                      </div>
+                    ) : pendingTasks.length > 0 ? (
+                      pendingTasks.map((task) => {
+                        const taskKey = getTaskIdentifier(task);
+                        const historyData = assignmentHistoryMap?.[taskKey];
+                        const historyEntries = historyData?.assignment_history || [];
+                        const totalAssignments = historyData?.total_assignments ?? historyEntries.length;
+                        const status = historyData?.task_status || task.status;
+                        const pendingReason = historyData?.pending_reason || task.pending_reason;
+                        const device = historyData?.wp_device_id || historyData?.device_id || task.wp_device_id || task.device_id || '-';
+                        return (
+                          <div key={taskKey || Math.random()} className="mb-3" style={{ border: '1px solid #e0e0e0', borderRadius: '6px' }}>
+                            <div style={{ padding: '12px 16px', borderBottom: historyEntries.length > 0 ? '1px solid #e0e0e0' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+                              <div>
+                                <h6 className="font-weight-bold mb-1">Task {task.task_id || taskKey || '-'}</h6>
+                                <div className="text-muted small">Device {device}</div>
+                                <div className="text-muted small">Assignments {totalAssignments}</div>
+                              </div>
+                              <div>
+                                <span className={`badge badge-${getTaskStatusBadgeClass(status)}`}>{status || 'Unknown'}</span>
                               </div>
                             </div>
-                          );
-                        })}
-                        <div className="row mt-3">
-                          <div className="col-12">
-                            <div className="alert alert-secondary mb-0" role="alert" style={{ padding: '10px', backgroundColor: '#e7f3ff', borderLeft: '4px solid #0078d4' }}>
-                              <small className="text-muted d-block font-weight-bold">Total Tasks</small>
-                              <h6 className="font-weight-bold mb-0" style={{ color: '#0078d4' }}>{pendingTasks.length}</h6>
+                            <div style={{ padding: '12px 16px' }}>
+                              {pendingReason && (
+                                <div className="alert alert-warning p-2 mb-3">
+                                  <small className="text-muted d-block">Pending Reason</small>
+                                  <span className="font-weight-bold">{pendingReason}</span>
+                                </div>
+                              )}
+                              {historyEntries.length > 0 ? (
+                                <div className="table-responsive">
+                                  <table className="table table-bordered table-sm">
+                                    <thead className="thead-light">
+                                      <tr>
+                                        <th>Technician</th>
+                                        <th>Assigned Date</th>
+                                        <th>Unassigned Date</th>
+                                        <th>Duration (hrs)</th>
+                                        <th>&gt; 3 hrs</th>
+                                        <th>Assigned By</th>
+                                        <th>Notes</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {historyEntries.map((entry, idx) => (
+                                        <tr key={`${taskKey || idx}-${idx}`}>
+                                          <td>{entry?.technician_id || '-'}</td>
+                                          <td>{formatDateTime(entry?.assigned_date)}</td>
+                                          <td>{formatDateTime(entry?.unassigned_date)}</td>
+                                          <td>{entry?.duration_hours !== null && entry?.duration_hours !== undefined ? entry.duration_hours : '-'}</td>
+                                          <td>{entry?.exceeded_three_hours === true ? 'Yes' : entry?.exceeded_three_hours === false ? 'No' : '-'}</td>
+                                          <td>{entry?.assigned_by || '-'}</td>
+                                          <td>{getHistoryNotes(entry)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              ) : (
+                                <div className="text-muted" style={{ fontSize: '13px' }}>Assignment history not available.</div>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      </>
+                        );
+                      })
                     ) : (
                       <div style={{
                         padding: '20px',
@@ -375,11 +465,16 @@ const ViewLeaveDetails = ({ userInfo, handleLogout }) => {
                         borderRadius: '4px',
                         border: '1px solid #dee2e6'
                       }}>
-                        <p className="text-muted mb-0" style={{ fontSize: '13px' }}>No tasks assigned</p>
+                        <p className="text-muted mb-0" style={{ fontSize: '13px' }}>No tasks found for this technician.</p>
+                      </div>
+                    )}
+                    {historyError && (
+                      <div className="alert alert-warning mt-3 mb-0" role="alert">
+                        {historyError}
                       </div>
                     )}
                   </div>
-                </div>
+                </div> */}
 
                 {/* Action Buttons */}
                 {!isProcessed && (

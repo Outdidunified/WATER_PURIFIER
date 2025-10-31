@@ -19,6 +19,8 @@ import ViewRoles from '../../roles/superadmin/page/ManageRoles/ViewRoles';
 import EditRoles from '../../roles/superadmin/page/ManageRoles/EditRoles';
 import ManageServices from '../../roles/superadmin/page/ManageServices/ManageServices';
 import ViewServices from '../../roles/superadmin/page/ManageServices/ViewServices';
+import ManageRequests from '../../roles/superadmin/page/ManageRequests/ManageRequests';
+import ViewManageRequests from '../../roles/superadmin/page/ManageRequests/ViewManageRequests';
 import ManageInstallations from '../../roles/superadmin/page/ManageInstallations/ManageInstallations';
 import ViewInstallations from '../../roles/superadmin/page/ManageInstallations/ViewInstallations';
 import AddProducts from '../../roles/superadmin/page/ManageProducts/AddProducts';
@@ -33,24 +35,36 @@ import axiosInstance from '../../utils/utils';
 
 const SuperAdminApp = () => {
   const storedUser = JSON.parse(sessionStorage.getItem('superAdminUser'));
+  const storedPermissions = JSON.parse(sessionStorage.getItem('superAdminPermissions') || '[]');
   const [loggedIn, setLoggedIn] = useState(!!storedUser);
   const [userInfo, setUserInfo] = useState(storedUser || {});
-  const [permissions, setPermissions] = useState([]);
+  const [permissions, setPermissions] = useState(storedPermissions);
+  const [permissionsLoaded, setPermissionsLoaded] = useState(storedPermissions.length > 0);
   const navigate = useNavigate();
 
-  // Fetch permissions from API
   useEffect(() => {
-    if (loggedIn) {
-      axiosInstance
-        .get(`/api/admin/by-role?ids=${userInfo.role_id}`)
-        .then((res) => {
-          if (res.data.status === 'Success') {
-            setPermissions(res.data.data);
-            sessionStorage.setItem('superAdminPermissions', JSON.stringify(res.data.data));
-          }
-        })
-        .catch((err) => console.error(err));
+    if (!loggedIn) {
+      setPermissions([]);
+      setPermissionsLoaded(true);
+      return;
     }
+
+    if (!userInfo.role_id) {
+      setPermissionsLoaded(true);
+      return;
+    }
+
+    setPermissionsLoaded(false);
+    axiosInstance
+      .get(`/api/admin/by-role?ids=${userInfo.role_id}`)
+      .then((res) => {
+        if (res.data.status === 'Success') {
+          setPermissions(res.data.data);
+          sessionStorage.setItem('superAdminPermissions', JSON.stringify(res.data.data));
+        }
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setPermissionsLoaded(true));
   }, [loggedIn, userInfo.role_id]);
 
   const handleLogin = (data) => {
@@ -76,6 +90,10 @@ const SuperAdminApp = () => {
 
   // Helper to check permission
   const canView = (module) => permissions.find(p => p.module === module)?.can_view;
+
+  if (loggedIn && !permissionsLoaded) {
+    return null;
+  }
 
   return (
     <>
@@ -150,6 +168,13 @@ const SuperAdminApp = () => {
           </>
         )}
 
+        {canView('manage_requests') && (
+          <>
+            <Route path="/ManageRequests" element={<ManageRequests userInfo={userInfo} handleLogout={handleLogout} />} />
+            <Route path="/ViewManageRequests" element={<ViewManageRequests userInfo={userInfo} handleLogout={handleLogout} />} />
+          </>
+        )}
+
         {canView('manage_roles') && (
           <>
             <Route path="/ManageRoles" element={<ManageRoles userInfo={userInfo} handleLogout={handleLogout} />} />
@@ -171,6 +196,13 @@ const SuperAdminApp = () => {
 
         {canView('manage_contact') && (
           <Route path="/ManageContact" element={<ManageContact userInfo={userInfo} handleLogout={handleLogout} />} />
+        )}
+
+        {canView('manage_leaves') && (
+          <>
+            <Route path="/ManageLeaves" element={<ManageLeaves userInfo={userInfo} handleLogout={handleLogout} />} />
+            <Route path="/ViewLeaveDetails/:leaveRequestId" element={<ViewLeaveDetails userInfo={userInfo} handleLogout={handleLogout} />} />
+          </>
         )}
 
         <Route path="/Profile" element={<Profile userInfo={userInfo} handleLogout={handleLogout} />} />

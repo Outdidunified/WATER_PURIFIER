@@ -84,6 +84,26 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     super.dispose();
   }
 
+  List<Plan> _getPlansToDisplay() {
+    if (widget.product.plans.isNotEmpty) {
+      return widget.product.plans;
+    }
+    
+    final Set<int> seenPlanIds = {};
+    final List<Plan> allPlans = [];
+    
+    for (final duration in widget.product.duration) {
+      for (final plan in duration.plans) {
+        if (!seenPlanIds.contains(plan.plansId)) {
+          seenPlanIds.add(plan.plansId);
+          allPlans.add(plan);
+        }
+      }
+    }
+    
+    return allPlans;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -451,7 +471,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       opacity: 1.0,
                       duration: const Duration(milliseconds: 500),
                       child: Column(
-                        children: widget.product.plans.map((plan) {
+                        children: _getPlansToDisplay().map((plan) {
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(

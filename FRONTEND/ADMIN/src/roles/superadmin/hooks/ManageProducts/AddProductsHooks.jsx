@@ -31,6 +31,7 @@ const useAddProducts = (userInfo) => {
   const [loading, setLoading] = useState(false);
 
   const [modelName, setModelName] = useState('');
+  const [modelType, setModelType] = useState('');
   const [productDetails, setProductDetails] = useState('');
   const [productSpecifications, setProductSpecifications] = useState(null);
   const [mainImage, setMainImage] = useState(null);
@@ -158,26 +159,8 @@ const useAddProducts = (userInfo) => {
 
         if (field === 'label') {
           const label = rawValue.toLowerCase();
-          let updated = { ...plan, label };
-
-          switch (label) {
-            case 'solo':
-              updated = { ...updated, capacity: '1' };
-              break;
-            case 'couple':
-              updated = { ...updated, capacity: '2' };
-              break;
-            case 'family':
-              updated = { ...updated, capacity: '4' };
-              break;
-            case 'unlimited':
-              updated = { ...updated, capacity: '' };
-              break;
-            default:
-              updated = { ...updated, capacity: '' };
-              break;
-          }
-          return updated;
+          const capacity = label === 'unlimited' ? '' : plan.capacity || '';
+          return { ...plan, label, capacity };
         }
 
         return { ...plan, [field]: rawValue };
@@ -275,6 +258,7 @@ const useAddProducts = (userInfo) => {
 
   const resetForm = () => {
     setModelName('');
+    setModelType('');
     setProductDetails('');
     setProductSpecifications(null);
     setMainImage(null);
@@ -297,7 +281,7 @@ const useAddProducts = (userInfo) => {
       )
     );
 
-    if (!modelName || !productDetails || !mainImage) {
+    if (!modelName || !modelType || !productDetails || !mainImage) {
       setErrorMessage('All required fields must be filled.');
       setLoading(false);
       return;
@@ -365,6 +349,7 @@ const useAddProducts = (userInfo) => {
 
     const formData = new FormData();
     formData.append('model_name', modelName);
+    formData.append('model_type', modelType);
     formData.append('product_details', productDetails);
     if (productSpecifications) {
       formData.append('product_specifications', productSpecifications);
@@ -443,6 +428,8 @@ const useAddProducts = (userInfo) => {
     wpDeviceQuantity,
     setWpDeviceQuantity,
     handleAddProduct,
+    modelType,
+    setModelType,
   };
 };
 

@@ -40,7 +40,7 @@ class TechnicianController extends GetxController {
       final tasksData = await taskRepository.getAllAssignedTasks();
       debugPrint('Raw tasks data: $tasksData');
       allTasks.value = tasksData;
-      filterTasksByType(selectedStatusFilter.value, selectedTaskType.value);
+      filterTasks(selectedStatusFilter.value);
 
       debugPrint('Tasks fetched: ${allTasks.length}');
     } catch (e) {
@@ -155,8 +155,80 @@ class TechnicianController extends GetxController {
     }
   }
 
+  Future<List<dynamic>> getTechnicianLeaveRequests({
+    required String technicianId,
+    required String email,
+  }) async {
+    try {
+      return await taskRepository.getTechnicianLeaveRequests(
+        technicianId: technicianId,
+        email: email,
+      );
+    } catch (e) {
+      debugPrint('Error fetching leave requests: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> setupBleConnection({
+    required String wpDeviceId,
+    required String macId,
+    required String taskId,
+    required String technicianId,
+  }) async {
+    try {
+      return await taskRepository.setupBleConnection(
+        wpDeviceId: wpDeviceId,
+        macId: macId,
+        taskId: taskId,
+        technicianId: technicianId,
+      );
+    } catch (e) {
+      debugPrint('Error setting up BLE connection: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updateInProgressTaskLeaveAction({
+    required String technicianId,
+    required String email,
+    required int taskId,
+    required String action,
+  }) async {
+    try {
+      isRefreshing.value = true;
+      final response = await taskRepository.updateInProgressTaskLeaveAction(
+        technicianId: technicianId,
+        email: email,
+        taskId: taskId,
+        action: action,
+      );
+
+      if (!response.error) {
+        CustomSnackbar.showSuccess(message: response.message);
+        await loadTasks();
+      } else {
+        CustomSnackbar.showError(message: response.message);
+      }
+    } catch (e) {
+      errorMessageTaskUpdation.value = e.toString();
+      debugPrint('Error updating task leave action: $e');
+      rethrow;
+    } finally {
+      isRefreshing.value = false;
+    }
+  }
+
   void filterTasks(String? status) {
-    filterTasksByType(status, selectedTaskType.value);
+    selectedStatusFilter.value = status ?? 'Pending';
+    filteredTasks.value = allTasks
+        .where((task) =>
+            status == null ||
+            task.taskStatus?.toLowerCase() == status.toLowerCase())
+        .toList();
+    filteredTasks.refresh();
+    debugPrint(
+        'Filtered tasks by status: ${selectedStatusFilter.value} - Count: ${filteredTasks.length}');
   }
 
   void switchTaskType(int taskType) {

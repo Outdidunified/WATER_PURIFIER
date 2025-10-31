@@ -16,4 +16,14 @@ class TasknUrl {
     url: '${Core.baseUrl}/api/app/technicianhome/acceptDeclineTask',
     method: 'POST',
   );
+
+  static final Endpoint updateInProgressTaskLeaveAction = Endpoint(
+    url: '${Core.baseUrl}/api/app/technicianhome/updateInProgressTaskLeaveAction',
+    method: 'POST',
+  );
+
+  static final Endpoint setupBleConnection = Endpoint(
+    url: '${Core.baseUrl}/api/app/technicianhome/setupBleConnection',
+    method: 'POST',
+  );
 }

@@ -97,7 +97,7 @@ class SettingsController extends GetxController {
   var isCollectingServiceRequest = false.obs;
   var isSubmitting = false.obs;
   var isTyping = false.obs; // For typing indicator
-  var currentStep = Rx<String?>(null); // 'device_selection', 'description', 'direction', 'confirm'
+  var currentStep = Rx<String?>(null); // 'device_selection', 'description', 'confirm'
   var taskDescription = Rx<String?>(null);
   var direction = Rx<String?>(null);
   var activeSubscriptions = RxList<home_models.Order>([]);
@@ -105,6 +105,16 @@ class SettingsController extends GetxController {
 
   final SettingsRepository _settingsRepository;
   final AIService _aiService;
+
+  /// Get only subscriptions with task_type 1 and task_status Completed
+  List<home_models.Order> get completedSubscriptions {
+    return activeSubscriptions
+        .where((subscription) =>
+            subscription.tasks.any((task) =>
+                task.taskType == 1 &&
+                task.taskStatus.trim().toLowerCase() == 'completed'))
+        .toList();
+  }
 
   SettingsController({
     SettingsRepository? settingsRepository,
@@ -484,7 +494,7 @@ class SettingsController extends GetxController {
       );
 
       CustomSnackbar.showSuccess(message: 'User details updated successfully');
-      // Navigate back immediately after showing success message
+      await Future.delayed(const Duration(milliseconds: 1500));
       Get.back();
     } else {
       CustomSnackbar.showError(
@@ -602,21 +612,10 @@ class SettingsController extends GetxController {
 
       if (currentStep.value == 'description') {
         taskDescription.value = text;
-        currentStep.value = 'direction';
-        final botMessage = MessageModel(
-          text: 'Please provide the direction or location details.',
-          isBot: true,
-          timestamp: DateTime.now(),
-        );
-        isTyping.value = false;
-        messages.add(botMessage);
-        scrollToBottom();
-      } else if (currentStep.value == 'direction') {
-        direction.value = text;
         currentStep.value = 'confirm';
         final botMessage = MessageModel(
           text:
-              'Please review your details:\nDescription: ${taskDescription.value}\nDirection: ${direction.value}\nDo you want to submit this request?',
+              'Please review your details:\nDescription: ${taskDescription.value}\n\nDo you want to submit this request?',
           isBot: true,
           timestamp: DateTime.now(),
           showConfirmButtons: true,
@@ -695,7 +694,6 @@ class SettingsController extends GetxController {
     isSubmitting.value = false; // Reset submitting flag
     selectedDeviceId.value = null; // Reset selected device
     taskDescription.value = null; // Reset description
-    direction.value = null; // Reset direction
     final botMessage = MessageModel(
       text: 'Please select the device for which you need service.',
       isBot: true,
@@ -745,9 +743,6 @@ class SettingsController extends GetxController {
       if (deviceId.isNotEmpty) {
         taskDesc += '\nDevice ID: $deviceId';
       }
-      if (direction.value != null && direction.value!.isNotEmpty) {
-        taskDesc += '\nDirection: ${direction.value}';
-      }
 
       final response = await _settingsRepository.createServiceRequest(
         userId: userId,
@@ -790,7 +785,6 @@ class SettingsController extends GetxController {
       isCollectingServiceRequest.value = false;
       currentStep.value = null;
       taskDescription.value = null;
-      direction.value = null;
       selectedDeviceId.value = null;
     }
   }
@@ -814,7 +808,6 @@ class SettingsController extends GetxController {
     isCollectingServiceRequest.value = false;
     currentStep.value = null;
     taskDescription.value = null;
-    direction.value = null;
     selectedDeviceId.value = null;
   }
 

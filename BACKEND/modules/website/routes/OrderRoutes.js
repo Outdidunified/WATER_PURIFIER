@@ -5,6 +5,7 @@ const uploadSubscription = require('../../website/middlewares/uploadSubscription
 
 const {
   createSubscriptionOrder,
+  renewSubscription,
   verifyRazorpayPayment,
   getRechargeHistory,
   downloadInvoice,
@@ -20,6 +21,7 @@ router.post(
   createSubscriptionOrder
 );
 
+router.post('/renewsubscription', authMiddleware, renewSubscription);
 router.post('/orderverify', authMiddleware, verifyRazorpayPayment);
 router.get('/rechargehistory', authMiddleware, getRechargeHistory);
 router.get('/:orderId/invoice', downloadInvoice);
