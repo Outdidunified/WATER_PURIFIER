@@ -22,7 +22,7 @@ exports.createSubscriptionOrder = async (req, res) => {
       selectedPlanId,
       selectedDurationId,
       deliveryAddress,
-      finalMonthlyPrice,
+      discountedPrice,
       discountAmount,
       gstAmount,
       securityDeposit,
@@ -44,11 +44,37 @@ exports.createSubscriptionOrder = async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
     if (Number(user.role_id) !== 3) return res.status(403).json({ message: 'Only End Users can create subscriptions' });
 
-    if (!productModelId || !selectedPlanId || !selectedDurationId || !deliveryAddress ||
-      finalMonthlyPrice === undefined || discountAmount === undefined ||
-      priceWithGST === undefined || gstAmount === undefined || grandTotal === undefined || !wp_device_id) {
-      return res.status(400).json({ message: 'All required fields missing' });
-    }
+   if (
+  !productModelId || 
+  !selectedPlanId || 
+  !selectedDurationId || 
+  !deliveryAddress ||
+  discountedPrice === undefined || 
+  discountAmount === undefined ||
+  priceWithGST === undefined || 
+  gstAmount === undefined || 
+  grandTotal === undefined || 
+  !wp_device_id
+) {
+  const missingFields = [];
+
+  if (!productModelId) missingFields.push('productModelId');
+  if (!selectedPlanId) missingFields.push('selectedPlanId');
+  if (!selectedDurationId) missingFields.push('selectedDurationId');
+  if (!deliveryAddress) missingFields.push('deliveryAddress');
+  if (discountedPrice === undefined) missingFields.push('discountedPrice');
+  if (discountAmount === undefined) missingFields.push('discountAmount');
+  if (priceWithGST === undefined) missingFields.push('priceWithGST');
+  if (gstAmount === undefined) missingFields.push('gstAmount');
+  if (grandTotal === undefined) missingFields.push('grandTotal');
+  if (!wp_device_id) missingFields.push('wp_device_id');
+
+  return res.status(400).json({ 
+    message: 'Missing required fields', 
+    missingFields 
+  });
+}
+
 
     const addrResult = validateDeliveryAddress(deliveryAddress);
     if (!addrResult.valid) return res.status(400).json({ message: addrResult.message });
@@ -146,7 +172,7 @@ exports.createSubscriptionOrder = async (req, res) => {
       user_id: user.user_id,
       orderId,
       razorpayOrderId: razorpayOrder?.id || null,
-      finalMonthlyPrice,
+      discountedPrice,
       discountAmount,
       priceWithGST,
       gstAmount,
@@ -220,7 +246,7 @@ exports.createSubscriptionOrder = async (req, res) => {
         selectedPlan,
         selectedDuration,
         costBreakdown: {
-          finalMonthlyPrice,
+          discountedPrice,
           discountAmount,
           priceWithGST,
           gstAmount,
@@ -248,7 +274,7 @@ exports.renewSubscription = async (req, res) => {
       selectedPlanId,
       selectedDurationId,
       deliveryAddress,
-      finalMonthlyPrice,
+      discountedPrice,
       discountAmount,
       gstAmount,
       securityDeposit,
@@ -271,7 +297,7 @@ exports.renewSubscription = async (req, res) => {
     if (Number(user.role_id) !== 3) return res.status(403).json({ message: 'Only End Users can renew subscriptions' });
 
     if (!productModelId || !selectedPlanId || !selectedDurationId || !deliveryAddress ||
-      finalMonthlyPrice === undefined || discountAmount === undefined ||
+      discountedPrice === undefined || discountAmount === undefined ||
       priceWithGST === undefined || gstAmount === undefined || grandTotal === undefined || !wp_device_id) {
       return res.status(400).json({ message: 'All required fields missing' });
     }
@@ -366,7 +392,7 @@ exports.renewSubscription = async (req, res) => {
       user_id: user.user_id,
       orderId,
       razorpayOrderId: razorpayOrder?.id || null,
-      finalMonthlyPrice,
+      discountedPrice,
       discountAmount,
       priceWithGST,
       gstAmount,
@@ -438,7 +464,7 @@ exports.renewSubscription = async (req, res) => {
         selectedPlan,
         selectedDuration,
         costBreakdown: {
-          finalMonthlyPrice,
+          discountedPrice,
           discountAmount,
           priceWithGST,
           gstAmount,
@@ -938,7 +964,7 @@ exports.downloadInvoice = async (req, res) => {
       { label: 'Device ID', value: order.wp_device_id },
       { label: 'Product Model', value: order.modelName || order.productModelId },
       { label: 'Plan', value: order.selectedPlan?.label },
-      { label: 'Plan Price', value: payment.finalMonthlyPrice != null ? formatCurrency(payment.finalMonthlyPrice) : (payment.baseRent != null ? formatCurrency(payment.baseRent) : null) },
+      { label: 'Plan Price', value: payment.discountedPrice != null ? formatCurrency(payment.discountedPrice) : (payment.baseRent != null ? formatCurrency(payment.baseRent) : null) },
       { label: 'Duration', value: order.selectedDuration?.duration_time_limit },
       { label: 'Total Litres', value: order.totalLitre },
       { label: 'Order Status', value: order.orderStatus },
