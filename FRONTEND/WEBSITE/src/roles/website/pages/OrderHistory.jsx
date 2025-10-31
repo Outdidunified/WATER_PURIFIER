@@ -259,21 +259,42 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                             }}
                                                         >
                                                             {(() => {
+                                                                // 1️⃣ If explicitly true
                                                                 if (order.deliveryAcceptanceStatus === true) {
                                                                     return "Order Confirmed";
                                                                 }
 
-                                                                const statusMap = {
-                                                                    accepted: "Order Accepted",
-                                                                    packed: "Order Packed",
-                                                                    intransit: "Shipped",
-                                                                    outfordelivery: "Out For Delivery",
-                                                                    completed: "Delivered",
-                                                                };
+                                                                // 2️⃣ If explicitly false
+                                                                if (order.deliveryAcceptanceStatus === false) {
+                                                                    return "Awaiting Confirmation";
+                                                                }
 
-                                                                return statusMap[order.deliveryCurrentStatus] || "N/A";
+                                                                // 3️⃣ If it's a string value — use known map or fallback to raw value
+                                                                if (typeof order.deliveryAcceptanceStatus === "string") {
+                                                                    const statusMap = {
+                                                                        accepted: "Order Accepted",
+                                                                        packed: "Order Packed",
+                                                                        intransit: "Shipped",
+                                                                        outfordelivery: "Out For Delivery",
+                                                                        completed: "Delivered",
+                                                                        cancelled: "Order Cancelled",
+                                                                        returned: "Returned",
+                                                                        failed: "Delivery Failed",
+                                                                    };
+
+                                                                    return (
+                                                                        statusMap[order.deliveryAcceptanceStatus.toLowerCase()] ||
+                                                                        // Fallback: show original string, but capitalized
+                                                                        order.deliveryAcceptanceStatus.charAt(0).toUpperCase() +
+                                                                        order.deliveryAcceptanceStatus.slice(1)
+                                                                    );
+                                                                }
+
+                                                                // 4️⃣ Fallback
+                                                                return "N/A";
                                                             })()}
                                                         </span>
+
                                                     </p>
 
                                                     <button
@@ -299,7 +320,6 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                     >
                                                         View Delivery Status
                                                     </button>
-
                                                 </div>
                                             </div>
 
