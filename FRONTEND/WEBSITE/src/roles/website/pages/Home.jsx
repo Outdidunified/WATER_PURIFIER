@@ -145,35 +145,33 @@ const Home = ({ userInfo, token, handleLogout }) => {
         if (!selectedProduct || !selectedDuration || !selectedPlan) return null;
 
         // Base values
-        const basePrice = selectedPlan?.price || 0;
-        const gstRate = selectedDuration?.gst || 0;
-        const discountRate = selectedDuration?.discount || 0;
+        const basePrice = Number(selectedPlan?.price || 0);
+        const gstRate = Number(selectedDuration?.gst || 0);
+        const discountRate = Number(selectedDuration?.discount || 0);
 
         // Duration handling
         const durationText = selectedDuration?.duration_time_limit || "28 days";
         const durationDays = parseInt(durationText.replace(/[^\d]/g, ""), 10) || 28;
 
-        // Step — Base total for selected duration
-        const totalPrice = (basePrice);
+        // Step 1 — Apply Discount FIRST
+        const discountAmount = (basePrice * discountRate) / 100;
+        const discountedPrice = basePrice - discountAmount;
 
-        // Step — GST
-        const gstAmount = (totalPrice * gstRate) / 100;
-        const priceWithGST = totalPrice + gstAmount;
+        // Step 2 — Apply GST on the discounted price
+        const gstAmount = (discountedPrice * gstRate) / 100;
+        const priceWithGST = discountedPrice + gstAmount;
 
-        // Step — Discount
-        const discountAmount = (priceWithGST * discountRate) / 100;
-        const subtotal = priceWithGST - discountAmount;
-
-        // Step — Security Deposit (skip if user already has one)
+        // Step 3 — Security Deposit (only if user doesn’t already have one)
         const securityDeposit = !userInfo?.security_deposit
-            ? selectedDuration?.security_deposit || 0
+            ? Number(selectedDuration?.security_deposit || 0)
             : 0;
 
-        // Step — Final total (without COD)
+        // Step 4 — Subtotal before any extra charges (COD, etc.)
+        const subtotal = priceWithGST;
+
+        // Step 5 — Grand Total (without COD)
         const grandTotal = subtotal + securityDeposit;
 
-        // Step — Monthly equivalent (display only)
-        const finalMonthlyPrice = (subtotal / durationDays) * 28;
 
         return {
             selectedProduct,
@@ -186,14 +184,13 @@ const Home = ({ userInfo, token, handleLogout }) => {
             discountRate,
 
             // Calculated breakdown
-            totalPrice, // base * days
+            discountAmount,
+            discountedPrice,
             gstAmount,
             priceWithGST,
-            discountAmount,
             subtotal,
             securityDeposit,
             grandTotal,
-            finalMonthlyPrice,
             durationDays,
         };
     };
@@ -253,40 +250,43 @@ const Home = ({ userInfo, token, handleLogout }) => {
         setSubLoading(true);
 
         try {
-            //  Base calculations
-            const codFee = paymentType === "cod" ? 100 : 0; // Add ₹100 only if COD
-            const updatedGrandTotal = Number(priceDetails.grandTotal.toFixed(2)) + codFee;
+            // Safe number helper
+            const safeNum = (val) => Number(val || 0);
 
-            //  Construct payload
+            // Base calculations
+            const codFee = paymentType === "cod" ? 100 : 0;
+            const updatedGrandTotal = safeNum(priceDetails.grandTotal) + codFee;
+
+            // Base price = original plan price (before discount and GST)
+            const basePrice = safeNum(priceDetails.basePrice);
+
+            //  Construct Payload
             const payload = {
                 productModelId: String(priceDetails.selectedProduct._id),
                 selectedPlanId: Number(priceDetails.selectedPlan?.plans_id || 0),
                 selectedDurationId: Number(priceDetails.selectedDuration?.duration_id || 0),
+                price: basePrice.toFixed(2),
 
-                // Full price breakdown
-                gstRate: Number(priceDetails.gstRate),
-                gstAmount: Number(priceDetails.gstAmount.toFixed(2)),
-                discountRate: Number(priceDetails.discountRate),
-                discountAmount: Number(priceDetails.discountAmount.toFixed(2)),
-                priceWithGST: Number(priceDetails.priceWithGST.toFixed(2)),
-                finalMonthlyPrice: Number(priceDetails.finalMonthlyPrice.toFixed(2)),
-                subtotal: Number(priceDetails.subtotal.toFixed(2)),
-                securityDeposit: Number(priceDetails.securityDeposit.toFixed(2)),
+                gstRate: safeNum(priceDetails.gstRate),
+                gstAmount: safeNum(priceDetails.gstAmount).toFixed(2),
+                discountRate: safeNum(priceDetails.discountRate),
+                discountAmount: safeNum(priceDetails.discountAmount).toFixed(2),
+                priceWithGST: safeNum(priceDetails.priceWithGST).toFixed(2),
+                subtotal: safeNum(priceDetails.subtotal).toFixed(2),
+                securityDeposit: safeNum(priceDetails.securityDeposit).toFixed(2),
 
-                //  Include updated grand total
-                grandTotal: updatedGrandTotal,
+                //  Fixed: use discountedPrice instead of totalPrice
+                discountedPrice: safeNum(priceDetails.discountedPrice).toFixed(2),
+
+                // Include updated grand total
+                grandTotal: updatedGrandTotal.toFixed(2),
 
                 wp_device_id: String(priceDetails.selectedProduct.wp_device_id || ""),
-                durationDays: Number(priceDetails.durationDays),
-                price: Number(priceDetails.totalPrice.toFixed(2)),
+                durationDays: safeNum(priceDetails.durationDays),
 
-                //  Include COD fee only if applicable
                 codFee: codFee > 0 ? codFee : undefined,
+                paymentType,
 
-                //  Payment Type
-                paymentType: paymentType, // "online" or "cod"
-
-                //  Delivery details
                 deliveryAddress: {
                     country: country || "IN",
                     name: name?.trim() || "",
@@ -1320,7 +1320,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                                     <li className="mb-2 text-danger">❌ No Connectivity</li>
                                                                                 )}
 
-                                                                                <li className="mb-2"><span className="text-success">✓</span> Model Type: {product.model_type}</li>
+                                                                                <li className="mb-2"><span className="text-success">✓</span> Model Type: {product.model_type || 'N/A'}</li>
                                                                                 <li className="mb-2"><span className="text-success">✓</span> Discount: {discountRate}%</li>
                                                                                 <li className="mb-2"><span className="text-success">✓</span> GST: {gstRate}%</li>
                                                                                 <li className="text-warning">
@@ -1487,18 +1487,21 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             // === PRICE CALCULATION BASED ON SELECTED DURATION & PLAN ===
                                             const durationText = duration.duration_time_limit || "28 days";
                                             const durationDays = parseInt(durationText) || 28;
-                                            const totalPrice = (plan.price);
+                                            const basePrice = plan.price || 0;
 
                                             const gstRate = duration.gst || 0;
-                                            const gstAmount = (totalPrice * gstRate) / 100;
-
                                             const discountRate = duration.discount || 0;
-                                            const discountAmount = ((totalPrice + gstAmount) * discountRate) / 100;
 
-                                            const priceWithGST = totalPrice + gstAmount;
-                                            const subtotal = priceWithGST - discountAmount;
+                                            // Step 1: Apply discount first
+                                            const discountAmount = (basePrice * discountRate) / 100;
+                                            const discountedPrice = basePrice - discountAmount;
+
+                                            // Step 2: Add GST on the discounted price
+                                            const gstAmount = (discountedPrice * gstRate) / 100;
+                                            const subtotal = discountedPrice + gstAmount;
+
+                                            // Step 3: Add extras
                                             const securityDeposit = duration.security_deposit || 0;
-
                                             const codFee = selectedPaymentType === "cod" ? 100 : 0;
                                             const grandTotal = subtotal + securityDeposit + codFee;
 
@@ -1535,14 +1538,12 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                                                     <hr style={{ color: "#0d6efd" }} />
 
-                                                    {textRow("Base Price", formatINR(plan.price))}
-                                                    {textRow("Duration", `${durationDays} days`)}
-                                                    {textRow(`GST (${gstRate}%)`, formatINR(gstAmount))}
+                                                    {textRow("Base Price", formatINR(basePrice))}
                                                     {textRow(`Discount (${discountRate}%)`, formatINR(discountAmount))}
-                                                    {textRow("Price with GST", formatINR(priceWithGST))}
+                                                    {textRow("Discounted Price", formatINR(discountedPrice))}
+                                                    {textRow(`GST (${gstRate}%)`, formatINR(gstAmount))}
 
                                                     <hr style={{ color: "#0d6efd" }} />
-
                                                     {textRow("Subtotal", formatINR(subtotal))}
                                                     {textRow("Security Deposit", formatINR(securityDeposit))}
                                                     {selectedPaymentType === "cod" && textRow("COD Fee", formatINR(codFee))}
@@ -1654,6 +1655,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                     width: window.innerWidth < 768 ? "45%" : "auto",
                                                     fontWeight: "700",
                                                 }}
+
                                                 disabled={!selectedPaymentType}
                                                 onClick={() => {
                                                     setShowSummaryModal(false);

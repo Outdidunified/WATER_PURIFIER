@@ -530,25 +530,29 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                         <td style={{ textAlign: "right" }}>{payment.paymentType || "N/A"}</td>
                                                                     </tr>
                                                                     <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Price</td>
-                                                                        <td style={{ textAlign: "right" }}>₹{payment.price || "N/A"}</td>
-                                                                    </tr>
-                                                                    <tr>
                                                                         <td style={{ fontWeight: "600", color: "#333" }}>Duration</td>
                                                                         <td style={{ textAlign: "right" }}>{selectedDuration.duration_time_limit || "N/A"}</td>
                                                                     </tr>
                                                                     <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>GST ({selectedDuration.gst || 0}%)</td>
-                                                                        <td style={{ textAlign: "right" }}>₹{payment.gstAmount || "N/A"}</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Price with GST</td>
-                                                                        <td style={{ textAlign: "right" }}>₹{payment.priceWithGST || "N/A"}</td>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Price</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{payment.price || "N/A"}</td>
                                                                     </tr>
                                                                     <tr>
                                                                         <td style={{ fontWeight: "600", color: "#333" }}>Discount ({selectedDuration.discount || 0}%)</td>
                                                                         <td style={{ textAlign: "right" }}>₹{payment.discountAmount || "N/A"}</td>
                                                                     </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Discounted Price {selectedDuration.discountedPrice}</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{payment.discountedPrice || "N/A"}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>GST ({selectedDuration.gst || 0}%)</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{payment.gstAmount || "N/A"}</td>
+                                                                    </tr>
+                                                                    {/* <tr>
+                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Price with GST</td>
+                                                                        <td style={{ textAlign: "right" }}>₹{payment.priceWithGST || "N/A"}</td>
+                                                                    </tr> */}
                                                                     <tr>
                                                                         <td style={{ fontWeight: "600", color: "#333" }}>Subtotal</td>
                                                                         <td style={{ textAlign: "right" }}>₹{payment.subtotal || "N/A"}</td>
