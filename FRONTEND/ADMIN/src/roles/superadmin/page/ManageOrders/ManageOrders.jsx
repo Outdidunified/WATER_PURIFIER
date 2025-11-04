@@ -45,10 +45,8 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
         return accumulator;
       }
 
-      const paymentStatus = (order.paymentStatus || '').toLowerCase();
-
       if (!isCodPaymentEligible(order)) {
-        accumulator[stateKey] = paymentStatus === 'completed';
+        accumulator[stateKey] = false;
         return accumulator;
       }
 
@@ -77,7 +75,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
   // - For COD orders, call confirmCodPayment API to confirm payment
   // - On success, set checked; on failure, set unchecked
   const handleMoneyReceivedToggle = async (order, isChecked) => {
-    console.log('handleMoneyReceivedToggle called:', {
+    console.log('=== handleMoneyReceivedToggle called ===', {
       orderId: order._id,
       customOrderId: order.customOrderId,
       isChecked,
@@ -86,8 +84,12 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
       moneyReceived: order.moneyReceived,
       wp_device_id: order.wp_device_id,
       order_snapshot_wp_device_id: order?.order_snapshot?.wp_device_id,
-      fullOrder: order
     });
+
+    if (!isChecked) {
+      console.log('Checkbox unchecked - ignoring');
+      return;
+    }
 
     const stateKey = buildConfirmationStateKey(order);
 
@@ -97,18 +99,12 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
     }
 
     // If already confirmed in backend, ensure UI reflects this
-    if (order.moneyReceived || (order.paymentStatus || '').toLowerCase() === 'completed') {
-      console.log('Order already marked as received or payment completed');
+    if (order.moneyReceived) {
+      console.log('Order already marked as received');
       setCodConfirmation((previousState) => ({
         ...previousState,
         [stateKey]: true,
       }));
-      return;
-    }
-
-    // Prevent unchecking once payment is confirmed
-    if (!isChecked) {
-      console.log('Checkbox unchecked, but payment already confirmed - ignoring');
       return;
     }
 
@@ -123,13 +119,17 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
     }
 
     const deviceId = resolveDeviceId(order);
-    console.log('Resolved device ID:', deviceId);
+    console.log('=== Resolved device ID ===', deviceId);
 
-    // Call API to confirm COD payment
+    if (!deviceId) {
+      console.error('❌ Device ID is empty - cannot proceed');
+      return;
+    }
+
     const confirmationSucceeded = await confirmCodPayment({
       wp_device_id: deviceId,
       onSuccess: () => {
-        console.log('Payment confirmation succeeded, updating UI state');
+        console.log('✅ Payment confirmation succeeded');
         setCodConfirmation((previousState) => ({
           ...previousState,
           [stateKey]: true,
@@ -137,7 +137,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
       },
     });
 
-    console.log('Payment confirmation result:', confirmationSucceeded);
+    console.log('📊 Confirmation result:', confirmationSucceeded);
     setCodConfirmation((previousState) => ({
       ...previousState,
       [stateKey]: confirmationSucceeded,
@@ -287,7 +287,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                           textAlign: 'center',
                           position: 'sticky',
                           top: 0,
-                          backgroundColor: '#fff', // to keep header visible
+                          backgroundColor: '#fff',
                         }}>
                           <tr>
                             <th>Sl.No</th>
@@ -302,7 +302,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                             <th>Payment</th>
                             <th>Created At</th>
                             <th>Actions</th>
-                            <th>Money Received</th>
+                            <th style={{ minWidth: '120px' }}>Money Received</th>
                           </tr>
                         </thead>
                         <tbody style={{ textAlign: 'center' }}>
@@ -344,10 +344,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                                     </button>
                                    
                                   </td>
-                                  <td className="align-middle">
-                                    {/* Money Received Checkbox for COD payments */}
-                                    {/* Disabled for: non-COD orders, during loading, or once confirmed */}
-                                    {/* Checked based on codConfirmation state */}
+                                  <td className="align-middle" style={{ minWidth: '120px', padding: '12px' }}>
                                     <div className="form-check d-flex justify-content-center">
                                       <input
                                         className="form-check-input"
@@ -359,6 +356,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                                           const isChecked = event.target.checked;
                                           handleMoneyReceivedToggle(order, isChecked);
                                         }}
+                                        style={{ cursor: 'pointer', width: '18px', height: '18px' }}
                                       />
                                     </div>
                                   </td>

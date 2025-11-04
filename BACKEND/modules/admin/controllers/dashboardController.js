@@ -210,7 +210,7 @@ const resolveSelectedDurationSnapshot = (...sources) => {
         );
         const gst = pickFirstValue(source.gst, source.gst_amount, source.gstPercentage, source.gst_percentage);
         const discount = pickFirstValue(source.discount, source.discount_percentage, source.discountPercentage);
-        const securityDeposit = pickFirstValue(source.security_deposit, source.securityDeposit);
+        // Removed securityDeposit as per requirement
         if (!durationLimit) {
             durationLimit = resolvePlanDurationFromSources(source);
         }
@@ -218,8 +218,7 @@ const resolveSelectedDurationSnapshot = (...sources) => {
         const hasLimit = Boolean(durationLimit);
         const hasGst = gst !== null && gst !== undefined;
         const hasDiscount = discount !== null && discount !== undefined;
-        const hasSecurityDeposit = securityDeposit !== null && securityDeposit !== undefined;
-        if (hasId || hasLimit || hasGst || hasDiscount || hasSecurityDeposit) {
+        if (hasId || hasLimit || hasGst || hasDiscount) {
             const snapshot = {};
             if (hasId) {
                 snapshot.duration_id = durationId;
@@ -232,9 +231,6 @@ const resolveSelectedDurationSnapshot = (...sources) => {
             }
             if (hasDiscount) {
                 snapshot.discount = discount;
-            }
-            if (hasSecurityDeposit) {
-                snapshot.security_deposit = securityDeposit;
             }
             if (Object.keys(snapshot).length) {
                 return snapshot;
@@ -1335,38 +1331,27 @@ const ConfirmCodPayment = async (req, res) => {
             moneyReceived: order.moneyReceived 
         });
 
-        // ✅ Check if order is COD payment type
-        const paymentType = order?.paymentType;
-        
-        if (paymentType !== "COD") {
-            console.error('Order payment type is not COD:', paymentType);
-            return res.status(400).json({
-                status: "failure",
-                message: "This order is not a COD payment. Payment type is: " + paymentType,
-            });
-        }
+        const paymentStatus = order?.paymentStatus;
+        console.log('Payment status:', paymentStatus);
 
-        // ✅ Check if payment status is already completed
-        if (order?.paymentStatus === "Completed") {
-            console.log('Payment already completed for order:', order._id);
+        // Only set moneyReceived if paymentStatus is "Completed"
+        if (paymentStatus !== "Completed") {
+            console.log('Payment status is not Completed, cannot set moneyReceived');
             return res.status(400).json({
                 status: "failure",
-                message: "Payment is already confirmed for this order",
+                message: `Payment status is ${paymentStatus}. Only Completed payments can receive money.`,
             });
         }
 
         const now = new Date();
 
-        // ✅ Update order with COD payment confirmation
-        console.log('Updating order with wp_device_id:', wp_device_id);
+        // ✅ Update order with moneyReceived = true
+        console.log('Payment is Completed, setting moneyReceived = true for wp_device_id:', wp_device_id);
         const updateResult = await ordersCollection.updateOne(
             { wp_device_id },
             {
                 $set: {
                     moneyReceived: true,
-                    paymentStatus: "Completed",
-                    paymentCollectedAt: now,
-                    adminPaymentConfirmedAt: now,
                     updatedAt: now,
                 },
             }
@@ -1386,15 +1371,10 @@ const ConfirmCodPayment = async (req, res) => {
                 {
                     $set: {
                         "order_snapshot.moneyReceived": true,
-                        "order_snapshot.paymentStatus": "Completed",
-                        collectPayment: false,
-                        snapshot: true,
                         modified_date: now,
                     },
                 }
             );
-        } else {
-            console.log('No service record found for wp_device_id:', wp_device_id);
         }
         
         console.log('Successfully confirmed COD payment for device:', wp_device_id);
@@ -1405,7 +1385,6 @@ const ConfirmCodPayment = async (req, res) => {
                 wp_device_id,
                 paymentType: "COD",
                 moneyReceived: true,
-                paymentStatus: "Completed",
                 confirmedAt: now,
             },
         });
@@ -3639,6 +3618,10 @@ const CreateManualRequest = async (req, res) => {
       return res.status(404).json({ status: 'Failed', message: 'Device details not found for the selected device' });
     }
 
+    // Fetch product model to get model object id
+    const productModelsCollection = db.collection('product_models');
+    const productModel = deviceDetail.model_id ? await productModelsCollection.findOne({ model_id: deviceDetail.model_id }) : null;
+
     const addressSource = address && typeof address === 'object'
       ? address
       : installationRecord.deliveryAddress || installationRecord.address || orderDoc?.deliveryAddress || {};
@@ -3775,6 +3758,7 @@ const CreateManualRequest = async (req, res) => {
       order_user_id: orderDoc?.user_id || customerUser.user_id,
       order_reference_id: orderDoc?._id ? orderDoc._id.toString() : null,
       model_id: modelId,
+      model_object_id: productModel?._id ? productModel._id.toString() : null,
       model_name: modelName,
       model_type: modelType,
       current_plan: currentPlan,

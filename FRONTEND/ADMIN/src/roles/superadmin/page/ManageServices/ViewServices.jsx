@@ -113,12 +113,12 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                     <div className="card-body">
                       <hr />
                       <div className="row viewDataCss">
-                        <div className="col-md-4">
-                          <strong>Status</strong> <span>{task.task_status || '-'}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Status</span> <span className="view-data-value">{task.task_status || '-'}</span>
                         </div>
-                        <div className="col-md-4">
-                          <strong>Type</strong>{' '}
-                          <span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Type</span>
+                          <span className="view-data-value">
                             {{
                               1: 'Installation',
                               2: 'Services',
@@ -126,9 +126,9 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                             }[task.task_type] || '-'}
                           </span>
                         </div>
-                        <div className="col-md-4">
-                          <strong>Pending Reason</strong>{' '}
-                          <span>{resolvePendingReason(task)}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Pending Reason</span>
+                          <span className="view-data-value">{resolvePendingReason(task)}</span>
                         </div>
                       </div>
 
@@ -139,30 +139,30 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                           </h5>
                           <hr />
                         </div>
-                        <div className="col-md-4">
-                          <strong>Name</strong> <span>{resolveTechnicianName(task)}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Name</span> <span className="view-data-value">{resolveTechnicianName(task)}</span>
                         </div>
-                        <div className="col-md-4">
-                          <strong>Technician ID</strong> <span>{resolveTechnicianId(task)}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Technician ID</span> <span className="view-data-value">{resolveTechnicianId(task)}</span>
                         </div>
-                        <div className="col-md-4">
-                          <strong>Email</strong>{' '}
-                          <span>{resolveTechnicianEmail(task)}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Email</span>
+                          <span className="view-data-value">{resolveTechnicianEmail(task)}</span>
                         </div>
                       </div>
 
                       <div className="row viewDataCss mt-2">
-                        <div className="col-md-4">
-                          <strong>Phone</strong>{' '}
-                          <span>{resolveTechnicianPhone(task)}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Phone</span>
+                          <span className="view-data-value">{resolveTechnicianPhone(task)}</span>
                         </div>
-                        <div className="col-md-4">
-                          <strong>Assigned Date</strong>{' '}
-                          <span>{resolveAssignedDate(task)}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Assigned Date</span>
+                          <span className="view-data-value">{resolveAssignedDate(task)}</span>
                         </div>
-                        <div className="col-md-4">
-                          <strong>Assigned By</strong>{' '}
-                          <span>{resolveAssignedBy(task)}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Assigned By</span>
+                          <span className="view-data-value">{resolveAssignedBy(task)}</span>
                         </div>
                       </div>
 
@@ -173,58 +173,58 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                           </h5>
                           <hr />
                         </div>
-                        <div className="col-md-4">
-                          <strong>Device ID</strong> <span>{resolveDeviceId(task)}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Device ID</span> <span className="view-data-value">{resolveDeviceId(task)}</span>
                         </div>
-                        <div className="col-md-4">
-                          <strong>Created By</strong>{' '}
-                          <span>{task.task_created_by_user_email || '-'}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Created By</span>
+                          <span className="view-data-value">{task.task_created_by_user_email || '-'}</span>
                         </div>
-                        <div className="col-md-4">
-                          <strong>OTP</strong> <span>{task.otp || '-'}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">OTP</span> <span className="view-data-value">{task.otp || '-'}</span>
                         </div>
                       </div>
 
                       <div className="row viewDataCss mt-2">
-                        <div className="col-md-4">
-                          <strong>Created Date</strong>{' '}
-                          <span>{resolveCreatedDate(task)}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Created Date</span>
+                          <span className="view-data-value">{resolveCreatedDate(task)}</span>
                         </div>
-                        <div className="col-md-4">
-                          <strong>Modified Date</strong>{' '}
-                          <span>{resolveModifiedDate(task)}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Modified Date</span>
+                          <span className="view-data-value">{resolveModifiedDate(task)}</span>
                         </div>
-                        <div className="col-md-4">
-                          <strong>Modified By</strong> <span>{task.modified_by || '-'}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Modified By</span> <span className="view-data-value">{task.modified_by || '-'}</span>
                         </div>
                       </div>
                       <div className="row viewDataCss mt-2">
-                         <div className="col-md-4">
-                          <strong>City</strong>{' '}
-                          <span>{task.city || '-'}</span>
+                         <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">City</span>
+                          <span className="view-data-value">{task.city || '-'}</span>
                         </div>
-                        <div className="col-md-4">
-                          <strong>District</strong>{' '}
-                          <span>{task.district || '-'}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">District</span>
+                          <span className="view-data-value">{task.district || '-'}</span>
                         </div>
-                        <div className="col-md-4">
-                          <strong>State</strong>{' '}
-                          <span>{task.state || '-'}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">State</span>
+                          <span className="view-data-value">{task.state || '-'}</span>
                         </div>
 
                       </div>
 
                       <div className="row viewDataCss mt-2">
-                        <div className="col-md-4">
-                          <strong>Pincode</strong>{' '}
-                          <span>{task.pincode || '-'}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Pincode</span>
+                          <span className="view-data-value">{task.pincode || '-'}</span>
                         </div>
-                        <div className="col-md-4">
-                          <strong>Modified Date</strong>{' '}
-                          <span>{resolveModifiedDate(task)}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Modified Date</span>
+                          <span className="view-data-value">{resolveModifiedDate(task)}</span>
                         </div>
-                        <div className="col-md-4">
-                          <strong>Modified By</strong> <span>{task.modified_by || '-'}</span>
+                        <div className="col-md-4 view-data-item">
+                          <span className="view-data-label">Modified By</span> <span className="view-data-value">{task.modified_by || '-'}</span>
                         </div>
                       </div>
 

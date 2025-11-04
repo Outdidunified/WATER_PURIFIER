@@ -56,26 +56,28 @@ const ViewRoles = ({ userInfo, handleLogout }) => {
                     <hr />
 
                     <div className="row col-12 viewDataCss">
-                      <div className="col-md-4"><strong>Role ID</strong> {role.role_id || '-'}</div>
-                      <div className="col-md-4"><strong>Role Name</strong> {role.role_name || '-'}</div>
-                      <div className="col-md-4">
-                        <strong>Status</strong>{' '}
-                        {role.status ? (
-                          <span className="text-success">Active</span>
-                        ) : (
-                          <span className="text-danger">DeActive</span>
-                        )}
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Role ID</span><span className="view-data-value">{role.role_id || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Role Name</span><span className="view-data-value">{role.role_name || '-'}</span></div>
+                      <div className="col-md-4 view-data-item">
+                        <span className="view-data-label">Status</span>
+                        <span className="view-data-value">
+                          {role.status ? (
+                            <span className="text-success">Active</span>
+                          ) : (
+                            <span className="text-danger">DeActive</span>
+                          )}
+                        </span>
                       </div>
                     </div>
 
                     <div className="row col-12 viewDataCss">
-                      <div className="col-md-4"><strong>Created By</strong> {role.created_by || '-'}</div>
-                      <div className="col-md-4"><strong>Created Date</strong> {role.created_date ? formatTimestamp(role.created_date) : '-'}</div>
-                      <div className="col-md-4"><strong>Modified By</strong> {role.modified_by || '-'}</div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Created By</span><span className="view-data-value">{role.created_by || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Created Date</span><span className="view-data-value">{role.created_date ? formatTimestamp(role.created_date) : '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Modified By</span><span className="view-data-value">{role.modified_by || '-'}</span></div>
                     </div>
 
                     <div className="row col-12 viewDataCss">
-                      <div className="col-md-4"><strong>Modified Date</strong> {role.modified_date ? formatTimestamp(role.modified_date) : '-'}</div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Modified Date</span><span className="view-data-value">{role.modified_date ? formatTimestamp(role.modified_date) : '-'}</span></div>
                     </div>
 
                   </div>

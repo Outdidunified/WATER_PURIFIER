@@ -145,83 +145,85 @@ const ViewOrders = ({ userInfo, handleLogout }) => {
                     <hr />
 
                     <div className="row viewDataCss">
-                      <div className="col-md-4"><strong>Order ID</strong> <span>{order.customOrderId || '-'}</span></div>
-                      <div className="col-md-4"><strong>Model Name</strong> <span>{order.modelName || '-'}</span></div>
-                      <div className="col-md-4"><strong>Device ID</strong> <span>{order.wp_device_id || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Order ID</span><span className="view-data-value">{order.customOrderId || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Model Name</span><span className="view-data-value">{order.modelName || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Device ID</span><span className="view-data-value">{order.wp_device_id || '-'}</span></div>
                     </div>
 
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4"><strong>Plan</strong> <span>{order.selectedPlan?.label || '-'}</span></div>
-                      <div className="col-md-4"><strong>Capacity</strong> <span>{order.selectedPlan?.capacity || '-'}</span></div>
-                      <div className="col-md-4"><strong>Duration</strong> <span>{order.selectedDuration?.duration_time_limit || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Plan</span><span className="view-data-value">{order.selectedPlan?.label || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Capacity</span><span className="view-data-value">{order.selectedPlan?.capacity || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Duration</span><span className="view-data-value">{order.selectedDuration?.duration_time_limit || '-'}</span></div>
                     </div>
 
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4"><strong>Price</strong> ₹{order.grandTotal || '-'}</div>
-                      <div className="col-md-4"><strong>Security Deposit</strong> ₹{order.selectedDuration?.security_deposit || '-'}</div>
-                      <div className="col-md-4"><strong>Discount</strong> {order.selectedDuration?.discount || '-'}%</div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Price</span><span className="view-data-value">₹{order.grandTotal || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Security Deposit</span><span className="view-data-value">₹{order.selectedDuration?.security_deposit || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Discount</span><span className="view-data-value">{order.selectedDuration?.discount || '-'}%</span></div>
                     </div>
 
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4"><strong>Payment Status</strong> <span>{order.paymentStatus || '-'}</span></div>
-                      <div className="col-md-4"><strong>Order Status</strong> <span>{order.orderStatus || '-'}</span></div>
-                      <div className="col-md-4"><strong>Installation Status</strong> <span>{order.installation_status || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Payment Status</span><span className="view-data-value">{order.paymentStatus || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Order Status</span><span className="view-data-value">{order.orderStatus || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Installation Status</span><span className="view-data-value">{order.installation_status || '-'}</span></div>
                     </div>
 
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4"><strong>Current Delivery Status</strong> <span className="text-capitalize">{currentDeliveryStatus || '-'}</span></div>
-                      <div className="col-md-4"><strong>Delivery Accepted At</strong> <span>{order.deliveryAcceptanceTimestamp ? formatTimestamp(order.deliveryAcceptanceTimestamp) : '-'}</span></div>
-                      <div className="col-md-4"><strong>Delivery Completed At</strong> <span>{order.deliveryCompletionTimestamp ? formatTimestamp(order.deliveryCompletionTimestamp) : '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Current Delivery Status</span><span className="view-data-value text-capitalize">{currentDeliveryStatus || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Delivery Accepted At</span><span className="view-data-value">{order.deliveryAcceptanceTimestamp ? formatTimestamp(order.deliveryAcceptanceTimestamp) : '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Delivery Completed At</span><span className="view-data-value">{order.deliveryCompletionTimestamp ? formatTimestamp(order.deliveryCompletionTimestamp) : '-'}</span></div>
                     </div>
 
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4"><strong>Created At</strong> <span>{order.createdAt ? formatTimestamp(order.createdAt) : '-'}</span></div>
-                      <div className="col-md-4"><strong>Updated At</strong> <span>{order.updatedAt ? formatTimestamp(order.updatedAt) : '-'}</span></div>
-                      <div className="col-md-4"><strong>Subscription Expiry</strong> <span>{order.subscriptionExpiryDate ? formatTimestamp(order.subscriptionExpiryDate) : '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Created At</span><span className="view-data-value">{order.createdAt ? formatTimestamp(order.createdAt) : '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Updated At</span><span className="view-data-value">{order.updatedAt ? formatTimestamp(order.updatedAt) : '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Subscription Expiry</span><span className="view-data-value">{order.subscriptionExpiryDate ? formatTimestamp(order.subscriptionExpiryDate) : '-'}</span></div>
                     </div>
 
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4"><strong>Razorpay Order ID</strong> <span>{order.razorpayOrderId || '-'}</span></div>
-                      <div className="col-md-4"><strong>Razorpay Payment ID</strong> <span>{order.razorpayPaymentId || '-'}</span></div>
-                      <div className="col-md-4"><strong>Total Litre</strong> <span>{order.totalLitre || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Razorpay Order ID</span><span className="view-data-value">{order.razorpayOrderId || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Razorpay Payment ID</span><span className="view-data-value">{order.razorpayPaymentId || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Total Litre</span><span className="view-data-value">{order.totalLitre || '-'}</span></div>
                     </div>
 
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4"><strong>Customer Name</strong> <span>{order.deliveryAddress?.name || '-'}</span></div>
-                      <div className="col-md-4"><strong>Phone</strong> <span>{order.deliveryAddress?.phone || '-'}</span></div>
-                      <div className="col-md-4"><strong>Address</strong> <span>{order.deliveryAddress?.addressLine1 || '-'}, {order.deliveryAddress?.city || '-'}, {order.deliveryAddress?.state || '-'} - {order.deliveryAddress?.pincode || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Customer Name</span><span className="view-data-value">{order.deliveryAddress?.name || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Phone</span><span className="view-data-value">{order.deliveryAddress?.phone || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Address</span><span className="view-data-value">{order.deliveryAddress?.addressLine1 || '-'}, {order.deliveryAddress?.city || '-'}, {order.deliveryAddress?.state || '-'} - {order.deliveryAddress?.pincode || '-'}</span></div>
                     </div>
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4"><strong>Address Line 2</strong> <span>{order.deliveryAddress?.addressLine2 || '-'}</span></div>
-                      <div className="col-md-4"><strong>Email</strong> <span>{order.deliveryAddress?.email || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Address Line 2</span><span className="view-data-value">{order.deliveryAddress?.addressLine2 || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Email</span><span className="view-data-value">{order.deliveryAddress?.email || '-'}</span></div>
                     </div>
 
-                    <div className="mt-5">
-                      <h4 className="card-title mb-3">Delivery Timeline</h4>
-                      
-                      {/* Horizontal Timeline Component */}
-                      <HorizontalDeliveryTimeline 
-                        timeline={timeline}
-                        currentDeliveryStatus={currentDeliveryStatus}
-                        isLoading={isLoading}
-                        error={error}
-                      />
+                    {!order.isRecharge && (
+                      <div className="mt-5">
+                        <h4 className="card-title mb-3">Delivery Timeline</h4>
+                        
+                        {/* Horizontal Timeline Component */}
+                        <HorizontalDeliveryTimeline 
+                          timeline={timeline}
+                          currentDeliveryStatus={currentDeliveryStatus}
+                          isLoading={isLoading}
+                          error={error}
+                        />
 
-                      <div className="text-center mt-4 mb-4">
-                        <button
-                          type="button"
-                          className={classNames("btn", {
-                            "btn-warning": currentDeliveryStatus !== 'completed',
-                            "btn-secondary": currentDeliveryStatus === 'completed'
-                          })}
-                          onClick={handleUpdateStatusClick}
-                          disabled={currentDeliveryStatus === 'completed'}
-                          title={currentDeliveryStatus === 'completed' ? "Delivery is completed" : "Update delivery status"}
-                        >
-                          📝 Update Delivery Status
-                        </button>
+                        <div className="text-center mt-4 mb-4">
+                          <button
+                            type="button"
+                            className={classNames("btn", {
+                              "btn-warning": currentDeliveryStatus !== 'completed',
+                              "btn-secondary": currentDeliveryStatus === 'completed'
+                            })}
+                            onClick={handleUpdateStatusClick}
+                            disabled={currentDeliveryStatus === 'completed'}
+                            title={currentDeliveryStatus === 'completed' ? "Delivery is completed" : "Update delivery status"}
+                          >
+                            📝 Update Delivery Status
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                    
                   </div>

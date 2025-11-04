@@ -24,7 +24,7 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
     }
 
     return (
-      <div className="table-responsive mb-3">
+      <div className="detail-table mb-3">
         <table className="table table-bordered table-striped mb-1">
           <thead className="table-light">
             <tr>

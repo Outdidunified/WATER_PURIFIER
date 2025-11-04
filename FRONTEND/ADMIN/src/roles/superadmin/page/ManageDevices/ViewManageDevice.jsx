@@ -62,63 +62,63 @@ const ViewManageDevice = ({ userInfo, handleLogout }) => {
                     <hr />
 
                     <div className="row viewDataCss">
-                      <div className="col-md-4">
-                        <strong>Device ID</strong> <span>{device.wp_device_id || '-'}</span>
+                      <div className="col-md-4 view-data-item">
+                        <span className="view-data-label">Device ID</span> <span className="view-data-value">{device.wp_device_id || '-'}</span>
                       </div>
-                      <div className="col-md-4">
-                        <strong>Model Name</strong> <span>{device.model_name || '-'}</span>
+                      <div className="col-md-4 view-data-item">
+                        <span className="view-data-label">Model Name</span> <span className="view-data-value">{device.model_name || '-'}</span>
                       </div>
-                      <div className="col-md-4">
-                        <strong>Model ID</strong> <span>{device.model_id || '-'}</span>
+                      <div className="col-md-4 view-data-item">
+                        <span className="view-data-label">Model ID</span> <span className="view-data-value">{device.model_id || '-'}</span>
                       </div>
                     </div>
 
                     <div className="row viewDataCss" style={{ marginTop: '10px' }}>
-                      <div className="col-md-4">
-                        <strong>Status</strong>{' '}
-                        <span className={device.status === true ? 'text-success' : device.status === false ? 'text-danger' : ''}>
+                      <div className="col-md-4 view-data-item">
+                        <span className="view-data-label">Status</span>
+                        <span className="view-data-value" style={{color: device.status === true ? '#28a745' : device.status === false ? '#dc3545' : '#000'}}>
                           {device.status === true ? 'Active' : device.status === false ? 'Inactive' : '-'}
                         </span>
                       </div>
-                      <div className="col-md-4">
-                        <strong>Created By</strong> <span>{device.createdby || '-'}</span>
+                      <div className="col-md-4 view-data-item">
+                        <span className="view-data-label">Created By</span> <span className="view-data-value">{device.createdby || '-'}</span>
                       </div>
-                      <div className="col-md-4">
-                        <strong>Model Assigned By</strong> <span>{device.model_assigned_by || '-'}</span>
-                      </div>
-                    </div>
-
-                    <div className="row viewDataCss" style={{ marginTop: '10px' }}>
-                      <div className="col-md-4">
-                        <strong>Modified By</strong> <span>{device.modifiedby || '-'}</span>
-                      </div>
-                      <div className="col-md-4">
-                        <strong>Created Date</strong>{' '}
-                        <span>{device.createddate ? formatTimestamp(device.createddate) : '-'}</span>
-                      </div>
-                      <div className="col-md-4">
-                        <strong>Modified Date</strong>{' '}
-                        <span>{device.modifieddate ? formatTimestamp(device.modifieddate) : '-'}</span>
+                      <div className="col-md-4 view-data-item">
+                        <span className="view-data-label">Model Assigned By</span> <span className="view-data-value">{device.model_assigned_by || '-'}</span>
                       </div>
                     </div>
 
                     <div className="row viewDataCss" style={{ marginTop: '10px' }}>
-                      <div className="col-md-4">
-                        <strong>Model Assigned Date</strong>{' '}
-                        <span>{device.model_assigned_date ? formatTimestamp(device.model_assigned_date) : '-'}</span>
+                      <div className="col-md-4 view-data-item">
+                        <span className="view-data-label">Modified By</span> <span className="view-data-value">{device.modifiedby || '-'}</span>
                       </div>
-                       <div className="col-md-4">
-                        <strong>MAC ID</strong> <span>{device.mac_id || device.enter_mac_id || '-'}</span>
+                      <div className="col-md-4 view-data-item">
+                        <span className="view-data-label">Created Date</span>
+                        <span className="view-data-value">{device.createddate ? formatTimestamp(device.createddate) : '-'}</span>
                       </div>
-                      <div className="col-md-4">
-                        <strong>Plan Start Date</strong> <span>{device.plan_config?.startDate || '-'}</span>
+                      <div className="col-md-4 view-data-item">
+                        <span className="view-data-label">Modified Date</span>
+                        <span className="view-data-value">{device.modifieddate ? formatTimestamp(device.modifieddate) : '-'}</span>
+                      </div>
+                    </div>
+
+                    <div className="row viewDataCss" style={{ marginTop: '10px' }}>
+                      <div className="col-md-4 view-data-item">
+                        <span className="view-data-label">Model Assigned Date</span>
+                        <span className="view-data-value">{device.model_assigned_date ? formatTimestamp(device.model_assigned_date) : '-'}</span>
+                      </div>
+                       <div className="col-md-4 view-data-item">
+                        <span className="view-data-label">MAC ID</span> <span className="view-data-value">{device.mac_id || device.enter_mac_id || '-'}</span>
+                      </div>
+                      <div className="col-md-4 view-data-item">
+                        <span className="view-data-label">Plan Start Date</span> <span className="view-data-value">{device.plan_config?.startDate || '-'}</span>
                       </div>
                     </div>
 
                     <div className="row viewDataCss" style={{ marginTop: '10px' }}>
                      
-                      <div className="col-md-4">
-                        <strong>Plan End Date</strong> <span>{device.plan_config?.endDate || '-'}</span>
+                      <div className="col-md-4 view-data-item">
+                        <span className="view-data-label">Plan End Date</span> <span className="view-data-value">{device.plan_config?.endDate || '-'}</span>
                       </div>
                     </div>
 

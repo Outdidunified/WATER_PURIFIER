@@ -88,45 +88,44 @@ const ViewManageUser = ({ userInfo, handleLogout }) => {
 
         {/* Basic Info */}
         <div className="row viewDataCss mb-3">
-          <div className="col-md-4"><strong>User Name</strong> {user?.name || "-"}</div>
-          <div className="col-md-4"><strong>Email</strong> {user?.email || "-"}</div>
-          <div className="col-md-4"><strong>Phone</strong> {user?.phone || "-"}</div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">User Name</span><span className="view-data-value">{user?.name || "-"}</span></div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">Email</span><span className="view-data-value">{user?.email || "-"}</span></div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">Phone</span><span className="view-data-value">{user?.phone || "-"}</span></div>
         </div>
 
         <div className="row viewDataCss mb-3">
-          <div className="col-md-4"><strong>Password</strong> {user?.password || "-"}</div>
-          <div className="col-md-4"><strong>Role</strong> {user?.role_name || "-"}</div>
-          <div className="col-md-4"><strong>User ID</strong> {user?.user_id || "-"}</div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">Password</span><span className="view-data-value">{user?.password || "-"}</span></div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">Role</span><span className="view-data-value">{user?.role_name || "-"}</span></div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">User ID</span><span className="view-data-value">{user?.user_id || "-"}</span></div>
         </div>
 
         {/* Address Info */}
         <div className="row viewDataCss mb-3">
-          <div className="col-md-4"><strong>Address Line 1</strong> {user?.addressline1 || "-"}</div>
-          <div className="col-md-4"><strong>Address Line 2</strong> {user?.addressline2 || "-"}</div>
-          <div className="col-md-4"><strong>City</strong> {user?.city || "-"}</div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">Address Line 1</span><span className="view-data-value">{user?.addressline1 || "-"}</span></div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">Address Line 2</span><span className="view-data-value">{user?.addressline2 || "-"}</span></div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">City</span><span className="view-data-value">{user?.city || "-"}</span></div>
         </div>
 
         <div className="row viewDataCss mb-3">
-          <div className="col-md-4"><strong>District</strong> {user?.district || "-"}</div>
-          <div className="col-md-4"><strong>State</strong> {user?.state || "-"}</div>
-          <div className="col-md-4"><strong>Country</strong> {user?.country || "-"}</div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">District</span><span className="view-data-value">{user?.district || "-"}</span></div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">State</span><span className="view-data-value">{user?.state || "-"}</span></div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">Country</span><span className="view-data-value">{user?.country || "-"}</span></div>
         </div>
 
         <div className="row viewDataCss mb-3">
-          <div className="col-md-4"><strong>Pincode</strong> {user?.pincode || "-"}</div>
-          {/* <div className="col-md-4"><strong>Security Deposit</strong> ₹{user?.security_deposit || 0}</div> */}
-          <div className="col-md-4"><strong>Status</strong>{" "}
+          <div className="col-md-4 view-data-item"><span className="view-data-label">Pincode</span><span className="view-data-value">{user?.pincode || "-"}</span></div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">Status</span><span className="view-data-value">
             {user?.status ? <span className="text-success">Active</span> : <span className="text-danger">DeActive</span>}
-          </div>
-           <div className="col-md-4"><strong>Created By</strong> {user?.createdby || "-"}</div>
+          </span></div>
+           <div className="col-md-4 view-data-item"><span className="view-data-label">Created By</span><span className="view-data-value">{user?.createdby || "-"}</span></div>
         </div>
 
         {/* Creator & Modifier */}
         <div className="row viewDataCss mb-3">
          
-          <div className="col-md-4"><strong>Modified By</strong> {user?.modifiedby || "-"}</div>
-          <div className="col-md-4"><strong>Created Date</strong> {user?.createdDate ? formatTimestamp(user.createdDate) : "-"}</div>
-         <div className="col-md-4"><strong>Modified Date</strong> {user?.modifiedDate ? formatTimestamp(user.modifiedDate) : "-"}</div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">Modified By</span><span className="view-data-value">{user?.modifiedby || "-"}</span></div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">Created Date</span><span className="view-data-value">{user?.createdDate ? formatTimestamp(user.createdDate) : "-"}</span></div>
+         <div className="col-md-4 view-data-item"><span className="view-data-label">Modified Date</span><span className="view-data-value">{user?.modifiedDate ? formatTimestamp(user.modifiedDate) : "-"}</span></div>
           
         </div>
 
@@ -134,16 +133,16 @@ const ViewManageUser = ({ userInfo, handleLogout }) => {
         {/* End-User Extra Fields
         {user?.role_id === 3 && (
           <div className="row viewDataCss mb-3">
-            <div className="col-md-4"><strong>Is Subscribed</strong> {user?.is_subscribed ? "Yes" : "No"}</div>
-            <div className="col-md-4"><strong>Active Plan</strong> {user?.active_label || "-"}</div>
-            <div className="col-md-4"><strong>Active Plan ID</strong> {user?.active_plan_id || "-"}</div>
+            <div className="col-md-4 view-data-item"><span className="view-data-label">Is Subscribed</span><span className="view-data-value">{user?.is_subscribed ? "Yes" : "No"}</span></div>
+            <div className="col-md-4 view-data-item"><span className="view-data-label">Active Plan</span><span className="view-data-value">{user?.active_label || "-"}</span></div>
+            <div className="col-md-4 view-data-item"><span className="view-data-label">Active Plan ID</span><span className="view-data-value">{user?.active_plan_id || "-"}</span></div>
           </div>
         )} */}
 
          <div className="row viewDataCss mb-3">
          
           {user?.role_id === 2 && (
-            <div className="col-md-4"><strong>Employee ID</strong> {user?.technician_id || "-"}</div>
+            <div className="col-md-4 view-data-item"><span className="view-data-label">Employee ID</span><span className="view-data-value">{user?.technician_id || "-"}</span></div>
           )}
         </div>
 
