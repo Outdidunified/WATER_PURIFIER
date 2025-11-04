@@ -128,6 +128,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
 
     const confirmationSucceeded = await confirmCodPayment({
       wp_device_id: deviceId,
+      order_id: order.customOrderId,
       onSuccess: () => {
         console.log('✅ Payment confirmation succeeded');
         setCodConfirmation((previousState) => ({
@@ -344,19 +345,19 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                                     </button>
                                    
                                   </td>
-                                  <td className="align-middle" style={{ minWidth: '120px', padding: '12px' }}>
+                                  <td className="align-middle" style={{ minWidth: '150px', padding: '12px' }}>
                                     <div className="form-check d-flex justify-content-center">
                                       <input
                                         className="form-check-input"
                                         type="checkbox"
                                         id={`money-received-${order._id}`}
-                                        disabled={!isCodPaymentEligible(order) || codConfirmationLoading || Boolean(codConfirmation[buildConfirmationStateKey(order)])}
+                                        disabled={!isCodPaymentEligible(order) || codConfirmationLoading || Boolean(codConfirmation[buildConfirmationStateKey(order)]) || userInfo.role_id !== 1}
                                         checked={Boolean(codConfirmation[buildConfirmationStateKey(order)])}
                                         onChange={(event) => {
                                           const isChecked = event.target.checked;
                                           handleMoneyReceivedToggle(order, isChecked);
                                         }}
-                                        style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                                        style={{ cursor: 'pointer', width: '18px', height: '18px', margin: '0 10px' }}
                                       />
                                     </div>
                                   </td>

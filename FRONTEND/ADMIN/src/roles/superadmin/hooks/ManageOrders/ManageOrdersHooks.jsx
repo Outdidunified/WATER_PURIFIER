@@ -57,11 +57,11 @@ const useManageOrders = (userInfo) => {
         }
     };
 
-    const confirmCodPayment = async ({ wp_device_id, onSuccess } = {}) => {
-        console.log('🔹 confirmCodPayment hook called with:', { wp_device_id });
-        
-        if (!wp_device_id) {
-            const errorMsg = 'Device ID missing. Unable to confirm payment.';
+    const confirmCodPayment = async ({ wp_device_id, order_id, onSuccess } = {}) => {
+        console.log('🔹 confirmCodPayment hook called with:', { wp_device_id, order_id });
+
+        if (!wp_device_id || !order_id) {
+            const errorMsg = 'Device ID or Order ID missing. Unable to confirm payment.';
             console.error('❌', errorMsg);
             showErrorAlert('Error', errorMsg);
             return false;
@@ -71,10 +71,11 @@ const useManageOrders = (userInfo) => {
             setCodConfirmationLoading(true);
             console.log('📝 baseURL:', axiosInstance.defaults.baseURL);
             const fullUrl = `${axiosInstance.defaults.baseURL}/admin/ConfirmCodPayment`;
-            console.log('🚀 Sending POST request to:', fullUrl, 'with:', { wp_device_id });
-            
+            console.log('🚀 Sending POST request to:', fullUrl, 'with:', { wp_device_id, order_id });
+
             const response = await axiosInstance.post(`${axiosInstance.defaults.baseURL}/admin/ConfirmCodPayment`, {
                 wp_device_id,
+                order_id,
             });
 
             console.log('✅ API Response received:', response.data);
