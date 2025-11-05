@@ -155,9 +155,6 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
 
             //  Construct Payload
             const payload = {
-                // productModelId: selectedDevice?.deviceDetails?.model_id
-                //     ? String(selectedDevice.deviceDetails.model_id)
-                //     : "",
 
                 productModelId: String(priceDetails.selectedProduct._id),
                 selectedPlanId: Number(priceDetails.selectedPlan?.plans_id || 0),
@@ -548,39 +545,41 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                     <h4 style={{ margin: 0, fontSize: '16px' }}>All Model's</h4>
                                                                 </button>
                                                             </li>
-                                                            {filteredProducts.map((product, index) => {
-                                                                const isSelected = selectedModelIndex === index;
+                                                            {filteredProducts
+                                                                .filter(product => product.model_type === "Smart")
+                                                                .map((product, index) => {
+                                                                    const isSelected = selectedModelIndex === index;
 
-                                                                return (
-                                                                    <li key={product._id} className="nav-item">
-                                                                        <button
-                                                                            className={`nav-link text-center ${isSelected ? 'active' : ''}`}
-                                                                            onClick={() => {
-                                                                                setSelectedModelIndex(index);
-                                                                                handleModelSelect(index)
-                                                                                setSelectedPlanIndex(0);
-                                                                                setSelectedDurationIndex(0);
-                                                                            }}
-                                                                            style={{
-                                                                                minWidth: '150px',
-                                                                                margin: '5px',
-                                                                                backgroundColor: isSelected
-                                                                                    ? isSelected ? '#0d6efd' : '#0d6efd'
-                                                                                    : isSelected ? '#c4deffff' : '#e8f1ff',
-                                                                                border: '1px solid',
-                                                                                borderColor: isSelected ? '#c4deffff' : '#0d6efd',
-                                                                                borderRadius: '15px',
-                                                                                fontWeight: '600',
-                                                                                transition: 'all 0.3s ease'
-                                                                            }}
-                                                                        >
-                                                                            <h4 style={{ margin: 0, fontSize: '16px' }}>
-                                                                                {product.model_name}
-                                                                            </h4>
-                                                                        </button>
-                                                                    </li>
-                                                                );
-                                                            })}
+                                                                    return (
+                                                                        <li key={product._id} className="nav-item">
+                                                                            <button
+                                                                                className={`nav-link text-center ${isSelected ? 'active' : ''}`}
+                                                                                onClick={() => {
+                                                                                    setSelectedModelIndex(index);
+                                                                                    handleModelSelect(index)
+                                                                                    setSelectedPlanIndex(0);
+                                                                                    setSelectedDurationIndex(0);
+                                                                                }}
+                                                                                style={{
+                                                                                    minWidth: '150px',
+                                                                                    margin: '5px',
+                                                                                    backgroundColor: isSelected
+                                                                                        ? isSelected ? '#0d6efd' : '#0d6efd'
+                                                                                        : isSelected ? '#c4deffff' : '#e8f1ff',
+                                                                                    border: '1px solid',
+                                                                                    borderColor: isSelected ? '#c4deffff' : '#0d6efd',
+                                                                                    borderRadius: '15px',
+                                                                                    fontWeight: '600',
+                                                                                    transition: 'all 0.3s ease'
+                                                                                }}
+                                                                            >
+                                                                                <h4 style={{ margin: 0, fontSize: '16px' }}>
+                                                                                    {product.model_name}
+                                                                                </h4>
+                                                                            </button>
+                                                                        </li>
+                                                                    );
+                                                                })}
 
                                                             {selectedModelDevices.length > 0 && (
                                                                 <div className="mt-3 text-center" style={{ padding: '10px' }}>
@@ -622,7 +621,6 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                 </div>
                                                             )}
                                                         </ul>
-
                                                     </div>
                                                 </div>
 
@@ -714,7 +712,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                         </Modal>
 
                                         {showAllModels && (
-                                            <div className="col-lg-12 col-12" style={{ padding: '20px' }}>
+                                            <div className="row" style={{ padding: '20px' }}>
                                                 <div className="section-title text-center" style={{ paddingBottom: '10px' }}>
                                                     <h2>Select Model</h2>
                                                     <ul className="nav flex-wrap" style={{ justifyContent: 'center' }}>
@@ -738,82 +736,121 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                         </li>
                                                     </ul>
                                                 </div>
+                                                {/* Left Column – Select Model */}
+                                                <div className="col-lg-6 col-12 text-center">
 
-                                                <div
-                                                    ref={scrollRef}
-                                                    className="d-flex overflow-auto py-3 scroll-container"
-                                                    style={{
-                                                        gap: "20px",
-                                                        scrollBehavior: "smooth",
-                                                        cursor: "grab",
-                                                        scrollSnapType: "x mandatory",
-                                                    }}
-                                                >
-                                                    {filteredProducts.map((product, index) => {
-                                                        const isSelected = selectedModelIndex === index;
-
-                                                        return (
-                                                            <div
-                                                                key={product._id}
-                                                                className="card text-center flex-shrink-0"
-                                                                style={{
-                                                                    width: "250px",
-                                                                    borderRadius: "20px",
-                                                                    border: isSelected ? "3px solid #0d6efd" : "1px solid #ddd",
-                                                                    boxShadow: isSelected
-                                                                        ? "0 0 20px rgba(13,110,253,0.3)"
-                                                                        : "0 2px 8px rgba(0,0,0,0.1)",
-                                                                    transform: isSelected ? "scale(1.05)" : "scale(1)",
-                                                                    transition: "all 0.4s ease",
-                                                                    cursor: "pointer",
-                                                                    margin: "0 10px",
-                                                                    scrollSnapAlign: "center",
-                                                                }}
-                                                                onClick={() => {
-                                                                    setSelectedModelIndex(index);
-                                                                    handleModelSelect(index);
-                                                                    setActiveModelIndex(index);
-                                                                    setSelectedPlanIndex(0);
-                                                                    setSelectedDurationIndex(0);
-                                                                    setMainImage(product.main_img);
-                                                                    setTimeout(() => {
-                                                                        durationRef.current?.scrollIntoView({
-                                                                            behavior: "smooth",
-                                                                            block: "start",
-                                                                        });
-                                                                    }, 300);
-                                                                }}
-                                                            >
-                                                                <img
-                                                                    src={`/upload/img/${product.main_img}`}
-                                                                    alt={product.model_name}
-                                                                    className="card-img-top"
-                                                                    style={{
-                                                                        height: "180px",
-                                                                        objectFit: "contain",
-                                                                        borderTopLeftRadius: "20px",
-                                                                        borderTopRightRadius: "20px",
-                                                                        animation: isSelected ? "slideIn 0.5s ease-in-out" : "none",
-                                                                    }}
-                                                                />
-                                                                <div className="card-body">
-                                                                    <h5
+                                                    <div ref={scrollRef}
+                                                        className="d-flex overflow-auto py-3"
+                                                        style={{
+                                                            gap: "20px",
+                                                            scrollBehavior: "smooth",
+                                                            cursor: "grab",
+                                                            scrollSnapType: "x mandatory",
+                                                            whiteSpace: "nowrap",
+                                                        }}
+                                                    >
+                                                        {filteredProducts
+                                                            .filter(product => product.model_type === "Smart")
+                                                            .map((product, index) => {
+                                                                const isSelected = selectedModelIndex === index;
+                                                                return (
+                                                                    <div
+                                                                        key={product._id}
+                                                                        className="card text-center flex-shrink-0"
                                                                         style={{
-                                                                            color: isSelected ? "#0d6efd" : "#000",
-                                                                            fontWeight: "600",
-                                                                            fontSize: "16px",
+                                                                            width: "220px",
+                                                                            borderRadius: "20px",
+                                                                            border: isSelected ? "3px solid #0d6efd" : "1px solid #ddd",
+                                                                            boxShadow: isSelected
+                                                                                ? "0 0 20px rgba(13,110,253,0.3)"
+                                                                                : "0 2px 8px rgba(0,0,0,0.1)",
+                                                                            transform: isSelected ? "scale(1.05)" : "scale(1)",
+                                                                            transition: "all 0.3s",
+                                                                            cursor: "pointer",
+                                                                            scrollSnapAlign: "center",
+                                                                        }}
+                                                                        onClick={() => {
+                                                                            setSelectedModelIndex(index);
+                                                                            handleModelSelect(index);
+                                                                            setSelectedPlanIndex(0);
+                                                                            setSelectedDurationIndex(0);
+                                                                            setMainImage(product.main_img);
                                                                         }}
                                                                     >
-                                                                        {product.model_name}{" "}
-                                                                    </h5>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
+                                                                        <img
+                                                                            src={`/upload/img/${product.main_img}`}
+                                                                            alt={product.model_name}
+                                                                            className="card-img-top"
+                                                                            style={{
+                                                                                height: "160px",
+                                                                                objectFit: "contain",
+                                                                                borderTopLeftRadius: "20px",
+                                                                                borderTopRightRadius: "20px",
+                                                                            }}
+                                                                        />
 
+                                                                        <div className="card-body p-2">
+                                                                            <h6
+                                                                                style={{
+                                                                                    color: isSelected ? "#0d6efd" : "#000",
+                                                                                    fontWeight: "600",
+                                                                                    fontSize: "14px",
+                                                                                    marginBottom: 0,
+                                                                                }}
+                                                                            >
+                                                                                {product.model_name}
+                                                                            </h6>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                    </div>
+                                                </div>
+
+                                                {/* Right Column – Devices for Selected Model */}
+                                                <div className="col-lg-6 col-12 text-center">
+                                                    {selectedModelDevices.length > 0 ? (
+                                                        <>
+                                                            <h5>Devices for {selectedModelName}</h5>
+                                                            <div className="d-flex flex-wrap justify-content-center gap-2 mt-2">
+                                                                {selectedModelDevices.map((device, i) => {
+                                                                    const isActive = selectedDeviceIndex === i;
+
+                                                                    return (
+                                                                        <button
+                                                                            key={i}
+                                                                            className="btn"
+                                                                            style={{
+                                                                                minWidth: "150px",
+                                                                                margin: "5px",
+                                                                                backgroundColor: isActive ? "#0d6efd" : "#e8f1ff",
+                                                                                color: isActive ? "#fff" : "#0d6efd",
+                                                                                border: "1px solid #0d6efd",
+                                                                                borderRadius: "15px",
+                                                                                fontWeight: 600,
+                                                                            }}
+                                                                            onClick={() => {
+                                                                                setSelectedDeviceIndex(i);
+                                                                                setSelectedPlanIndex(0);
+                                                                                setSelectedDurationIndex(0);
+                                                                                setTimeout(() => {
+                                                                                    durationRef.current?.scrollIntoView({ behavior: "smooth" });
+                                                                                }, 100);
+                                                                            }}
+                                                                        >
+                                                                            {device.deviceId}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <p className="mt-3" style={{ fontWeight: 600 }}>No devices assigned to this model</p>
+                                                    )}
                                                 </div>
 
                                             </div>
+
                                         )}
 
                                         <div ref={durationRef}>
@@ -1065,26 +1102,29 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                             </div>
                                                                         )}
 
-                                                                        <div className="card-footer text-center pb-4 border-0 bg-white" style={{ borderRadius: '20px' }}>
-                                                                            <button
-                                                                                className="btn px-4 py-2 rounded-pill"
-                                                                                style={{
-                                                                                    background: isExpired ? "#0d6efd" : "#6c757d",
-                                                                                    border: "none",
-                                                                                    color: "#fff",
-                                                                                    cursor: isExpired ? "pointer" : "not-allowed",
-                                                                                    opacity: isExpired ? 1 : 0.6,
-                                                                                }}
-                                                                                disabled={!isExpired}
-                                                                                onClick={() => {
-                                                                                    if (!isExpired) return;
-                                                                                    setSelectedPlanIndex(planIndex);
-                                                                                    handleSubscribeClick();
-                                                                                }}
-                                                                            >
-                                                                                {isExpired ? "Recharge Now" : "Active"}
-                                                                            </button>
-                                                                        </div>
+                                                                        {selectedDevice ? (
+                                                                            <div className="card-footer text-center pb-4 border-0 bg-white" style={{ borderRadius: '20px' }}>
+                                                                                <button
+                                                                                    className="btn px-4 py-2 rounded-pill"
+                                                                                    style={{
+                                                                                        background: isExpired ? "#0d6efd" : "#6c757d",
+                                                                                        border: "none",
+                                                                                        color: "#fff",
+                                                                                        cursor: isExpired ? "pointer" : "not-allowed",
+                                                                                        opacity: isExpired ? 1 : 0.6,
+                                                                                    }}
+                                                                                    disabled={!isExpired}
+                                                                                    onClick={() => {
+                                                                                        if (!isExpired) return;
+                                                                                        setSelectedPlanIndex(planIndex);
+                                                                                        handleSubscribeClick();
+                                                                                    }}
+                                                                                >
+                                                                                    {isExpired ? "Recharge Now" : "Active"}
+                                                                                </button>
+                                                                            </div>
+                                                                        ) : null}
+
                                                                     </div>
                                                                 </div>
                                                             );
