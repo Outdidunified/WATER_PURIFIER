@@ -11,6 +11,7 @@ const logger = require('./middlewares/requestLogger');
 const { connectToDatabase } = require('./config/db');
 const cron = require('node-cron');
 const { autoAssignPendingTasks, autoAssignPendingInstallations, autoReassignOverdueTasks, autoReassignRejectedTasksImmediate, autoReassignForwardedTasksImmediate, autoReassignTimeBasedTasks } = require('./modules/admin/services/autoAssignmentService');
+const fs = require('fs'); //  Add this line
 
 // Import Routes
 const adminRoutes = require('./routes/adminRoutes');
@@ -18,9 +19,9 @@ const websiteRoutes = require('./routes/websiteRoutes');
 const appRoutes = require('./routes/appRoutes');
 
 // Initialize MQTT Client for telemetry data collection
-require('./modules/app/services/mqttClient');
-// require('./publisher');
-// require('./mqttReceiver');
+const mqttClient = require('./mqtt/mqttClient');
+const logRoutes = require('./mqtt/routes/logs');
+const uploadRoutes = require('./mqtt/routes/upload');
 
 const path = require('path');
 
@@ -69,6 +70,31 @@ const httpServer = http.createServer(app);
 
 // Set Port
 const HTTP_PORT = process.env.HTTP_PORT || 6767;
+
+// MQTT start
+app.use(express.static('public'));
+
+//  Serve firmware files locally
+app.use('/firmware', express.static(path.join(__dirname, './mqtt/firmware')));
+
+app.use('/api', logRoutes);
+app.use('/api', uploadRoutes);
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/view/:filename', (req, res) => {
+    const filePath = path.join(__dirname, 'firmware', req.params.filename);
+    if (!fs.existsSync(filePath)) return res.status(404).send('File not found');
+
+    const data = fs.readFileSync(filePath);
+    res.setHeader('Content-Type', 'text/plain');
+    res.send(data.toString('hex')); // shows binary as hex
+});
+
+mqttClient.on('connect', () => console.log('Connected to MQTT broker'));
+// mqtt end
 
 // Start Server with Database Connection
 connectToDatabase()

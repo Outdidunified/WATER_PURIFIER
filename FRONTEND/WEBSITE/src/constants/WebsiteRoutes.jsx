@@ -15,6 +15,7 @@ import Header from "../roles/website/components/Header";
 import Swal from 'sweetalert2';
 import Profile from "../roles/website/pages/Profile";
 import OrderHistory from "../roles/website/pages/OrderHistory";
+import Recharge from "../roles/website/pages/Recharge";
 
 const WebsiteRoutes = () => {
     const location = useLocation();
@@ -98,6 +99,7 @@ const WebsiteRoutes = () => {
             <Header userInfo={userInfo} token={token} handleLogout={handleLogout} />
             <Routes>
                 <Route path="/" element={<Home userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
+                <Route path="/recharge" element={<Recharge userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
                 <Route path="/product-list" element={<ProductList userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
                 <Route path="/about" element={<About userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
                 <Route path="/blog" element={<Blog userInfo={userInfo} token={token} handleLogout={handleLogout} />} />

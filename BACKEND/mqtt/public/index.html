@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Water Purifier Live Logs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f9f9f9;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        #logs-container {
+            max-height: 900px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #ddd;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            background: #f1f1f1;
+            z-index: 2;
+            border-bottom: 2px solid #ccc;
+        }
+
+        th,
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Water Purifier Live MQTT Logs</h1>
+
+    <h2>Upload Firmware (.bin)</h2>
+    <form id="uploadForm">
+        <input type="file" id="binFile" accept=".bin" required />
+        <button type="submit">Upload</button>
+    </form>
+    <p id="uploadStatus"></p>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('binFile');
+            const file = fileInput.files[0];
+            if (!file) return alert('Please select a .bin file');
+
+            const formData = new FormData();
+            formData.append('binFile', file);
+
+            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (data.fileURL) {
+                document.getElementById('uploadStatus').innerHTML = `
+            ✅ Uploaded Successfully!<br>
+            🔗 <b>Download:</b> <a href="${data.fileURL}" target="_blank">${data.fileURL}</a><br>
+            👁️ <b>View:</b> <a href="${data.viewURL}" target="_blank">${data.viewURL}</a>
+          `;
+            } else {
+                document.getElementById('uploadStatus').innerHTML =
+                    `❌ Error: ${data.error || 'Upload failed'}`;
+            }
+        });
+    </script>
+
+    <!-- Logs table -->
+    <div id="logs-container">
+        <table id="logs-table">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Time (IST)</th>
+                    <th>Type</th>
+                    <th>Topic</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        const API_URL = 'http://192.168.0.20:3030/api/logs';
+        const tbody = document.querySelector('#logs-table tbody');
+
+        function formatIST(utcString) {
+            if (!utcString) return '-';
+            const date = new Date(utcString);
+            return date.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        }
+
+        function renderLogs(logs) {
+            tbody.innerHTML = '';
+            const reversed = [...logs].reverse();
+            const count = reversed.length;
+
+            reversed.forEach((log, i) => {
+                const idx = count - i;
+                const row = `
+          <tr>
+            <td>${idx}</td>
+            <td>${formatIST(log.timestamp || log.receivedAt)}</td>
+            <td>${log.type || '-'}</td>
+            <td>${log.topic || '-'}</td>
+            <td><pre>${JSON.stringify(log.data || log.message, null, 2)}</pre></td>
+          </tr>`;
+                tbody.insertAdjacentHTML('beforeend', row);
+            });
+        }
+
+        async function fetchLogs() {
+            try {
+                const res = await fetch(API_URL);
+                const data = await res.json();
+                if (Array.isArray(data)) renderLogs(data);
+            } catch (err) {
+                console.error('Error fetching logs:', err);
+            }
+        }
+
+        // Fetch logs every 5 seconds
+        fetchLogs();
+        setInterval(fetchLogs, 5000);
+    </script>
+</body>
+
+</html>
