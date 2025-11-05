@@ -543,7 +543,8 @@ exports.verifyRazorpayPayment = async (req, res) => {
       subscribed_at: now,
       deliveryAcceptanceStatus: order.deliveryAcceptanceStatus === 'completed' ? 'completed' : 'accepted',
       deliveryAcceptanceTimestamp: order.deliveryAcceptanceTimestamp || now,
-      updatedAt: now
+      updatedAt: now,
+      isSetup: false
     };
 
     //  Update user subscription & active plan
