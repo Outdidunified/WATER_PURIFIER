@@ -387,6 +387,9 @@ exports.updateInProgressTaskLeaveAction = async (req, res) => {
 };
 
 
+
+
+
 exports.setupBleConnection = async (req, res) => {
   const { wp_device_id, mac_id, technician_id, task_id } = req.body;
 
@@ -394,16 +397,7 @@ exports.setupBleConnection = async (req, res) => {
   if (!wp_device_id || !mac_id) {
     return res.status(400).json({
       error: true,
-      message: 'wp_device_id and mac_id are required'
-    });
-  }
-
-  // ✅ Validate MAC ID format (XX:XX:XX:XX:XX:XX)
-  const macIdRegex = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
-  if (!macIdRegex.test(mac_id)) {
-    return res.status(400).json({
-      error: true,
-      message: 'Invalid MAC ID format. Expected format: XX:XX:XX:XX:XX:XX'
+      message: 'wp_device_id and mac_id are required',
     });
   }
 
@@ -414,80 +408,264 @@ exports.setupBleConnection = async (req, res) => {
 
     // ✅ Check if device exists
     const device = await deviceDetailsCollection.findOne({
-      wp_device_id: { $regex: new RegExp(`^${wp_device_id}$`, 'i') }
+      wp_device_id: { $regex: new RegExp(`^${wp_device_id}$`, 'i') },
     });
 
     if (!device) {
       return res.status(404).json({
         error: true,
-        message: 'Device not found in device_details'
+        message: 'Device not found in device_details',
       });
     }
 
-    // ✅ Normalize MAC ID to uppercase with colons
-    const normalizedMacId = mac_id.toUpperCase().replace(/:/g, ':');
+    // ✅ Normalize MAC ID and current timestamp
+    const normalizedMacId = mac_id.toUpperCase();
     const now = new Date();
 
-    // ✅ Update device_details with MAC ID and timestamp
+    // ✅ Update only in `device_details`
     const deviceUpdateResult = await deviceDetailsCollection.updateOne(
       { wp_device_id: { $regex: new RegExp(`^${wp_device_id}$`, 'i') } },
       {
         $set: {
-          mac_id: normalizedMacId,
-          ble_setup_timestamp: now,
-          ...(technician_id && { assigned_technician_id: technician_id })
-        }
+          enter_mac_id: normalizedMacId,
+          setup_timestamp: now,
+          ...(technician_id && { assigned_technician_id: technician_id }),
+        },
       }
     );
 
     if (deviceUpdateResult.modifiedCount === 0) {
       return res.status(500).json({
         error: true,
-        message: 'Failed to update device with MAC ID'
+        message: 'Failed to update device with MAC ID',
       });
     }
 
-    // ✅ Update service_records with MAC ID (if task_id provided)
-    let serviceRecordUpdate = null;
+    // ✅ Optionally, only update `task_status` in service_records (no MAC or timestamp)
     if (task_id) {
-      serviceRecordUpdate = await serviceRecordsCollection.updateOne(
+      await serviceRecordsCollection.updateOne(
         { 
           task_id: parseInt(task_id),
-          wp_device_id: wp_device_id
+          wp_device_id: wp_device_id,
         },
         {
           $set: {
-            mac_id: normalizedMacId,
-            ble_setup_timestamp: now,
-            task_status: 'In Progress', // ✅ Ensure task status is In Progress
-            ...(technician_id && { assigned_technician_id: technician_id })
-          }
+            task_status: 'In Progress',
+            ...(technician_id && { assigned_technician_id: technician_id }),
+          },
         }
       );
-
-      if (serviceRecordUpdate.modifiedCount === 0) {
-        console.warn(`Warning: Service record not found for task_id: ${task_id}`);
-      }
     }
 
+    // ✅ Final Response
     return res.status(200).json({
       error: false,
-      message: 'MAC ID stored successfully',
+      message: 'MAC ID stored successfully in device_details',
       data: {
         wp_device_id,
-        mac_id: normalizedMacId,
-        ble_setup_timestamp: now,
+        enter_mac_id: normalizedMacId,
+        setup_timestamp: now,
         device_updated: deviceUpdateResult.modifiedCount > 0,
-        service_record_updated: serviceRecordUpdate ? serviceRecordUpdate.modifiedCount > 0 : false,
-        task_status: 'In Progress'
-      }
+        task_status: 'In Progress',
+      },
     });
-
   } catch (error) {
     console.error('Error in setupBleConnection:', error);
     return res.status(500).json({
       error: true,
-      message: 'Server error while storing MAC ID'
+      message: 'Server error while storing MAC ID',
+    });
+  }
+};
+
+exports.storeBleAck = async (req, res) => {
+  const {
+    wp_device_id,
+    mac_id,
+    status,
+    timestamp,
+    task_id,
+    technician_id,
+    plan_config: planConfigPayload,
+  } = req.body;
+
+  if (!wp_device_id || !mac_id || !task_id) {
+    return res.status(400).json({
+      error: true,
+      message: 'wp_device_id, mac_id, and task_id are required',
+    });
+  }
+
+  const numericStatus = parseInt(status, 10);
+  if (Number.isNaN(numericStatus) || numericStatus !== 1) {
+    return res.status(400).json({
+      error: true,
+      message: 'Invalid firmware status. Expected status value 1 for success',
+    });
+  }
+
+  let planConfig = planConfigPayload ?? null;
+  if (typeof planConfig === 'string') {
+    try {
+      planConfig = JSON.parse(planConfig);
+    } catch (err) {
+      return res.status(400).json({
+        error: true,
+        message: 'plan_config must be valid JSON',
+      });
+    }
+  }
+
+  if (planConfig && (typeof planConfig !== 'object' || Array.isArray(planConfig))) {
+    return res.status(400).json({
+      error: true,
+      message: 'plan_config must be an object',
+    });
+  }
+
+  if (planConfig && planConfig.totalWaterLimit !== undefined) {
+    const totalLimit = Number(planConfig.totalWaterLimit);
+    if (!Number.isNaN(totalLimit)) {
+      planConfig.totalWaterLimit = totalLimit;
+    }
+  }
+
+  const hasPlanConfig = Boolean(planConfig && Object.keys(planConfig).length > 0);
+  const normalizedMacId = mac_id.toUpperCase();
+
+  let ackTimestamp = timestamp ? new Date(timestamp) : new Date();
+  if (Number.isNaN(ackTimestamp.getTime())) {
+    ackTimestamp = new Date();
+  }
+
+  try {
+    const db = await connectToDatabase();
+    const deviceDetailsCollection = db.collection('device_details');
+    const serviceRecordsCollection = db.collection('service_records');
+
+    const deviceFilter = {
+      wp_device_id: { $regex: new RegExp(`^${wp_device_id}$`, 'i') },
+    };
+
+    const device = await deviceDetailsCollection.findOne(deviceFilter);
+    if (!device) {
+      return res.status(404).json({
+        error: true,
+        message: 'Device not found in device_details for this acknowledgement',
+      });
+    }
+
+    const serviceFilter = {
+      task_id: parseInt(task_id, 10),
+      wp_device_id,
+    };
+
+    if (technician_id) {
+      serviceFilter.assigned_technician_id = technician_id;
+    }
+
+    const serviceRecord = await serviceRecordsCollection.findOne(serviceFilter);
+
+    if (!serviceRecord) {
+      return res.status(404).json({
+        error: true,
+        message: 'No matching service record found for this task',
+      });
+    }
+
+    // ✅ Allow task_type 1 (Installation) and task_type 3 (Recharge)
+    if (![1, 3].includes(serviceRecord.task_type)) {
+      return res.status(400).json({
+        error: true,
+        message: 'Acknowledgement is allowed only for Installation or Recharge tasks',
+      });
+    }
+
+    // ✅ Allow In Progress or Pending state (Recharge tasks may be Pending)
+    if (!['In Progress', 'Pending'].includes(serviceRecord.task_status)) {
+      return res.status(400).json({
+        error: true,
+        message: 'Task must be In Progress or Pending to record this acknowledgement',
+      });
+    }
+
+    // Lightweight history entry (no redundant data)
+    const ackHistoryEntry = {
+      status: numericStatus,
+      mac_id: normalizedMacId,
+      timestamp: ackTimestamp,
+      recorded_at: new Date(),
+      task_type: serviceRecord.task_type, // helpful to know source
+    };
+
+    // Device collection update - store data only once
+    const deviceUpdatePayload = {
+      $set: {
+        mac_id: normalizedMacId,
+        ble_ack_status: numericStatus,
+        ble_ack_timestamp: ackTimestamp,
+        setup_complete: true,
+        updatedAt: new Date(),
+        ...(technician_id ? { last_ble_ack_by: technician_id } : {}),
+        ...(hasPlanConfig ? { plan_config: planConfig } : {}),
+      },
+      $push: {
+        ble_ack_history: ackHistoryEntry,
+      },
+    };
+
+    const deviceUpdateResult = await deviceDetailsCollection.updateOne(deviceFilter, deviceUpdatePayload);
+
+    if (deviceUpdateResult.matchedCount === 0) {
+      return res.status(404).json({
+        error: true,
+        message: 'Device not found while storing acknowledgement',
+      });
+    }
+
+    // Service records collection update - store data only once
+    const serviceUpdatePayload = {
+      $set: {
+        mac_id: normalizedMacId,
+        ble_ack_status: numericStatus,
+        ble_ack_timestamp: ackTimestamp,
+        task_status: 'In Progress', // keep consistent
+        setup_complete: true,
+        updatedAt: new Date(),
+        modified_date: new Date().toISOString(),
+        ...(hasPlanConfig ? { plan_config: planConfig } : {}),
+        ...(technician_id ? { modified_by: technician_id } : {}),
+      },
+      $push: {
+        ble_ack_history: ackHistoryEntry,
+      },
+    };
+
+    const serviceUpdateResult = await serviceRecordsCollection.updateOne(
+      { _id: serviceRecord._id },
+      serviceUpdatePayload
+    );
+
+    return res.status(200).json({
+      error: false,
+      message: 'Device setup acknowledgement stored successfully',
+      data: {
+        wp_device_id,
+        mac_id: normalizedMacId,
+        status: numericStatus,
+        ack_timestamp: ackTimestamp.toISOString(),
+        plan_config: hasPlanConfig ? planConfig : null,
+        setup_complete: true,
+        device_record_updated: deviceUpdateResult.modifiedCount > 0,
+        service_record_updated: serviceUpdateResult.modifiedCount > 0,
+        task_type: serviceRecord.task_type,
+      },
+    });
+  } catch (error) {
+    console.error('Error storing BLE acknowledgement:', error);
+    return res.status(500).json({
+      error: true,
+      message: 'Server error while storing BLE acknowledgement',
     });
   }
 };
@@ -524,7 +702,7 @@ exports.updateTaskDetails = async (req, res) => {
     const ordersCollection = db.collection('orders');
     const paymentsCollection = db.collection('payments');
 
-    // Find the task assigned to the technician
+    // ✅ Find the task assigned to the technician
     const task = await serviceRecordsCollection.findOne({
       task_id: parseInt(task_id),
       assigned_technician_id: technician_id,
@@ -533,13 +711,28 @@ exports.updateTaskDetails = async (req, res) => {
     if (!task)
       return res.status(404).json({ error: true, message: 'No task found assigned to this technician' });
 
-    // Fetch order to check payment type
-    const order = await ordersCollection.findOne({
-      customOrderId: task.customOrderId || task.order_snapshot?.customOrderId || task.order?.customOrderId,
-    });
+    // ✅ Fetch correct order based on orderType
+    let order;
+    if (task.orderType === "Recharge" || task.rechargeDetails) {
+      // 🔹 Recharge flow
+      order = await ordersCollection.findOne({ _id: new ObjectId(task.linkedRechargeOrderId) });
+      console.log("🔹 Recharge order found:", order?.customOrderId);
+    } else {
+      // 🔹 Normal installation/service order flow
+      order = await ordersCollection.findOne({
+        customOrderId: task.customOrderId || task.order_snapshot?.customOrderId || task.order?.customOrderId,
+      });
+    }
 
-    // Allowed fields to update
-    const allowedFields = ['task_status', 'pending_reason', 'modified_by', 'modified_date', 'collectPayment', 'paymentMethod'];
+    // ✅ Allowed fields to update
+    const allowedFields = [
+      'task_status',
+      'pending_reason',
+      'modified_by',
+      'modified_date',
+      'collectPayment',
+      'paymentMethod',
+    ];
     const updateData = {};
     for (let key in updates) {
       if (allowedFields.includes(key)) updateData[key] = updates[key];
@@ -547,7 +740,7 @@ exports.updateTaskDetails = async (req, res) => {
 
     const status = updates.task_status || task.task_status;
 
-    // Validate Pending Reason
+    // ✅ Validate Pending Reason
     if (status === 'Pending' && !updates.pending_reason?.trim()) {
       return res.status(400).json({
         error: true,
@@ -557,9 +750,9 @@ exports.updateTaskDetails = async (req, res) => {
       updateData.pending_reason = null;
     }
 
-    // OTP check for Completed status
+    // ✅ OTP check for Completed status
     if (status === 'Completed') {
-      // For COD orders, require payment to be already collected before completing
+      // For COD orders, require payment to be collected
       if (order && order.paymentType === 'COD') {
         const paymentRecord = await paymentsCollection.findOne({ orderId: order._id });
         if (!paymentRecord || paymentRecord.paymentStatus !== 'Completed') {
@@ -575,17 +768,17 @@ exports.updateTaskDetails = async (req, res) => {
         return res.status(400).json({ error: true, message: 'Invalid OTP. Cannot complete task.' });
       }
 
-      updateData.completed_date = new Date(); // store in UTC
+      updateData.completed_date = new Date();
     }
 
-    // Handle uploaded images
+    // ✅ Handle uploaded images
     const files = req.files;
     if (files) {
       if (files.image_before_service && files.image_before_service.length > 0) {
         const beforeImagePath = `/upload/technician/before/${path.basename(files.image_before_service[0].path)}`;
         const existingBeforeImages = task.image_before_service || [];
         if (existingBeforeImages.length >= 5) {
-          return res.status(400).json({ error: true, message: 'Maximum of 5 images already uploaded for image_before_service' });
+          return res.status(400).json({ error: true, message: 'Maximum 5 images allowed for image_before_service' });
         }
         updateData.image_before_service = [...existingBeforeImages, beforeImagePath];
       }
@@ -594,7 +787,7 @@ exports.updateTaskDetails = async (req, res) => {
         const afterImagePath = `/upload/technician/after/${path.basename(files.image_after_service[0].path)}`;
         const existingAfterImages = task.image_after_service || [];
         if (existingAfterImages.length >= 5) {
-          return res.status(400).json({ error: true, message: 'Maximum of 5 images already uploaded for image_after_service' });
+          return res.status(400).json({ error: true, message: 'Maximum 5 images allowed for image_after_service' });
         }
         updateData.image_after_service = [...existingAfterImages, afterImagePath];
       }
@@ -604,7 +797,7 @@ exports.updateTaskDetails = async (req, res) => {
       return res.status(400).json({ error: true, message: 'No valid fields provided for update' });
     }
 
-    // Generate QR code if payment method is QR for COD orders
+    // ✅ Generate QR code for QR payment (COD)
     let qrCode = null;
     if (order && order.paymentType === 'COD' && updates.paymentMethod === 'QR') {
       const upiId = process.env.UPI_ID;
@@ -614,7 +807,7 @@ exports.updateTaskDetails = async (req, res) => {
       qrCode = await qrcode.toDataURL(upiString);
     }
 
-    // Handle COD payment collection
+    // ✅ Handle COD payment collection
     if (updates.collectPayment == true && order && order.paymentType === 'COD') {
       const paymentRecord = await paymentsCollection.findOne({ orderId: order._id });
       if (paymentRecord && paymentRecord.paymentStatus !== 'Completed') {
@@ -622,7 +815,7 @@ exports.updateTaskDetails = async (req, res) => {
         if (updates.paymentMethod === 'QR') qrCodeData = qrCode;
 
         await ordersCollection.updateOne(
-          { customOrderId: order.customOrderId },
+          { _id: order._id },
           {
             $set: {
               paymentStatus: 'Completed',
@@ -647,17 +840,24 @@ exports.updateTaskDetails = async (req, res) => {
           }
         );
 
-        // Update snapshots in the task document
-        const updatedOrder = await ordersCollection.findOne({ customOrderId: order.customOrderId });
-        const updatedPayment = await paymentsCollection.findOne({ orderId: order._id });
-        if (updatedOrder) updateData.order_snapshot = updatedOrder;
-        if (updatedPayment) updateData.payment_snapshot = updatedPayment;
+        // 🔹 Update service record rechargeDetails if Recharge order
+        if (task.orderType === "Recharge" || task.rechargeDetails) {
+          await serviceRecordsCollection.updateOne(
+            { task_id: parseInt(task_id) },
+            {
+              $set: {
+                "rechargeDetails.paymentStatus": "Completed",
+                modified_date: new Date(),
+              },
+            }
+          );
+        }
 
         console.log(`💵 COD payment collected for order ${order.customOrderId}`);
       }
     }
 
-    // Update task in DB
+    // ✅ Update task document
     const result = await serviceRecordsCollection.updateOne(
       { task_id: parseInt(task_id), assigned_technician_id: technician_id },
       { $set: updateData }
@@ -667,7 +867,7 @@ exports.updateTaskDetails = async (req, res) => {
       return res.status(400).json({ error: true, message: 'No changes were made to the task' });
     }
 
-    // Technician stats + Subscription expiry updates if completed
+    // ✅ Technician stats + Subscription update if Completed
     if (status === 'Completed') {
       const technician = await technicianCollection.findOne({ technician_id });
       if (technician) {
@@ -677,7 +877,6 @@ exports.updateTaskDetails = async (req, res) => {
         );
       }
 
-      // Update subscription expiry
       if (order) {
         const subscribedAt = new Date();
         const durationStr = order.selectedDuration?.duration_time_limit || '30 days';
@@ -689,14 +888,14 @@ exports.updateTaskDetails = async (req, res) => {
         const userId = parseInt(task.task_created_by_user_id);
         await usersCollection.updateOne({ user_id: userId }, { $set: { subscription_expiry_date: subscriptionExpiryDate } });
         await ordersCollection.updateOne(
-          { customOrderId: order.customOrderId },
+          { _id: order._id },
           { $set: { subscriptionExpiryDate, updatedAt: new Date() } }
         );
 
         console.log(`🟢 Subscription expiry updated for user ${userId}`);
       }
 
-      // Send completion email
+      // ✅ Send completion mail
       const mailOptions = {
         from: 'your_email@gmail.com',
         to: task.task_created_by_user_email,
@@ -712,7 +911,7 @@ exports.updateTaskDetails = async (req, res) => {
       });
     }
 
-    // Final response
+    // ✅ Final response
     let message = 'Task updated successfully';
     if (updates.collectPayment == true) message = 'Payment collected successfully';
     else if (status === 'Completed') message = 'Task completed successfully';
@@ -724,7 +923,9 @@ exports.updateTaskDetails = async (req, res) => {
   }
 };
 
-  
+
+
+
 exports.acceptDeclineTask = async (req, res) => {
   const {
     user_id,
@@ -925,4 +1126,226 @@ exports.acceptDeclineTask = async (req, res) => {
       return res.status(500).json({ error: true, message: 'Server error while fetching all task details' });
     }
   };
+
+exports.createRechargeOrder = async (req, res) => {
+  try {
+    const {
+      technician_id,
+      email,
+      task_id,
+      wp_device_id,
+      productModelId,
+      selectedPlan,
+      selectedDuration,
+      deliveryAddress,
+      discountedPrice,
+      discountAmount,
+      gstAmount,
+      grandTotal,
+      priceWithGST,
+      price,
+      subtotal,
+      codFee
+    } = req.body;
+
+    // ✅ Validate required fields
+    if (
+      !technician_id ||
+      !email ||
+      !task_id ||
+      !wp_device_id ||
+      !productModelId ||
+      !selectedPlan ||
+      !selectedDuration
+    ) {
+      return res.status(400).json({
+        error: true,
+        message:
+          "Missing required fields (technician_id, email, task_id, wp_device_id, productModelId, selectedPlan, selectedDuration)",
+      });
+    }
+
+    const db = await connectToDatabase();
+    const serviceRecords = db.collection("service_records");
+    const orders = db.collection("orders");
+    const payments = db.collection("payments");
+    const users = db.collection("users");
+    const productModels = db.collection("product_models");
+
+    // ✅ Verify technician
+    const technician = await users.findOne({ email: email.trim(), role_id: 2 });
+    if (!technician) {
+      return res.status(403).json({
+        error: true,
+        message: "Technician not found or unauthorized",
+      });
+    }
+
+    // ✅ Verify task (Recharge at home = task_type 3)
+    const task = await serviceRecords.findOne({
+      task_id: parseInt(task_id),
+      task_type: 3,
+      assigned_technician_id: technician_id.trim(),
+    });
+
+    if (!task) {
+      return res.status(404).json({
+        error: true,
+        message: "Recharge task not found or not assigned to this technician",
+      });
+    }
+
+    // ✅ Verify customer
+    const user = await users.findOne({ user_id: task.order_user_id });
+    if (!user) {
+      return res.status(404).json({ error: true, message: "Customer not found" });
+    }
+
+    if (!ObjectId.isValid(productModelId)) {
+      return res.status(400).json({ error: true, message: "Invalid product model id" });
+    }
+
+    const productModel = await productModels.findOne({ _id: new ObjectId(productModelId) });
+    if (!productModel) {
+      return res.status(404).json({ error: true, message: "Product model not found" });
+    }
+
+    const mainImage = productModel.main_img || "";
+    const subImages = [
+      productModel.sub_img_1,
+      productModel.sub_img_2,
+      productModel.sub_img_3,
+      productModel.sub_img_4,
+    ].filter(Boolean);
+
+    // ✅ Set constants
+    const paymentType = "COD";
+    const paymentStatus = "Pending";
+    const orderType = "Recharge";
+    const now = new Date();
+    const customOrderId = `RECHARGE-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    // ✅ Create order document
+    const rechargeOrder = {
+      customOrderId,
+      user_id: user.user_id,
+      wp_device_id: wp_device_id.trim(),
+      technician_id: technician_id.trim(),
+      technician_email: email.trim(),
+      productModelId,
+      modelName: task.model_name,
+      modeltype: task.model_type,
+      main_image: mainImage,
+      sub_images: subImages,
+      selectedPlan,
+      selectedDuration,
+      grandTotal,
+      discountedPrice,
+      discountAmount,
+      gstAmount,
+      priceWithGST,
+      price,
+      subtotal,
+      codFee,
+      deliveryAddress,
+      orderType,
+      paymentType,
+      paymentStatus,
+      orderStatus: "Confirmed",
+      isRecharge: true,
+      parentOrderReference: task.customOrderId,
+      task_reference_id: task._id,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const orderResult = await orders.insertOne(rechargeOrder);
+    const orderId = orderResult.insertedId;
+
+    // ✅ Create payment document
+    await payments.insertOne({
+      user_id: user.user_id,
+      orderId,
+      discountedPrice,
+      discountAmount,
+      priceWithGST,
+      gstAmount,
+      totalPrice: grandTotal,
+      orderType,
+      paymentType,
+      paymentStatus,
+      isRecharge: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // ✅ Prepare recharge details for service record
+    const rechargeDetails = {
+      rechargeOrderId: customOrderId,
+      orderId: orderId.toString(),
+      orderType,
+      paymentType,
+      paymentStatus,
+      selectedPlan,
+      selectedDuration,
+      grandTotal,
+      discountedPrice,
+      discountAmount,
+      gstAmount,
+      priceWithGST,
+      price,
+      subtotal,
+      codFee,
+      deliveryAddress,
+      technician_id,
+      technician_email: email,
+      wp_device_id: wp_device_id.trim(), // ✅ Added inside rechargeDetails
+      createdAt: now,
+    };
+
+    // ✅ Update service record with recharge details + wp_device_id
+    await serviceRecords.updateOne(
+      { task_id: parseInt(task_id) },
+      {
+        $set: {
+          rechargeDetails,
+          linkedRechargeOrderId: orderId,
+          order_reference_id: orderId.toString(),
+          orderType,
+          wp_device_id: wp_device_id.trim(), // ✅ Store wp_device_id at root level also
+          task_status: "In Progress",
+          modified_by: technician_id.trim(),
+          modified_date: now,
+        },
+      }
+    );
+
+    // ✅ Send success response
+    return res.status(201).json({
+      error: false,
+      message: "Recharge order created successfully (COD)",
+      data: {
+        rechargeOrderId: customOrderId,
+        orderType,
+        paymentType,
+        paymentStatus,
+        linkedTaskId: task_id,
+        wp_device_id,
+        totalAmount: grandTotal,
+        rechargeDetails,
+      },
+    });
+  } catch (error) {
+    console.error("Error creating recharge order:", error);
+    return res.status(500).json({
+      error: true,
+      message: "Server error while creating recharge order",
+      details: error.message,
+    });
+  }
+};
+
+
+
+
   

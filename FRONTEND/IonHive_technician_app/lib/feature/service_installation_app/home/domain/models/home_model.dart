@@ -3,20 +3,24 @@ import 'package:flutter/material.dart';
 
 class Product {
   final String? modelName;
+  final String? modelType;
   final String? wpDeviceId;
   final Map<String, dynamic>? selectedPlan;
   final Map<String, dynamic>? selectedDuration;
 
   Product({
     this.modelName,
+    this.modelType,
     this.wpDeviceId,
     this.selectedPlan,
     this.selectedDuration,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
+    final dynamic modelTypeValue = json['model_type'] ?? json['modelType'];
     return Product(
       modelName: json['model_name'] != null ? json['model_name'].toString() : null,
+      modelType: modelTypeValue != null ? modelTypeValue.toString() : null,
       wpDeviceId: json['wp_device_id'] != null ? json['wp_device_id'].toString() : null,
       selectedPlan: json['selectedPlan'] as Map<String, dynamic>?,
       selectedDuration: json['selectedDuration'] as Map<String, dynamic>?,
@@ -26,6 +30,7 @@ class Product {
   Map<String, dynamic> toJson() {
     return {
       'model_name': modelName,
+      'model_type': modelType,
       'wp_device_id': wpDeviceId,
       'selectedPlan': selectedPlan,
       'selectedDuration': selectedDuration,

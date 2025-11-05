@@ -21,8 +21,10 @@ router.post('/acceptDeclineTask', techhome.acceptDeclineTask);
 router.post('/requestLeave', techhome.requestLeave);
 router.post('/getTechnicianLeaveRequests', techhome.getTechnicianLeaveRequests);
 router.post('/updateInProgressTaskLeaveAction', techhome.updateInProgressTaskLeaveAction);
+router.post('/createRechargeOrder',techhome.createRechargeOrder);
 
 // ============ BLE CONNECTION SETUP ROUTE ============
 router.post('/setupBleConnection', authMiddleware, techhome.setupBleConnection);
+router.post('/storeBleAck', authMiddleware, techhome.storeBleAck);
 
 module.exports = router;
