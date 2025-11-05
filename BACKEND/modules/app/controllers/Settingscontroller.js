@@ -296,94 +296,212 @@ exports.updateUserDetails = async (req, res) => {
   }
 };
 
-  exports.fetchpaymenthistory = async (req, res) => {
+//   exports.fetchpaymenthistory = async (req, res) => {
+//   try {
+//     const { user_id } = req.body;
+
+//     if (!user_id) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: 'user_id is required in request body' });
+//     }
+
+//     const db = await connectToDatabase();
+//     const paymentCollection = db.collection('payments');
+//     const orderCollection = db.collection('orders');
+//     const productModelsCollection = db.collection('product_models');
+//     const serviceRecordsCollection = db.collection('service_records');
+
+//     // 1️⃣ Fetch payments for the user
+//     const payments = await paymentCollection.find({ user_id }).toArray();
+
+//     // 2️⃣ Extract valid order ObjectIds
+//     const validOrderObjectIds = [];
+//     for (const payment of payments) {
+//       if (payment.orderId) {
+//         try {
+//           validOrderObjectIds.push(new ObjectId(payment.orderId));
+//         } catch {
+//           // ignore invalid ObjectIds
+//         }
+//       }
+//     }
+
+//     // 3️⃣ Fetch all matching orders
+//     const orders = await orderCollection
+//       .find({ _id: { $in: validOrderObjectIds } })
+//       .toArray();
+
+//     // 4️⃣ Fetch all service records (only task_type = 1)
+//     const serviceRecords = await serviceRecordsCollection
+//       .find({ task_type: 1 })
+//       .toArray();
+
+//     // 5️⃣ Map wp_device_id → task_status (case-insensitive)
+//     const serviceRecordMap = {};
+//     for (const record of serviceRecords) {
+//       if (record.wp_device_id) {
+//         serviceRecordMap[record.wp_device_id.toLowerCase()] = record.task_status;
+//       }
+//     }
+
+//     // 6️⃣ Build order map for quick lookup
+//     const orderMap = {};
+//     for (const order of orders) {
+//       orderMap[order._id.toString()] = order;
+//     }
+
+//     // 7️⃣ Merge payment + order + task_status logic
+//     const paymentsWithOrders = await Promise.all(
+//       payments.map(async payment => {
+//         const order = orderMap[payment.orderId];
+//         let taskStatus = 'N/A';
+//         let productModel = null;
+
+//         if (
+//           payment.paymentStatus === 'Completed' &&
+//           order?.orderStatus === 'Confirmed'
+//         ) {
+//           const possibleDeviceId =
+//             order.wp_device_id || order.device_id || '';
+//           const normalizedId = possibleDeviceId.toString().toLowerCase();
+
+//           if (serviceRecordMap[normalizedId]) {
+//             taskStatus = serviceRecordMap[normalizedId];
+//           }
+//         }
+
+//         if (order?.productModelId) {
+//           const productData = await productModelsCollection.findOne({
+//             _id: new ObjectId(order.productModelId)
+//           });
+
+//           if (productData) {
+//             productModel = {
+//               _id: productData._id,
+//               main_img: productData.main_img || '',
+//               sub_img_1: productData.sub_img_1 || '',
+//               sub_img_2: productData.sub_img_2 || '',
+//               sub_img_3: productData.sub_img_3 || '',
+//               sub_img_4: productData.sub_img_4 || '',
+//             };
+//           }
+//         }
+
+//         return {
+//           ...payment,
+//           orders: order
+//             ? [
+//                 {
+//                   ...order,
+//                   task_status: taskStatus,
+//                   product_model_images: productModel,
+//                 },
+//               ]
+//             : [],
+//         };
+//       })
+//     );
+
+//     // ✅ Final response
+//     res.status(200).json({
+//       success: true,
+//       message:
+//         'Payment history with orders and conditional task status fetched successfully',
+//       data: paymentsWithOrders,
+//     });
+//   } catch (error) {
+//     console.error('❌ Error fetching payment history:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Server error while fetching payment history',
+//     });
+//   }
+// };
+
+exports.fetchpaymenthistory = async (req, res) => {
   try {
     const { user_id } = req.body;
 
     if (!user_id) {
-      return res
-        .status(400)
-        .json({ success: false, message: 'user_id is required in request body' });
+      return res.status(400).json({
+        success: false,
+        message: "user_id is required in request body",
+      });
     }
 
     const db = await connectToDatabase();
-    const paymentCollection = db.collection('payments');
-    const orderCollection = db.collection('orders');
-    const productModelsCollection = db.collection('product_models');
-    const serviceRecordsCollection = db.collection('service_records');
+    const paymentCollection = db.collection("payments");
+    const orderCollection = db.collection("orders");
+    const productModelsCollection = db.collection("product_models");
+    const serviceRecordsCollection = db.collection("service_records");
 
-    // 1️⃣ Fetch payments for the user
+    const { ObjectId } = require("mongodb");
+
+    // ✅ 1️⃣ Fetch payments
     const payments = await paymentCollection.find({ user_id }).toArray();
 
-    // 2️⃣ Extract valid order ObjectIds
-    const validOrderObjectIds = [];
-    for (const payment of payments) {
-      if (payment.orderId) {
-        try {
-          validOrderObjectIds.push(new ObjectId(payment.orderId));
-        } catch {
-          // ignore invalid ObjectIds
-        }
-      }
-    }
+    // ✅ 2️⃣ Extract only VALID Mongo ObjectIds
+    const validOrderObjectIds = payments
+      .filter((p) => ObjectId.isValid(p.orderId))
+      .map((p) => new ObjectId(p.orderId));
 
-    // 3️⃣ Fetch all matching orders
+    // 3️⃣ Fetch orders based on valid IDs
     const orders = await orderCollection
       .find({ _id: { $in: validOrderObjectIds } })
       .toArray();
 
-    // 4️⃣ Fetch all service records (only task_type = 1)
+    // 4️⃣ Fetch service records
     const serviceRecords = await serviceRecordsCollection
       .find({ task_type: 1 })
       .toArray();
 
-    // 5️⃣ Map wp_device_id → task_status (case-insensitive)
     const serviceRecordMap = {};
     for (const record of serviceRecords) {
       if (record.wp_device_id) {
-        serviceRecordMap[record.wp_device_id.toLowerCase()] = record.task_status;
+        serviceRecordMap[record.wp_device_id.toString().toLowerCase()] =
+          record.task_status;
       }
     }
 
-    // 6️⃣ Build order map for quick lookup
     const orderMap = {};
     for (const order of orders) {
       orderMap[order._id.toString()] = order;
     }
 
-    // 7️⃣ Merge payment + order + task_status logic
+    // ✅ 5️⃣ Merge everything safely
     const paymentsWithOrders = await Promise.all(
-      payments.map(async payment => {
+      payments.map(async (payment) => {
         const order = orderMap[payment.orderId];
-        let taskStatus = 'N/A';
+        let taskStatus = "N/A";
         let productModel = null;
 
         if (
-          payment.paymentStatus === 'Completed' &&
-          order?.orderStatus === 'Confirmed'
+          order &&
+          payment.paymentStatus === "Completed" &&
+          order.orderStatus === "Confirmed"
         ) {
-          const possibleDeviceId =
-            order.wp_device_id || order.device_id || '';
-          const normalizedId = possibleDeviceId.toString().toLowerCase();
+          const deviceId =
+            (order.wp_device_id || order.device_id || "").toString().toLowerCase();
 
-          if (serviceRecordMap[normalizedId]) {
-            taskStatus = serviceRecordMap[normalizedId];
+          if (serviceRecordMap[deviceId]) {
+            taskStatus = serviceRecordMap[deviceId];
           }
         }
 
-        if (order?.productModelId) {
+        if (order?.productModelId && ObjectId.isValid(order.productModelId)) {
           const productData = await productModelsCollection.findOne({
-            _id: new ObjectId(order.productModelId)
+            _id: new ObjectId(order.productModelId),
           });
 
           if (productData) {
             productModel = {
               _id: productData._id,
-              main_img: productData.main_img || '',
-              sub_img_1: productData.sub_img_1 || '',
-              sub_img_2: productData.sub_img_2 || '',
-              sub_img_3: productData.sub_img_3 || '',
-              sub_img_4: productData.sub_img_4 || '',
+              main_img: productData.main_img || "",
+              sub_img_1: productData.sub_img_1 || "",
+              sub_img_2: productData.sub_img_2 || "",
+              sub_img_3: productData.sub_img_3 || "",
+              sub_img_4: productData.sub_img_4 || "",
             };
           }
         }
@@ -403,18 +521,17 @@ exports.updateUserDetails = async (req, res) => {
       })
     );
 
-    // ✅ Final response
     res.status(200).json({
       success: true,
       message:
-        'Payment history with orders and conditional task status fetched successfully',
+        "Payment history with orders and conditional task status fetched successfully",
       data: paymentsWithOrders,
     });
   } catch (error) {
-    console.error('❌ Error fetching payment history:', error);
+    console.error("❌ Error fetching payment history:", error);
     res.status(500).json({
       success: false,
-      message: 'Server error while fetching payment history',
+      message: "Server error while fetching payment history",
     });
   }
 };
