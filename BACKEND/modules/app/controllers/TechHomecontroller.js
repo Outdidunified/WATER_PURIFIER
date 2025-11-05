@@ -823,6 +823,7 @@ exports.updateTaskDetails = async (req, res) => {
               paymentCollectedBy: technician_id,
               qrCode: qrCodeData,
               updatedAt: new Date(),
+              isSetup: false, // ✅ Added this line
             },
           }
         );
@@ -847,6 +848,7 @@ exports.updateTaskDetails = async (req, res) => {
             {
               $set: {
                 "rechargeDetails.paymentStatus": "Completed",
+                isSetup: false, // 🔹 added field
                 modified_date: new Date(),
               },
             }
