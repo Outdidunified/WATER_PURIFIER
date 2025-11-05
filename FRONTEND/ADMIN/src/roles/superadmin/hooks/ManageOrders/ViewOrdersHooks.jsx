@@ -99,6 +99,7 @@ const useViewOrders = () => {
     deliveryNotes: [],
     deliveryAcceptanceTimestamp: '',
     deliveryCompletionTimestamp: '',
+    isRecharge: false,
   });
 
   const [deliveryHistory, setDeliveryHistory] = useState([]);
@@ -153,6 +154,7 @@ const useViewOrders = () => {
       deliveryCompletionTimestamp: orderData.deliveryCompletionTimestamp || '',
       deliveryHistory: Array.isArray(orderData.deliveryHistory) ? orderData.deliveryHistory : [],
       deliveryNotes: Array.isArray(orderData.deliveryNotes) ? orderData.deliveryNotes : [],
+      isRecharge: orderData.isRecharge || false, // Add this
     };
 
     console.log('mergeOrderData: Setting order with deliveryCurrentStatus:', formattedOrder.deliveryCurrentStatus);

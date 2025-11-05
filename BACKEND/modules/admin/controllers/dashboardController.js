@@ -210,7 +210,7 @@ const resolveSelectedDurationSnapshot = (...sources) => {
         );
         const gst = pickFirstValue(source.gst, source.gst_amount, source.gstPercentage, source.gst_percentage);
         const discount = pickFirstValue(source.discount, source.discount_percentage, source.discountPercentage);
-        const securityDeposit = pickFirstValue(source.security_deposit, source.securityDeposit);
+        // Removed securityDeposit as per requirement
         if (!durationLimit) {
             durationLimit = resolvePlanDurationFromSources(source);
         }
@@ -218,8 +218,7 @@ const resolveSelectedDurationSnapshot = (...sources) => {
         const hasLimit = Boolean(durationLimit);
         const hasGst = gst !== null && gst !== undefined;
         const hasDiscount = discount !== null && discount !== undefined;
-        const hasSecurityDeposit = securityDeposit !== null && securityDeposit !== undefined;
-        if (hasId || hasLimit || hasGst || hasDiscount || hasSecurityDeposit) {
+        if (hasId || hasLimit || hasGst || hasDiscount) {
             const snapshot = {};
             if (hasId) {
                 snapshot.duration_id = durationId;
@@ -232,9 +231,6 @@ const resolveSelectedDurationSnapshot = (...sources) => {
             }
             if (hasDiscount) {
                 snapshot.discount = discount;
-            }
-            if (hasSecurityDeposit) {
-                snapshot.security_deposit = securityDeposit;
             }
             if (Object.keys(snapshot).length) {
                 return snapshot;
@@ -1299,119 +1295,89 @@ const FetchOrders = async (req, res) => {
 
 const ConfirmCodPayment = async (req, res) => {
     try {
-        const { wp_device_id } = req.body || {};
+        const { wp_device_id, order_id } = req.body || {};
 
-        if (!wp_device_id) {
-            console.error('wp_device_id is missing from request body');
+        if (!wp_device_id || !order_id) {
             return res.status(400).json({
                 status: "failure",
-                message: "wp_device_id is required",
+                message: "wp_device_id and order_id are required",
             });
         }
 
-        console.log('ConfirmCodPayment API called with wp_device_id:', wp_device_id);
+        console.log(`ConfirmCodPayment -> wp_device_id: ${wp_device_id}, order_id: ${order_id}`);
 
         const db = await database.connectToDatabase();
         const ordersCollection = db.collection("orders");
         const serviceRecordsCollection = db.collection("service_records");
 
-        // ✅ Find order first (primary source of truth)
-        console.log('Looking for order with wp_device_id:', wp_device_id);
-        const order = await ordersCollection.findOne({ wp_device_id });
-        
-        if (!order) {
-            console.error('No order found for wp_device_id:', wp_device_id);
-            return res.status(404).json({
-                status: "failure",
-                message: "Order not found for this device",
-            });
-        }
-
-        console.log('Order found:', { 
-            _id: order._id, 
-            customOrderId: order.customOrderId,
-            paymentType: order.paymentType,
-            paymentStatus: order.paymentStatus,
-            moneyReceived: order.moneyReceived 
+        // ✅ Find specific order by both fields
+        const order = await ordersCollection.findOne({
+            wp_device_id,
+            customOrderId: order_id,
         });
 
-        // ✅ Check if order is COD payment type
-        const paymentType = order?.paymentType;
-        
-        if (paymentType !== "COD") {
-            console.error('Order payment type is not COD:', paymentType);
-            return res.status(400).json({
+        if (!order) {
+            return res.status(404).json({
                 status: "failure",
-                message: "This order is not a COD payment. Payment type is: " + paymentType,
+                message: "Order not found for this device and order_id",
             });
         }
 
-        // ✅ Check if payment status is already completed
-        if (order?.paymentStatus === "Completed") {
-            console.log('Payment already completed for order:', order._id);
+        console.log("Order Found ->", {
+            customOrderId: order.customOrderId,
+            orderType: order.orderType,
+            paymentStatus: order.paymentStatus,
+            moneyReceived: order.moneyReceived,
+        });
+
+        // ✅ Payment must be completed to confirm COD
+        if (order.paymentStatus !== "Completed") {
             return res.status(400).json({
                 status: "failure",
-                message: "Payment is already confirmed for this order",
+                message: `${order.orderType} payment not completed yet`,
             });
         }
 
         const now = new Date();
 
-        // ✅ Update order with COD payment confirmation
-        console.log('Updating order with wp_device_id:', wp_device_id);
-        const updateResult = await ordersCollection.updateOne(
-            { wp_device_id },
+        // ✅ Update Order Money Received
+        await ordersCollection.updateOne(
+            { wp_device_id, customOrderId: order_id },
             {
                 $set: {
                     moneyReceived: true,
-                    paymentStatus: "Completed",
                     paymentCollectedAt: now,
-                    adminPaymentConfirmedAt: now,
                     updatedAt: now,
+                    paymentCollectedBy: order.technician_id || null,
                 },
             }
         );
 
-        console.log('Order update result:', { 
-            matchedCount: updateResult.matchedCount, 
-            modifiedCount: updateResult.modifiedCount 
-        });
-
-        // ✅ Also update service record if it exists
-        const serviceRecord = await serviceRecordsCollection.findOne({ wp_device_id });
-        if (serviceRecord) {
-            console.log('Updating service record for wp_device_id:', wp_device_id);
+        // ✅ Only Update Service Records for NON-Recharge orders
+        if (order.orderType !== "Recharge") {
+            console.log("Updating Service Record for non-recharge order...");
             await serviceRecordsCollection.updateOne(
-                { _id: serviceRecord._id },
-                {
-                    $set: {
-                        "order_snapshot.moneyReceived": true,
-                        "order_snapshot.paymentStatus": "Completed",
-                        collectPayment: false,
-                        snapshot: true,
-                        modified_date: now,
-                    },
-                }
+                { wp_device_id, "order_snapshot.customOrderId": order_id },
+                { $set: { "order_snapshot.moneyReceived": true, modified_date: now } }
             );
         } else {
-            console.log('No service record found for wp_device_id:', wp_device_id);
+            console.log("Order Type is Recharge → Skipping Service Record Update ✅");
         }
-        
-        console.log('Successfully confirmed COD payment for device:', wp_device_id);
+
         return res.status(200).json({
             status: "success",
-            message: "COD payment confirmed successfully.",
+            message: "COD payment confirmed successfully",
             data: {
+                order_id,
                 wp_device_id,
-                paymentType: "COD",
+                orderType: order.orderType,
                 moneyReceived: true,
-                paymentStatus: "Completed",
                 confirmedAt: now,
             },
         });
+
     } catch (error) {
         console.error("Error confirming COD payment:", error);
-        logger?.error?.(error);
         return res.status(500).json({
             status: "failure",
             message: "Internal server error",
@@ -1419,6 +1385,7 @@ const ConfirmCodPayment = async (req, res) => {
         });
     }
 };
+
 
 // UpdateOrdersStatus
 // const UpdateOrdersStatus = async (req, res) => {
@@ -3639,6 +3606,10 @@ const CreateManualRequest = async (req, res) => {
       return res.status(404).json({ status: 'Failed', message: 'Device details not found for the selected device' });
     }
 
+    // Fetch product model to get model object id
+    const productModelsCollection = db.collection('product_models');
+    const productModel = deviceDetail.model_id ? await productModelsCollection.findOne({ model_id: deviceDetail.model_id }) : null;
+
     const addressSource = address && typeof address === 'object'
       ? address
       : installationRecord.deliveryAddress || installationRecord.address || orderDoc?.deliveryAddress || {};
@@ -3775,6 +3746,7 @@ const CreateManualRequest = async (req, res) => {
       order_user_id: orderDoc?.user_id || customerUser.user_id,
       order_reference_id: orderDoc?._id ? orderDoc._id.toString() : null,
       model_id: modelId,
+      model_object_id: productModel?._id ? productModel._id.toString() : null,
       model_name: modelName,
       model_type: modelType,
       current_plan: currentPlan,
@@ -5361,7 +5333,7 @@ const FetchTechnicianTasksByUserId = async (req, res) => {
       const orderId = task?.order_snapshot?.orderId || task?.order_id;
       if (orderId) {
         const order = await ordersCollection.findOne({
-          _id: new ObjectId(orderId)
+          _id: new ObjectId(orderId.toString())
         });
 
         if (order) {

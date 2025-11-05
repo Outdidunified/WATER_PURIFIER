@@ -141,6 +141,7 @@ exports.createSubscriptionOrder = async (req, res) => {
       customOrderId,
       user_id: user.user_id,
       productModelId,
+      orderType: 'subscription',
       modelName: productModel.model_name,
       modeltype: productModel.model_type,
       main_image,

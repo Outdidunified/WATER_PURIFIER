@@ -351,57 +351,57 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                           <hr />
 
                           <div className="row viewDataCss">
-                            <div className="col-md-4">
-                              <strong>Model Name</strong>&nbsp;&nbsp; {task.modelName || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Model Name</span><span className="view-data-value">{task.modelName || '-'}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Device ID</strong> {task.wp_device_id || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Device ID</span><span className="view-data-value">{task.wp_device_id || '-'}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Plan</strong> {planLabel || '-'}
-                              {planCapacity ? ` (${planCapacity})` : ''}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Plan</span><span className="view-data-value">{planLabel || '-'}
+                              {planCapacity ? ` (${planCapacity})` : ''}</span>
                             </div>
 
                           </div>
 
                           <div className="row viewDataCss mt-2">
                             
-                            <div className="col-md-4">
-                              <strong>Duration</strong> {durationLabel || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Duration</span><span className="view-data-value">{durationLabel || '-'}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Total Litre</strong> {totalLitre ?? '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Total Litre</span><span className="view-data-value">{totalLitre ?? '-'}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Grand Total</strong>{' '}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Grand Total</span><span className="view-data-value">
                               {grandTotal !== undefined && grandTotal !== null
                                 ? `₹${Number(grandTotal).toLocaleString()}`
-                                : '-'}
+                                : '-'}</span>
                             </div>
                           </div>
 
                           <div className="row viewDataCss mt-2">
                             
-                            <div className="col-md-4">
-                                 <strong>Created At</strong> {formatDateTime(createdAt)}
+                            <div className="col-md-4 view-data-item">
+                                 <span className="view-data-label">Created At</span><span className="view-data-value">{formatDateTime(createdAt)}</span>
                             </div>
-                             <div className="col-md-4">
-                              <strong>Order User ID</strong> {task.order_user_id || task.user_id || '-'}
+                             <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Order User ID</span><span className="view-data-value">{task.order_user_id || task.user_id || '-'}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Payment Status</strong>{' '}
-                              {task.paymentStatus || paymentDetails.status || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Payment Status</span><span className="view-data-value">
+                              {task.paymentStatus || paymentDetails.status || '-'}</span>
                             </div>
                           </div>
                           <div className="row viewDataCss mt-2">                           
-                            <div className="col-md-4">
-                              <strong>Order Status</strong> {task.orderStatus || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Order Status</span><span className="view-data-value">{task.orderStatus || '-'}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Razorpay Order ID</strong> {razorpayOrderId || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Razorpay Order ID</span><span className="view-data-value">{razorpayOrderId || '-'}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Razorpay Payment ID</strong> {razorpayPaymentId || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Razorpay Payment ID</span><span className="view-data-value">{razorpayPaymentId || '-'}</span>
                             </div>
                           </div>
                           <div className="row viewDataCss mt-4">
@@ -411,38 +411,38 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                               </h5>
                               <hr />
                             </div>
-                            <div className="col-md-4">
-                              <strong>Name</strong> {delivery.name || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Name</span><span className="view-data-value">{delivery.name || '-'}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Email</strong> {customerEmail || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Email</span><span className="view-data-value">{customerEmail || '-'}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Phone</strong> {customerPhone || '-'}
-                            </div>
-                          </div>
-
-                          <div className="row viewDataCss mt-2">
-                            <div className="col-md-4">
-                              <strong>Address</strong> {fullAddress || '-'}
-                            </div>
-                            <div className="col-md-4">
-                              <strong>City</strong> {city || '-'}
-                            </div>
-                            <div className="col-md-4">
-                              <strong>District</strong> {district || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Phone</span><span className="view-data-value">{customerPhone || '-'}</span>
                             </div>
                           </div>
 
                           <div className="row viewDataCss mt-2">
-                            <div className="col-md-4">
-                              <strong>State</strong> {state || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Address</span><span className="view-data-value">{fullAddress || '-'}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Country</strong> {country || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">City</span><span className="view-data-value">{city || '-'}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Pincode</strong> {pincode || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">District</span><span className="view-data-value">{district || '-'}</span>
+                            </div>
+                          </div>
+
+                          <div className="row viewDataCss mt-2">
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">State</span><span className="view-data-value">{state || '-'}</span>
+                            </div>
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Country</span><span className="view-data-value">{country || '-'}</span>
+                            </div>
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Pincode</span><span className="view-data-value">{pincode || '-'}</span>
                             </div>
                           </div>
 
@@ -487,50 +487,50 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                               </h5>
                               <hr />
                             </div>
-                            <div className="col-md-4">
-                              <strong>Name</strong> {technicianName || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Name</span><span className="view-data-value">{technicianName || '-'}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Technician ID</strong> {technicianId || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Technician ID</span><span className="view-data-value">{technicianId || '-'}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Email</strong> {technicianEmail || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Email</span><span className="view-data-value">{technicianEmail || '-'}</span>
                             </div>
                           </div>
 
                           <div className="row viewDataCss mt-2">
-                            <div className="col-md-4">
-                              <strong>Phone</strong> {technicianPhone || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Phone</span><span className="view-data-value">{technicianPhone || '-'}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Assigned Date</strong> {formatDateTime(assignedDate)}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Assigned Date</span><span className="view-data-value">{formatDateTime(assignedDate)}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Assigned By</strong> {assignedBy || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Assigned By</span><span className="view-data-value">{assignedBy || '-'}</span>
                             </div>
                           </div>
 
                           {/* <div className="row viewDataCss mt-2">
-                            <div className="col-md-4">
-                              <strong>Released Date</strong> {formatDateTime(releasedDate)}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Released Date</span><span className="view-data-value">{formatDateTime(releasedDate)}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Released By</strong> {releasedBy || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Released By</span><span className="view-data-value">{releasedBy || '-'}</span>
                             </div>
-                            <div className="col-md-4">
-                              <strong>Release Notes</strong> {releaseNotes || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Release Notes</span><span className="view-data-value">{releaseNotes || '-'}</span>
                             </div>
                           </div> */}
 
                           <div className="row viewDataCss mt-2">
-                            <div className="col-md-4">
-                              <strong>Completion Date</strong> {formatDateTime(completedDate)}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Completion Date</span><span className="view-data-value">{formatDateTime(completedDate)}</span>
                             </div>
-                            {/* <div className="col-md-4">
-                              <strong>Completion Notes</strong> {completionNotes || '-'}
+                            {/* <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Completion Notes</span><span className="view-data-value">{completionNotes || '-'}</span>
                             </div> */}
-                            <div className="col-md-4">
-                              <strong>Task Status</strong> {taskStatus || '-'}
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Task Status</span><span className="view-data-value">{taskStatus || '-'}</span>
                             </div>
                           </div>
 {/*

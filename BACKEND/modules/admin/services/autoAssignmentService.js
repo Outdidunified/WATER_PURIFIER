@@ -309,6 +309,12 @@ async function autoAssignInstallation(order) {
             return;
         }
 
+        if (order.isRecharge) {
+            console.log(`Skipping auto-assign for recharge order ${order.customOrderId}`);
+            return;
+        }
+
+
         const db = await connectToDatabase();
         const serviceRecords = db.collection("service_records");
         const usersCollection = db.collection("users");
