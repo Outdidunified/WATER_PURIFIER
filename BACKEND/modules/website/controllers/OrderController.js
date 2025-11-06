@@ -14,7 +14,11 @@ function generateOrderId() {
   const random = Math.random().toString(36).substr(2, 6).toUpperCase();
   return `ORD-${date}-${random}`;
 }
-
+function generaterechagerid() {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // e.g. 20250526
+  const random = Math.random().toString(36).substr(2, 6).toUpperCase();
+  return `RECHARGE-${date}-${random}`;
+}
 exports.createSubscriptionOrder = async (req, res) => {
   try {
     let {
@@ -266,11 +270,10 @@ exports.createSubscriptionOrder = async (req, res) => {
   }
 };
 
-
-
 exports.renewSubscription = async (req, res) => {
   try {
-    let {
+    const {
+      wp_device_id,
       productModelId,
       selectedPlanId,
       selectedDurationId,
@@ -278,177 +281,155 @@ exports.renewSubscription = async (req, res) => {
       discountedPrice,
       discountAmount,
       gstAmount,
-      securityDeposit,
       grandTotal,
       priceWithGST,
-      wp_device_id,
-      paymentType,
       price,
       subtotal,
-      codFee
+      
+      orderType,
+      paymentType,
+      task,
+      user_id
     } = req.body;
 
-    if (!paymentType) return res.status(400).json({ message: 'paymentType is required' });
-    paymentType = paymentType.toUpperCase();
-    if (!['COD', 'ONLINE'].includes(paymentType)) return res.status(400).json({ message: 'Invalid paymentType. Must be "COD" or "ONLINE"' });
-
     const db = await connectToDatabase();
-    const user = await db.collection('users').findOne({ _id: new ObjectId(req.userId) });
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    if (Number(user.role_id) !== 3) return res.status(403).json({ message: 'Only End Users can renew subscriptions' });
+    const users = db.collection('users');
+    const orders = db.collection('orders');
+    const payments = db.collection('payments');
+    const productModels = db.collection('product_models');
+    const deviceDetails = db.collection('device_details');
 
-    if (!productModelId || !selectedPlanId || !selectedDurationId || !deliveryAddress ||
-      discountedPrice === undefined || discountAmount === undefined ||
-      priceWithGST === undefined || gstAmount === undefined || grandTotal === undefined || !wp_device_id) {
-      return res.status(400).json({ message: 'All required fields missing' });
+    // ✅ Validate user
+    const user = await users.findOne({ user_id: Number(user_id) });
+    if (!user) return res.status(404).json({ status: 'failure', message: 'User not found' });
+    if (Number(user.role_id) !== 3)
+      return res.status(403).json({ status: 'failure', message: 'Only End Users can renew subscriptions' });
+
+    // ✅ Fetch product model (supports both _id and model_id)
+    let productModel;
+    if (ObjectId.isValid(productModelId)) {
+      productModel = await productModels.findOne({ _id: new ObjectId(productModelId) });
+    } else {
+      productModel = await productModels.findOne({ model_id: Number(productModelId) });
     }
 
-    const addrResult = validateDeliveryAddress(deliveryAddress);
-    if (!addrResult.valid) return res.status(400).json({ message: addrResult.message });
-    const normalizedAddress = normalizeDeliveryAddress(deliveryAddress);
+    if (!productModel)
+      return res.status(404).json({ status: 'failure', message: 'Product model not found' });
 
-    const productModel = await db.collection('product_models').findOne({ _id: new ObjectId(productModelId) });
-    if (!productModel) return res.status(404).json({ message: 'Product model not found' });
-
+    // ✅ Extract images
     const main_image = productModel.main_img || '';
-    const sub_images = [productModel.sub_img_1, productModel.sub_img_2, productModel.sub_img_3, productModel.sub_img_4].filter(Boolean);
+    const sub_images = [
+      productModel.sub_img_1,
+      productModel.sub_img_2,
+      productModel.sub_img_3,
+      productModel.sub_img_4,
+    ].filter(Boolean);
 
-    const device = await db.collection('device_details').findOne({
-      wp_device_id,
-      model_id: Number(productModel.model_id),
-      status: true
-    });
-    if (!device) return res.status(404).json({ message: 'Device not available' });
-
-    const deviceUsed = await db.collection('orders').findOne({
-      wp_device_id,
-      $or: [
-        { paymentStatus: 'Completed' },
-        { orderStatus: 'Confirmed' }
-      ]
-    });
-    if (deviceUsed && deviceUsed.user_id !== user.user_id) {
-      return res.status(400).json({ message: 'This device is already assigned to another order. Please choose another device.' });
-    }
-
-    const normalizeId = (value) => (value === undefined || value === null ? '' : value.toString());
+    // ✅ Find correct duration & plan
+    const normalizeId = (v) => (v === undefined || v === null ? '' : v.toString());
     const durations = Array.isArray(productModel.duration) ? productModel.duration : [];
-    const selectedDuration = durations.find((duration) => normalizeId(duration.duration_id) === normalizeId(selectedDurationId));
-    const selectedDurationPlans = Array.isArray(selectedDuration?.plans) ? selectedDuration.plans : [];
-    const topLevelPlans = Array.isArray(productModel.plans) ? productModel.plans : [];
-    const plans = selectedDurationPlans.length > 0 ? selectedDurationPlans : topLevelPlans;
-    const selectedPlan = plans.find((plan) => normalizeId(plan.plans_id) === normalizeId(selectedPlanId));
-    if (!selectedPlan || !selectedDuration) return res.status(404).json({ message: 'Plan or duration not found' });
 
-    const effectiveSecurityDeposit = Number(securityDeposit) || 0;
-    const totalLitre = parseInt(selectedPlan.capacity.match(/\d+/)?.[0] || "0", 10);
+    const selectedDuration = durations.find(
+      (duration) => normalizeId(duration.duration_id) === normalizeId(selectedDurationId)
+    );
 
+    const plans = Array.isArray(selectedDuration?.plans) ? selectedDuration.plans : [];
+    const selectedPlan = plans.find(
+      (plan) => normalizeId(plan.plans_id) === normalizeId(selectedPlanId)
+    );
+
+    if (!selectedPlan || !selectedDuration)
+      return res.status(404).json({ message: 'Plan or duration not found' });
+
+    // ✅ Create Razorpay order if ONLINE
     let razorpayOrder = null;
-    if (paymentType === 'ONLINE') {
+    if (paymentType && paymentType.toUpperCase() === 'ONLINE') {
       razorpayOrder = await razorpay.orders.create({
-        amount: Math.round(grandTotal * 100),
+        amount: Math.round(Number(grandTotal) * 100),
         currency: 'INR',
-        receipt: `order_rcptid_${Math.floor(Math.random() * 1000000)}`
+        receipt: `renew_rcptid_${Math.floor(Math.random() * 1000000)}`,
       });
     }
 
-    const customOrderId = generateOrderId();
-    const orderStatus = 'Confirmed';
-    const paymentStatus = 'Pending';
-
+    // ✅ Prepare order
+    const customOrderId = generaterechagerid();
     const now = new Date();
+    const paymentStatus = 'Pending';
+    const orderStatus = 'Confirmed';
+    const totalLitre = parseInt(selectedPlan.capacity?.match(/\d+/)?.[0] || '0', 10);
+    
+    const deviceDetail = await deviceDetails.findOne({ wp_device_id: wp_device_id.trim() });
+    const macId= deviceDetail?.mac_id;
 
-    const newOrder = {
+
+    const renewOrder = {
       customOrderId,
       user_id: user.user_id,
-      productModelId,
+      user_email: user.email,
+      wp_device_id: wp_device_id.trim(),
+      productModelId: productModel.model_id,
       modelName: productModel.model_name,
+      modeltype: productModel.model_type,
       main_image,
       sub_images,
-      wp_device_id,
       selectedPlan,
       selectedDuration,
-      grandTotal,
-      deliveryAddress: normalizedAddress,
-      paymentType,
+      grandTotal: grandTotal,
+      discountedPrice: discountedPrice,
+      discountAmount: discountAmount,
+      gstAmount: gstAmount,
+      priceWithGST: priceWithGST,
+      price: price,
+      subtotal: subtotal,
+      deliveryAddress,
+      orderType: 'Recharge',
+      paymentType: paymentType.toUpperCase(),
       paymentStatus,
       orderStatus,
-      razorpayOrderId: razorpayOrder?.id || null,
-      totalLitre,
-      price,
-      subtotal,
-      codFee,
-      deliveryAcceptanceStatus: 'completed',
-      deliveryAcceptanceTimestamp: now,
-      deliveryCompletionTimestamp: now,
       isRenewal: true,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      isRecharge: true,
+      totalLitre,
+      razorpayOrderId: razorpayOrder?.id || null,
+      mac_id: macId
+      
+      
     };
 
-    const result = await db.collection('orders').insertOne(newOrder);
-    const orderId = result.insertedId;
+    const orderResult = await orders.insertOne(renewOrder);
+    const orderId = orderResult.insertedId;
 
-    await db.collection('payments').insertOne({
+    // ✅ Insert payment
+    await payments.insertOne({
       user_id: user.user_id,
       orderId,
       razorpayOrderId: razorpayOrder?.id || null,
-      discountedPrice,
-      discountAmount,
-      priceWithGST,
-      gstAmount,
-      securityDeposit: effectiveSecurityDeposit,
-      totalPrice: grandTotal,
-      totalLitre,
-      paymentStatus,
+      discountedPrice: Number(discountedPrice),
+      discountAmount: Number(discountAmount),
+      priceWithGST: Number(priceWithGST),
+      gstAmount: Number(gstAmount),
+      totalPrice: Number(grandTotal),
+      orderType,
       paymentType,
-      price,
-      subtotal,
-      codFee,
+      paymentStatus,
       isRenewal: true,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     });
 
-    if (paymentType === 'COD') {
-      const codNow = new Date();
-      await db.collection('users').updateOne(
-        { user_id: user.user_id },
-        {
-          $set: {
-            is_subscribed: true,
-            subscribed_at: codNow,
-            active_order_id: orderId.toString(),
-            active_label: selectedPlan.label,
-            active_plan_id: selectedPlan.plans_id,
-            active_duration_id: selectedDuration.duration_time_limit
-          },
-          $addToSet: { assigned_device_ids: wp_device_id },
-          $unset: { assigned_device_id: "" }
-        }
-      );
-
-      await db.collection('orders').updateOne(
-        { _id: orderId },
-        {
-          $set: {
-            deliveryAcceptanceStatus: 'completed',
-            deliveryAcceptanceTimestamp: codNow,
-            deliveryCompletionTimestamp: codNow
-          }
-        }
-      );
-    }
-
+    // ✅ Generate Razorpay signature
     const generatedSignature = razorpayOrder
-      ? crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      ? crypto
+          .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
           .update(`${razorpayOrder.id}|${orderId.toString()}`)
           .digest('hex')
       : null;
 
+    // ✅ Final response (same as createSubscriptionOrder)
     return res.status(200).json({
       status: 'success',
-      message: 'Subscription renewed successfully',
+      message: 'Recharge order created successfully',
       data: {
         orderId: customOrderId,
         userId: user.user_id,
@@ -458,32 +439,35 @@ exports.renewSubscription = async (req, res) => {
         product: {
           _id: productModel._id,
           model_name: productModel.model_name,
+          model_type: productModel.model_type,
           main_image,
-          sub_images
+          sub_images,
         },
         wp_device_id,
         selectedPlan,
         selectedDuration,
         costBreakdown: {
-          discountedPrice,
-          discountAmount,
-          priceWithGST,
-          gstAmount,
-          securityDeposit: effectiveSecurityDeposit,
-          totalPrice: grandTotal
+          discountedPrice: Number(discountedPrice),
+          discountAmount: Number(discountAmount),
+          priceWithGST: Number(priceWithGST),
+          gstAmount: Number(gstAmount),
+          totalPrice: Number(grandTotal),
         },
-        deliveryAddress: normalizedAddress,
+        deliveryAddress,
         totalLitre,
         orderStatus,
         paymentStatus,
-        isRenewal: true
-      }
+      },
     });
   } catch (err) {
     console.error('Error in renewSubscription:', err);
-    return res.status(500).json({ message: 'Failed to renew subscription', error: err.message });
+    return res
+      .status(500)
+      .json({ message: 'Failed to renew subscription', error: err.message });
   }
 };
+
+
 
 exports.verifyRazorpayPayment = async (req, res) => {
   try {
@@ -493,7 +477,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
       return res.status(400).json({ message: 'All fields are required for verification' });
     }
 
-    //  Verify Razorpay signature
+    // 🔐 Verify Razorpay signature
     const expectedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -507,18 +491,36 @@ exports.verifyRazorpayPayment = async (req, res) => {
     const ordersCollection = db.collection('orders');
     const usersCollection = db.collection('users');
     const paymentsCollection = db.collection('payments');
-    const productModelsCollection = db.collection('product_models');
+    const devicesCollection = db.collection('device_details');
 
-    //  Fetch order and user
+    // 🔍 Fetch order
     const order = await ordersCollection.findOne({ razorpayOrderId: razorpay_order_id });
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
+    // 🔍 Fetch user
     const user = await usersCollection.findOne({ user_id: order.user_id });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    const device= await devicesCollection.findOne({ wp_device_id: order.wp_device_id });
+    if(!device){
+      return res.status(404).json({message:'Device not found'});
+    }
+
     const now = new Date();
 
-    //  Update order
+    // 🧾 Update payment record
+    await paymentsCollection.updateOne(
+      { razorpayOrderId: razorpay_order_id },
+      {
+        $set: {
+          paymentStatus: 'Completed',
+          razorpayPaymentId: razorpay_payment_id,
+          updatedAt: now,
+        },
+      }
+    );
+
+    // 🧾 Update order
     await ordersCollection.updateOne(
       { _id: order._id },
       {
@@ -526,88 +528,84 @@ exports.verifyRazorpayPayment = async (req, res) => {
           paymentStatus: 'Completed',
           orderStatus: 'Confirmed',
           razorpayPaymentId: razorpay_payment_id,
-          subscribed_at: now,
-          deliveryAcceptanceStatus: order.deliveryAcceptanceStatus === 'completed' ? 'completed' : 'accepted',
-          deliveryAcceptanceTimestamp: order.deliveryAcceptanceTimestamp || now,
           updatedAt: now,
           isSetup: false
-        }
+        },
+      }
+    );
+    
+    await devicesCollection.updateOne(
+      { wp_device_id: order.wp_device_id },
+      {
+        $set: {
+          isSetup: false
+        },
       }
     );
 
+    // 🧩 Fetch updated order
     const updatedOrder = {
       ...order,
       paymentStatus: 'Completed',
       orderStatus: 'Confirmed',
       razorpayPaymentId: razorpay_payment_id,
-      subscribed_at: now,
-      deliveryAcceptanceStatus: order.deliveryAcceptanceStatus === 'completed' ? 'completed' : 'accepted',
-      deliveryAcceptanceTimestamp: order.deliveryAcceptanceTimestamp || now,
       updatedAt: now,
-      isSetup: false
     };
 
-    //  Update user subscription & active plan
-    const userUpdateResult = await usersCollection.updateOne(
-      { user_id: order.user_id },
-      {
-        $set: {
-          is_subscribed: true,
-          subscribed_at: now,
-          active_order_id: order._id.toString(),
-          active_label: order.selectedPlan?.label || null,
-          active_plan_id: order.selectedPlan?.plans_id || null,
-          active_duration_id: order.selectedDuration?.duration_time_limit || null
-        },
-        $addToSet: { assigned_device_ids: order.wp_device_id },
-        $unset: { assigned_device_id: "" }
-      }
-    );
+    // 🔄 Handle user update differently for renewal vs. new order
+    if (order.isRenewal) {
+      // ✅ Renewal Flow: extend or replace current subscription
+      await usersCollection.updateOne(
+        { user_id: order.user_id },
+        {
+          $set: {
+            is_subscribed: true,
+            subscribed_at: now,
+            active_order_id: order._id.toString(),
+            active_label: order.selectedPlan?.label || null,
+            active_plan_id: order.selectedPlan?.plans_id || null,
+            active_duration_id: order.selectedDuration?.duration_time_limit || null,
+            renewed_from_order_id: order.parentOrderReference || null,
+          },
+          $addToSet: { assigned_device_ids: order.wp_device_id },
+        }
+      );
 
-    if (userUpdateResult.matchedCount === 0) {
-      console.warn(`⚠️ User update did not match any document for user_id ${order.user_id}`);
+      console.log(`✅ Renewal subscription activated for user_id ${order.user_id}`);
+    } else {
+      // ✅ New Subscription Flow (existing logic)
+      await usersCollection.updateOne(
+        { user_id: order.user_id },
+        {
+          $set: {
+            is_subscribed: true,
+            subscribed_at: now,
+            active_order_id: order._id.toString(),
+            active_label: order.selectedPlan?.label || null,
+            active_plan_id: order.selectedPlan?.plans_id || null,
+            active_duration_id: order.selectedDuration?.duration_time_limit || null,
+          },
+          $addToSet: { assigned_device_ids: order.wp_device_id },
+          $unset: { assigned_device_id: "" },
+        }
+      );
+
+      // Auto-assign installation only for new subscription
+      // await autoAssignInstallation(updatedOrder);
     }
 
-    //  Update payment record
-    await paymentsCollection.updateOne(
-      { razorpayOrderId: razorpay_order_id },
-      {
-        $set: {
-          paymentStatus: 'Completed',
-          razorpayPaymentId: razorpay_payment_id,
-          updatedAt: now
-        }
-      }
-    );
-
-    //  Reduce product quantity
-    // if (order.productModelId) {
-    //   const productModel = await productModelsCollection.findOne({ _id: new ObjectId(order.productModelId) });
-    //   if (productModel) {
-    //     let currentQty = productModel.wp_device_quantity;
-    //     if (typeof currentQty === 'string') currentQty = parseInt(currentQty, 10);
-    //     if (!isNaN(currentQty) && currentQty > 0) {
-    //       await productModelsCollection.updateOne(
-    //         { _id: new ObjectId(order.productModelId) },
-    //         { $inc: { wp_device_quantity: -1 } }
-    //       );
-    //     }
-    //   }
-    // }
-
-    //  Auto-assign installation
-    await autoAssignInstallation(updatedOrder);
-
-    //  Send payment confirmation email
+    // 📧 Send payment confirmation email
     try {
-      await sendPaymentConfirmationEmail(user, order);
+      await sendPaymentConfirmationEmail(user, updatedOrder);
     } catch (emailError) {
       console.error('Error sending payment confirmation email:', emailError);
     }
 
     return res.status(200).json({
       status: 'success',
-      message: 'Payment verified successfully. Subscription activated immediately. Installation will be scheduled soon.'
+      message: order.isRenewal
+        ? 'Renewal payment verified successfully. Subscription renewed.'
+        : 'Payment verified successfully. Subscription activated.',
     });
 
   } catch (error) {
@@ -615,6 +613,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 };
+
 
 
 const PDFDocument = require('pdfkit');
@@ -1033,17 +1032,25 @@ exports.getDeliveryHistory = async (req, res) => {
     // Build delivery history from order's delivery fields
     const history = [];
 
-    // Add delivery acceptance event if it exists
+    // ✅ Helper to safely normalize statuses
+    const normalizeStatus = (value) => {
+      if (typeof value === 'string') return value.toLowerCase();
+      if (value === true) return 'accepted';
+      if (value === false) return 'rejected';
+      return 'pending';
+    };
+
+    // ✅ Add delivery acceptance event if exists
     if (order.deliveryAcceptanceStatus && order.deliveryAcceptanceTimestamp) {
       history.push({
-        status: order.deliveryAcceptanceStatus.toLowerCase(),
+        status: normalizeStatus(order.deliveryAcceptanceStatus),
         timestamp: order.deliveryAcceptanceTimestamp,
         note: order.deliveryAcceptanceNote || '',
         updatedBy: order.deliveryAcceptanceUpdatedBy || 'System',
       });
     }
 
-    // Add delivery completion event if it exists
+    // ✅ Add delivery completion event if exists
     if (order.deliveryCompletionTimestamp) {
       history.push({
         status: 'completed',
@@ -1053,34 +1060,37 @@ exports.getDeliveryHistory = async (req, res) => {
       });
     }
 
-    // If no delivery events, use order status as fallback
+    // ✅ If no delivery events, fallback to order creation
     if (history.length === 0 && order.orderStatus) {
       history.push({
-        status: order.orderStatus.toLowerCase(),
+        status: normalizeStatus(order.orderStatus),
         timestamp: order.createdAt || new Date(),
         note: 'Order created',
         updatedBy: 'System',
       });
     }
 
-    // Extract notes/delivery notes if they exist as array
+    // ✅ Extract delivery notes (array or single)
     const notes = Array.isArray(order.deliveryNotes)
       ? order.deliveryNotes
       : order.deliveryNotes
-        ? [{ text: order.deliveryNotes, timestamp: new Date() }]
-        : [];
+      ? [{ text: order.deliveryNotes, timestamp: new Date() }]
+      : [];
 
-    // Determine current status
-    let currentStatus = order.deliveryCurrentStatus || order.deliveryAcceptanceStatus || order.orderStatus || 'pending';
-    currentStatus = currentStatus.toLowerCase();
+    // ✅ Determine current status safely
+    let currentStatus =
+      order.deliveryCurrentStatus ||
+      normalizeStatus(order.deliveryAcceptanceStatus) ||
+      normalizeStatus(order.orderStatus) ||
+      'pending';
 
     return res.status(200).json({
       status: 'success',
       data: {
         history,
-        deliveryHistory: history, // Duplicate for compatibility
+        deliveryHistory: history,
         notes,
-        deliveryNotes: notes, // Duplicate for compatibility
+        deliveryNotes: notes,
         currentStatus,
         order: {
           _id: order._id,
@@ -1100,6 +1110,7 @@ exports.getDeliveryHistory = async (req, res) => {
     });
   }
 };
+
 
 exports.updateDeliveryStatus = async (req, res) => {
   try {
@@ -1280,5 +1291,92 @@ function formatCurrency(amount) {
 }
 
 
+exports.getUserDevices = async (req, res) => {
+  try {
+    const { userId } = req.params;
 
+    if (!userId) {
+      return res.status(400).json({ status: 'failure', message: 'User ID is required' });
+    }
 
+    const db = await connectToDatabase();
+
+    // Step 1: Fetch completed orders for the user
+    const orders = await db.collection('orders').find({
+      user_id: parseInt(userId),
+      orderStatus: 'Confirmed',
+      deliveryCurrentStatus: 'completed',
+      paymentStatus: 'Completed'
+    }).toArray();
+
+    if (!orders.length) {
+      return res.status(404).json({ status: 'failure', message: 'No completed orders found for this user' });
+    }
+
+    // Step 2: Extract device IDs from those orders
+    const deviceIds = orders.map(o => o.wp_device_id).filter(Boolean);
+
+    if (!deviceIds.length) {
+      return res.status(404).json({ status: 'failure', message: 'No devices found for this user' });
+    }
+
+    // Step 3: Check installation status from service_records
+    const completedInstallations = await db.collection('service_records').find({
+      wp_device_id: { $in: deviceIds },
+      task_type: 1, // installation type
+      task_status: 'Completed'
+    }).toArray();
+
+    // Keep only devices whose installation is completed
+    const completedDeviceIds = completedInstallations.map(r => r.wp_device_id);
+
+    if (!completedDeviceIds.length) {
+      return res.status(404).json({
+        status: 'failure',
+        message: 'No devices with completed installation found for this user'
+      });
+    }
+
+    // Step 4: Fetch device details for only completed installations
+    const deviceDetails = await db.collection('device_details').find({
+      wp_device_id: { $in: completedDeviceIds }
+    }).toArray();
+
+    if (!deviceDetails.length) {
+      return res.status(404).json({ status: 'failure', message: 'No device details found for this user' });
+    }
+
+    // Step 5: Group devices by model_name
+    const devicesByModel = deviceDetails.reduce((acc, device) => {
+      const { model_name } = device;
+      if (!acc[model_name]) acc[model_name] = [];
+      acc[model_name].push({
+        deviceId: device.wp_device_id,
+        model_id: device.model_id,
+        model_name: device.model_name,
+        installation_status: 'Completed',
+        deviceDetails: device,
+        // Ordersdetails: orders.filter(o => completedDeviceIds.includes(o.wp_device_id)),
+        deliveryAddress: orders.find(o => o.wp_device_id === device.wp_device_id)?.deliveryAddress
+      });
+      return acc;
+    }, {});
+
+    // ✅ Step 6: Final structured response
+    res.status(200).json({
+      status: 'success',
+      user_id: parseInt(userId),
+      total_devices: completedDeviceIds.length,
+      devices: devicesByModel,
+     
+    });
+
+  } catch (error) {
+    console.error('Error fetching user devices:', error);
+    res.status(500).json({
+      status: 'failure',
+      message: 'Failed to fetch user devices',
+      error: error.message
+    });
+  }
+};
