@@ -1105,25 +1105,24 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                                         <button
                                                                                             className="btn px-4 py-2 rounded-pill"
                                                                                             style={{
-                                                                                                background: isExpired && selectedDevice.isSetup ? "#0d6efd" : "#6c757d",
+                                                                                                background: isExpired ? "#0d6efd" : "#6c757d",
                                                                                                 border: "none",
                                                                                                 color: "#fff",
-                                                                                                cursor: isExpired && selectedDevice.isSetup ? "pointer" : "not-allowed",
-                                                                                                opacity: isExpired && selectedDevice.isSetup ? 1 : 0.6,
+                                                                                                cursor: isExpired ? "pointer" : "not-allowed",
+                                                                                                opacity: isExpired ? 1 : 0.6,
                                                                                             }}
-                                                                                            disabled={!(isExpired && selectedDevice.isSetup)}
+                                                                                            disabled={!isExpired}
                                                                                             onClick={() => {
-                                                                                                if (!(isExpired && selectedDevice.isSetup)) return;
+                                                                                                if (!isExpired) return;
                                                                                                 setSelectedPlanIndex(planIndex);
                                                                                                 handleSubscribeClick();
                                                                                             }}
                                                                                         >
-                                                                                            {isExpired
-                                                                                                ? (selectedDevice.isSetup ? "Recharge Now" : "Active Pending")
-                                                                                                : "Active"}
+                                                                                            {isExpired ? "Recharge Now" : "Active"}
                                                                                         </button>
                                                                                     </div>
                                                                                 ) : null}
+
                                                                             </div>
                                                                         </div>
                                                                     );
