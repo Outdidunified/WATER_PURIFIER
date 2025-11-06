@@ -248,96 +248,6 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                     </div>
                                                 </div>
 
-                                                {/* Status Info (Right Side) */}
-                                                {/* <div style={{ textAlign: "right" }}>
-                                                    <p>
-                                                        <strong>Delivery Status: </strong>
-                                                        <span
-                                                            style={{
-                                                                ...getStatusClass2(order.deliveryCurrentStatus),
-                                                                fontWeight: "600",
-                                                            }}
-                                                        >
-                                                            {(() => {
-                                                                //   If deliveryCurrentStatus exists, show it directly
-                                                                if (order.deliveryCurrentStatus) {
-                                                                    const statusMap = {
-                                                                        accepted: "Order Accepted",
-                                                                        packed: "Order Packed",
-                                                                        intransit: "Shipped",
-                                                                        outfordelivery: "Out For Delivery",
-                                                                        completed: "Delivered",
-                                                                        cancelled: "Order Cancelled",
-                                                                        returned: "Returned",
-                                                                        failed: "Delivery Failed",
-                                                                    };
-
-                                                                    const normalized = order.deliveryCurrentStatus.toLowerCase();
-                                                                    return statusMap[normalized] ||
-                                                                        (order.deliveryCurrentStatus.charAt(0).toUpperCase() +
-                                                                            order.deliveryCurrentStatus.slice(1));
-                                                                }
-
-                                                                //   Else fallback to deliveryAcceptanceStatus logic
-                                                                if (order.deliveryAcceptanceStatus === true) {
-                                                                    return "Order Confirmed";
-                                                                }
-
-                                                                if (order.deliveryAcceptanceStatus === false) {
-                                                                    return "Awaiting Confirmation";
-                                                                }
-
-                                                                if (typeof order.deliveryAcceptanceStatus === "string") {
-                                                                    const statusMap = {
-                                                                        accepted: "Order Accepted",
-                                                                        packed: "Order Packed",
-                                                                        intransit: "Shipped",
-                                                                        outfordelivery: "Out For Delivery",
-                                                                        completed: "Delivered",
-                                                                        cancelled: "Order Cancelled",
-                                                                        returned: "Returned",
-                                                                        failed: "Delivery Failed",
-                                                                    };
-
-                                                                    return (
-                                                                        statusMap[order.deliveryAcceptanceStatus.toLowerCase()] ||
-                                                                        order.deliveryAcceptanceStatus.charAt(0).toUpperCase() +
-                                                                        order.deliveryAcceptanceStatus.slice(1)
-                                                                    );
-                                                                }
-
-                                                                //   Final fallback
-                                                                return "N/A";
-                                                            })()}
-                                                        </span>
-
-                                                    </p>
-
-                                                    <button
-                                                        type="button"
-                                                        style={{
-                                                            marginTop: "8px",
-                                                            backgroundColor: "#0d6efd",
-                                                            color: "#fff",
-                                                            border: "none",
-                                                            padding: "6px 12px",
-                                                            borderRadius: "6px",
-                                                            fontSize: "14px",
-                                                            fontWeight: "600",
-                                                            cursor: "pointer",
-                                                            boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-                                                            transition: "all 0.3s ease",
-                                                        }}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setSelectedOrderStatus(order);
-                                                            setShowStatusModal(true);
-                                                        }}
-                                                    >
-                                                        View Delivery Status
-                                                    </button>
-                                                </div> */}
-
                                                 <div style={{ textAlign: "right" }}>
                                                     {order.orderType === "Recharge" || order.isRecharge ? (
                                                         <p>
@@ -766,12 +676,14 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                     {payment.paymentStatus || "N/A"}
                                                                 </span>
                                                             </p>
-                                                            <p>
-                                                                <strong>Installation Status: </strong>
-                                                                <span style={getStatusClass2(order.task_status)}>
-                                                                    {order.task_status || "N/A"}
-                                                                </span>
-                                                            </p>
+                                                            {!(order.orderType === "Recharge" || order.isRecharge) && (
+                                                                <p>
+                                                                    <strong>Installation Status: </strong>
+                                                                    <span style={getStatusClass2(order.task_status)}>
+                                                                        {order.task_status || "N/A"}
+                                                                    </span>
+                                                                </p>
+                                                            )}
 
                                                             {/* Download Invoice Button */}
                                                             <div style={{ textAlign: "center", marginTop: "20px" }}>

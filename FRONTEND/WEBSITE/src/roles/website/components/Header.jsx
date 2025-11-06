@@ -121,7 +121,7 @@ const Header = ({ userInfo, handleLogout }) => {
                                 onMouseEnter={() => setIsDropdownOpen(true)}
                                 onMouseLeave={() => setIsDropdownOpen(false)}
                             >
-                                <b style={getLinkStyle('/profile', 'order-history')}> Setting ▾</b>
+                                <b style={getLinkStyle('/profile', '/order-history', '/recharge')}> Setting ▾</b>
                                 <div style={{ ...dropdownStyle, border: "1px solid #0d83fd" }}>
                                     <Link
                                         to="/profile"
@@ -138,6 +138,14 @@ const Header = ({ userInfo, handleLogout }) => {
                                         onMouseLeave={(e) => (e.target.style.color = "black")}
                                     >
                                         Order History
+                                    </Link>
+                                    <Link
+                                        to="/recharge"
+                                        style={dropdownItemStyle}
+                                        onMouseEnter={(e) => (e.target.style.color = "#0d83fd")}
+                                        onMouseLeave={(e) => (e.target.style.color = "black")}
+                                    >
+                                        Recharge
                                     </Link>
                                 </div>
                             </li>

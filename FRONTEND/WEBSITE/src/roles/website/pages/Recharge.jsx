@@ -52,57 +52,54 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
 
     // Updated: Calculate price details (matches modal logic)
     const calculatePriceDetails = () => {
-        const selectedProduct = products[selectedModelIndex];
+        if (!selectedDevice) return null;
+
+        // Find product by model_id (correct logic)
+        const selectedProduct = products.find(
+            p => p.model_id === selectedDevice.model_id
+        );
+
+        if (!selectedProduct) return null;
+
         const selectedDuration = selectedProduct?.duration?.[selectedDurationIndex];
         const selectedPlan = selectedDuration?.plans?.[selectedPlanIndex];
 
-        if (!selectedProduct || !selectedDuration || !selectedPlan) return null;
+        if (!selectedDuration || !selectedPlan) return null;
 
         // Base values
-        const basePrice = Number(selectedPlan?.price || 0);
-        const gstRate = Number(selectedDuration?.gst || 0);
-        const discountRate = Number(selectedDuration?.discount || 0);
+        const basePrice = Number(selectedPlan.price || 0);
+        const gstRate = Number(selectedDuration.gst || 0);
+        const discountRate = Number(selectedDuration.discount || 0);
 
         // Duration handling
-        const durationText = selectedDuration?.duration_time_limit || "28 days";
+        const durationText = selectedDuration.duration_time_limit || "28 days";
         const durationDays = parseInt(durationText.replace(/[^\d]/g, ""), 10) || 28;
 
-        // Step 1 — Apply Discount FIRST
+        // Step 1: Apply discount
         const discountAmount = (basePrice * discountRate) / 100;
         const discountedPrice = basePrice - discountAmount;
 
-        // Step 2 — Apply GST on the discounted price
+        // Step 2: Apply GST on discounted price
         const gstAmount = (discountedPrice * gstRate) / 100;
-        const priceWithGST = discountedPrice + gstAmount;
+        const subtotal = discountedPrice + gstAmount;
 
-        // Step 3 — Security Deposit (only if user doesn’t already have one)
-        const securityDeposit = !userInfo?.security_deposit
-            ? Number(selectedDuration?.security_deposit || 0)
-            : 0;
-
-        // Step 4 — Subtotal before any extra charges
-        const subtotal = priceWithGST;
-
-        // Step 5 — Grand Total
-        const grandTotal = subtotal + securityDeposit;
+        // Step 3: Grand Total
+        const grandTotal = subtotal;
 
         return {
             selectedProduct,
-            selectedPlan,
             selectedDuration,
+            selectedPlan,
 
-            // Base fields
             basePrice,
             gstRate,
             discountRate,
 
-            // Calculated breakdown
             discountAmount,
             discountedPrice,
             gstAmount,
-            priceWithGST,
+            priceWithGST: subtotal,
             subtotal,
-            securityDeposit,
             grandTotal,
             durationDays,
         };
@@ -167,7 +164,6 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                 discountAmount: safeNum(priceDetails.discountAmount).toFixed(2),
                 priceWithGST: safeNum(priceDetails.priceWithGST).toFixed(2),
                 subtotal: safeNum(priceDetails.subtotal).toFixed(2),
-                securityDeposit: safeNum(priceDetails.securityDeposit).toFixed(2),
                 discountedPrice: safeNum(priceDetails.discountedPrice).toFixed(2),
                 grandTotal: updatedGrandTotal.toFixed(2),
 
@@ -350,22 +346,19 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
     const [showBaseModelPopup, setShowBaseModelPopup] = useState(false);
 
     const handleModelSelect = (index) => {
-        const model = products[index];
+        const model = filteredProducts[index];
         setSelectedModelIndex(index);
         setSelectedPlanIndex(0);
         setSelectedDurationIndex(0);
+        setSelectedDeviceIndex(null); // Reset device selection when model changes
 
-        //  Check if model type is "Base"
         if (model?.model_type === "Base") {
             setShowBaseModelPopup(true);
         }
 
-        // scroll into view after short delay
+        // scroll to plans
         setTimeout(() => {
-            document.getElementById("duration-section")?.scrollIntoView({
-                behavior: "smooth",
-                block: "start",
-            });
+            durationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
         }, 100);
     };
 
@@ -433,6 +426,12 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
     const selectedModelDevices = devicesByModel[selectedModelName] || [];
     const [selectedDeviceIndex, setSelectedDeviceIndex] = useState(null);
     const selectedDevice = selectedModelDevices?.[selectedDeviceIndex];
+
+    // Get selected model_id from selected device
+    const selectedModelId = selectedDevice?.model_id || null;
+
+    // Match product from full products list using model_id
+    const selectedProductByModelId = products.find(p => p.model_id === selectedModelId);
 
     // selectedDevice is defined
     const parseEndDate = (dateStr) => {
@@ -549,25 +548,17 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                 .filter(product => product.model_type === "Smart")
                                                                 .map((product, index) => {
                                                                     const isSelected = selectedModelIndex === index;
-
                                                                     return (
                                                                         <li key={product._id} className="nav-item">
                                                                             <button
                                                                                 className={`nav-link text-center ${isSelected ? 'active' : ''}`}
-                                                                                onClick={() => {
-                                                                                    setSelectedModelIndex(index);
-                                                                                    handleModelSelect(index)
-                                                                                    setSelectedPlanIndex(0);
-                                                                                    setSelectedDurationIndex(0);
-                                                                                }}
+                                                                                onClick={() => handleModelSelect(index)}
                                                                                 style={{
                                                                                     minWidth: '150px',
                                                                                     margin: '5px',
-                                                                                    backgroundColor: isSelected
-                                                                                        ? isSelected ? '#0d6efd' : '#0d6efd'
-                                                                                        : isSelected ? '#c4deffff' : '#e8f1ff',
-                                                                                    border: '1px solid',
-                                                                                    borderColor: isSelected ? '#c4deffff' : '#0d6efd',
+                                                                                    backgroundColor: isSelected ? '#0d6efd' : '#e8f1ff',
+                                                                                    color: isSelected ? '#fff' : '#0d6efd',
+                                                                                    border: '1px solid #0d6efd',
                                                                                     borderRadius: '15px',
                                                                                     fontWeight: '600',
                                                                                     transition: 'all 0.3s ease'
@@ -585,10 +576,8 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                 <div className="mt-3 text-center" style={{ padding: '10px' }}>
                                                                     <h5>Devices for {selectedModelName}</h5>
                                                                     <div className="d-flex flex-wrap justify-content-center gap-2 mt-2">
-
                                                                         {selectedModelDevices.map((device, i) => {
                                                                             const isDeviceActive = selectedDeviceIndex === i;
-
                                                                             return (
                                                                                 <button
                                                                                     key={i}
@@ -598,7 +587,10 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                                         setSelectedPlanIndex(0);
                                                                                         setSelectedDurationIndex(0);
                                                                                         setTimeout(() => {
-                                                                                            durationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                                                                            durationRef.current?.scrollIntoView({
+                                                                                                behavior: "smooth",
+                                                                                                block: "start"
+                                                                                            });
                                                                                         }, 100);
                                                                                     }}
                                                                                     style={{
@@ -616,7 +608,6 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                                 </button>
                                                                             );
                                                                         })}
-
                                                                     </div>
                                                                 </div>
                                                             )}
@@ -626,7 +617,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
 
                                                 <div className="col-lg-6 col-12 text-center" style={{ padding: '20px' }}>
                                                     <img
-                                                        src={`/upload/img/${mainImage || products[selectedModelIndex]?.main_img}`}
+                                                        src={`/upload/img/${mainImage || selectedProductByModelId?.main_img || 'placeholder.png'}`}
                                                         alt="Main Product"
                                                         className="img-fluid mb-3"
                                                         style={{
@@ -638,9 +629,10 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                             objectFit: 'contain',
                                                         }}
                                                     />
+
                                                     <div className="d-flex justify-content-center align-items-center flex-wrap gap-3 mt-3">
                                                         {[1, 2, 3, 4].map((num) => {
-                                                            const subImg = products[selectedModelIndex]?.[`sub_img_${num}`];
+                                                            const subImg = selectedProductByModelId?.[`sub_img_${num}`];
                                                             return subImg ? (
                                                                 <img
                                                                     key={num}
@@ -658,23 +650,27 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                 />
                                                             ) : null;
                                                         })}
-                                                        {products[selectedModelIndex]?.main_img && (
+
+                                                        {selectedProductByModelId?.main_img && (
                                                             <img
-                                                                src={`/upload/img/${products[selectedModelIndex].main_img}`}
+                                                                src={`/upload/img/${selectedProductByModelId.main_img}`}
                                                                 alt="Main Preview"
                                                                 className="rounded"
                                                                 style={{
                                                                     width: "80px",
                                                                     height: "80px",
                                                                     objectFit: "cover",
-                                                                    border: mainImage === products[selectedModelIndex].main_img ? "2px solid #0d83fd" : "2px dashed #0d83fd",
+                                                                    border: mainImage === selectedProductByModelId.main_img
+                                                                        ? "2px solid #0d83fd"
+                                                                        : "2px dashed #0d83fd",
                                                                     cursor: "pointer",
                                                                 }}
-                                                                onClick={() => setMainImage(products[selectedModelIndex].main_img)}
+                                                                onClick={() => setMainImage(selectedProductByModelId.main_img)}
                                                             />
                                                         )}
                                                     </div>
                                                 </div>
+
                                             </div>
                                         )}
 
@@ -870,7 +866,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                         <h5 style={{ paddingTop: '30px' }}>Choose Duration</h5>
 
                                                         <div className="d-flex flex-wrap gap-2 mb-3 justify-content-center">
-                                                            {products[selectedModelIndex]?.duration.map((duration, index) => (
+                                                            {selectedProductByModelId?.duration?.map((duration, index) => (
                                                                 <button
                                                                     key={duration.duration_id}
                                                                     className={`btn ${selectedDurationIndex === index ? "btn-primary" : "btn-outline-primary"}`}
@@ -882,259 +878,267 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                         </div>
                                                     </div>
 
-                                                    <div className="row justify-content-center" style={{ padding: "20px" }}>
-                                                        {products[selectedModelIndex]?.duration?.[selectedDurationIndex]?.plans?.map((plan, planIndex) => {
-                                                            const product = products[selectedModelIndex];
-                                                            const selectedDuration = product?.duration?.[selectedDurationIndex];
+                                                    {selectedProductByModelId ? (
+                                                        <>
+                                                            <div className="row justify-content-center" style={{ padding: "20px" }}>
+                                                                {selectedProductByModelId.duration?.[selectedDurationIndex]?.plans?.map((plan, planIndex) => {
+                                                                    const selectedDuration = selectedProductByModelId.duration?.[selectedDurationIndex]; const product = products[selectedModelIndex];
+                                                                    // const selectedDuration = product?.duration?.[selectedDurationIndex];
 
-                                                            if (!product || !selectedDuration) return null;
+                                                                    if (!product || !selectedDuration) return null;
 
-                                                            const durationText = selectedDuration?.duration_time_limit || "28 days";
-                                                            const durationDays = parseInt(durationText) || 28;
-                                                            const baseDays = 28;
+                                                                    const durationText = selectedDuration?.duration_time_limit || "28 days";
+                                                                    const durationDays = parseInt(durationText) || 28;
+                                                                    const baseDays = 28;
 
-                                                            // If plan.price belongs to that duration (like in your JSON), just use it directly
-                                                            // Otherwise (for older data with 28-day base), multiply proportionally
-                                                            const totalPrice =
-                                                                selectedDuration?.plans?.length > 0
-                                                                    ? plan.price // already specific for this duration
-                                                                    : (plan.price / baseDays) * durationDays;
+                                                                    // If plan.price belongs to that duration (like in your JSON), just use it directly
+                                                                    // Otherwise (for older data with 28-day base), multiply proportionally
+                                                                    const totalPrice =
+                                                                        selectedDuration?.plans?.length > 0
+                                                                            ? plan.price // already specific for this duration
+                                                                            : (plan.price / baseDays) * durationDays;
 
-                                                            const formattedPrice = new Intl.NumberFormat("en-IN", {
-                                                                style: "currency",
-                                                                currency: "INR",
-                                                                minimumFractionDigits: 0,
-                                                                maximumFractionDigits: 0,
-                                                            }).format(totalPrice);
+                                                                    const formattedPrice = new Intl.NumberFormat("en-IN", {
+                                                                        style: "currency",
+                                                                        currency: "INR",
+                                                                        minimumFractionDigits: 0,
+                                                                        maximumFractionDigits: 0,
+                                                                    }).format(totalPrice);
 
-                                                            const isPopular = plan.label?.toLowerCase() === "couple";
-                                                            const isOutOfStock = !product?.wp_device_id;
+                                                                    const isPopular = plan.label?.toLowerCase() === "couple";
+                                                                    const isOutOfStock = !product?.wp_device_id;
 
-                                                            // Normalize connectivity (array or string)
-                                                            const connectivityRaw = product?.connectivity;
-                                                            const connectivity = Array.isArray(connectivityRaw)
-                                                                ? connectivityRaw.join(", ")
-                                                                : (connectivityRaw || "").toString().trim();
+                                                                    // Normalize connectivity (array or string)
+                                                                    const connectivityRaw = product?.connectivity;
+                                                                    const connectivity = Array.isArray(connectivityRaw)
+                                                                        ? connectivityRaw.join(", ")
+                                                                        : (connectivityRaw || "").toString().trim();
 
-                                                            // Pull GST, Discount, Deposit from duration
-                                                            const discountRate = selectedDuration?.discount || 0;
-                                                            const gstRate = selectedDuration?.gst || 0;
-                                                            const securityDeposit = selectedDuration?.security_deposit || 0;
+                                                                    // Pull GST, Discount, Deposit from duration
+                                                                    const discountRate = selectedDuration?.discount || 0;
+                                                                    const gstRate = selectedDuration?.gst || 0;
+                                                                    const securityDeposit = selectedDuration?.security_deposit || 0;
 
-                                                            return (
-                                                                <div className="col-md-3 mb-4" key={plan.plans_id}>
-                                                                    <div
-                                                                        className="card h-100 shadow-sm position-relative"
-                                                                        style={{
-                                                                            borderRadius: "20px",
-                                                                            overflow: "visible",
-                                                                            border: isPopular ? "2px solid #0d6efd" : "2px solid #e0e0e0",
-                                                                            transition: "all 0.3s ease-in-out",
-                                                                            transform: "scale(1)",
-                                                                        }}
-                                                                        onMouseEnter={(e) => {
-                                                                            e.currentTarget.style.transform = "scale(1.05)";
-                                                                            e.currentTarget.style.boxShadow = "0 0 25px rgba(13, 110, 253, 0.3)";
-                                                                        }}
-                                                                        onMouseLeave={(e) => {
-                                                                            e.currentTarget.style.transform = "scale(1)";
-                                                                            e.currentTarget.style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.1)";
-                                                                        }}
-                                                                    >
-                                                                        {/* --- MOST POPULAR BADGE --- */}
-                                                                        {isPopular && (
+                                                                    return (
+                                                                        <div className="col-md-3 mb-4" key={plan.plans_id}>
                                                                             <div
+                                                                                className="card h-100 shadow-sm position-relative"
                                                                                 style={{
-                                                                                    position: "absolute",
-                                                                                    top: "-14px",
-                                                                                    left: "50%",
-                                                                                    transform: "translateX(-50%)",
-                                                                                    background: "#0d6efd",
-                                                                                    color: "#fff",
                                                                                     borderRadius: "20px",
-                                                                                    padding: "4px 16px",
-                                                                                    fontSize: "13px",
-                                                                                    fontWeight: "600",
-                                                                                    boxShadow: "0 2px 6px rgba(13,110,253,0.3)",
-                                                                                    zIndex: "10",
+                                                                                    overflow: "visible",
+                                                                                    border: isPopular ? "2px solid #0d6efd" : "2px solid #e0e0e0",
+                                                                                    transition: "all 0.3s ease-in-out",
+                                                                                    transform: "scale(1)",
+                                                                                }}
+                                                                                onMouseEnter={(e) => {
+                                                                                    e.currentTarget.style.transform = "scale(1.05)";
+                                                                                    e.currentTarget.style.boxShadow = "0 0 25px rgba(13, 110, 253, 0.3)";
+                                                                                }}
+                                                                                onMouseLeave={(e) => {
+                                                                                    e.currentTarget.style.transform = "scale(1)";
+                                                                                    e.currentTarget.style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.1)";
                                                                                 }}
                                                                             >
-                                                                                Most Popular
-                                                                            </div>
-                                                                        )}
-
-                                                                        {/* HEADER */}
-                                                                        <div className="card-header bg-white text-center pt-4 border-0" style={{ borderRadius: '20px' }}>
-                                                                            <h5
-                                                                                style={{
-                                                                                    color: "#000",
-                                                                                    textTransform: "capitalize",
-                                                                                    fontWeight: "700",
-                                                                                    marginBottom: "5px",
-                                                                                    fontSize: "20px",
-                                                                                }}
-                                                                            >
-                                                                                {plan.label} Plan
-                                                                            </h5>
-                                                                            <p style={{ fontWeight: "600" }}>
-                                                                                {plan.label?.toLowerCase() === "unlimited" || !plan.capacity ? (
-                                                                                    <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
-                                                                                ) : (
-                                                                                    <>
-                                                                                        {plan.capacity}/<span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
-                                                                                    </>
-                                                                                )}
-                                                                            </p>
-                                                                        </div>
-
-                                                                        {/* PRICE */}
-                                                                        <div className="text-center mt-2">
-                                                                            <h4 style={{ color: "#000", fontWeight: "700", fontSize: "32px", marginBottom: "5px" }}>
-                                                                                <span style={{ color: "#0d6efd" }}>{formattedPrice}</span>
-                                                                            </h4>
-                                                                            <p style={{ color: "#666", fontWeight: "500", fontSize: "15px", marginBottom: "0" }}>
-                                                                                / for {durationText}
-                                                                            </p>
-
-                                                                            <p style={{ marginTop: "8px", color: "#333", fontWeight: "600", fontSize: "13px" }}>
-                                                                                {discountRate ? `${discountRate}% OFF` : "No Discount"}
-                                                                                <br />
-                                                                                <span style={{ fontSize: "12px", color: "#777" }}>(Inclusive of GST)</span>
-                                                                            </p>
-
-                                                                            <div
-                                                                                style={{
-                                                                                    width: "200px",
-                                                                                    height: "2px",
-                                                                                    backgroundColor: "#0d6efd",
-                                                                                    borderRadius: "2px",
-                                                                                    margin: "10px auto 0 auto",
-                                                                                }}
-                                                                            ></div>
-                                                                        </div>
-
-                                                                        {/* FEATURES */}
-                                                                        <div className="card-body text-left px-4" style={{ paddingTop: "0px" }}>
-                                                                            <ul style={{ listStyle: "none", paddingLeft: "0", margin: "5px 0" }}>
-                                                                                <li className="mb-2"><span className="text-success">✓</span> Lifetime Maintenance</li>
-                                                                                <li className="mb-2"><span className="text-success">✓</span> Security ₹ {securityDeposit}</li>
-                                                                                <li className="mb-2"><span className="text-success">✓</span> 24–48 Hour Installation</li>
-                                                                                {durationDays >= 90 && (
-                                                                                    <li className="mb-2"><span className="text-success">✓</span> Filter Replacement Every 3 Months</li>
+                                                                                {/* --- MOST POPULAR BADGE --- */}
+                                                                                {isPopular && (
+                                                                                    <div
+                                                                                        style={{
+                                                                                            position: "absolute",
+                                                                                            top: "-14px",
+                                                                                            left: "50%",
+                                                                                            transform: "translateX(-50%)",
+                                                                                            background: "#0d6efd",
+                                                                                            color: "#fff",
+                                                                                            borderRadius: "20px",
+                                                                                            padding: "4px 16px",
+                                                                                            fontSize: "13px",
+                                                                                            fontWeight: "600",
+                                                                                            boxShadow: "0 2px 6px rgba(13,110,253,0.3)",
+                                                                                            zIndex: "10",
+                                                                                        }}
+                                                                                    >
+                                                                                        Most Popular
+                                                                                    </div>
                                                                                 )}
 
-                                                                                {/* CONNECTIVITY */}
-                                                                                {connectivity ? (
-                                                                                    <li className="mb-2">
-                                                                                        <span className="text-success">✓</span> Connectivity:
-                                                                                        <ul style={{ listStyleType: "disc", paddingLeft: "25px", marginTop: "5px" }}>
-                                                                                            {connectivity.split(",").map((conn, i) => (
-                                                                                                <li key={i}>{conn.trim()}</li>
-                                                                                            ))}
-                                                                                        </ul>
-                                                                                    </li>
-                                                                                ) : (
-                                                                                    <li className="mb-2 text-danger">❌ No Connectivity</li>
-                                                                                )}
-
-                                                                                <li className="mb-2"><span className="text-success">✓</span> Model Type: {product.model_type || 'N/A'}</li>
-                                                                                <li className="mb-2"><span className="text-success">✓</span> Discount: {discountRate}%</li>
-                                                                                <li className="mb-2"><span className="text-success">✓</span> GST: {gstRate}%</li>
-                                                                                <li className="text-warning">
-                                                                                    <span className="text-warning">✓</span> Includes ₹{securityDeposit} refundable deposit
-                                                                                </li>
-                                                                            </ul>
-                                                                        </div>
-
-                                                                        {/* BUTTON */}
-                                                                        {/* BUTTON + STATUS */}
-                                                                        {selectedDevice ? (
-                                                                            <div className="text-center mb-3">
-                                                                                {/* 1. Show End Date */}
-                                                                                {selectedDevice.deviceDetails?.plan_config?.endDate ? (
-                                                                                    <p className="mb-1" style={{ fontSize: "0.9rem", color: "#444" }}>
-                                                                                        <strong>Plan ends on:</strong>{" "}
-                                                                                        {formatDate(parseEndDate(selectedDevice.deviceDetails.plan_config.endDate))}
+                                                                                {/* HEADER */}
+                                                                                <div className="card-header bg-white text-center pt-4 border-0" style={{ borderRadius: '20px' }}>
+                                                                                    <h5
+                                                                                        style={{
+                                                                                            color: "#000",
+                                                                                            textTransform: "capitalize",
+                                                                                            fontWeight: "700",
+                                                                                            marginBottom: "5px",
+                                                                                            fontSize: "20px",
+                                                                                        }}
+                                                                                    >
+                                                                                        {plan.label} Plan
+                                                                                    </h5>
+                                                                                    <p style={{ fontWeight: "600" }}>
+                                                                                        {plan.label?.toLowerCase() === "unlimited" || !plan.capacity ? (
+                                                                                            <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
+                                                                                        ) : (
+                                                                                            <>
+                                                                                                {plan.capacity}/<span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
+                                                                                            </>
+                                                                                        )}
                                                                                     </p>
-                                                                                ) : (
-                                                                                    <p className="mb-1" style={{ fontSize: "0.9rem", color: "#d00" }}>
-                                                                                        {/* <strong>No plan assigned</strong> */}
+                                                                                </div>
+
+                                                                                {/* PRICE */}
+                                                                                <div className="text-center mt-2">
+                                                                                    <h4 style={{ color: "#000", fontWeight: "700", fontSize: "32px", marginBottom: "5px" }}>
+                                                                                        <span style={{ color: "#0d6efd" }}>{formattedPrice}</span>
+                                                                                    </h4>
+                                                                                    <p style={{ color: "#666", fontWeight: "500", fontSize: "15px", marginBottom: "0" }}>
+                                                                                        / for {durationText}
                                                                                     </p>
+
+                                                                                    <p style={{ marginTop: "8px", color: "#333", fontWeight: "600", fontSize: "13px" }}>
+                                                                                        {discountRate ? `${discountRate}% OFF` : "No Discount"}
+                                                                                        <br />
+                                                                                        <span style={{ fontSize: "12px", color: "#777" }}>(Inclusive of GST)</span>
+                                                                                    </p>
+
+                                                                                    <div
+                                                                                        style={{
+                                                                                            width: "200px",
+                                                                                            height: "2px",
+                                                                                            backgroundColor: "#0d6efd",
+                                                                                            borderRadius: "2px",
+                                                                                            margin: "10px auto 0 auto",
+                                                                                        }}
+                                                                                    ></div>
+                                                                                </div>
+
+                                                                                {/* FEATURES */}
+                                                                                <div className="card-body text-left px-4" style={{ paddingTop: "0px" }}>
+                                                                                    <ul style={{ listStyle: "none", paddingLeft: "0", margin: "5px 0" }}>
+                                                                                        <li className="mb-2"><span className="text-success">✓</span> Lifetime Maintenance</li>
+                                                                                        <li className="mb-2"><span className="text-success">✓</span> Security ₹ {securityDeposit}</li>
+                                                                                        <li className="mb-2"><span className="text-success">✓</span> 24–48 Hour Installation</li>
+                                                                                        {durationDays >= 90 && (
+                                                                                            <li className="mb-2"><span className="text-success">✓</span> Filter Replacement Every 3 Months</li>
+                                                                                        )}
+
+                                                                                        {/* CONNECTIVITY */}
+                                                                                        {connectivity ? (
+                                                                                            <li className="mb-2">
+                                                                                                <span className="text-success">✓</span> Connectivity:
+                                                                                                <ul style={{ listStyleType: "disc", paddingLeft: "25px", marginTop: "5px" }}>
+                                                                                                    {connectivity.split(",").map((conn, i) => (
+                                                                                                        <li key={i}>{conn.trim()}</li>
+                                                                                                    ))}
+                                                                                                </ul>
+                                                                                            </li>
+                                                                                        ) : (
+                                                                                            <li className="mb-2 text-danger">❌ No Connectivity</li>
+                                                                                        )}
+
+                                                                                        <li className="mb-2"><span className="text-success">✓</span> Model Type: {product.model_type || 'N/A'}</li>
+                                                                                        <li className="mb-2"><span className="text-success">✓</span> Discount: {discountRate}%</li>
+                                                                                        <li className="mb-2"><span className="text-success">✓</span> GST: {gstRate}%</li>
+                                                                                        <li className="text-warning">
+                                                                                            <span className="text-warning">✓</span> Includes ₹{securityDeposit} refundable deposit
+                                                                                        </li>
+                                                                                    </ul>
+                                                                                </div>
+
+                                                                                {/* BUTTON */}
+                                                                                {/* BUTTON + STATUS */}
+                                                                                {selectedDevice ? (
+                                                                                    <div className="text-center mb-3">
+                                                                                        {/* 1. Show End Date */}
+                                                                                        {selectedDevice.deviceDetails?.plan_config?.endDate ? (
+                                                                                            <p className="mb-1" style={{ fontSize: "0.9rem", color: "#444" }}>
+                                                                                                <strong>Plan ends on:</strong>{" "}
+                                                                                                {formatDate(parseEndDate(selectedDevice.deviceDetails.plan_config.endDate))}
+                                                                                            </p>
+                                                                                        ) : (
+                                                                                            <p className="mb-1" style={{ fontSize: "0.9rem", color: "#d00" }}>
+                                                                                                {/* <strong>No plan assigned</strong> */}
+                                                                                            </p>
+                                                                                        )}
+
+                                                                                        {/* 2. Status Message */}
+                                                                                        {(() => {
+                                                                                            const endDateStr = selectedDevice.deviceDetails?.plan_config?.endDate;
+                                                                                            const expiry = parseEndDate(endDateStr);
+                                                                                            const today = new Date();
+                                                                                            today.setHours(0, 0, 0, 0);
+
+                                                                                            if (!expiry) {
+                                                                                                return (
+                                                                                                    <p style={{ color: "#ff8800", fontWeight: 600 }}>
+                                                                                                        No active plan — please recharge
+                                                                                                    </p>
+                                                                                                );
+                                                                                            }
+
+                                                                                            const isExpired = today > expiry;
+
+                                                                                            if (isExpired) {
+                                                                                                return (
+                                                                                                    <p style={{ color: "#ff9900", fontWeight: 600 }}>
+                                                                                                        {today.getTime() === expiry.getTime()
+                                                                                                            ? "Plan ends today — you can recharge now"
+                                                                                                            : `Plan expired on ${formatDate(expiry)}`}
+                                                                                                    </p>
+                                                                                                );
+                                                                                            }
+
+                                                                                            return (
+                                                                                                <p style={{ color: "green", fontWeight: 600 }}>
+                                                                                                    Plan Active(Recharge available from) {formatDate(expiry)}
+                                                                                                </p>
+                                                                                            );
+                                                                                        })()}
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <div className="text-center mb-3 text-muted">
+                                                                                        <p>Please select a device</p>
+                                                                                    </div>
                                                                                 )}
 
-                                                                                {/* 2. Status Message */}
-                                                                                {(() => {
-                                                                                    const endDateStr = selectedDevice.deviceDetails?.plan_config?.endDate;
-                                                                                    const expiry = parseEndDate(endDateStr);
-                                                                                    const today = new Date();
-                                                                                    today.setHours(0, 0, 0, 0);
-
-                                                                                    if (!expiry) {
-                                                                                        return (
-                                                                                            <p style={{ color: "#ff8800", fontWeight: 600 }}>
-                                                                                                No active plan — please recharge
-                                                                                            </p>
-                                                                                        );
-                                                                                    }
-
-                                                                                    const isExpired = today > expiry;
-
-                                                                                    if (isExpired) {
-                                                                                        return (
-                                                                                            <p style={{ color: "#ff9900", fontWeight: 600 }}>
-                                                                                                {today.getTime() === expiry.getTime()
-                                                                                                    ? "Plan ends today — you can recharge now"
-                                                                                                    : `Plan expired on ${formatDate(expiry)}`}
-                                                                                            </p>
-                                                                                        );
-                                                                                    }
-
-                                                                                    return (
-                                                                                        <p style={{ color: "green", fontWeight: 600 }}>
-                                                                                            Plan Active(Recharge available from) {formatDate(expiry)}
-                                                                                        </p>
-                                                                                    );
-                                                                                })()}
+                                                                                {selectedDevice ? (
+                                                                                    <div className="card-footer text-center pb-4 border-0 bg-white" style={{ borderRadius: '20px' }}>
+                                                                                        <button
+                                                                                            className="btn px-4 py-2 rounded-pill"
+                                                                                            style={{
+                                                                                                background: isExpired && selectedDevice.isSetup ? "#0d6efd" : "#6c757d",
+                                                                                                border: "none",
+                                                                                                color: "#fff",
+                                                                                                cursor: isExpired && selectedDevice.isSetup ? "pointer" : "not-allowed",
+                                                                                                opacity: isExpired && selectedDevice.isSetup ? 1 : 0.6,
+                                                                                            }}
+                                                                                            disabled={!(isExpired && selectedDevice.isSetup)}
+                                                                                            onClick={() => {
+                                                                                                if (!(isExpired && selectedDevice.isSetup)) return;
+                                                                                                setSelectedPlanIndex(planIndex);
+                                                                                                handleSubscribeClick();
+                                                                                            }}
+                                                                                        >
+                                                                                            {isExpired
+                                                                                                ? (selectedDevice.isSetup ? "Recharge Now" : "Active Pending")
+                                                                                                : "Active"}
+                                                                                        </button>
+                                                                                    </div>
+                                                                                ) : null}
                                                                             </div>
-                                                                        ) : (
-                                                                            <div className="text-center mb-3 text-muted">
-                                                                                <p>Please select a device</p>
-                                                                            </div>
-                                                                        )}
-
-                                                                        {selectedDevice ? (
-                                                                            <div className="card-footer text-center pb-4 border-0 bg-white" style={{ borderRadius: '20px' }}>
-                                                                                <button
-                                                                                    className="btn px-4 py-2 rounded-pill"
-                                                                                    style={{
-                                                                                        background: isExpired ? "#0d6efd" : "#6c757d",
-                                                                                        border: "none",
-                                                                                        color: "#fff",
-                                                                                        cursor: isExpired ? "pointer" : "not-allowed",
-                                                                                        opacity: isExpired ? 1 : 0.6,
-                                                                                    }}
-                                                                                    disabled={!isExpired}
-                                                                                    onClick={() => {
-                                                                                        if (!isExpired) return;
-                                                                                        setSelectedPlanIndex(planIndex);
-                                                                                        handleSubscribeClick();
-                                                                                    }}
-                                                                                >
-                                                                                    {isExpired ? "Recharge Now" : "Active"}
-                                                                                </button>
-                                                                            </div>
-                                                                        ) : null}
-
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <div className="text-center py-4 text-muted">
+                                                            <p>Please select a model and device to view plans.</p>
+                                                        </div>
+                                                    )}
 
                                                 </div>
                                             </div>
                                         </div>
-
                                     </div>
                                 </div>
                             </div>
@@ -1178,16 +1182,20 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                         boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
                                     }}
                                 >
-                                    <div className="modal-header"
+                                    <div
+                                        className="modal-header"
                                         style={{
                                             backgroundColor: "aliceblue",
                                             padding: window.innerWidth < 768 ? "10px 15px" : "15px 25px",
-                                        }}>
-                                        <h5 className="modal-title"
+                                        }}
+                                    >
+                                        <h5
+                                            className="modal-title"
                                             style={{
                                                 color: "#0d6efd",
                                                 fontSize: window.innerWidth < 768 ? "16px" : "18px",
-                                            }}>
+                                            }}
+                                        >
                                             Subscription Summary
                                         </h5>
                                         <button
@@ -1208,12 +1216,12 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                         }}
                                     >
                                         {(() => {
-                                            const product = products[selectedModelIndex];
-                                            const duration = product?.duration?.[selectedDurationIndex];
-                                            const plan = duration?.plans?.[selectedPlanIndex];
+                                            const product = selectedProductByModelId;
+                                            const duration = product?.duration?.[selectedDurationIndex] || null;
+                                            const plan = duration?.plans?.[selectedPlanIndex] || null;
 
                                             if (!product || !duration || !plan)
-                                                return <p>Error loading summary. Please try again.</p>;
+                                                return <p className="text-danger text-center">Please select a device, duration, and plan.</p>;
 
                                             const textRow = (label, value, isBold = false, isBlue = false) => (
                                                 <div
@@ -1224,15 +1232,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                         alignItems: "baseline",
                                                     }}
                                                 >
-                                                    <span
-                                                        style={{
-                                                            fontWeight: 600,
-                                                            color: "#000",
-                                                            fontSize: "15px",
-                                                        }}
-                                                    >
-                                                        {label}
-                                                    </span>
+                                                    <span style={{ fontWeight: 600, color: "#000", fontSize: "15px" }}>{label}</span>
                                                     <span
                                                         style={{
                                                             fontWeight: isBold ? "700" : "500",
@@ -1251,31 +1251,21 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                     maximumFractionDigits: 2,
                                                 })}`;
 
-                                            // === PRICE CALCULATION BASED ON SELECTED DURATION & PLAN ===
                                             const durationText = duration.duration_time_limit || "28 days";
-                                            const durationDays = parseInt(durationText) || 28;
                                             const basePrice = plan.price || 0;
-
                                             const gstRate = duration.gst || 0;
                                             const discountRate = duration.discount || 0;
 
-                                            // Step 1: Apply discount first
                                             const discountAmount = (basePrice * discountRate) / 100;
                                             const discountedPrice = basePrice - discountAmount;
-
-                                            // Step 2: Add GST on the discounted price
                                             const gstAmount = (discountedPrice * gstRate) / 100;
                                             const subtotal = discountedPrice + gstAmount;
-
-                                            // Step 3: Add extras
-                                            const securityDeposit = duration.security_deposit || 0;
-                                            const grandTotal = subtotal + securityDeposit;
+                                            const grandTotal = subtotal;
 
                                             return (
                                                 <>
                                                     {textRow("Model", product.model_name, true, true)}
                                                     {textRow("Model Type", product.model_type || "N/A")}
-
                                                     {textRow("Connectivity", product.connectivity || "N/A")}
                                                     <hr style={{ color: "#0d6efd" }} />
 
@@ -1295,15 +1285,13 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                 <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
                                                             ) : (
                                                                 <>
-                                                                    {plan.capacity}/
-                                                                    <span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
+                                                                    {plan.capacity}/<span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
                                                                 </>
                                                             )}
                                                         </span>
                                                     </div>
 
                                                     <hr style={{ color: "#0d6efd" }} />
-
                                                     {textRow("Base Price", formatINR(basePrice))}
                                                     {textRow(`Discount (${discountRate}%)`, formatINR(discountAmount))}
                                                     {textRow("Discounted Price", formatINR(discountedPrice))}
@@ -1311,14 +1299,12 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
 
                                                     <hr style={{ color: "#0d6efd" }} />
                                                     {textRow("Subtotal", formatINR(subtotal))}
-                                                    {textRow("Security Deposit", formatINR(securityDeposit))}
                                                     {textRow("Grand Total", formatINR(grandTotal), true, true)}
                                                 </>
                                             );
                                         })()}
                                     </div>
 
-                                    {/* Footer */}
                                     <div
                                         className="modal-footer"
                                         style={{
@@ -1330,7 +1316,6 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                             backgroundColor: "aliceblue",
                                         }}
                                     >
-                                        {/* Payment buttons */}
                                         <div
                                             style={{
                                                 display: "flex",
@@ -1346,18 +1331,9 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                     style={{
                                                         cursor: "pointer",
                                                         padding: "10px 15px",
-                                                        border: selectedPaymentType === type
-                                                            ? type === "online"
-                                                                ? "2px solid #0d6efd"
-                                                                : "2px solid #198754"
-                                                            : "1px solid #ccc",
+                                                        border: selectedPaymentType === type ? "2px solid #0d6efd" : "1px solid #ccc",
                                                         borderRadius: "8px",
-                                                        backgroundColor:
-                                                            selectedPaymentType === type
-                                                                ? type === "online"
-                                                                    ? "#e7f1ff"
-                                                                    : "#e9f9ee"
-                                                                : "#fff",
+                                                        backgroundColor: selectedPaymentType === type ? "#e7f1ff" : "#fff",
                                                         fontSize: window.innerWidth < 768 ? "13px" : "15px",
                                                         width: window.innerWidth < 768 ? "100%" : "auto",
                                                         textAlign: "center",
@@ -1372,29 +1348,21 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                         checked={selectedPaymentType === type}
                                                         onChange={() => setSelectedPaymentType(type)}
                                                         style={{
-                                                            accentColor: type === "online" ? "#0d6efd" : "#198754",
+                                                            accentColor: "#0d6efd",
                                                             marginRight: "6px",
                                                         }}
                                                     />
-                                                    {type === "online" ? "Online Payment" : "Cash on Delivery"}
+                                                    Online Payment
                                                 </label>
                                             ))}
                                         </div>
 
-                                        {/* Dynamic Message */}
                                         {selectedPaymentType && (
-                                            <div
-                                                style={{
-                                                    marginTop: "10px",
-                                                    fontWeight: 600,
-                                                    color: selectedPaymentType === "cod" ? "#198754" : "#0d6efd",
-                                                }}
-                                            >
+                                            <div style={{ marginTop: "10px", fontWeight: 600, color: "#0d6efd" }}>
                                                 Online Payment selected — proceed to secure checkout.
                                             </div>
                                         )}
 
-                                        {/* Action buttons */}
                                         <div
                                             style={{
                                                 display: "flex",
@@ -1404,27 +1372,23 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                 width: "100%",
                                             }}
                                         >
-                                            <button
-                                                className="btn btn-secondary"
-                                                style={{ width: window.innerWidth < 768 ? "45%" : "auto" }}
-                                                onClick={() => setShowSummaryModal(false)}
-                                            >
+                                            <button className="btn btn-secondary" onClick={() => setShowSummaryModal(false)}>
                                                 Cancel
                                             </button>
                                             <button
                                                 className={`btn ${selectedPaymentType ? "btn-primary" : "btn-outline-primary"}`}
-                                                style={{ width: window.innerWidth < 768 ? "45%" : "auto", fontWeight: "700" }}
                                                 onClick={(e) => handleSubmit(e, "online")}
+                                                disabled={!selectedPaymentType}
                                             >
                                                 Proceed to Online
                                             </button>
-
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
+
 
                 </section>
                 {/* <!-- /Features Section --> */}
@@ -1466,6 +1430,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                 {/* <!-- Start Product detail Section --> */}
 
             </main>
+
             {/* Footer */}
             < Footer />
         </div>
