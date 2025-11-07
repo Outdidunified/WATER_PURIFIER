@@ -435,60 +435,71 @@ exports.fetchpaymenthistory = async (req, res) => {
     const orderCollection = db.collection("orders");
     const productModelsCollection = db.collection("product_models");
     const serviceRecordsCollection = db.collection("service_records");
-
     const { ObjectId } = require("mongodb");
 
-    // ✅ 1️⃣ Fetch payments
+    // ✅ 1️⃣ Fetch all payments for this user
     const payments = await paymentCollection.find({ user_id }).toArray();
 
-    // ✅ 2️⃣ Extract only VALID Mongo ObjectIds
+    if (!payments.length) {
+      return res.status(200).json({
+        success: true,
+        message: "No payment history found for this user",
+        data: [],
+      });
+    }
+
+    // ✅ 2️⃣ Extract valid order ObjectIds from payments
     const validOrderObjectIds = payments
       .filter((p) => ObjectId.isValid(p.orderId))
       .map((p) => new ObjectId(p.orderId));
 
-    // 3️⃣ Fetch orders based on valid IDs
+    // ✅ 3️⃣ Fetch all related orders
     const orders = await orderCollection
       .find({ _id: { $in: validOrderObjectIds } })
       .toArray();
 
-    // 4️⃣ Fetch service records
+    // ✅ 4️⃣ Fetch all service records (Installation + Service + Recharge)
     const serviceRecords = await serviceRecordsCollection
-      .find({ task_type: 1 })
+      .find({ task_type: { $in: [1, 2, 3] } })
       .toArray();
 
+    // ✅ 5️⃣ Create service record map
     const serviceRecordMap = {};
     for (const record of serviceRecords) {
       if (record.wp_device_id) {
-        serviceRecordMap[record.wp_device_id.toString().toLowerCase()] =
-          record.task_status;
+        serviceRecordMap[record.wp_device_id.toString().toLowerCase()] = {
+          task_status: record.task_status,
+          task_type: record.task_type,
+        };
       }
     }
 
+    // ✅ 6️⃣ Create order map
     const orderMap = {};
     for (const order of orders) {
       orderMap[order._id.toString()] = order;
     }
 
-    // ✅ 5️⃣ Merge everything safely
+    // ✅ 7️⃣ Merge everything
     const paymentsWithOrders = await Promise.all(
       payments.map(async (payment) => {
         const order = orderMap[payment.orderId];
         let taskStatus = "N/A";
+        let taskType = null;
         let productModel = null;
 
-        if (
-          order &&
-          payment.paymentStatus === "Completed" &&
-          order.orderStatus === "Confirmed"
-        ) {
-          const deviceId =
-            (order.wp_device_id || order.device_id || "").toString().toLowerCase();
+        if (order) {
+          const deviceId = (order.wp_device_id || order.device_id || "")
+            .toString()
+            .toLowerCase();
 
           if (serviceRecordMap[deviceId]) {
-            taskStatus = serviceRecordMap[deviceId];
+            taskStatus = serviceRecordMap[deviceId].task_status;
+            taskType = serviceRecordMap[deviceId].task_type;
           }
         }
 
+        // ✅ 8️⃣ Get product model images
         if (order?.productModelId && ObjectId.isValid(order.productModelId)) {
           const productData = await productModelsCollection.findOne({
             _id: new ObjectId(order.productModelId),
@@ -506,6 +517,7 @@ exports.fetchpaymenthistory = async (req, res) => {
           }
         }
 
+        // ✅ 9️⃣ Combine everything into one object
         return {
           ...payment,
           orders: order
@@ -513,6 +525,7 @@ exports.fetchpaymenthistory = async (req, res) => {
                 {
                   ...order,
                   task_status: taskStatus,
+                  task_type: taskType,
                   product_model_images: productModel,
                 },
               ]
@@ -521,10 +534,11 @@ exports.fetchpaymenthistory = async (req, res) => {
       })
     );
 
+    // ✅ 10️⃣ Final Response
     res.status(200).json({
       success: true,
       message:
-        "Payment history with orders and conditional task status fetched successfully",
+        "Payment history with Installation, Service, and Recharge details fetched successfully",
       data: paymentsWithOrders,
     });
   } catch (error) {
@@ -532,6 +546,8 @@ exports.fetchpaymenthistory = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while fetching payment history",
+      details: error.message,
     });
   }
 };
+

@@ -8,5 +8,6 @@ const authMiddleware=require('../../../middlewares/authMiddleware')
 
 router.post('/getActiveSubscriptionDetails',enduserdetails.getActiveSubscriptionDetails);
 router.post('/getLatestFeatureValues',authMiddleware,enduserdetails.getLatestFeatureValues);
+router.post('/storeBleAck', authMiddleware,enduserdetails.userStoreBleAck);
 
 module.exports = router;

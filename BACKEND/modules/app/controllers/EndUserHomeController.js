@@ -18,6 +18,7 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
     const ordersCollection = db.collection('orders');
     const serviceRecordsCollection = db.collection('service_records');
 
+    // ✅ Verify user exists
     const user = await usersCollection.findOne({
       user_id: parseInt(user_id),
       email: email.trim(),
@@ -27,7 +28,7 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
       return res.status(404).json({ error: true, message: 'User not found' });
     }
 
-    // ✅ Fallback: If not subscribed, check for COD confirmed orders
+    // ✅ Fallback check for COD orders (auto-subscribe user if needed)
     if (!user.is_subscribed || !user.active_order_id) {
       const codOrder = await ordersCollection.findOne({
         user_id: parseInt(user_id),
@@ -36,7 +37,6 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
       });
 
       if (codOrder) {
-        // ✅ Auto-update user
         const now = new Date();
         await usersCollection.updateOne(
           { user_id: parseInt(user_id) },
@@ -62,7 +62,7 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
       }
     }
 
-    // ✅ Fetch all orders
+    // ✅ Fetch all orders for user
     const orders = await ordersCollection.find({ user_id: parseInt(user_id) })
       .sort({ createdAt: -1 })
       .toArray();
@@ -75,38 +75,40 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
       });
     }
 
-    // ✅ Add tasks (installation & service) with technician details from service_records for each order
     const ordersWithStatus = await Promise.all(
       orders.map(async (order) => {
         const serviceRecords = await serviceRecordsCollection.find({
           wp_device_id: order.wp_device_id
         }).toArray();
-        
-        // Map all records to tasks array with technician details
+
         const tasks = await Promise.all(
           serviceRecords.map(async (record) => {
             let technician = null;
+
             if (record.assigned_technician_id) {
               technician = await usersCollection.findOne({
-                technician_id: record.assigned_technician_id
+                $or: [
+                  { technician_id: record.assigned_technician_id },
+                  { employee_id: record.assigned_technician_id }
+                ]
               });
             }
-            
+
             return {
-              task_type: record.task_type,
-              task_status: record.task_status,
-              technician: technician ? {
-                name: technician.name,
-                phone: technician.phone
-              } : null,
-              estimated_end: record.estimated_end || null
+              task_type: record.task_type || null,
+              task_status: record.task_status || null,
+              estimated_end: record.estimated_end || null,
+              assigned_technician_id: record.assigned_technician_id || null,
+              technician: technician
+                ? { name: technician.name || null, phone: technician.phone || null }
+                : null,
             };
           })
         );
-        
+
         return {
           ...order,
-          tasks: tasks
+          tasks
         };
       })
     );
@@ -116,9 +118,172 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
       message: `Found ${ordersWithStatus.length} order(s) for user`,
       data: ordersWithStatus
     });
+
   } catch (error) {
     console.error('Error in getActiveSubscriptionDetails:', error);
     return res.status(500).json({ error: true, message: 'Server error' });
+  }
+};
+
+
+
+exports.userStoreBleAck = async (req, res) => {
+  const {
+    wp_device_id,
+    mac_id,
+    status,
+    timestamp,
+    user_id,
+    plan_config: planConfigPayload,
+  } = req.body;
+
+  if (!wp_device_id || !mac_id || !user_id) {
+    return res.status(400).json({
+      error: true,
+      message: 'wp_device_id, mac_id, and user_id are required',
+    });
+  }
+
+  const numericStatus = parseInt(status, 10);
+  if (Number.isNaN(numericStatus) || numericStatus !== 1) {
+    return res.status(400).json({
+      error: true,
+      message: 'Invalid firmware status. Expected status value 1 for success',
+    });
+  }
+
+  let planConfig = planConfigPayload ?? null;
+  if (typeof planConfig === 'string') {
+    try {
+      planConfig = JSON.parse(planConfig);
+    } catch (err) {
+      return res.status(400).json({
+        error: true,
+        message: 'plan_config must be valid JSON',
+      });
+    }
+  }
+
+  if (planConfig && (typeof planConfig !== 'object' || Array.isArray(planConfig))) {
+    return res.status(400).json({
+      error: true,
+      message: 'plan_config must be an object',
+    });
+  }
+
+  if (planConfig && planConfig.totalWaterLimit !== undefined) {
+    const totalLimit = Number(planConfig.totalWaterLimit);
+    if (!Number.isNaN(totalLimit)) {
+      planConfig.totalWaterLimit = totalLimit;
+    }
+  }
+
+  const hasPlanConfig = Boolean(planConfig && Object.keys(planConfig).length > 0);
+  const normalizedMacId = mac_id.toUpperCase();
+
+  let ackTimestamp = timestamp ? new Date(timestamp) : new Date();
+  if (Number.isNaN(ackTimestamp.getTime())) {
+    ackTimestamp = new Date();
+  }
+
+  try {
+    const db = await connectToDatabase();
+    const deviceDetailsCollection = db.collection('device_details');
+    const ordersCollection = db.collection('orders');
+
+    // ✅ Find the order for this user and wp_device_id with Recharge type
+    const orderFilter = {
+      wp_device_id,
+      user_id: Number(user_id),
+      orderType: 'Recharge',
+    };
+
+    const order = await ordersCollection.findOne(orderFilter);
+    if (!order) {
+      return res.status(404).json({
+        error: true,
+        message: 'No Recharge order found for this user and device',
+      });
+    }
+
+    // ✅ Find the device
+    const deviceFilter = {
+      wp_device_id: { $regex: new RegExp(`^${wp_device_id}$`, 'i') },
+    };
+
+    const device = await deviceDetailsCollection.findOne(deviceFilter);
+    if (!device) {
+      return res.status(404).json({
+        error: true,
+        message: 'Device not found in device_details for this acknowledgement',
+      });
+    }
+
+    // ✅ Prepare BLE ack entry
+    const ackHistoryEntry = {
+      status: numericStatus,
+      mac_id: normalizedMacId,
+      timestamp: ackTimestamp,
+      recorded_at: new Date(),
+      user_id: Number(user_id),
+      source: 'end_user',
+    };
+
+    // ✅ Update Device details
+    const deviceUpdatePayload = {
+      $set: {
+        mac_id: normalizedMacId,
+        ble_ack_status: numericStatus,
+        ble_ack_timestamp: ackTimestamp,
+        isSetup: true,
+        updatedAt: new Date(),
+        ...(hasPlanConfig ? { plan_config: planConfig } : {}),
+        last_ble_ack_by_user: Number(user_id),
+      },
+      $push: { ble_ack_history: ackHistoryEntry },
+    };
+
+    await deviceDetailsCollection.updateOne(deviceFilter, deviceUpdatePayload);
+
+    // ✅ Update Order (Recharge)
+    const orderUpdatePayload = {
+      $set: {
+        mac_id: normalizedMacId,
+        ble_ack_status: numericStatus,
+        ble_ack_timestamp: ackTimestamp,
+        isSetup: true,
+        updatedAt: new Date(),
+        ...(hasPlanConfig ? { plan_config: planConfig } : {}),
+      },
+      $push: { ble_ack_history: ackHistoryEntry },
+    };
+
+    await ordersCollection.updateOne({ _id: order._id }, orderUpdatePayload);
+
+    console.log(`⚙️ End user BLE acknowledgement stored for order ${order.customOrderId}`);
+
+    // ✅ Response
+    return res.status(200).json({
+      error: false,
+      message: 'End user BLE acknowledgement stored successfully',
+      data: {
+        wp_device_id,
+        mac_id: normalizedMacId,
+        status: numericStatus,
+        ack_timestamp: ackTimestamp.toISOString(),
+        plan_config: hasPlanConfig ? planConfig : null,
+        isSetup: true,
+        orderType: order.orderType,
+        user_id: Number(user_id),
+      },
+    });
+  } catch (error) {
+    console.error('Error storing end user BLE acknowledgement:', error);
+    return res.status(500).json({
+      error: true,
+      message: 'Server error while storing end user BLE acknowledgement',
+      details: error.message,
+    });
   }
 };
 

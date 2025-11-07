@@ -489,7 +489,7 @@ exports.storeBleAck = async (req, res) => {
     plan_config: planConfigPayload,
   } = req.body;
 
-  if (!wp_device_id || !mac_id || !task_id) {
+  if (!wp_device_id || !mac_id ) {
     return res.status(400).json({
       error: true,
       message: 'wp_device_id, mac_id, and task_id are required',
@@ -542,6 +542,7 @@ exports.storeBleAck = async (req, res) => {
     const db = await connectToDatabase();
     const deviceDetailsCollection = db.collection('device_details');
     const serviceRecordsCollection = db.collection('service_records');
+    const ordersCollection = db.collection('orders');
 
     const deviceFilter = {
       wp_device_id: { $regex: new RegExp(`^${wp_device_id}$`, 'i') },
@@ -573,7 +574,7 @@ exports.storeBleAck = async (req, res) => {
       });
     }
 
-    // ✅ Allow task_type 1 (Installation) and task_type 3 (Recharge)
+    // ✅ Allow task_type 1 (Installation) and 3 (Recharge)
     if (![1, 3].includes(serviceRecord.task_type)) {
       return res.status(400).json({
         error: true,
@@ -581,7 +582,7 @@ exports.storeBleAck = async (req, res) => {
       });
     }
 
-    // ✅ Allow In Progress or Pending state (Recharge tasks may be Pending)
+    // ✅ Allow In Progress or Pending state
     if (!['In Progress', 'Pending'].includes(serviceRecord.task_status)) {
       return res.status(400).json({
         error: true,
@@ -589,63 +590,114 @@ exports.storeBleAck = async (req, res) => {
       });
     }
 
-    // Lightweight history entry (no redundant data)
+    // Create BLE acknowledgment history entry
     const ackHistoryEntry = {
       status: numericStatus,
       mac_id: normalizedMacId,
       timestamp: ackTimestamp,
       recorded_at: new Date(),
-      task_type: serviceRecord.task_type, // helpful to know source
+      task_type: serviceRecord.task_type,
     };
 
-    // Device collection update - store data only once
+    // ✅ Update Device details
     const deviceUpdatePayload = {
       $set: {
         mac_id: normalizedMacId,
         ble_ack_status: numericStatus,
         ble_ack_timestamp: ackTimestamp,
-        setup_complete: true,
+        isSetup: true,
         updatedAt: new Date(),
         ...(technician_id ? { last_ble_ack_by: technician_id } : {}),
         ...(hasPlanConfig ? { plan_config: planConfig } : {}),
       },
-      $push: {
-        ble_ack_history: ackHistoryEntry,
-      },
+      $push: { ble_ack_history: ackHistoryEntry },
     };
 
-    const deviceUpdateResult = await deviceDetailsCollection.updateOne(deviceFilter, deviceUpdatePayload);
+    await deviceDetailsCollection.updateOne(deviceFilter, deviceUpdatePayload);
 
-    if (deviceUpdateResult.matchedCount === 0) {
-      return res.status(404).json({
-        error: true,
-        message: 'Device not found while storing acknowledgement',
-      });
-    }
-
-    // Service records collection update - store data only once
+    // ✅ Update Service record
     const serviceUpdatePayload = {
       $set: {
         mac_id: normalizedMacId,
         ble_ack_status: numericStatus,
         ble_ack_timestamp: ackTimestamp,
-        task_status: 'In Progress', // keep consistent
-        setup_complete: true,
+        task_status: 'In Progress',
+        isSetup: true,
         updatedAt: new Date(),
         modified_date: new Date().toISOString(),
         ...(hasPlanConfig ? { plan_config: planConfig } : {}),
         ...(technician_id ? { modified_by: technician_id } : {}),
       },
-      $push: {
-        ble_ack_history: ackHistoryEntry,
-      },
+      $push: { ble_ack_history: ackHistoryEntry },
     };
 
-    const serviceUpdateResult = await serviceRecordsCollection.updateOne(
+    await serviceRecordsCollection.updateOne(
       { _id: serviceRecord._id },
       serviceUpdatePayload
     );
 
+// ✅ Update corresponding order → isSetup: true + BLE details
+if (serviceRecord.linkedRechargeOrderId) {
+  // Recharge order
+  await ordersCollection.updateOne(
+    { _id: new ObjectId(serviceRecord.linkedRechargeOrderId) },
+    {
+      $set: {
+        mac_id: normalizedMacId,
+        ble_ack_status: numericStatus,
+        ble_ack_timestamp: ackTimestamp,
+        isSetup: true,
+        updatedAt: new Date(),
+        ...(hasPlanConfig ? { plan_config: planConfig } : {}),
+      },
+      $push: { ble_ack_history: ackHistoryEntry },
+    }
+  );
+} else {
+  // Normal order (Installation)
+  const orderId =
+    serviceRecord.customOrderId ||
+    serviceRecord.order?.customOrderId ||
+    serviceRecord.order_snapshot?.customOrderId;
+
+  if (orderId) {
+    await ordersCollection.updateOne(
+      { customOrderId: orderId },
+      {
+        $set: {
+          mac_id: normalizedMacId,
+          ble_ack_status: numericStatus,
+          ble_ack_timestamp: ackTimestamp,
+          isSetup: true,
+          updatedAt: new Date(),
+          ...(hasPlanConfig ? { plan_config: planConfig } : {}),
+        },
+        $push: { ble_ack_history: ackHistoryEntry },
+      }
+    );
+  } else if (serviceRecord.order_snapshot?.orderId) {
+    await ordersCollection.updateOne(
+      { _id: new ObjectId(serviceRecord.order_snapshot.orderId) },
+      {
+        $set: {
+          mac_id: normalizedMacId,
+          ble_ack_status: numericStatus,
+          ble_ack_timestamp: ackTimestamp,
+          isSetup: true,
+          updatedAt: new Date(),
+          ...(hasPlanConfig ? { plan_config: planConfig } : {}),
+        },
+        $push: { ble_ack_history: ackHistoryEntry },
+      }
+    );
+  }
+}
+
+
+
+    console.log(`⚙️ Device setup completed and isSetup marked true for task ${task_id}`);
+
+    // ✅ Response
     return res.status(200).json({
       error: false,
       message: 'Device setup acknowledgement stored successfully',
@@ -655,9 +707,7 @@ exports.storeBleAck = async (req, res) => {
         status: numericStatus,
         ack_timestamp: ackTimestamp.toISOString(),
         plan_config: hasPlanConfig ? planConfig : null,
-        setup_complete: true,
-        device_record_updated: deviceUpdateResult.modifiedCount > 0,
-        service_record_updated: serviceUpdateResult.modifiedCount > 0,
+        isSetup: true,
         task_type: serviceRecord.task_type,
       },
     });
@@ -666,9 +716,11 @@ exports.storeBleAck = async (req, res) => {
     return res.status(500).json({
       error: true,
       message: 'Server error while storing BLE acknowledgement',
+      details: error.message,
     });
   }
 };
+
 
 
 exports.updateTaskDetails = async (req, res) => {
@@ -702,37 +754,27 @@ exports.updateTaskDetails = async (req, res) => {
     const ordersCollection = db.collection('orders');
     const paymentsCollection = db.collection('payments');
 
-    // ✅ Find the task assigned to the technician
+    // ✅ Find technician’s assigned task
     const task = await serviceRecordsCollection.findOne({
       task_id: parseInt(task_id),
       assigned_technician_id: technician_id,
     });
-
     if (!task)
       return res.status(404).json({ error: true, message: 'No task found assigned to this technician' });
 
-    // ✅ Fetch correct order based on orderType
+    // ✅ Identify linked order
     let order;
     if (task.orderType === "Recharge" || task.rechargeDetails) {
-      // 🔹 Recharge flow
       order = await ordersCollection.findOne({ _id: new ObjectId(task.linkedRechargeOrderId) });
       console.log("🔹 Recharge order found:", order?.customOrderId);
     } else {
-      // 🔹 Normal installation/service order flow
       order = await ordersCollection.findOne({
         customOrderId: task.customOrderId || task.order_snapshot?.customOrderId || task.order?.customOrderId,
       });
     }
 
-    // ✅ Allowed fields to update
-    const allowedFields = [
-      'task_status',
-      'pending_reason',
-      'modified_by',
-      'modified_date',
-      'collectPayment',
-      'paymentMethod',
-    ];
+    // ✅ Allow only specific fields
+    const allowedFields = ['task_status', 'pending_reason', 'modified_by', 'modified_date', 'collectPayment', 'paymentMethod'];
     const updateData = {};
     for (let key in updates) {
       if (allowedFields.includes(key)) updateData[key] = updates[key];
@@ -740,7 +782,7 @@ exports.updateTaskDetails = async (req, res) => {
 
     const status = updates.task_status || task.task_status;
 
-    // ✅ Validate Pending Reason
+    // ✅ Pending reason validation
     if (status === 'Pending' && !updates.pending_reason?.trim()) {
       return res.status(400).json({
         error: true,
@@ -750,9 +792,15 @@ exports.updateTaskDetails = async (req, res) => {
       updateData.pending_reason = null;
     }
 
-    // ✅ OTP check for Completed status
+    // ✅ Completion validation
     if (status === 'Completed') {
-      // For COD orders, require payment to be collected
+      if (order && order.isSetup !== true) {
+        return res.status(400).json({
+          error: true,
+          message: 'Setup not completed. Please complete setup before marking task as completed.',
+        });
+      }
+
       if (order && order.paymentType === 'COD') {
         const paymentRecord = await paymentsCollection.findOne({ orderId: order._id });
         if (!paymentRecord || paymentRecord.paymentStatus !== 'Completed') {
@@ -771,7 +819,7 @@ exports.updateTaskDetails = async (req, res) => {
       updateData.completed_date = new Date();
     }
 
-    // ✅ Handle uploaded images
+    // ✅ Handle image uploads
     const files = req.files;
     if (files) {
       if (files.image_before_service && files.image_before_service.length > 0) {
@@ -797,7 +845,7 @@ exports.updateTaskDetails = async (req, res) => {
       return res.status(400).json({ error: true, message: 'No valid fields provided for update' });
     }
 
-    // ✅ Generate QR code for QR payment (COD)
+    // ✅ Generate QR Code if QR payment method
     let qrCode = null;
     if (order && order.paymentType === 'COD' && updates.paymentMethod === 'QR') {
       const upiId = process.env.UPI_ID;
@@ -807,13 +855,15 @@ exports.updateTaskDetails = async (req, res) => {
       qrCode = await qrcode.toDataURL(upiString);
     }
 
-    // ✅ Handle COD payment collection
+    // ✅ Handle COD Payment Collection
     if (updates.collectPayment == true && order && order.paymentType === 'COD') {
       const paymentRecord = await paymentsCollection.findOne({ orderId: order._id });
+
       if (paymentRecord && paymentRecord.paymentStatus !== 'Completed') {
         let qrCodeData = null;
         if (updates.paymentMethod === 'QR') qrCodeData = qrCode;
 
+        // 🔹 Update order
         await ordersCollection.updateOne(
           { _id: order._id },
           {
@@ -823,11 +873,12 @@ exports.updateTaskDetails = async (req, res) => {
               paymentCollectedBy: technician_id,
               qrCode: qrCodeData,
               updatedAt: new Date(),
-              isSetup: false, // ✅ Added this line
+              isSetup: false,
             },
           }
         );
 
+        // 🔹 Update payment record
         await paymentsCollection.updateOne(
           { orderId: order._id },
           {
@@ -841,33 +892,35 @@ exports.updateTaskDetails = async (req, res) => {
           }
         );
 
-        // 🔹 Update service record rechargeDetails if Recharge order
-        if (task.orderType === "Recharge" || task.rechargeDetails) {
-          await serviceRecordsCollection.updateOne(
-            { task_id: parseInt(task_id) },
-            {
-              $set: {
-                "rechargeDetails.paymentStatus": "Completed",
-                isSetup: false, // 🔹 added field
-                modified_date: new Date(),
-              },
-            }
-          );
-        }
+await serviceRecordsCollection.updateOne(
+  { task_id: parseInt(task_id) },
+  {
+    $set: {
+      "order_snapshot.paymentStatus": "Completed",
+      "payment_snapshot.paymentStatus": "Completed",
+      "payment_snapshot.paymentCollectedAt": new Date(),
+      "payment_snapshot.paymentMethod": updates.paymentMethod,
+      "rechargeDetails.paymentStatus": "Completed", // ✅ Fix for recharge task
+      "rechargeDetails.paymentCollectedAt": new Date(), // optional
+      "rechargeDetails.paymentMethod": updates.paymentMethod, // optional
+      modified_date: new Date(),
+    },
+  }
+);
+
 
         console.log(`💵 COD payment collected for order ${order.customOrderId}`);
       }
     }
 
-    // ✅ Update task document
+    // ✅ Update task document finally
     const result = await serviceRecordsCollection.updateOne(
       { task_id: parseInt(task_id), assigned_technician_id: technician_id },
       { $set: updateData }
     );
 
-    if (result.modifiedCount === 0) {
+    if (result.modifiedCount === 0)
       return res.status(400).json({ error: true, message: 'No changes were made to the task' });
-    }
 
     // ✅ Technician stats + Subscription update if Completed
     if (status === 'Completed') {
@@ -879,24 +932,7 @@ exports.updateTaskDetails = async (req, res) => {
         );
       }
 
-      if (order) {
-        const subscribedAt = new Date();
-        const durationStr = order.selectedDuration?.duration_time_limit || '30 days';
-        const durationInDays = parseInt(durationStr.split(' ')[0], 10) || 30;
-
-        const subscriptionExpiryDate = new Date(subscribedAt);
-        subscriptionExpiryDate.setDate(subscriptionExpiryDate.getDate() + durationInDays);
-
-        const userId = parseInt(task.task_created_by_user_id);
-        await usersCollection.updateOne({ user_id: userId }, { $set: { subscription_expiry_date: subscriptionExpiryDate } });
-        await ordersCollection.updateOne(
-          { _id: order._id },
-          { $set: { subscriptionExpiryDate, updatedAt: new Date() } }
-        );
-
-        console.log(`🟢 Subscription expiry updated for user ${userId}`);
-      }
-
+     
       // ✅ Send completion mail
       const mailOptions = {
         from: 'your_email@gmail.com',
@@ -906,24 +942,25 @@ exports.updateTaskDetails = async (req, res) => {
                <p>Your service task <strong>#${task.task_id}</strong> has been <span style="color: green;">successfully completed</span>.</p>
                <p>Subscription expiry has been updated. 🎉</p>`,
       };
-
       transporter.sendMail(mailOptions, (error, info) => {
         if (error) console.error('Error sending mail:', error);
         else console.log('Email sent:', info.response);
       });
     }
 
-    // ✅ Final response
+    // ✅ Response
     let message = 'Task updated successfully';
     if (updates.collectPayment == true) message = 'Payment collected successfully';
     else if (status === 'Completed') message = 'Task completed successfully';
 
     return res.status(200).json({ error: false, message, qrCode });
+
   } catch (error) {
     console.error('Error updating task:', error);
     return res.status(500).json({ error: true, message: 'Server error while updating task' });
   }
 };
+
 
 
 
