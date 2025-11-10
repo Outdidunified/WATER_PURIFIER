@@ -1,6 +1,7 @@
 // feature/service_installation_app/landing_page.dart
 import 'package:ionhive_technician_app/core/components/technicionfooter.dart';
 import 'package:ionhive_technician_app/feature/service_installation_app/home/presentation/pages/home_page.dart';
+import 'package:ionhive_technician_app/feature/service_installation_app/home/presentation/pages/device_setup_page.dart';
 import 'package:ionhive_technician_app/feature/service_installation_app/landing_page_controller.dart';
 import 'package:ionhive_technician_app/feature/service_installation_app/settings/presentation/pages/settings_page.dart';
 import 'package:flutter/material.dart';
@@ -50,6 +51,8 @@ class _TechnicianLandingPageState extends State<TechnicianLandingPage>
           case 0:
             return const TechnicianHomePage();
           case 1:
+            return DeviceSetupPage();
+          case 2:
             return const SettingsPage();
           default:
             return const Center(child: Text('Page not found'));

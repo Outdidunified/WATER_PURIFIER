@@ -52,25 +52,29 @@ class ActiveSubscriptionResponse extends Equatable {
 
 class SubscriptionItem extends Equatable {
   final String wpDeviceId;
+  final String? modelType;
 
   const SubscriptionItem({
     required this.wpDeviceId,
+    this.modelType,
   });
 
   factory SubscriptionItem.fromJson(Map<String, dynamic> json) {
-    // Handles both API key formats: 'wp_device_id' or 'wpDeviceId'
     final deviceId = json['wp_device_id'] ?? json['wpDeviceId'] ?? '';
+    final type = json['modeltype'] ?? json['modelType'];
     return SubscriptionItem(
       wpDeviceId: deviceId.toString(),
+      modelType: type != null ? type.toString() : null,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'wp_device_id': wpDeviceId,
+      'modeltype': modelType,
     };
   }
 
   @override
-  List<Object?> get props => [wpDeviceId];
+  List<Object?> get props => [wpDeviceId, modelType];
 }

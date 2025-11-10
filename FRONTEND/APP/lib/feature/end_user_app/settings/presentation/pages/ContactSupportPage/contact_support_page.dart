@@ -275,6 +275,17 @@ class ContactSupportPage extends StatelessWidget {
                                                 dropdownColor: Colors.white,
                                                 items: controller
                                                     .completedSubscriptions
+                                                    .fold<Map<String, dynamic>>(
+                                                        {},
+                                                        (uniqueMap, subscription) {
+                                                      uniqueMap[
+                                                          subscription
+                                                              .wpDeviceId!] =
+                                                          subscription;
+                                                      return uniqueMap;
+                                                    })
+                                                    .values
+                                                    .toList()
                                                     .map((subscription) {
                                                   return DropdownMenuItem<
                                                       String>(

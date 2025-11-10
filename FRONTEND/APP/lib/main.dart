@@ -14,6 +14,7 @@ import 'package:ionhive_water_purifier/core/controllers/connectivity_controller.
 
 // End User
 import 'package:ionhive_water_purifier/feature/end_user_app/auth/presentation/controllers/auth_controller.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/home/presentation/controllers/home_controller.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/landing_page.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/landing_page_controller.dart';
 import 'package:ionhive_water_purifier/feature/GettingStarted%20page.dart';
@@ -82,6 +83,7 @@ void main() async {
   Get.put(SessionController(), permanent: true);
   Get.put(AppUserAuthController());
   Get.put(AppUserLandingPageController(), permanent: true);
+  Get.put(SubscriptionController(), permanent: true);
 
   runApp(const AquaPulseApp());
 }

@@ -100,8 +100,24 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             );
           }
 
-          // Get unique device ids
-          final deviceIds = subscriptions.map((sub) => sub.wpDeviceId).where((id) => id.isNotEmpty).toSet().toList();
+          final smartSubscriptions = subscriptions
+              .where((subscription) => subscription.modelType?.toLowerCase() == 'smart')
+              .toList();
+
+          if (smartSubscriptions.isEmpty) {
+            return Center(
+              child: DisplayWidget(
+                errorMessage: "Smart device analytics not available.",
+                assetPath: 'assets/icons/analysis_not_found.png',
+              ),
+            );
+          }
+
+          final deviceIds = smartSubscriptions
+              .map((subscription) => subscription.wpDeviceId)
+              .where((id) => id.isNotEmpty)
+              .toSet()
+              .toList();
 
           if (deviceIds.isEmpty) {
             return Center(
@@ -112,14 +128,12 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             );
           }
 
-          // Set default selected device if not set
           if (selectedDeviceId == null) {
             selectedDeviceId = deviceIds.first;
             telemetryController.fetchTelemetry(selectedDeviceId!, isInitialLoad: true);
-            _startTelemetryTimer(); // Start auto-refresh timer
+            _startTelemetryTimer();
           }
 
-          // Sort device IDs to show recently selected device first
           if (selectedDeviceId != null && deviceIds.contains(selectedDeviceId)) {
             deviceIds.remove(selectedDeviceId);
             deviceIds.insert(0, selectedDeviceId!);

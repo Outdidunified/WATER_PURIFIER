@@ -40,4 +40,8 @@ class SubscriptionRepository {
     };
     return DeviceResponse.fromJson(mappedJson);
   }
+
+  Future<Map<String, dynamic>> storeBleAck(Map<String, dynamic> payload) async {
+    return await _api.storeBleAck(payload);
+  }
 }

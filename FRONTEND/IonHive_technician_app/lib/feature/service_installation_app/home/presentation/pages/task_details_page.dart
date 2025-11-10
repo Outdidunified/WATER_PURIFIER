@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 import 'package:ionhive_technician_app/utils/widgets/snackbar/custom_snackbar.dart';
 import 'package:flutter/material.dart';
@@ -9,10 +9,31 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:barcode_scan2/barcode_scan2.dart' as bs;
 import 'package:ionhive_technician_app/core/controllers/session_controller.dart';
+import 'package:ionhive_technician_app/core/core.dart';
 import 'package:ionhive_technician_app/feature/service_installation_app/home/domain/models/home_model.dart';
 import 'package:ionhive_technician_app/feature/service_installation_app/home/presentation/controllers/home_controller.dart';
+import 'package:ionhive_technician_app/feature/service_installation_app/home/presentation/pages/recharge_plan_page.dart';
+
+class _PlanDisplayItem {
+  final ProductWithPlans product;
+  final ProductDuration duration;
+  final ProductPlan plan;
+  final double finalPrice;
+  final bool hasDiscount;
+  final double originalPrice;
+
+  _PlanDisplayItem({
+    required this.product,
+    required this.duration,
+    required this.plan,
+    required this.finalPrice,
+    required this.hasDiscount,
+    required this.originalPrice,
+  });
+}
 
 class TaskDetailPage extends StatefulWidget {
   final Task task;
@@ -38,6 +59,14 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   String _selectedPaymentMethod = 'Cash';
   String? _qrCode;
   bool _isGeneratingQR = false;
+  
+  // Renewal payment collection
+  bool _renewalPaymentCollected = false;
+  bool _isRenewalPaymentCollecting = false;
+  String _selectedRenewalPaymentMethod = 'Cash';
+  String? _renewalQrCode;
+  bool _isGeneratingRenewalQR = false;
+  
   late Task _currentTask;
   
   bool _isTechnicianOnLeave = false;
@@ -55,6 +84,15 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   bool _bleEnabled = false;
   String _connectionType = '';
   fbs.BluetoothConnection? _bluetoothConnection;
+
+  // Recharge functionality
+  List<ProductWithPlans> _productsWithPlans = [];
+  bool _isLoadingProducts = false;
+  Map<String, Map<String, dynamic>> _activeSubscriptionsByModel = {};
+  ProductWithPlans? _selectedProduct;
+  ProductDuration? _selectedDuration;
+  ProductPlan? _selectedPlan;
+  bool _isCreatingRechargeOrder = false;
 
   final TextEditingController _pendingReasonController =
       TextEditingController();
@@ -84,7 +122,18 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       _selectedPaymentMethod = _currentTask.paymentMethod!;
     }
     
+    // Initialize renewal payment tracking
+    _renewalPaymentCollected = _currentTask.paymentCollected == true || _currentTask.orderPaymentStatus?.toLowerCase() == 'completed';
+    if (_renewalPaymentCollected && _currentTask.paymentMethod != null) {
+      _selectedRenewalPaymentMethod = _currentTask.paymentMethod!;
+    }
+    
     _checkTechnicianLeaveStatus();
+
+    // Load products with plans for renewal tasks
+    if (_currentTask.taskType == 3) {
+      _loadProductsWithPlans();
+    }
   }
 
   @override
@@ -130,6 +179,251 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         _isTechnicianOnLeave = false;
         _checkingLeave = false;
       });
+    }
+  }
+
+  Future<void> _loadProductsWithPlans() async {
+    setState(() => _isLoadingProducts = true);
+    try {
+      final products = await controller.getProductsWithPlans();
+
+      // Fetch active subscriptions for the user
+      final userId = widget.task.taskCreatedByUserId;
+      final email = widget.task.address?.email;
+      if (userId != null && email != null) {
+        try {
+          final activeSubscriptionsResponse = await controller.getActiveSubscriptionDetails(
+            userId: userId,
+            email: email,
+            roleId: 3,
+          );
+
+          if (activeSubscriptionsResponse['error'] == false) {
+            final data = activeSubscriptionsResponse['data'] as List<dynamic>;
+            final expiredModelIds = <String>{};
+            final subscriptionsById = <String, Map<String, dynamic>>{};
+
+            final now = DateTime.now();
+            for (final subscription in data) {
+              if (subscription is! Map) continue;
+              final subscriptionMap = Map<String, dynamic>.from(subscription as Map);
+
+              // Check if subscription has expired
+              final planConfig = subscriptionMap['plan_config'] as Map<String, dynamic>?;
+              if (planConfig != null) {
+                final endDateStr = planConfig['endDate'] as String?;
+                if (endDateStr != null) {
+                  try {
+                    final endDate = DateTime.parse(endDateStr);
+                    if (endDate.isBefore(now)) {
+                      // Check if installation task is completed
+                      final tasks = subscriptionMap['tasks'] as List<dynamic>?;
+                      bool installationCompleted = false;
+                      if (tasks != null) {
+                        for (final task in tasks) {
+                          if (task is Map) {
+                            final taskMap = Map<String, dynamic>.from(task as Map);
+                            final taskType = taskMap['task_type'];
+                            final taskStatus = taskMap['task_status'] as String?;
+                            if (taskType == 1 && taskStatus == 'Completed') {
+                              installationCompleted = true;
+                              break;
+                            }
+                          }
+                        }
+                      }
+
+                      if (installationCompleted) {
+                        // Only include Base model types for recharge
+                        final modelType = subscriptionMap['modeltype'] as String?;
+                        if (modelType == 'Base') {
+                          final candidates = [
+                            subscriptionMap['productModelId'],
+                            subscriptionMap['modelId'],
+                            subscriptionMap['model_id'],
+                            subscriptionMap['productId'],
+                            subscriptionMap['product_id'],
+                          ];
+                          for (final candidate in candidates) {
+                            if (candidate == null) continue;
+                            final key = candidate.toString();
+                            if (key.isEmpty) continue;
+                            expiredModelIds.add(key);
+                            subscriptionsById[key] = subscriptionMap;
+                          }
+                        }
+                      }
+                    }
+                  } catch (e) {
+                    debugPrint('Error parsing endDate: $e');
+                  }
+                }
+              }
+            }
+
+            debugPrint('Expired model IDs: $expiredModelIds');
+
+            // First try to filter by expired model IDs
+            final filteredByExpired = products.where((product) {
+              final productId = product.id?.toString();
+              final productModelId = product.modelId?.toString();
+              final matches = expiredModelIds.contains(productId) || expiredModelIds.contains(productModelId);
+              debugPrint('Product ${product.modelName} (ID: $productId, ModelID: $productModelId) matches expired: $matches');
+              return matches;
+            }).toList();
+
+            // If no products match expired models, show all Base model products for recharge
+            final baseProducts = products.where((product) => product.modelType?.toLowerCase() == 'base').toList();
+            final filteredProducts = filteredByExpired.isNotEmpty
+                ? filteredByExpired
+                : (baseProducts.isNotEmpty ? baseProducts : products);
+
+            debugPrint('Filtered products count: ${filteredProducts.length} (expired matches: ${filteredByExpired.length})');
+
+            setState(() {
+              _productsWithPlans = filteredProducts;
+              _activeSubscriptionsByModel = subscriptionsById;
+              _isLoadingProducts = false;
+            });
+          } else {
+            debugPrint('Active subscriptions API returned error: ${activeSubscriptionsResponse['message']}');
+            // Show Base products if API fails
+            final baseProducts = products.where((product) => product.modelType?.toLowerCase() == 'base').toList();
+            final filteredProducts = baseProducts.isNotEmpty ? baseProducts : products;
+            setState(() {
+              _productsWithPlans = filteredProducts;
+              _activeSubscriptionsByModel = {};
+              _isLoadingProducts = false;
+            });
+          }
+        } catch (e) {
+          debugPrint('Error fetching active subscriptions: $e');
+          // Show Base products if API fails
+          final baseProducts = products.where((product) => product.modelType?.toLowerCase() == 'base').toList();
+          final filteredProducts = baseProducts.isNotEmpty ? baseProducts : products;
+          setState(() {
+            _productsWithPlans = filteredProducts;
+            _isLoadingProducts = false;
+          });
+        }
+      } else {
+        debugPrint('User ID or email not available: userId=$userId, email=$email');
+        // Show no products if user info not available
+        setState(() {
+          _productsWithPlans = [];
+          _isLoadingProducts = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading products: $e');
+      setState(() => _isLoadingProducts = false);
+      CustomSnackbar.showError(message: 'Failed to load products: $e');
+    }
+  }
+
+  Future<void> _showRechargePlanSelection() async {
+    if (_isLoadingProducts) {
+      return;
+    }
+    if (_productsWithPlans.isEmpty) {
+      CustomSnackbar.showError(message: 'No recharge plans available');
+      return;
+    }
+
+    final result = await Get.to(
+      () => RechargeProductSelectionPage(
+        products: _productsWithPlans,
+        task: widget.task,
+        activeSubscriptions: _activeSubscriptionsByModel,
+      ),
+      transition: Transition.rightToLeft,
+      duration: const Duration(milliseconds: 300),
+    );
+
+    if (result != null && result is Map) {
+      setState(() {
+        _selectedProduct = result['product'] as ProductWithPlans?;
+        _selectedDuration = result['duration'] as ProductDuration?;
+        _selectedPlan = result['plan'] as ProductPlan?;
+      });
+
+      if (_selectedProduct != null && _selectedDuration != null && _selectedPlan != null) {
+        _startRechargeOrder();
+      }
+    }
+  }
+
+  Future<void> _startRechargeOrder() async {
+    if (_selectedProduct == null || _selectedDuration == null || _selectedPlan == null) {
+      CustomSnackbar.showError(message: 'Please select a product, duration, and plan');
+      return;
+    }
+
+    if (_currentTask.taskId == null || _currentTask.wpDeviceId == null) {
+      CustomSnackbar.showError(message: 'Task ID or Device ID is missing');
+      return;
+    }
+
+    setState(() => _isCreatingRechargeOrder = true);
+
+    try {
+      final planPrice = _selectedPlan!.price ?? 0;
+      final gstPercent = _selectedDuration!.gst ?? 0;
+      final discountPercent = _selectedDuration!.discount ?? 0;
+
+      final subtotal = planPrice.toDouble();
+      final discountAmount = (subtotal * discountPercent) / 100;
+      final discountedPrice = subtotal - discountAmount;
+      final gstAmount = (discountedPrice * gstPercent) / 100;
+      final grandTotal = discountedPrice + gstAmount;
+
+      final deliveryAddress = {
+        'name': _currentTask.address?.name ?? '',
+        'phone': _currentTask.address?.phone ?? '',
+        'street': _currentTask.address?.street ?? '',
+        'landmark': _currentTask.address?.landmark ?? '',
+        'city': _currentTask.address?.city ?? '',
+        'district': _currentTask.address?.district ?? '',
+        'state': _currentTask.address?.state ?? '',
+        'pincode': _currentTask.address?.pincode ?? '',
+        'email': _currentTask.address?.email ?? '',
+        'country': _currentTask.address?.country ?? 'India',
+      };
+
+      final response = await controller.createRechargeOrder(
+        technicianId: sessionController.technicianId.value,
+        email: sessionController.emailId.value,
+        taskId: _currentTask.taskId!,
+        wpDeviceId: _currentTask.wpDeviceId!,
+        productModelId: _selectedProduct!.modelId?.toString() ?? '',
+        selectedPlan: _selectedPlan!,
+        selectedDuration: _selectedDuration!,
+        deliveryAddress: deliveryAddress,
+        discountedPrice: discountedPrice,
+        discountAmount: discountAmount,
+        gstAmount: gstAmount,
+        grandTotal: grandTotal,
+        priceWithGST: grandTotal,
+        price: discountedPrice,
+        subtotal: subtotal,
+        codFee: 0,
+      );
+
+      if (response['error'] == false) {
+        CustomSnackbar.showSuccess(message: 'Recharge order created successfully');
+        setState(() {
+          _selectedProduct = null;
+          _selectedDuration = null;
+          _selectedPlan = null;
+        });
+      } else {
+        CustomSnackbar.showError(message: response['message']?.toString() ?? 'Failed to create recharge order');
+      }
+    } catch (e) {
+      debugPrint('Error creating recharge order: $e');
+      CustomSnackbar.showError(message: 'Failed to create recharge order: $e');
+    } finally {
+      setState(() => _isCreatingRechargeOrder = false);
     }
   }
 
@@ -1468,6 +1762,374 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     );
   }
 
+  Widget _buildRenewalPaymentCollectionCard(ThemeData theme, Task task) {
+    // Check if recharge order exists with COD payment
+    final hasRechargeOrder = task.rechargeDetails != null;
+    final isCodPayment = hasRechargeOrder && task.rechargeDetails!['paymentType'] == 'COD';
+    final grandTotal = hasRechargeOrder ? task.rechargeDetails!['grandTotal'] ?? 0.0 : 0.0;
+    final paymentStatus = hasRechargeOrder ? task.rechargeDetails!['paymentStatus'] ?? 'Pending' : 'Pending';
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _renewalPaymentCollected ? Icons.check_circle_outline : Icons.payments_outlined,
+                color: _renewalPaymentCollected ? Colors.green.shade800 : Colors.blue.shade800,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _renewalPaymentCollected ? 'Renewal Payment Collected' : 'Collect Renewal Payment',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 15, // 👈 reduced font size
+                  fontWeight: FontWeight.w400,
+                  color: _renewalPaymentCollected ? Colors.green.shade900 : Colors.blue.shade900,
+                ),
+              ),
+
+            ],
+          ),
+          if (hasRechargeOrder && isCodPayment) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Amount to Collect',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green.shade800,
+                        ),
+                      ),
+                      Text(
+                        '₹${grandTotal.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.green.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Payment Method: Cash on Delivery (COD)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Status: $paymentStatus',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Text(
+            _renewalPaymentCollected
+                ? 'Payment has been collected successfully.'
+                : 'Select collection mode and mark payment as received before completing the task.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: _renewalPaymentCollected ? Colors.green.shade700 : null,
+              fontWeight: _renewalPaymentCollected ? FontWeight.w500 : null,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ToggleButtons(
+            isSelected: [
+              _selectedRenewalPaymentMethod == 'Cash',
+              _selectedRenewalPaymentMethod == 'QR',
+            ],
+            onPressed: _renewalPaymentCollected ? null : (index) async {
+              final newMethod = index == 0 ? 'Cash' : 'QR';
+              if (newMethod == _selectedRenewalPaymentMethod) return;
+              setState(() {
+                _selectedRenewalPaymentMethod = newMethod;
+              });
+              if (newMethod == 'QR' && _renewalQrCode == null) {
+                await _generateRenewalQR(widget.task);
+              }
+            },
+            borderRadius: BorderRadius.circular(10),
+            selectedColor: Colors.white,
+            fillColor: _renewalPaymentCollected ? Colors.grey : Colors.blue,
+            color: _renewalPaymentCollected ? Colors.grey.shade600 : Colors.blue.shade800,
+            disabledColor: Colors.grey.shade400,
+            constraints: const BoxConstraints(minHeight: 40, minWidth: 90),
+            children: const [
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text('Cash'),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text('QR'),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+          if (_selectedRenewalPaymentMethod == 'QR') ...[
+            if (_isGeneratingRenewalQR) ...[
+              const Center(child: CircularProgressIndicator()),
+            ] else if (_renewalQrCode != null) ...[
+              Center(
+                child: Image.memory(
+                  base64Decode(_renewalQrCode!),
+                  width: 200,
+                  height: 200,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Center(
+                child: Text(
+                  'Scan this QR code to pay',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ] else if (_renewalPaymentCollected) ...[
+              const Center(
+                child: Text(
+                  'Payment already collected via QR.',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ] else ...[
+              const Center(child: Text('Failed to generate QR code')),
+            ],
+            const SizedBox(height: 16),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: _renewalPaymentCollected ? Colors.green : Colors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: _isRenewalPaymentCollecting || _renewalPaymentCollected
+                  ? null
+                  : () => _markRenewalPaymentCollected(task, theme),
+              child: _isRenewalPaymentCollecting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(_renewalPaymentCollected ? 'Payment Collected' : 'Mark Payment Collected'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRechargePlanSelectionCard(ThemeData theme) {
+    // Check if recharge order exists and payment type is COD
+    final hasRechargeOrder = widget.task.rechargeDetails != null;
+    final isCodPayment = hasRechargeOrder && widget.task.rechargeDetails!['paymentType'] == 'COD';
+
+    // Don't show recharge plan selection if order is already created with COD
+    if (hasRechargeOrder && isCodPayment) {
+      return const SizedBox.shrink();
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: theme.colorScheme.primary.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.monetization_on_outlined,
+                        color: theme.colorScheme.primary,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Recharge Plan',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.primary,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            maxLines: 1,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Select a plan to recharge your device',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withOpacity(0.6),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            maxLines: 1,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (!_isLoadingProducts && _productsWithPlans.isNotEmpty) ...[
+                      const SizedBox(width: 10),
+                      ElevatedButton(
+                        onPressed: _isCreatingRechargeOrder ? null : _showRechargePlanSelection,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _isCreatingRechargeOrder
+                              ? theme.colorScheme.primary.withOpacity(0.5)
+                              : theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
+                          minimumSize: const Size(0, 26),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          textStyle: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                        ),
+                        child: _isCreatingRechargeOrder
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Choose Plan'),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (_isLoadingProducts) ...[
+                _buildRechargePlanLoadingPlaceholder(),
+              ] else if (_productsWithPlans.isEmpty) ...[
+                const Center(
+                  child: Text(
+                    'No products available',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRechargePlanLoadingPlaceholder() {
+    return Column(
+      children: List.generate(3, (index) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: index == 2 ? 0 : 12),
+          child: Shimmer.fromColors(
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: Container(
+              height: 52,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+
+  Widget _buildPlanDetailRow(String label, String value, {bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade700,
+              fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.black87,
+              fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPaymentSummaryPending(ThemeData theme, PaymentInfo paymentInfo, Task task) {
     List<Widget> paymentWidgets = [];
     if (paymentInfo.paymentType != null) paymentWidgets.add(_buildCompactInfoItem('Type', paymentInfo.paymentType!));
@@ -1589,8 +2251,33 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 const SizedBox(height: 14),
                 _buildSimpleDetail(
                   label: 'Task Type',
-                  value: task.taskType == 1 ? 'Installation' : (task.taskType == 2 ? 'Service' : 'Unknown'),
+                  value: task.taskType == 1 ? 'Installation' : (task.taskType == 2 ? 'Service' : (task.taskType == 3 ? 'Renewal' : 'Unknown')),
                 ),
+                if (task.taskType == 3) ...[
+                  const SizedBox(height: 14),
+                  if (task.currentPlan != null)
+                    _buildSimpleDetail(
+                      label: 'Current Plan Capacity',
+                      value: '${task.currentPlan} L',
+                      compact: true,
+                    ),
+                  if (task.currentPlanEndDate != null) ...[
+                    const SizedBox(height: 10),
+                    _buildSimpleDetail(
+                      label: 'Plan End Date',
+                      value: task.currentPlanEndDate ?? 'N/A',
+                      compact: true,
+                    ),
+                  ],
+                  if (task.macId != null) ...[
+                    const SizedBox(height: 10),
+                    _buildSimpleDetail(
+                      label: 'Device MAC ID',
+                      value: task.macId ?? 'N/A',
+                      compact: true,
+                    ),
+                  ],
+                ],
               ],
             ),
           ),
@@ -1626,7 +2313,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
               ],
             ),
           ),
-          if (task.paymentSnapshot != null) ...[
+          if (task.paymentSnapshot != null && task.taskType != 3) ...[
             Divider(height: 1, color: Colors.grey.shade200),
             Padding(
               padding: const EdgeInsets.all(16),
@@ -1927,11 +2614,74 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         }
       });
 
-      CustomSnackbar.showSuccess(message: 'Payment collected successfully');
     } catch (e) {
       CustomSnackbar.showError(message: 'Failed to mark payment collected: $e');
     } finally {
       setState(() => _isPaymentCollecting = false);
+    }
+  }
+
+  Future<void> _generateRenewalQR(Task task) async {
+    setState(() => _isGeneratingRenewalQR = true);
+    try {
+      final qr = await controller.generateQR(task.taskId!, _selectedStatus);
+      
+      String base64String = qr ?? '';
+      if (base64String.contains(',')) {
+        base64String = base64String.split(',').last;
+      }
+      
+      setState(() {
+        _renewalQrCode = base64String;
+      });
+    } catch (e) {
+      CustomSnackbar.showError(message: 'Failed to generate QR: $e');
+      setState(() {
+        _selectedRenewalPaymentMethod = 'Cash';
+      });
+    } finally {
+      setState(() => _isGeneratingRenewalQR = false);
+    }
+  }
+
+  Future<void> _markRenewalPaymentCollected(Task task, ThemeData theme) async {
+    if (_selectedRenewalPaymentMethod.isEmpty) {
+      CustomSnackbar.showError(message: 'Please select a payment method');
+      return;
+    }
+
+    setState(() => _isRenewalPaymentCollecting = true);
+    try {
+      await controller.updateTask(
+        taskId: task.taskId!,
+        taskStatus: _selectedStatus,
+        pendingReason: _selectedStatus == 'Pending' ? task.pendingReason : null,
+        otp: null,
+        collectPayment: true,
+        paymentMethod: _selectedRenewalPaymentMethod,
+      );
+
+      final updatedTask = controller.allTasks.firstWhere(
+        (t) => t.taskId == task.taskId,
+        orElse: () => task,
+      );
+
+      setState(() {
+        _renewalPaymentCollected = true;
+        _currentTask = updatedTask;
+        
+        _renewalPaymentCollected = updatedTask.orderPaymentStatus?.toLowerCase() == 'completed' || 
+                                   updatedTask.paymentCollected == true;
+        if (_renewalPaymentCollected && updatedTask.paymentMethod != null) {
+          _selectedRenewalPaymentMethod = updatedTask.paymentMethod!;
+        }
+      });
+
+      CustomSnackbar.showSuccess(message: 'Renewal payment collected successfully');
+    } catch (e) {
+      CustomSnackbar.showError(message: 'Failed to mark payment collected: $e');
+    } finally {
+      setState(() => _isRenewalPaymentCollecting = false);
     }
   }
 
@@ -1943,9 +2693,16 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: theme.primaryColor,
-        title: const Text('Task Details'),
-      ),
+  backgroundColor: theme.primaryColor,
+  title: const Text(
+    'Task Details',
+    style: TextStyle(
+      fontSize: 18, // You can adjust this value (e.g., 16 or 14)
+      fontWeight: FontWeight.w500,
+    ),
+  ),
+),
+
       body: Stack(
         children: [
           SingleChildScrollView(
@@ -2005,8 +2762,15 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                         task.paymentSnapshot!.paymentType != null &&
                         task.paymentSnapshot!.paymentType!.toUpperCase() == 'COD')
                       _buildCodCollectionCard(theme, task),
+                    if (task.taskType == 3) ...[
+                      _buildRechargePlanSelectionCard(theme),
+                      if (task.rechargeDetails != null) ...[
+                        const SizedBox(height: 12),
+                        _buildRenewalPaymentCollectionCard(theme, task),
+                      ],
+                    ],
                     const SizedBox(height: 24),
-                    if (_accepted && !_macIdStored) ...[
+                    if (false) ...[
                       Text('Device Setup',
                           style: theme.textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.w600)),
@@ -2122,7 +2886,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                       ),
                       const SizedBox(height: 24),
                     ],
-                    if (_accepted && _macIdStored) ...[
+                    if (false) ...[
                       Text('Bluetooth Connection',
                           style: theme.textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.w600)),
@@ -2303,6 +3067,12 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                       ),
                       _buildImageUploadRow(
                         label: 'After Service Image',
+                        file: _afterImage,
+                        onPressed: () => _pickImage('after'),
+                      ),
+                    ] else if (widget.task.taskType == 3) ...[
+                      _buildImageUploadRow(
+                        label: 'After Renewal Image',
                         file: _afterImage,
                         onPressed: () => _pickImage('after'),
                       ),

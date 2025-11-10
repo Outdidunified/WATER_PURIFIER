@@ -2,8 +2,10 @@ import 'package:ionhive_water_purifier/feature/end_user_app/settings/data/urls.d
 import 'package:ionhive_water_purifier/feature/end_user_app/home/presentation/controllers/subscription_controller.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/controllers/settings_controller.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/analytics/presentation/controllers/telemetry_controller.dart';
+import 'package:ionhive_water_purifier/core/controllers/session_controller.dart';
 import 'package:ionhive_water_purifier/utils/widgets/error/error_display_widget.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/models/home_model.dart';
+import 'package:ionhive_water_purifier/utils/widgets/webview_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:get/get.dart';
@@ -11,9 +13,11 @@ import 'package:shimmer/shimmer.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'dart:convert';
 import 'dart:io';
 import 'package:open_file/open_file.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 class DashedLinePainter extends CustomPainter {
   final Color color;
@@ -754,7 +758,7 @@ class SubscriptionPlanPage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Installation & Service',
+          'Installation, Service & Recharge',
           style: TextStyle(
             fontSize: screenWidth * 0.039,
             fontWeight: FontWeight.w400,
@@ -764,10 +768,13 @@ class SubscriptionPlanPage extends StatelessWidget {
         SizedBox(height: screenHeight * 0.01),
         Column(
           children: order.tasks.map((task) {
-            final isInstallation = task.taskType == 1;
             final statusColor = _getStatusColor(task.taskStatus);
             final isCompleted = task.taskStatus.toLowerCase() == 'completed';
             final isInProgress = task.taskStatus.toLowerCase() == 'in progress';
+            final taskTitle = _getTaskTitle(task.taskType);
+            final taskIcon = _getTaskIcon(task.taskType);
+            final badgeText = _getBadgeText(task.taskStatus);
+            final badgeIcon = _getBadgeIcon(task.taskStatus);
 
             return Container(
               margin: EdgeInsets.only(bottom: screenHeight * 0.015),
@@ -811,7 +818,7 @@ class SubscriptionPlanPage extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
-                                isInstallation ? Icons.build : Icons.build_circle,
+                                taskIcon,
                                 color: Colors.white,
                                 size: screenWidth * 0.05,
                               ),
@@ -821,7 +828,7 @@ class SubscriptionPlanPage extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  isInstallation ? "Installation" : "Service",
+                                  taskTitle,
                                   style: TextStyle(
                                     fontSize: screenWidth * 0.032,
                                     color: Colors.black87,
@@ -854,15 +861,13 @@ class SubscriptionPlanPage extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                isCompleted ? Icons.check_circle : 
-                                isInProgress ? Icons.update : 
-                                Icons.pending_actions,
+                                badgeIcon,
                                 color: statusColor,
                                 size: screenWidth * 0.04,
                               ),
                               SizedBox(width: screenWidth * 0.01),
                               Text(
-                                isCompleted ? 'Done' : 'In Progress',
+                                badgeText,
                                 style: TextStyle(
                                   fontSize: screenWidth * 0.028,
                                   color: statusColor,
@@ -1079,6 +1084,54 @@ class SubscriptionPlanPage extends StatelessWidget {
     }
   }
 
+  String _getTaskTitle(int taskType) {
+    switch (taskType) {
+      case 1:
+        return 'Installation';
+      case 2:
+        return 'Service';
+      case 3:
+        return 'Recharge';
+      default:
+        return 'Task';
+    }
+  }
+
+  IconData _getTaskIcon(int taskType) {
+    switch (taskType) {
+      case 1:
+        return Icons.build;
+      case 2:
+        return Icons.build_circle;
+      case 3:
+        return Icons.flash_on;
+      default:
+        return Icons.task_alt;
+    }
+  }
+
+  String _getBadgeText(String status) {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'Done';
+      case 'in progress':
+        return 'In Progress';
+      default:
+        return 'Pending';
+    }
+  }
+
+  IconData _getBadgeIcon(String status) {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return Icons.check_circle;
+      case 'in progress':
+        return Icons.update;
+      default:
+        return Icons.pending_actions;
+    }
+  }
+
   Future<void> _makePhoneCall(String phoneNumber) async {
     final Uri launchUri = Uri(
       scheme: 'tel',
@@ -1086,6 +1139,82 @@ class SubscriptionPlanPage extends StatelessWidget {
     );
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
+    }
+  }
+
+  void _navigateToRecharge(Order order) {
+    try {
+      final sessionController = Get.find<SessionController>();
+      final token = sessionController.token.value;
+      final userId = sessionController.userId.value;
+      final emailId = sessionController.emailId.value;
+
+      final data = {
+        'token': token,
+        'user': {
+          'email': emailId,
+          'user_id': userId,
+        }
+      };
+
+      final encodedData = Uri.encodeComponent(jsonEncode(data));
+      final finalUrl = 'http://192.168.0.55:5050/recharge?data=$encodedData';
+
+      debugPrint("✅ Recharge WebView loading URL: $finalUrl");
+
+      final WebViewController rechargeController = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onPageStarted: (url) => debugPrint('🌐 Recharge WebView started: $url'),
+            onPageFinished: (url) => debugPrint('✅ Recharge WebView finished: $url'),
+            onWebResourceError: (error) {
+              Get.snackbar('Error', 'Failed to load recharge page');
+            },
+          ),
+        )
+        ..loadRequest(Uri.parse(finalUrl));
+
+      Get.to(
+        () => WebViewScreen(controller: rechargeController),
+        transition: Transition.rightToLeft,
+        duration: const Duration(milliseconds: 300),
+      );
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to open recharge page: ${e.toString()}');
+    }
+  }
+
+  String? _resolveExpiryDate(Order order) {
+    final planEndDate = order.planConfig?.endDate;
+    if (planEndDate != null && planEndDate.isNotEmpty) {
+      return planEndDate;
+    }
+    return order.subscriptionExpiryDate.isNotEmpty ? order.subscriptionExpiryDate : null;
+  }
+
+  String _formatSubscriptionDate(String? dateString) {
+    if (dateString == null || dateString.isEmpty) {
+      return 'N/A';
+    }
+    try {
+      final DateTime date = DateTime.parse(dateString);
+      return DateFormat('dd MMM yyyy').format(date);
+    } catch (e) {
+      return 'N/A';
+    }
+  }
+
+  bool _isSubscriptionExpired(Order order) {
+    final expiryDateString = _resolveExpiryDate(order);
+    if (expiryDateString == null || expiryDateString.isEmpty) {
+      return false;
+    }
+    try {
+      final DateTime expiryDate = DateTime.parse(expiryDateString);
+      return DateTime.now().isAfter(expiryDate);
+    } catch (e) {
+      return false;
     }
   }
 
@@ -1146,148 +1275,190 @@ class SubscriptionPlanPage extends StatelessWidget {
           itemCount: activeSubscriptions.length,
           itemBuilder: (context, index) {
             final order = activeSubscriptions[index];
+            final isExpired = _isSubscriptionExpired(order);
+            final modelType = order.modelType?.toLowerCase();
+            final isSmartModel = modelType != null && modelType.trim() == 'smart';
+            final shouldShowRecharge = isSmartModel && isExpired;
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    _showDetailsBottomSheet(context, order);
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.12),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+            return GestureDetector(
+              onTap: () {
+                _showDetailsBottomSheet(context, order);
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.12),
+                      blurRadius: 10,
+                      spreadRadius: 1,
+                      offset: const Offset(0, 2),
                     ),
-                    child: Padding(
-                      padding: EdgeInsets.all(screenWidth * 0.04),
-                      child: Column(
+                  ],
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(screenWidth * 0.04),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  order.modelName ?? 'Unknown Model',
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.042,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                                SizedBox(height: screenWidth * 0.008),
+                                Row(
                                   children: [
-                                    Text(
-                                      order.modelName ?? 'Unknown Model',
-                                      style: TextStyle(
-                                        fontSize: screenWidth * 0.042,
-                                        fontWeight: FontWeight.bold,
-                                        color: theme.colorScheme.primary,
-                                      ),
+                                    Icon(
+                                      Icons.devices_other,
+                                      size: screenWidth * 0.035,
+                                      color: Colors.black54,
                                     ),
-                                    SizedBox(height: screenWidth * 0.008),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.devices_other,
-                                          size: screenWidth * 0.035,
-                                          color: Colors.black54,
-                                        ),
-                                        SizedBox(width: screenWidth * 0.01),
-                                        Text(
-                                          'ID: ${order.wpDeviceId ?? 'N/A'}',
-                                          style: TextStyle(
-                                            fontSize: screenWidth * 0.032,
-                                            color: Colors.black54,
-                                          ),
-                                        ),
-                                      ],
+                                    SizedBox(width: screenWidth * 0.01),
+                                    Text(
+                                      'ID: ${order.wpDeviceId ?? 'N/A'}',
+                                      style: TextStyle(
+                                        fontSize: screenWidth * 0.032,
+                                        color: Colors.black54,
+                                      ),
                                     ),
                                   ],
                                 ),
-                              ),
-                              SizedBox(width: screenWidth * 0.02),
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: screenWidth * 0.03,
-                                  vertical: screenWidth * 0.015,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: (order.orderStatus == 'Confirmed' ||
-                                      order.orderStatus == 'Shipped')
-                                      ? Colors.green
-                                      : Colors.orange,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  order.orderStatus ?? 'Unknown',
-                                  style: TextStyle(
-                                    fontSize: screenWidth * 0.03,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                          SizedBox(height: screenWidth * 0.015),
+                          SizedBox(width: screenWidth * 0.02),
+                          // Status badge
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: screenWidth * 0.025,
+                              vertical: screenWidth * 0.015,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isExpired
+                                  ? Colors.red.withOpacity(0.2)
+                                  : Colors.green.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              isExpired ? 'Expired' : 'Active',
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.028,
+                                color: isExpired ? Colors.red : Colors.green,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: screenWidth * 0.015),
+                      Text(
+                        'Plan: ${order.selectedPlan.label ?? 'N/A'} (${order.selectedPlan.capacity}L)',
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.035,
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: screenWidth * 0.008),
+                      Text(
+                        'Duration: ${order.selectedDuration.durationTimeLimit ?? 'N/A'}',
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.035,
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: screenWidth * 0.008),
+
+                      // Subscription Expiry Date
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
                           Text(
-                            'Plan: ${order.selectedPlan.label ?? 'N/A'} (${order.selectedPlan.capacity}L)',
+                            'Subscription Expiry Date:',
                             style: TextStyle(
-                              fontSize: screenWidth * 0.035,
+                              fontSize: screenWidth * 0.032,
                               color: Colors.black87,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          SizedBox(height: screenWidth * 0.008),
                           Text(
-                            'Duration: ${order.selectedDuration.durationTimeLimit ?? 'N/A'}',
+                            _formatSubscriptionDate(_resolveExpiryDate(order)),
                             style: TextStyle(
-                              fontSize: screenWidth * 0.035,
-                              color: Colors.black87,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          SizedBox(height: screenWidth * 0.008),
-                          Text(
-                            'Total Price: ₹${order.price.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: screenWidth * 0.036,
+                              fontSize: screenWidth * 0.032,
                               fontWeight: FontWeight.w600,
                               color: Colors.black87,
                             ),
                           ),
-                          SizedBox(height: screenWidth * 0.025),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                'View Details',
-                                style: TextStyle(
-                                  fontSize: screenWidth * 0.032,
-                                  color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(width: screenWidth * 0.015),
-                              Icon(
-                                Icons.keyboard_arrow_up,
-                                size: screenWidth * 0.05,
-                                color: theme.colorScheme.primary,
-                              ),
-                            ],
-                          ),
                         ],
                       ),
-                    ),
+                      SizedBox(height: screenWidth * 0.015),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              _showDetailsBottomSheet(context, order);
+                            },
+                            child: Row(
+                              children: [
+                                Text(
+                                  'View Details',
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.032,
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                SizedBox(width: screenWidth * 0.015),
+                                Icon(
+                                  Icons.keyboard_arrow_up,
+                                  size: screenWidth * 0.05,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (shouldShowRecharge)
+                            ElevatedButton.icon(
+                              onPressed: () => _navigateToRecharge(order),
+                              icon: Icon(Icons.refresh, size: screenWidth * 0.032),
+                              label: Text(
+                                'Recharge',
+                                style: TextStyle(fontSize: screenWidth * 0.026),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: screenWidth * 0.025,
+                                  vertical: screenWidth * 0.008,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             );
-
           },
           separatorBuilder: (context, index) => Padding(
             padding: EdgeInsets.symmetric(vertical: screenHeight * 0.01),

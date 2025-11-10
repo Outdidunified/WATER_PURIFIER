@@ -3,7 +3,7 @@ import 'package:ionhive_water_purifier/feature/end_user_app/analytics/presentati
 import 'package:ionhive_water_purifier/feature/end_user_app/home/presentation/pages/home_page.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/home/presentation/pages/subscription_prompt_page.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/settings/presentation/pages/settings_page.dart';
-import 'package:ionhive_water_purifier/feature/end_user_app/orders/presentation/pages/orders_page.dart';
+import 'package:ionhive_water_purifier/feature/end_user_app/orders/presentation/pages/device_setup_page.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/shop/presentation/pages/shop_page.dart';
 import 'package:ionhive_water_purifier/utils/widgets/snackbar/custom_snackbar.dart';
 import 'package:flutter/material.dart';
@@ -70,7 +70,7 @@ class _AppUserLandingPageState extends State<AppUserLandingPage>
           case 2:
             return const ShopPage();
           case 3:
-            return const OrdersPage();
+            return const DeviceSetupPage();
           case 4:
             return SettingsPage();
           default:

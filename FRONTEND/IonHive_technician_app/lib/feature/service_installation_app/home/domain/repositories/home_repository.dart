@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:ionhive_technician_app/feature/service_installation_app/home/data/api.dart';
 import 'package:ionhive_technician_app/feature/service_installation_app/home/domain/models/home_model.dart';
 
+import 'package:get/get.dart';
+
 class TaskRepository {
   final TaskApiService _api = TaskApiService();
 
@@ -134,6 +136,95 @@ class TaskRepository {
       return response as Map<String, dynamic>;
     } catch (e) {
       throw Exception('Error setting up BLE connection: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> storeBleAck(Map<String, dynamic> payload) async {
+    try {
+      final response = await _api.storeBleAck(payload);
+      return response as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception('Error storing BLE acknowledgement: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> storeMacId(Map<String, dynamic> payload) async {
+    try {
+      final response = await _api.storeMacId(payload);
+      return response as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception('Error storing MAC ID: $e');
+    }
+  }
+
+  Future<List<ProductWithPlans>> getProductsWithPlans() async {
+    try {
+      final response = await _api.getProductsWithPlans();
+      return response.map((productJson) => ProductWithPlans.fromJson(productJson)).toList();
+    } catch (e) {
+      throw Exception('Error fetching products with plans: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> createRechargeOrder({
+    required String technicianId,
+    required String email,
+    required int taskId,
+    required String wpDeviceId,
+    required String productModelId,
+    required ProductPlan selectedPlan,
+    required ProductDuration selectedDuration,
+    required Map<String, dynamic> deliveryAddress,
+    required double discountedPrice,
+    required double discountAmount,
+    required double gstAmount,
+    required double grandTotal,
+    required double priceWithGST,
+    required double price,
+    required double subtotal,
+    required double codFee,
+    String? modelType,
+  }) async {
+    try {
+      final response = await _api.createRechargeOrder(
+        technicianId: technicianId,
+        email: email,
+        taskId: taskId,
+        wpDeviceId: wpDeviceId,
+        productModelId: productModelId,
+        selectedPlan: selectedPlan,
+        selectedDuration: selectedDuration,
+        deliveryAddress: deliveryAddress,
+        discountedPrice: discountedPrice,
+        discountAmount: discountAmount,
+        gstAmount: gstAmount,
+        grandTotal: grandTotal,
+        priceWithGST: priceWithGST,
+        price: price,
+        subtotal: subtotal,
+        codFee: codFee,
+        modelType: modelType,
+      );
+      return response;
+    } catch (e) {
+      throw Exception('Error creating recharge order: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getActiveSubscriptionDetails({
+    required int userId,
+    required String email,
+    required int roleId,
+  }) async {
+    try {
+      final response = await _api.getActiveSubscriptionDetails(
+        userId: userId,
+        email: email,
+        roleId: 3,
+      );
+      return response;
+    } catch (e) {
+      throw Exception('Error fetching active subscription details: $e');
     }
   }
 }

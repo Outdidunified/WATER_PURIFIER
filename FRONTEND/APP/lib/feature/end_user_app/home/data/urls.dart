@@ -16,4 +16,9 @@ class SubscriptionUrl {
     url: '${Core.baseUrl}/api/app/telemetry/latest/{wp_device_id}',
     method: 'GET',
   );
+
+  static final Endpoint StoreBleAck = Endpoint(
+    url: '${Core.baseUrl}/api/app/enduserhome/storeBleAck',
+    method: 'POST',
+  );
 }

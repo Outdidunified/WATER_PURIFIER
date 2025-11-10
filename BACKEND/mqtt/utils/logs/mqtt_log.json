@@ -1,0 +1,250 @@
+[
+  {
+    "receivedAt": "2025-11-10T11:35:47.392Z",
+    "timestamp": "2025-11-10T11:35:47.388Z",
+    "topic": "waterpurifier/WP_DEFAULT/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "deviceId": "WP_DEFAULT",
+        "status": "ONLINE",
+        "timestamp": "2025-10-28T09:05:13Z",
+        "message": "Device connected to MQTT broker",
+        "ip": "192.168.0.51",
+        "rssi": -65
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T11:35:47.433Z",
+    "timestamp": "2025-11-10T11:35:47.431Z",
+    "topic": "waterpurifier/boot",
+    "type": "BOOT",
+    "data": [
+      {
+        "wp_device_id": "WP_DEFAULT",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "powerStatus": 1,
+        "timestamp": "2025-10-28T09:05:13Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T11:41:56.536Z",
+    "timestamp": "2025-11-10T11:41:56.532Z",
+    "topic": "waterpurifier/WP_DEFAULT/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "deviceId": "WP_DEFAULT",
+        "status": "ONLINE",
+        "timestamp": "2025-10-28T09:11:21Z",
+        "message": "Device connected to MQTT broker",
+        "ip": "192.168.0.51",
+        "rssi": -80
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T11:41:56.592Z",
+    "timestamp": "2025-11-10T11:41:56.587Z",
+    "topic": "waterpurifier/boot",
+    "type": "BOOT",
+    "data": [
+      {
+        "wp_device_id": "WP_DEFAULT",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "powerStatus": 1,
+        "timestamp": "2025-10-28T09:11:21Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T11:47:33.209Z",
+    "timestamp": "2025-11-10T11:47:33.207Z",
+    "topic": "waterpurifier/WP_DEFAULT/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "deviceId": "WP_DEFAULT",
+        "status": "ONLINE",
+        "timestamp": "2025-10-28T09:16:57Z",
+        "message": "Device connected to MQTT broker",
+        "ip": "192.168.0.51",
+        "rssi": -73
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T11:47:33.259Z",
+    "timestamp": "2025-11-10T11:47:33.257Z",
+    "topic": "waterpurifier/boot",
+    "type": "BOOT",
+    "data": [
+      {
+        "wp_device_id": "WP_DEFAULT",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "powerStatus": 1,
+        "timestamp": "2025-10-28T09:16:57Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T11:48:27.333Z",
+    "timestamp": "2025-11-10T11:48:27.141Z",
+    "topic": "waterpurifier/WP_DEFAULT/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "deviceId": "WP_DEFAULT",
+        "status": "ONLINE",
+        "timestamp": "2025-10-28T09:05:23Z",
+        "message": "Device connected to MQTT broker",
+        "ip": "192.168.0.51",
+        "rssi": -73
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T11:48:27.553Z",
+    "timestamp": "2025-11-10T11:48:27.387Z",
+    "topic": "waterpurifier/boot",
+    "type": "BOOT",
+    "data": [
+      {
+        "wp_device_id": "WP_DEFAULT",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "powerStatus": 1,
+        "timestamp": "2025-10-28T09:05:23Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T11:59:09.731Z",
+    "timestamp": "2025-11-10T11:59:09.694Z",
+    "topic": "waterpurifier/WP_DEFAULT/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "deviceId": "WP_DEFAULT",
+        "status": "ONLINE",
+        "timestamp": "2025-10-28T09:16:07Z",
+        "message": "Device connected to MQTT broker",
+        "ip": "192.168.0.51",
+        "rssi": -68
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T11:59:10.455Z",
+    "timestamp": "2025-11-10T11:59:09.734Z",
+    "topic": "waterpurifier/boot",
+    "type": "BOOT",
+    "data": [
+      {
+        "wp_device_id": "WP_DEFAULT",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "powerStatus": 1,
+        "timestamp": "2025-10-28T09:16:07Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T12:00:32.494Z",
+    "timestamp": "2025-11-10T12:00:29.390Z",
+    "topic": "waterpurifier/WP_DEFAULT/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "deviceId": "WP_DEFAULT",
+        "status": "ONLINE",
+        "timestamp": "2025-10-28T09:17:22Z",
+        "message": "Device connected to MQTT broker",
+        "ip": "192.168.0.51",
+        "rssi": -71
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T12:00:35.036Z",
+    "timestamp": "2025-11-10T12:00:32.496Z",
+    "topic": "waterpurifier/boot",
+    "type": "BOOT",
+    "data": [
+      {
+        "wp_device_id": "WP_DEFAULT",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "powerStatus": 1,
+        "timestamp": "2025-10-28T09:17:22Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T12:00:36.420Z",
+    "timestamp": "2025-11-10T12:00:35.805Z",
+    "topic": "waterpurifier/WP_DEFAULT/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "deviceId": "WP_DEFAULT",
+        "status": "ONLINE",
+        "timestamp": "2025-10-28T09:17:31Z",
+        "message": "Device connected to MQTT broker",
+        "ip": "192.168.0.51",
+        "rssi": -74
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T12:00:36.436Z",
+    "timestamp": "2025-11-10T12:00:36.424Z",
+    "topic": "waterpurifier/boot",
+    "type": "BOOT",
+    "data": [
+      {
+        "wp_device_id": "WP_DEFAULT",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "powerStatus": 1,
+        "timestamp": "2025-10-28T09:17:31Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T12:00:46.540Z",
+    "timestamp": "2025-11-10T12:00:46.487Z",
+    "topic": "waterpurifier/WP_DEFAULT/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "deviceId": "WP_DEFAULT",
+        "status": "ONLINE",
+        "timestamp": "2025-10-28T09:17:44Z",
+        "message": "Device connected to MQTT broker",
+        "ip": "192.168.0.51",
+        "rssi": -71
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T12:00:48.082Z",
+    "timestamp": "2025-11-10T12:00:46.671Z",
+    "topic": "waterpurifier/boot",
+    "type": "BOOT",
+    "data": [
+      {
+        "wp_device_id": "WP_DEFAULT",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "powerStatus": 1,
+        "timestamp": "2025-10-28T09:17:44Z"
+      }
+    ]
+  }
+]

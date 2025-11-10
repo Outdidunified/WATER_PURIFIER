@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:ionhive_technician_app/core/controllers/session_controller.dart';
 import 'package:ionhive_technician_app/core/core.dart';
 import 'package:ionhive_technician_app/core/services/base_api_service.dart';
+import 'package:ionhive_technician_app/feature/service_installation_app/home/domain/models/home_model.dart';
 import 'package:http/http.dart' as http;
 import 'package:get/get.dart';
 import 'package:http_parser/http_parser.dart'; // 👈 Required for MediaType
@@ -46,7 +47,7 @@ class TaskApiService extends BaseApiService {
     final email = _sessionController.emailId.value;
     final technicianId = _sessionController.technicianId.value;
     const int roleId =
-        2; // Hardcoded as per the backend requirement, now as int
+    2; // Hardcoded as per the backend requirement, now as int
 
     // Prepare form fields (all values must be strings)
     final Map<String, dynamic> updatesPayload = {
@@ -123,7 +124,8 @@ class TaskApiService extends BaseApiService {
       'task_id': taskId,
       'action': action,
       if (declineReason != null) 'decline_reason': declineReason,
-      if (estimatedStart != null) 'estimated_start': estimatedStart.toIso8601String(),
+      if (estimatedStart != null) 'estimated_start': estimatedStart
+          .toIso8601String(),
       if (estimatedEnd != null) 'estimated_end': estimatedEnd.toIso8601String(),
     };
 
@@ -187,6 +189,103 @@ class TaskApiService extends BaseApiService {
     return makeRequest<Map<String, dynamic>>(
       url: TasknUrl.setupBleConnection.url,
       method: TasknUrl.setupBleConnection.method,
+      body: body,
+      responseParser: (data) => data as Map<String, dynamic>,
+    );
+  }
+
+  Future<Map<String, dynamic>> storeBleAck(Map<String, dynamic> payload) async {
+    return makeRequest<Map<String, dynamic>>(
+      url: '${Core.baseUrl}/api/app/technicianhome/storeBleAck',
+      method: 'POST',
+      body: payload,
+      responseParser: (data) => data as Map<String, dynamic>,
+    );
+  }
+
+  Future<Map<String, dynamic>> storeMacId(Map<String, dynamic> payload) async {
+    return makeRequest<Map<String, dynamic>>(
+      url: '${Core.baseUrl}/api/app/technicianhome/storeMacId',
+      method: 'POST',
+      body: payload,
+      responseParser: (data) => data as Map<String, dynamic>,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getProductsWithPlans() async {
+    return makeRequest<List<Map<String, dynamic>>>(
+      url: TasknUrl.getProductsWithPlans.url,
+      method: TasknUrl.getProductsWithPlans.method,
+      responseParser: (data) {
+        if (data is Map<String, dynamic> && data['data'] is List) {
+          return (data['data'] as List).cast<Map<String, dynamic>>();
+        }
+        return [];
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> createRechargeOrder({
+    required String technicianId,
+    required String email,
+    required int taskId,
+    required String wpDeviceId,
+    required String productModelId,
+    required ProductPlan selectedPlan,
+    required ProductDuration selectedDuration,
+    required Map<String, dynamic> deliveryAddress,
+    required double discountedPrice,
+    required double discountAmount,
+    required double gstAmount,
+    required double grandTotal,
+    required double priceWithGST,
+    required double price,
+    required double subtotal,
+    required double codFee,
+    String? modelType,
+  }) async {
+    final body = {
+      'technician_id': technicianId,
+      'email': email,
+      'task_id': taskId,
+      'wp_device_id': wpDeviceId,
+      'productModelId': productModelId,
+      'modelType': modelType,
+      'selectedPlan': selectedPlan.toJson(),
+      'selectedDuration': selectedDuration.toJson(),
+      'deliveryAddress': deliveryAddress,
+      'discountedPrice': discountedPrice,
+      'discountAmount': discountAmount,
+      'gstAmount': gstAmount,
+      'grandTotal': grandTotal,
+      'priceWithGST': priceWithGST,
+      'price': price,
+      'subtotal': subtotal,
+      'codFee': codFee,
+    };
+
+    return makeRequest<Map<String, dynamic>>(
+      url: TasknUrl.createRechargeOrder.url,
+      method: TasknUrl.createRechargeOrder.method,
+      body: body,
+      responseParser: (data) => data as Map<String, dynamic>,
+    );
+  }
+
+  Future<Map<String, dynamic>> getActiveSubscriptionDetails({
+    required int userId,
+    required String email,
+    required int roleId,
+  }) async {
+    final body = {
+      'user_id': userId,
+      'email': email,
+      'role_id': 3,
+    };
+
+    return makeRequest<Map<String, dynamic>>(
+      url: TasknUrl.getActiveSubscriptionDetails.url,
+      method: TasknUrl.getActiveSubscriptionDetails.method,
       body: body,
       responseParser: (data) => data as Map<String, dynamic>,
     );

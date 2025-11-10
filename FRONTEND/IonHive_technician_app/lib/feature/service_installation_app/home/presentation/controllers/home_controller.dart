@@ -278,6 +278,109 @@ class TechnicianController extends GetxController {
     debugPrint('Controller state reset');
   }
 
+  Future<Map<String, dynamic>> storeBleAck(Map<String, dynamic> payload) async {
+    try {
+      final response = await taskRepository.storeBleAck(payload);
+      return response;
+    } catch (e) {
+      debugPrint('Error storing BLE ack: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> storeMacId(Map<String, dynamic> payload) async {
+    try {
+      final response = await taskRepository.storeMacId(payload);
+      return response;
+    } catch (e) {
+      debugPrint('Error storing MAC ID: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<ProductWithPlans>> getProductsWithPlans() async {
+    try {
+      final products = await taskRepository.getProductsWithPlans();
+      return products;
+    } catch (e) {
+      debugPrint('Error fetching products with plans: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> createRechargeOrder({
+    required String technicianId,
+    required String email,
+    required int taskId,
+    required String wpDeviceId,
+    required String productModelId,
+    required ProductPlan selectedPlan,
+    required ProductDuration selectedDuration,
+    required Map<String, dynamic> deliveryAddress,
+    required double discountedPrice,
+    required double discountAmount,
+    required double gstAmount,
+    required double grandTotal,
+    required double priceWithGST,
+    required double price,
+    required double subtotal,
+    required double codFee,
+    String? modelType,
+  }) async {
+    try {
+      final response = await taskRepository.createRechargeOrder(
+        technicianId: technicianId,
+        email: email,
+        taskId: taskId,
+        wpDeviceId: wpDeviceId,
+        productModelId: productModelId,
+        selectedPlan: selectedPlan,
+        selectedDuration: selectedDuration,
+        deliveryAddress: deliveryAddress,
+        discountedPrice: discountedPrice,
+        discountAmount: discountAmount,
+        gstAmount: gstAmount,
+        grandTotal: grandTotal,
+        priceWithGST: priceWithGST,
+        price: price,
+        subtotal: subtotal,
+        codFee: codFee,
+        modelType: modelType,
+      );
+
+      if (response['error'] == false) {
+        CustomSnackbar.showSuccess(message: response['message'] ?? 'Recharge order created successfully');
+        await loadTasks(); // Reload tasks after successful recharge
+      } else {
+        CustomSnackbar.showError(message: response['message'] ?? 'Failed to create recharge order');
+      }
+
+      return response;
+    } catch (e) {
+      debugPrint('Error creating recharge order: $e');
+      CustomSnackbar.showError(message: 'Failed to create recharge order: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getActiveSubscriptionDetails({
+    required int userId,
+    required String email,
+    required int roleId,
+  }) async {
+    try {
+      final response = await taskRepository.getActiveSubscriptionDetails(
+        userId: userId,
+        email: email,
+        roleId: roleId,
+      );
+      return response;
+    } catch (e) {
+      debugPrint('Error fetching active subscription details: $e');
+      rethrow;
+    }
+  }
+
   @override
   void onClose() {
     // Avoid resetting state to preserve data

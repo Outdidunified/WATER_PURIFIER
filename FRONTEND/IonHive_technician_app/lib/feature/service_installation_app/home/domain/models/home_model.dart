@@ -3,24 +3,20 @@ import 'package:flutter/material.dart';
 
 class Product {
   final String? modelName;
-  final String? modelType;
   final String? wpDeviceId;
   final Map<String, dynamic>? selectedPlan;
   final Map<String, dynamic>? selectedDuration;
 
   Product({
     this.modelName,
-    this.modelType,
     this.wpDeviceId,
     this.selectedPlan,
     this.selectedDuration,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
-    final dynamic modelTypeValue = json['model_type'] ?? json['modelType'];
     return Product(
       modelName: json['model_name'] != null ? json['model_name'].toString() : null,
-      modelType: modelTypeValue != null ? modelTypeValue.toString() : null,
       wpDeviceId: json['wp_device_id'] != null ? json['wp_device_id'].toString() : null,
       selectedPlan: json['selectedPlan'] as Map<String, dynamic>?,
       selectedDuration: json['selectedDuration'] as Map<String, dynamic>?,
@@ -30,7 +26,6 @@ class Product {
   Map<String, dynamic> toJson() {
     return {
       'model_name': modelName,
-      'model_type': modelType,
       'wp_device_id': wpDeviceId,
       'selectedPlan': selectedPlan,
       'selectedDuration': selectedDuration,
@@ -48,6 +43,7 @@ class Address {
   final String? state;
   final String? pincode;
   final String? email;
+  final String? country;
 
   Address({
     this.name,
@@ -59,6 +55,7 @@ class Address {
     this.state,
     this.pincode,
     this.email,
+    this.country,
   });
 
   factory Address.fromJson(Map<String, dynamic> json) {
@@ -72,6 +69,7 @@ class Address {
       state: json['state'] != null ? json['state'].toString() : null,
       pincode: json['pincode'] != null ? json['pincode'].toString() : null,
       email: json['email'] != null ? json['email'].toString() : null,
+      country: json['country'] != null ? json['country'].toString() : null,
     );
   }
 
@@ -86,6 +84,7 @@ class Address {
       'state': state,
       'pincode': pincode,
       'email': email,
+      'country': country,
     };
   }
 }
@@ -160,6 +159,140 @@ class PaymentInfo {
   }
 }
 
+// Models for Product with Plans (for recharge)
+class ProductPlan {
+  final String? plansId;
+  final String? label;
+  final String? capacity;
+  final int? price;
+  final String? description;
+
+  ProductPlan({
+    this.plansId,
+    this.label,
+    this.capacity,
+    this.price,
+    this.description,
+  });
+
+  factory ProductPlan.fromJson(Map<String, dynamic> json) {
+    return ProductPlan(
+      plansId: json['plans_id']?.toString(),
+      label: json['label']?.toString(),
+      capacity: json['capacity']?.toString(),
+      price: json['price'] is int ? json['price'] : int.tryParse(json['price']?.toString() ?? ''),
+      description: json['description']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'plans_id': plansId,
+      'label': label,
+      'capacity': capacity,
+      'price': price,
+      'description': description,
+    };
+  }
+}
+
+class ProductDuration {
+  final String? durationId;
+  final String? durationTimeLimit;
+  final int? gst;
+  final int? discount;
+  final int? securityDeposit;
+  final List<ProductPlan>? plans;
+
+  ProductDuration({
+    this.durationId,
+    this.durationTimeLimit,
+    this.gst,
+    this.discount,
+    this.securityDeposit,
+    this.plans,
+  });
+
+  factory ProductDuration.fromJson(Map<String, dynamic> json) {
+    return ProductDuration(
+      durationId: json['duration_id']?.toString(),
+      durationTimeLimit: json['duration_time_limit']?.toString(),
+      gst: json['gst'] is int ? json['gst'] : int.tryParse(json['gst']?.toString() ?? ''),
+      discount: json['discount'] is int ? json['discount'] : int.tryParse(json['discount']?.toString() ?? ''),
+      securityDeposit: json['security_deposit'] is int ? json['security_deposit'] : int.tryParse(json['security_deposit']?.toString() ?? ''),
+      plans: json['plans'] != null
+          ? (json['plans'] as List).map((plan) => ProductPlan.fromJson(plan)).toList()
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'duration_id': durationId,
+      'duration_time_limit': durationTimeLimit,
+      'gst': gst,
+      'discount': discount,
+      'security_deposit': securityDeposit,
+      'plans': plans?.map((plan) => plan.toJson()).toList(),
+    };
+  }
+}
+
+class ProductWithPlans {
+  final String? id;
+  final int? modelId;
+  final String? modelName;
+  final String? mainImg;
+  final String? subImg1;
+  final String? subImg2;
+  final String? subImg3;
+  final String? subImg4;
+  final String? productSpecifications;
+  final int? wpDeviceQuantity;
+  final String? productDetails;
+  final String? connectivity;
+  final String? modelType;
+  final List<ProductDuration>? duration;
+
+  ProductWithPlans({
+    this.id,
+    this.modelId,
+    this.modelName,
+    this.mainImg,
+    this.subImg1,
+    this.subImg2,
+    this.subImg3,
+    this.subImg4,
+    this.productSpecifications,
+    this.wpDeviceQuantity,
+    this.productDetails,
+    this.connectivity,
+    this.modelType,
+    this.duration,
+  });
+
+  factory ProductWithPlans.fromJson(Map<String, dynamic> json) {
+    return ProductWithPlans(
+      id: json['_id']?.toString(),
+      modelId: json['model_id'] is int ? json['model_id'] : int.tryParse(json['model_id']?.toString() ?? ''),
+      modelName: json['model_name']?.toString(),
+      mainImg: json['main_img']?.toString(),
+      subImg1: json['sub_img_1']?.toString(),
+      subImg2: json['sub_img_2']?.toString(),
+      subImg3: json['sub_img_3']?.toString(),
+      subImg4: json['sub_img_4']?.toString(),
+      productSpecifications: json['product_specifications']?.toString(),
+      wpDeviceQuantity: json['wp_device_quantity'] is int ? json['wp_device_quantity'] : int.tryParse(json['wp_device_quantity']?.toString() ?? ''),
+      productDetails: json['product_details']?.toString(),
+      connectivity: json['connectivity']?.toString(),
+      modelType: json['model_type']?.toString(),
+      duration: json['duration'] != null
+          ? (json['duration'] as List).map((dur) => ProductDuration.fromJson(dur)).toList()
+          : null,
+    );
+  }
+}
+
 class Task {
   final String? id;
   final int? taskId;
@@ -180,6 +313,9 @@ class Task {
   final String? assignedBy;
   final int? otd;
   final String? wpDeviceId;
+  final int? modelId;
+  final int? model_id;
+  final String? modelName;
   final Address? address;
   final Product? product;
   final PaymentInfo? paymentSnapshot;
@@ -188,6 +324,12 @@ class Task {
   final String? paymentMethod;
   final bool? waitingStatus;
   final String? leaveAction;
+  final bool? setupComplete;
+  final String? macId;
+  final String? requestType;
+  final int? currentPlan;
+  final String? currentPlanEndDate;
+  final Map<String, dynamic>? rechargeDetails;
 
   Task({
     this.id,
@@ -209,6 +351,9 @@ class Task {
     this.assignedBy,
     this.otd,
     this.wpDeviceId,
+    this.modelId,
+    this.model_id,
+    this.modelName,
     this.address,
     this.product,
     this.paymentSnapshot,
@@ -217,6 +362,12 @@ class Task {
     this.paymentMethod,
     this.waitingStatus,
     this.leaveAction,
+    this.setupComplete,
+    this.macId,
+    this.requestType,
+    this.currentPlan,
+    this.currentPlanEndDate,
+    this.rechargeDetails,
   });
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -308,9 +459,24 @@ class Task {
       wpDeviceId: json['wp_device_id'] != null
           ? safeToString(json['wp_device_id'])
           : null,
+      modelId: json['model_id'] is int
+          ? json['model_id'] as int?
+          : json['model_id'] != null
+              ? int.tryParse(json['model_id'].toString())
+              : null,
+      model_id: json['model_id'] is int
+          ? json['model_id'] as int?
+          : json['model_id'] != null
+              ? int.tryParse(json['model_id'].toString())
+              : null,
+      modelName: json['model_name'] != null
+          ? safeToString(json['model_name'])
+          : null,
       address: json['address'] != null
           ? Address.fromJson(json['address'] as Map<String, dynamic>)
-          : null,
+          : json['deliveryAddress'] != null
+              ? Address.fromJson(json['deliveryAddress'] as Map<String, dynamic>)
+              : null,
       product: json['product'] != null
           ? Product.fromJson(json['product'] as Map<String, dynamic>)
           : null,
@@ -333,6 +499,32 @@ class Task {
           : null,
       leaveAction: json['leave_action'] != null
           ? safeToString(json['leave_action'])
+          : null,
+      setupComplete: json['isSetup'] is bool
+          ? json['isSetup'] as bool?
+          : json['isSetup'] != null
+              ? json['isSetup'].toString().toLowerCase() == 'true'
+              : json['setup_complete'] is bool
+                  ? json['setup_complete'] as bool?
+                  : json['setup_complete'] != null
+                      ? json['setup_complete'].toString().toLowerCase() == 'true'
+                      : null,
+      macId: json['mac_id'] != null
+          ? safeToString(json['mac_id'])
+          : null,
+      requestType: json['request_type'] != null
+          ? safeToString(json['request_type'])
+          : null,
+      currentPlan: json['current_plan'] is int
+          ? json['current_plan'] as int?
+          : json['current_plan'] != null
+              ? int.tryParse(json['current_plan'].toString())
+              : null,
+      currentPlanEndDate: json['current_plan_end_date'] != null
+          ? safeToString(json['current_plan_end_date'])
+          : null,
+      rechargeDetails: json['rechargeDetails'] != null
+          ? json['rechargeDetails'] as Map<String, dynamic>
           : null,
     );
   }
@@ -365,6 +557,11 @@ class Task {
       'payment_snapshot': paymentSnapshot?.toJson(),
       'waiting_status': waitingStatus,
       'leave_action': leaveAction,
+      'setup_complete': setupComplete,
+      'mac_id': macId,
+      'request_type': requestType,
+      'current_plan': currentPlan,
+      'current_plan_end_date': currentPlanEndDate,
     };
   }
 

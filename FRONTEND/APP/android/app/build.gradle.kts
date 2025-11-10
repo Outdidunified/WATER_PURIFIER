@@ -19,6 +19,19 @@ android {
         multiDexEnabled = true
     }
 
+    packaging {
+        resources {
+            pickFirsts += "lib/armeabi-v7a/libc++_shared.so"
+            pickFirsts += "lib/arm64-v8a/libc++_shared.so"
+            pickFirsts += "lib/x86/libc++_shared.so"
+            pickFirsts += "lib/x86_64/libc++_shared.so"
+        }
+    }
+
+    bundle {
+        language.enableSplit = false
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11

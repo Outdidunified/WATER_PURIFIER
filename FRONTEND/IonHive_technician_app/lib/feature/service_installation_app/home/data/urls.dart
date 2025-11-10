@@ -26,4 +26,19 @@ class TasknUrl {
     url: '${Core.baseUrl}/api/app/technicianhome/setupBleConnection',
     method: 'POST',
   );
+
+  static final Endpoint getProductsWithPlans = Endpoint(
+    url: '${Core.baseUrl}/api/website/products/productswithplan',
+    method: 'GET',
+  );
+
+  static final Endpoint createRechargeOrder = Endpoint(
+    url: '${Core.baseUrl}/api/app/technicianhome/createRechargeOrder',
+    method: 'POST',
+  );
+
+  static final Endpoint getActiveSubscriptionDetails = Endpoint(
+    url: '${Core.baseUrl}/api/app/enduserhome/getActiveSubscriptionDetails',
+    method: 'POST',
+  );
 }

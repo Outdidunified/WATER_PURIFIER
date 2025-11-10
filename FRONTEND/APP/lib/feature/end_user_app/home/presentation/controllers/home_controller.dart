@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/repositories/home_repository.dart';
 import 'package:get/get.dart';
 import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/models/home_model.dart';
@@ -13,6 +14,7 @@ class SubscriptionController extends GetxController {
   // Currently selected/active subscription for display
   Rx<Order?> activeSubscription = Rx<Order?>(null);
   Rx<DeviceData?> deviceData = Rx<DeviceData?>(null);
+  String? _lastSelectedSmartOrderId;
   RxBool isLoading = false.obs;
   RxString errorMessage = ''.obs;
 
@@ -68,8 +70,23 @@ class SubscriptionController extends GetxController {
           // Save orders list
           orders.assignAll(response.data);
 
-          // Set active subscription to first order
-          activeSubscription.value = response.data.first;
+          // Determine initial active subscription prioritizing previous smart selection
+          final smartOrders = response.data.where((order) => order.modelType?.toLowerCase() == 'smart').toList();
+          Order? initialActive;
+
+          if (_lastSelectedSmartOrderId != null) {
+            initialActive = smartOrders.firstWhere(
+              (order) => order.id == _lastSelectedSmartOrderId,
+              orElse: () => smartOrders.isNotEmpty ? smartOrders.first : response.data.first,
+            );
+          } else if (smartOrders.isNotEmpty) {
+            initialActive = smartOrders.first;
+          }
+
+          activeSubscription.value = initialActive ?? response.data.first;
+          if (smartOrders.isNotEmpty) {
+            _lastSelectedSmartOrderId = activeSubscription.value?.id;
+          }
 
           // Pick first active order/device for subscription flag
           final firstOrder = response.data.first;
@@ -96,9 +113,10 @@ class SubscriptionController extends GetxController {
   // Method to select a specific subscription
   void selectSubscription(Order order) {
     activeSubscription.value = order;
-    // Clear device data immediately when switching devices
+    if (order.modelType?.toLowerCase() == 'smart') {
+      _lastSelectedSmartOrderId = order.id;
+    }
     deviceData.value = null;
-    // Fetch latest feature values for the selected device
     fetchLatestFeatureValues(showLoading: true);
   }
 
@@ -160,6 +178,16 @@ class SubscriptionController extends GetxController {
       }
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<Map<String, dynamic>> storeBleAck(Map<String, dynamic> payload) async {
+    try {
+      final response = await _repository.storeBleAck(payload);
+      return response;
+    } catch (e) {
+      debugPrint('Error storing BLE ack: $e');
+      rethrow;
     }
   }
 }

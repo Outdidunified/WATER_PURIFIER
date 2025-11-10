@@ -38,8 +38,8 @@ class TechnicianFooter extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Image.asset(
               currentIndex == 0
-                  ? 'assets/icons/home.png' // Active icon
-                  : 'assets/icons/home_n.png', // Inactive icon
+                  ? 'assets/icons/home.png'
+                  : 'assets/icons/home_n.png',
               width: iconSize,
               height: iconSize,
               color: currentIndex == 0
@@ -49,13 +49,23 @@ class TechnicianFooter extends StatelessWidget {
             label: 'Home',
           ),
           BottomNavigationBarItem(
+            icon: Icon(
+              Icons.devices,
+              size: iconSize,
+              color: currentIndex == 1
+                  ? theme.primaryColor
+                  : theme.iconTheme.color,
+            ),
+            label: 'Device Setup',
+          ),
+          BottomNavigationBarItem(
             icon: Image.asset(
-              currentIndex == 1
-                  ? 'assets/icons/Settings_Active.png' // Active icon
-                  : 'assets/icons/Settings.png', // Inactive icon
+              currentIndex == 2
+                  ? 'assets/icons/Settings_Active.png'
+                  : 'assets/icons/Settings.png',
               width: iconSize,
               height: iconSize,
-              color: currentIndex == 1
+              color: currentIndex == 2
                   ? theme.primaryColor
                   : theme.iconTheme.color,
             ),

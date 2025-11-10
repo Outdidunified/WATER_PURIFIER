@@ -1212,12 +1212,21 @@ class FeatureCardsSection extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Obx(() {
-      final orders = homeController.orders;
-      final activeSubscription = homeController.activeSubscription.value;
+      final orders = homeController.orders.cast<Subscription>().toList();
+      final Subscription? activeSubscription = homeController.activeSubscription.value;
 
-      if (orders.isEmpty || orders.length <= 1) {
-        return SizedBox.shrink(); // Hide if only one or no devices
+      final smartOrders = orders
+          .where((subscription) => subscription.modelType?.toLowerCase() == 'smart')
+          .toList();
+
+      if (smartOrders.isEmpty || smartOrders.length <= 1) {
+        return SizedBox.shrink();
       }
+
+      final activeSmartOrder = smartOrders.firstWhere(
+        (subscription) => subscription.id == activeSubscription?.id,
+        orElse: () => smartOrders.first,
+      );
 
       return Container(
         padding: EdgeInsets.all(screenWidth * 0.03),
@@ -1245,8 +1254,8 @@ class FeatureCardsSection extends StatelessWidget {
               ),
             ),
             SizedBox(height: screenWidth * 0.02),
-            DropdownButtonFormField<Order>(
-              value: activeSubscription,
+            DropdownButtonFormField<Subscription>(
+              value: activeSmartOrder,
               dropdownColor: Colors.white,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
@@ -1257,11 +1266,11 @@ class FeatureCardsSection extends StatelessWidget {
                   vertical: screenWidth * 0.015,
                 ),
               ),
-              items: orders.map((order) {
-                return DropdownMenuItem<Order>(
-                  value: order,
+              items: smartOrders.map((subscription) {
+                return DropdownMenuItem<Subscription>(
+                  value: subscription,
                   child: Text(
-                    "${order.modelName} (${order.wpDeviceId})",
+                    "${subscription.modelName} (${subscription.wpDeviceId})",
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: screenWidth * 0.03,
@@ -1269,9 +1278,9 @@ class FeatureCardsSection extends StatelessWidget {
                   ),
                 );
               }).toList(),
-              onChanged: (selectedOrder) {
-                if (selectedOrder != null) {
-                  homeController.selectSubscription(selectedOrder);
+              onChanged: (selectedSubscription) {
+                if (selectedSubscription != null) {
+                  homeController.selectSubscription(selectedSubscription as Order);
                 }
               },
             ),

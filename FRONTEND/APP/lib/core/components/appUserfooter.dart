@@ -75,14 +75,14 @@ class Footer extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Icon(
               currentIndex == 3
-                  ? Icons.history
-                  : Icons.history_outlined,
+                  ? Icons.devices
+                  : Icons.devices_outlined,
               size: iconSize,
               color: currentIndex == 3
                   ? theme.primaryColor
                   : theme.iconTheme.color,
             ),
-            label: 'Orders',
+            label: 'Device Setup',
           ),
           BottomNavigationBarItem(
             icon: Image.asset(

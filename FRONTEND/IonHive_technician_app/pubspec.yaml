@@ -60,7 +60,8 @@ dependencies:
   dropdown_button2: ^1.9.1
   barcode_scan2: ^4.3.0
   flutter_blue_plus: ^1.33.0
-  flutter_bluetooth_serial: ^0.4.0
+  flutter_bluetooth_serial:
+    path: plugins/flutter_bluetooth_serial
 
 dev_dependencies:
   flutter_test:

@@ -1,5 +1,7 @@
 // File: lib/feature/end_user_app/settings/domain/models/payment_history_model.dart
 
+import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/models/home_model.dart' show PlanConfig;
+
 class PaymentHistory {
   final String? id;
   final int userId;
@@ -50,19 +52,19 @@ class PaymentHistory {
   factory PaymentHistory.fromJson(Map<String, dynamic> json) {
     return PaymentHistory(
       id: json['_id'] as String?,
-      userId: json['user_id'] as int? ?? 0, // Default to 0 if null
+      userId: _toInt(json['user_id']) ?? 0,
       orderId: json['orderId'] as String?,
       razorpayOrderId: json['razorpayOrderId'] as String?,
-      baseRent: (json['baseRent'] as num?)?.toDouble(),
-      discount: (json['discount'] as num?)?.toDouble(),
-      discountedBaseRent: (json['discountedBaseRent'] as num?)?.toDouble(),
-      finalMonthlyPrice: (json['finalMonthlyPrice'] as num?)?.toDouble(),
-      discountAmount: (json['discountAmount'] as num?)?.toDouble(),
-      priceWithGST: (json['priceWithGST'] as num?)?.toDouble(),
-      gstAmount: (json['gstAmount'] as num?)?.toDouble() ?? 0.0,
-      securityDeposit: (json['securityDeposit'] as num?)?.toDouble() ?? 0.0,
-      totalPrice: (json['totalPrice'] as num?)?.toDouble() ?? 0.0,
-      totalLitre: (json['totalLitre'] as num?)?.toDouble(),
+      baseRent: _toDouble(json['baseRent']),
+      discount: _toDouble(json['discount']),
+      discountedBaseRent: _toDouble(json['discountedBaseRent']),
+      finalMonthlyPrice: _toDouble(json['finalMonthlyPrice']),
+      discountAmount: _toDouble(json['discountAmount']),
+      priceWithGST: _toDouble(json['priceWithGST']),
+      gstAmount: _toDouble(json['gstAmount']) ?? 0.0,
+      securityDeposit: _toDouble(json['securityDeposit']) ?? 0.0,
+      totalPrice: _toDouble(json['totalPrice']) ?? 0.0,
+      totalLitre: _toDouble(json['totalLitre']),
       paymentStatus: json['paymentStatus'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
@@ -88,6 +90,8 @@ class Order {
   final String? productModelId;
   final String? modelName;
   final String? wpDeviceId;
+  final String? modelType;
+  final String? orderType;
   final SelectedPlan selectedPlan;
   final SelectedDuration selectedDuration;
   final double? price;
@@ -106,6 +110,7 @@ class Order {
   final String? paymentType;
   final double? grandTotal;
   final int? codFee;
+  final PlanConfig? planConfig;
 
   Order({
     this.id,
@@ -114,6 +119,8 @@ class Order {
     this.productModelId,
     this.modelName,
     this.wpDeviceId,
+    this.modelType,
+    this.orderType,
     required this.selectedPlan,
     required this.selectedDuration,
     this.price,
@@ -132,27 +139,35 @@ class Order {
     this.paymentType,
     this.grandTotal,
     this.codFee,
+    this.planConfig,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
     return Order(
       id: json['_id'] as String?,
       customOrderId: json['customOrderId'] as String?,
-      userId: json['user_id'] as int? ?? 0, // Default to 0 if null
-      productModelId: json['productModelId'] as String?,
+      userId: _toInt(json['user_id']) ?? 0,
+      productModelId: json['productModelId']?.toString(),
       modelName: json['modelName'] as String?,
       wpDeviceId: json['wp_device_id'] as String?,
-      selectedPlan:
-          SelectedPlan.fromJson(json['selectedPlan'] as Map<String, dynamic>),
-      selectedDuration: SelectedDuration.fromJson(
-          json['selectedDuration'] as Map<String, dynamic>),
-      price: (json['price'] ?? json['grandTotal'] as num?)?.toDouble() ?? 0.0,
-      deliveryAddress: DeliveryAddress.fromJson(
-          json['deliveryAddress'] as Map<String, dynamic>),
+      modelType: json['modeltype'] as String?,
+      orderType: json['orderType'] as String?,
+      selectedPlan: json['selectedPlan'] != null
+          ? SelectedPlan.fromJson(json['selectedPlan'] as Map<String, dynamic>)
+          : SelectedPlan(plansId: 0),
+      selectedDuration: json['selectedDuration'] != null
+          ? SelectedDuration.fromJson(
+              json['selectedDuration'] as Map<String, dynamic>)
+          : SelectedDuration(durationId: 0),
+      price: _toDouble(json['price'] ?? json['grandTotal']) ?? 0.0,
+      deliveryAddress: json['deliveryAddress'] != null
+          ? DeliveryAddress.fromJson(
+              json['deliveryAddress'] as Map<String, dynamic>)
+          : DeliveryAddress(),
       paymentStatus: json['paymentStatus'] as String?,
       orderStatus: json['orderStatus'] as String?,
       razorpayOrderId: json['razorpayOrderId'] as String?,
-      totalLitre: (json['totalLitre'] as num?)?.toDouble(),
+      totalLitre: _toDouble(json['totalLitre']),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       razorpayPaymentId: json['razorpayPaymentId'] as String?,
@@ -167,8 +182,11 @@ class Order {
           : null,
       modifiedBy: json['modified_by'] as String?,
       paymentType: json['paymentType'] as String?,
-      grandTotal: (json['grandTotal'] as num?)?.toDouble(),
-      codFee: json['codFee'] as int?,
+      grandTotal: _toDouble(json['grandTotal']),
+      codFee: _toInt(json['codFee']),
+      planConfig: json['plan_config'] != null
+          ? PlanConfig.fromJson(json['plan_config'] as Map<String, dynamic>)
+          : null,
     );
   }
 }
@@ -188,10 +206,10 @@ class SelectedPlan {
 
   factory SelectedPlan.fromJson(Map<String, dynamic> json) {
     return SelectedPlan(
-      plansId: json['plans_id'] as int? ?? 0, // Default to 0 if null
+      plansId: _toInt(json['plans_id']) ?? 0,
       label: json['label'] as String?,
       capacity: json['capacity'] as String?,
-      price: (json['price'] as num?)?.toDouble(),
+      price: _toDouble(json['price']),
     );
   }
 }
@@ -215,14 +233,46 @@ class SelectedDuration {
 
   factory SelectedDuration.fromJson(Map<String, dynamic> json) {
     return SelectedDuration(
-      durationId: json['duration_id'] as int? ?? 0, // Default to 0 if null
+      durationId: _toInt(json['duration_id']) ?? 0,
       durationTimeLimit: json['duration_time_limit'] as String?,
-      price: (json['price'] as num?)?.toDouble(),
-      gst: (json['gst'] as num?)?.toDouble() ?? 0.0,
-      discount: (json['discount'] as num?)?.toDouble() ?? 0.0,
-      securityDeposit: (json['security_deposit'] as num?)?.toDouble() ?? 0.0,
+      price: _toDouble(json['price']),
+      gst: _toDouble(json['gst']) ?? 0.0,
+      discount: _toDouble(json['discount']) ?? 0.0,
+      securityDeposit: _toDouble(json['security_deposit']) ?? 0.0,
     );
   }
+}
+
+// Helper function to convert various types to double
+double? _toDouble(dynamic value) {
+  if (value == null) return null;
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is String) {
+    try {
+      return double.parse(value);
+    } catch (e) {
+      return null;
+    }
+  }
+  if (value is num) return value.toDouble();
+  return null;
+}
+
+// Helper function to convert various types to int
+int? _toInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) {
+    try {
+      return int.parse(value);
+    } catch (e) {
+      return null;
+    }
+  }
+  if (value is num) return value.toInt();
+  return null;
 }
 
 class DeliveryAddress {

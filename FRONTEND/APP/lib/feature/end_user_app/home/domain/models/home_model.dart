@@ -1,5 +1,217 @@
 import 'package:equatable/equatable.dart';
 
+// Order class - same as Subscription for backward compatibility
+class Order extends Subscription {
+  const Order({
+    required super.id,
+    required super.customOrderId,
+    required super.userId,
+    required super.productModelId,
+    required super.modelName,
+    required super.wpDeviceId,
+    super.macId,
+    required super.mainImage,
+    required super.subImages,
+    super.modelType,
+    super.orderType,
+    required super.selectedPlan,
+    required super.selectedDuration,
+    required super.price,
+    required super.grandTotal,
+    required super.deliveryAddress,
+    required super.paymentStatus,
+    required super.paymentType,
+    required super.orderStatus,
+    required super.razorpayOrderId,
+    required super.totalLitre,
+    required super.codFee,
+    required super.installationStatus,
+    required super.createdAt,
+    required super.updatedAt,
+    required super.razorpayPaymentId,
+    required super.subscriptionExpiryDate,
+    super.planConfig,
+    super.isSetup,
+    required super.tasks,
+    super.deliveryAcceptanceStatus,
+    super.deliveryAcceptanceTimestamp,
+    super.deliveryCompletionTimestamp,
+    super.deliveryCurrentStatus,
+    required super.deliveryHistory,
+    super.deliveryCompletionStatus,
+  });
+
+  factory Order.fromJson(Map<String, dynamic> json) {
+    return Order(
+      id: _parseString(json['_id']),
+      customOrderId: _parseString(json['customOrderId']),
+      userId: json['user_id'] as int? ?? 0,
+      productModelId: _parseString(json['productModelId']),
+      modelName: _parseString(json['modelName']),
+      wpDeviceId: _parseString(json['wp_device_id']),
+      macId: _parseOptionalString(json['mac_id']),
+      mainImage: _parseString(json['main_image']),
+      subImages: (json['sub_images'] as List<dynamic>?)?.map((e) => _parseString(e)).toList() ?? [],
+      modelType: json['modeltype'] != null ? _parseString(json['modeltype']) : null,
+      orderType: json['orderType'] != null ? _parseString(json['orderType']) : null,
+      selectedPlan: json['selectedPlan'] != null
+          ? SelectedPlan.fromJson(json['selectedPlan'] as Map<String, dynamic>)
+          : const SelectedPlan(plansId: 0, label: '', capacity: '', price: 0),
+      selectedDuration: json['selectedDuration'] != null
+          ? SelectedDuration.fromJson(json['selectedDuration'] as Map<String, dynamic>)
+          : const SelectedDuration(durationId: 0, durationTimeLimit: '', gst: 0, discount: 0, securityDeposit: 0),
+      price: _parseDouble(json['price']),
+      grandTotal: _parseDouble(json['grandTotal']),
+      deliveryAddress: json['deliveryAddress'] != null
+          ? DeliveryAddress.fromJson(json['deliveryAddress'] as Map<String, dynamic>)
+          : const DeliveryAddress(name: '', phone: '', street: '', landmark: '', city: '', district: '', state: '', pincode: '', email: ''),
+      paymentStatus: _parseString(json['paymentStatus'], 'unknown'),
+      paymentType: _parseString(json['paymentType'], 'COD'),
+      orderStatus: _parseString(json['orderStatus'], 'unknown'),
+      razorpayOrderId: _parseString(json['razorpayOrderId']),
+      totalLitre: _parseInt(json['totalLitre']),
+      codFee: _parseInt(json['codFee']),
+      installationStatus: _parseString(json['installation_status'], 'Pending'),
+      createdAt: _parseString(json['createdAt']),
+      updatedAt: _parseString(json['updatedAt']),
+      razorpayPaymentId: _parseString(json['razorpayPaymentId']),
+      subscriptionExpiryDate: _parseString(json['subscriptionExpiryDate']),
+      planConfig: json['plan_config'] != null ? PlanConfig.fromJson(json['plan_config'] as Map<String, dynamic>) : null,
+      isSetup: _parseOptionalBool(json['isSetup']),
+      tasks: (json['tasks'] as List<dynamic>?)?.map((task) => Task.fromJson(task as Map<String, dynamic>)).toList() ?? [],
+      deliveryAcceptanceStatus: json['delivery_acceptance_status'] != null ? _parseString(json['delivery_acceptance_status']) : null,
+      deliveryAcceptanceTimestamp: json['delivery_acceptance_timestamp'] != null ? _parseString(json['delivery_acceptance_timestamp']) : null,
+      deliveryCompletionTimestamp: json['delivery_completion_timestamp'] != null ? _parseString(json['delivery_completion_timestamp']) : null,
+      deliveryCurrentStatus: json['delivery_current_status'] != null ? _parseString(json['delivery_current_status']) : null,
+      deliveryHistory: (json['delivery_history'] as List<dynamic>?)?.map((history) => DeliveryHistory.fromJson(history as Map<String, dynamic>)).toList() ?? [],
+      deliveryCompletionStatus: json['delivery_completion_status'] as bool?,
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'customOrderId': customOrderId,
+      'user_id': userId,
+      'productModelId': productModelId,
+      'modelName': modelName,
+      'wp_device_id': wpDeviceId,
+      'mac_id': macId,
+      'main_image': mainImage,
+      'sub_images': subImages,
+      'modeltype': modelType,
+      'orderType': orderType,
+      'selectedPlan': selectedPlan.toJson(),
+      'selectedDuration': selectedDuration.toJson(),
+      'price': price,
+      'grandTotal': grandTotal,
+      'deliveryAddress': deliveryAddress.toJson(),
+      'paymentStatus': paymentStatus,
+      'paymentType': paymentType,
+      'orderStatus': orderStatus,
+      'razorpayOrderId': razorpayOrderId,
+      'totalLitre': totalLitre,
+      'codFee': codFee,
+      'installation_status': installationStatus,
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
+      'razorpayPaymentId': razorpayPaymentId,
+      'subscriptionExpiryDate': subscriptionExpiryDate,
+      'plan_config': planConfig?.toJson(),
+      'isSetup': isSetup,
+      'tasks': tasks.map((task) => task.toJson()).toList(),
+      'delivery_acceptance_status': deliveryAcceptanceStatus,
+      'delivery_acceptance_timestamp': deliveryAcceptanceTimestamp,
+      'delivery_completion_timestamp': deliveryCompletionTimestamp,
+      'delivery_current_status': deliveryCurrentStatus,
+      'delivery_history': deliveryHistory.map((history) => history.toJson()).toList(),
+      'delivery_completion_status': deliveryCompletionStatus,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    id,
+    customOrderId,
+    userId,
+    productModelId,
+    modelName,
+    wpDeviceId,
+    macId,
+    mainImage,
+    subImages,
+    modelType,
+    orderType,
+    selectedPlan,
+    selectedDuration,
+    price,
+    grandTotal,
+    deliveryAddress,
+    paymentStatus,
+    paymentType,
+    orderStatus,
+    razorpayOrderId,
+    totalLitre,
+    codFee,
+    installationStatus,
+    createdAt,
+    updatedAt,
+    razorpayPaymentId,
+    subscriptionExpiryDate,
+    planConfig,
+    tasks,
+    deliveryAcceptanceStatus,
+    deliveryAcceptanceTimestamp,
+    deliveryCompletionTimestamp,
+    deliveryCurrentStatus,
+    deliveryHistory,
+    deliveryCompletionStatus,
+  ];
+}
+
+// Helper functions for parsing JSON values that may be strings or numbers
+double _parseDouble(dynamic value) {
+  if (value == null) return 0.0;
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? 0.0;
+  return 0.0;
+}
+
+int _parseInt(dynamic value) {
+  if (value == null) return 0;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
+}
+
+String _parseString(dynamic value, [String fallback = '']) {
+  if (value == null) return fallback;
+  if (value is String) return value;
+  final result = value.toString();
+  if (result.isEmpty) return fallback;
+  return result;
+}
+
+String? _parseOptionalString(dynamic value) {
+  if (value == null) return null;
+  final result = _parseString(value);
+  if (result.isEmpty) return null;
+  return result;
+}
+
+bool? _parseOptionalBool(dynamic value) {
+  if (value == null) return null;
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  if (value is String) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'true' || normalized == '1' || normalized == 'yes') return true;
+    if (normalized == 'false' || normalized == '0' || normalized == 'no') return false;
+  }
+  return null;
+}
+
 /// Represents the response from an active subscription API call.
 class ActiveSubscriptionResponse extends Equatable {
   final bool error;
@@ -15,7 +227,7 @@ class ActiveSubscriptionResponse extends Equatable {
   factory ActiveSubscriptionResponse.fromJson(Map<String, dynamic> json) {
     return ActiveSubscriptionResponse(
       error: json['error'] as bool? ?? true,
-      message: json['message'] as String? ?? 'Unknown error',
+      message: _parseString(json['message'], 'Unknown error'),
       data: json['data'] != null
           ? SubscriptionData.fromJson(json['data'] as Map<String, dynamic>)
           : null,
@@ -65,8 +277,11 @@ class Subscription extends Equatable {
   final String productModelId;
   final String modelName;
   final String wpDeviceId;
+  final String? macId;
   final String mainImage;
   final List<String> subImages;
+  final String? modelType;
+  final String? orderType;
   final SelectedPlan selectedPlan;
   final SelectedDuration selectedDuration;
   final double price;
@@ -83,6 +298,8 @@ class Subscription extends Equatable {
   final String updatedAt;
   final String razorpayPaymentId;
   final String subscriptionExpiryDate;
+  final PlanConfig? planConfig;
+  final bool? isSetup;
   final List<Task> tasks;
   final String? deliveryAcceptanceStatus;
   final String? deliveryAcceptanceTimestamp;
@@ -98,8 +315,11 @@ class Subscription extends Equatable {
     required this.productModelId,
     required this.modelName,
     required this.wpDeviceId,
+    this.macId,
     required this.mainImage,
     required this.subImages,
+    this.modelType,
+    this.orderType,
     required this.selectedPlan,
     required this.selectedDuration,
     required this.price,
@@ -116,6 +336,8 @@ class Subscription extends Equatable {
     required this.updatedAt,
     required this.razorpayPaymentId,
     required this.subscriptionExpiryDate,
+    this.planConfig,
+    this.isSetup,
     required this.tasks,
     this.deliveryAcceptanceStatus,
     this.deliveryAcceptanceTimestamp,
@@ -127,41 +349,48 @@ class Subscription extends Equatable {
 
   factory Subscription.fromJson(Map<String, dynamic> json) {
     return Subscription(
-      id: json['_id'] as String? ?? '',
-      customOrderId: json['customOrderId'] as String? ?? '',
+      id: _parseString(json['_id']),
+      customOrderId: _parseString(json['customOrderId']),
       userId: json['user_id'] as int? ?? 0,
-      productModelId: json['productModelId'] as String? ?? '',
-      modelName: json['modelName'] as String? ?? '',
-      wpDeviceId: json['wp_device_id'] as String? ?? '',
-      mainImage: json['main_image'] as String? ?? '',
-      subImages: (json['sub_images'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
+      productModelId: _parseString(json['productModelId']),
+      modelName: _parseString(json['modelName']),
+      wpDeviceId: _parseString(json['wp_device_id']),
+      macId: _parseOptionalString(json['mac_id']),
+      mainImage: _parseString(json['main_image']),
+      subImages: (json['sub_images'] as List<dynamic>?)?.map((e) => _parseString(e)).toList() ?? [],
+      modelType: json['modeltype'] != null ? _parseString(json['modeltype']) : null,
+      orderType: json['orderType'] != null ? _parseString(json['orderType']) : null,
       selectedPlan: json['selectedPlan'] != null
           ? SelectedPlan.fromJson(json['selectedPlan'] as Map<String, dynamic>)
           : const SelectedPlan(plansId: 0, label: '', capacity: '', price: 0),
       selectedDuration: json['selectedDuration'] != null
           ? SelectedDuration.fromJson(json['selectedDuration'] as Map<String, dynamic>)
           : const SelectedDuration(durationId: 0, durationTimeLimit: '', gst: 0, discount: 0, securityDeposit: 0),
-      price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      grandTotal: (json['grandTotal'] as num?)?.toDouble() ?? 0.0,
+      price: _parseDouble(json['price']),
+      grandTotal: _parseDouble(json['grandTotal']),
       deliveryAddress: json['deliveryAddress'] != null
           ? DeliveryAddress.fromJson(json['deliveryAddress'] as Map<String, dynamic>)
           : const DeliveryAddress(name: '', phone: '', street: '', landmark: '', city: '', district: '', state: '', pincode: '', email: ''),
-      paymentStatus: json['paymentStatus'] as String? ?? 'unknown',
-      paymentType: json['paymentType'] as String? ?? 'COD',
-      orderStatus: json['orderStatus'] as String? ?? 'unknown',
-      razorpayOrderId: json['razorpayOrderId'] as String? ?? '',
-      totalLitre: json['totalLitre'] as int? ?? 0,
-      codFee: json['codFee'] as int? ?? 0,
-      installationStatus: json['installation_status'] as String? ?? 'Pending',
-      createdAt: json['createdAt'] as String? ?? '',
-      updatedAt: json['updatedAt'] as String? ?? '',
-      razorpayPaymentId: json['razorpayPaymentId'] as String? ?? '',
-      subscriptionExpiryDate: json['subscriptionExpiryDate'] as String? ?? '',
+      paymentStatus: _parseString(json['paymentStatus'], 'unknown'),
+      paymentType: _parseString(json['paymentType'], 'COD'),
+      orderStatus: _parseString(json['orderStatus'], 'unknown'),
+      razorpayOrderId: _parseString(json['razorpayOrderId']),
+      totalLitre: _parseInt(json['totalLitre']),
+      codFee: _parseInt(json['codFee']),
+      installationStatus: _parseString(json['installation_status'], 'Pending'),
+      createdAt: _parseString(json['createdAt']),
+      updatedAt: _parseString(json['updatedAt']),
+      razorpayPaymentId: _parseString(json['razorpayPaymentId']),
+      subscriptionExpiryDate: _parseString(json['subscriptionExpiryDate']),
+      planConfig: json['plan_config'] != null
+          ? PlanConfig.fromJson(json['plan_config'] as Map<String, dynamic>)
+          : null,
+      isSetup: _parseOptionalBool(json['isSetup']),
       tasks: (json['tasks'] as List<dynamic>?)?.map((e) => Task.fromJson(e as Map<String, dynamic>)).toList() ?? [],
-      deliveryAcceptanceStatus: json.containsKey('deliveryAcceptanceStatus') && json['deliveryAcceptanceStatus'] is String ? json['deliveryAcceptanceStatus'] as String : null,
-      deliveryAcceptanceTimestamp: json.containsKey('deliveryAcceptanceTimestamp') && json['deliveryAcceptanceTimestamp'] is String ? json['deliveryAcceptanceTimestamp'] as String : null,
-      deliveryCompletionTimestamp: json.containsKey('deliveryCompletionTimestamp') && json['deliveryCompletionTimestamp'] is String ? json['deliveryCompletionTimestamp'] as String : null,
-      deliveryCurrentStatus: json.containsKey('deliveryCurrentStatus') && json['deliveryCurrentStatus'] is String ? json['deliveryCurrentStatus'] as String : null,
+      deliveryAcceptanceStatus: _parseOptionalString(json['deliveryAcceptanceStatus']),
+      deliveryAcceptanceTimestamp: _parseOptionalString(json['deliveryAcceptanceTimestamp']),
+      deliveryCompletionTimestamp: _parseOptionalString(json['deliveryCompletionTimestamp']),
+      deliveryCurrentStatus: _parseOptionalString(json['deliveryCurrentStatus']),
       deliveryHistory: (json['deliveryHistory'] as List<dynamic>?)?.map((e) => DeliveryHistory.fromJson(e as Map<String, dynamic>)).toList() ?? [],
       deliveryCompletionStatus: json.containsKey('deliveryCompletionStatus') && json['deliveryCompletionStatus'] is bool ? json['deliveryCompletionStatus'] as bool : null,
     );
@@ -175,8 +404,11 @@ class Subscription extends Equatable {
       'productModelId': productModelId,
       'modelName': modelName,
       'wp_device_id': wpDeviceId,
+      'mac_id': macId,
       'main_image': mainImage,
       'sub_images': subImages,
+      'modeltype': modelType,
+      'orderType': orderType,
       'selectedPlan': selectedPlan.toJson(),
       'selectedDuration': selectedDuration.toJson(),
       'price': price,
@@ -193,6 +425,8 @@ class Subscription extends Equatable {
       'updatedAt': updatedAt,
       'razorpayPaymentId': razorpayPaymentId,
       'subscriptionExpiryDate': subscriptionExpiryDate,
+      'plan_config': planConfig?.toJson(),
+      'isSetup': isSetup,
       'tasks': tasks.map((t) => t.toJson()).toList(),
       'deliveryAcceptanceStatus': deliveryAcceptanceStatus,
       'deliveryAcceptanceTimestamp': deliveryAcceptanceTimestamp,
@@ -211,8 +445,11 @@ class Subscription extends Equatable {
         productModelId,
         modelName,
         wpDeviceId,
+        macId,
         mainImage,
         subImages,
+        modelType,
+        orderType,
         selectedPlan,
         selectedDuration,
         price,
@@ -229,6 +466,8 @@ class Subscription extends Equatable {
         updatedAt,
         razorpayPaymentId,
         subscriptionExpiryDate,
+        planConfig,
+        isSetup,
         tasks,
         deliveryAcceptanceStatus,
         deliveryAcceptanceTimestamp,
@@ -255,10 +494,10 @@ class SelectedPlan extends Equatable {
 
   factory SelectedPlan.fromJson(Map<String, dynamic> json) {
     return SelectedPlan(
-      plansId: json['plans_id'] is int ? json['plans_id'] as int : 0,
-      label: json['label'] is String ? json['label'] as String : '',
-      capacity: json['capacity'] is String ? json['capacity'] as String : '',
-      price: json['price'] is int ? json['price'] as int : 0,
+      plansId: _parseInt(json['plans_id']),
+      label: _parseString(json['label']),
+      capacity: _parseString(json['capacity']),
+      price: _parseInt(json['price']),
     );
   }
 
@@ -293,11 +532,11 @@ class SelectedDuration extends Equatable {
 
   factory SelectedDuration.fromJson(Map<String, dynamic> json) {
     return SelectedDuration(
-      durationId: json['duration_id'] is int ? json['duration_id'] as int : 0,
-      durationTimeLimit: json['duration_time_limit'] is String ? json['duration_time_limit'] as String : '',
-      gst: json['gst'] is num ? (json['gst'] as num).toDouble() : 0.0,
-      discount: json['discount'] is num ? (json['discount'] as num).toDouble() : 0.0,
-      securityDeposit: json['security_deposit'] is num ? (json['security_deposit'] as num).toDouble() : 0.0,
+      durationId: _parseInt(json['duration_id']),
+      durationTimeLimit: _parseString(json['duration_time_limit']),
+      gst: _parseDouble(json['gst']),
+      discount: _parseDouble(json['discount']),
+      securityDeposit: _parseDouble(json['security_deposit']),
     );
   }
 
@@ -318,6 +557,103 @@ class SelectedDuration extends Equatable {
         gst,
         discount,
         securityDeposit,
+      ];
+}
+
+class PlanConnectivity extends Equatable {
+  final int ble;
+  final int wifi;
+  final int fourG;
+  final int ethernet;
+
+  const PlanConnectivity({
+    required this.ble,
+    required this.wifi,
+    required this.fourG,
+    required this.ethernet,
+  });
+
+  factory PlanConnectivity.fromJson(Map<String, dynamic> json) {
+    return PlanConnectivity(
+      ble: _parseInt(json['ble']),
+      wifi: _parseInt(json['wifi']),
+      fourG: _parseInt(json['4g']),
+      ethernet: _parseInt(json['ethernet']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'ble': ble,
+      'wifi': wifi,
+      '4g': fourG,
+      'ethernet': ethernet,
+    };
+  }
+
+  @override
+  List<Object?> get props => [ble, wifi, fourG, ethernet];
+}
+
+class PlanConfig extends Equatable {
+  final String wpDeviceId;
+  final String macId;
+  final int totalWaterLimit;
+  final String startDate;
+  final String endDate;
+  final int renewal;
+  final PlanConnectivity connectivity;
+  final String timestamp;
+
+  const PlanConfig({
+    required this.wpDeviceId,
+    required this.macId,
+    required this.totalWaterLimit,
+    required this.startDate,
+    required this.endDate,
+    required this.renewal,
+    required this.connectivity,
+    required this.timestamp,
+  });
+
+  factory PlanConfig.fromJson(Map<String, dynamic> json) {
+    return PlanConfig(
+      wpDeviceId: _parseString(json['wp_device_id']),
+      macId: _parseString(json['mac_id']),
+      totalWaterLimit: _parseInt(json['totalWaterLimit']),
+      startDate: _parseString(json['startDate']),
+      endDate: _parseString(json['endDate']),
+      renewal: _parseInt(json['renewal']),
+      connectivity: json['connectivity'] is Map<String, dynamic>
+          ? PlanConnectivity.fromJson(json['connectivity'] as Map<String, dynamic>)
+          : const PlanConnectivity(ble: 0, wifi: 0, fourG: 0, ethernet: 0),
+      timestamp: _parseString(json['timestamp']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'wp_device_id': wpDeviceId,
+      'mac_id': macId,
+      'totalWaterLimit': totalWaterLimit,
+      'startDate': startDate,
+      'endDate': endDate,
+      'renewal': renewal,
+      'connectivity': connectivity.toJson(),
+      'timestamp': timestamp,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+        wpDeviceId,
+        macId,
+        totalWaterLimit,
+        startDate,
+        endDate,
+        renewal,
+        connectivity,
+        timestamp,
       ];
 }
 
@@ -347,15 +683,15 @@ class DeliveryAddress extends Equatable {
 
   factory DeliveryAddress.fromJson(Map<String, dynamic> json) {
     return DeliveryAddress(
-      name: json['name'] is String ? json['name'] as String : '',
-      phone: json['phone'] is String ? json['phone'] as String : '',
-      street: json['street'] is String ? json['street'] as String : '',
-      landmark: json['landmark'] is String ? json['landmark'] as String : '',
-      city: json['city'] is String ? json['city'] as String : '',
-      district: json['district'] is String ? json['district'] as String : '',
-      state: json['state'] is String ? json['state'] as String : '',
-      pincode: json['pincode'] is String ? json['pincode'] as String : '',
-      email: json['email'] is String ? json['email'] as String : '',
+      name: _parseString(json['name']),
+      phone: _parseString(json['phone']),
+      street: _parseString(json['street']),
+      landmark: _parseString(json['landmark']),
+      city: _parseString(json['city']),
+      district: _parseString(json['district']),
+      state: _parseString(json['state']),
+      pincode: _parseString(json['pincode']),
+      email: _parseString(json['email']),
     );
   }
 
@@ -387,8 +723,57 @@ class DeliveryAddress extends Equatable {
       ];
 }
 
-// Alias for backward compatibility
-typedef Order = Subscription;
+/// Represents a device that needs setup
+class Device extends Equatable {
+  final String wpDeviceId;
+  final String modelName;
+  final String modelType;
+  final String orderType;
+  final String orderId;
+  final DeliveryAddress deliveryAddress;
+  final SelectedPlan selectedPlan;
+  final String installationStatus;
+  final PlanConfig? planConfig;
+
+  const Device({
+    required this.wpDeviceId,
+    required this.modelName,
+    required this.modelType,
+    required this.orderType,
+    required this.orderId,
+    required this.deliveryAddress,
+    required this.selectedPlan,
+    required this.installationStatus,
+    this.planConfig,
+  });
+
+  factory Device.fromOrder(Order order) {
+    return Device(
+      wpDeviceId: order.wpDeviceId,
+      modelName: order.modelName,
+      modelType: order.modelType ?? 'smart',
+      orderType: order.orderType ?? 'Recharge',
+      orderId: order.id,
+      deliveryAddress: order.deliveryAddress,
+      selectedPlan: order.selectedPlan,
+      installationStatus: order.installationStatus,
+      planConfig: order.planConfig,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        wpDeviceId,
+        modelName,
+        modelType,
+        orderType,
+        orderId,
+        deliveryAddress,
+        selectedPlan,
+        installationStatus,
+        planConfig,
+      ];
+}
 
 /// Represents a delivery status history entry.
 class DeliveryHistory extends Equatable {
@@ -406,10 +791,10 @@ class DeliveryHistory extends Equatable {
 
   factory DeliveryHistory.fromJson(Map<String, dynamic> json) {
     return DeliveryHistory(
-      status: json['status'] is String ? json['status'] as String : '',
-      timestamp: json['timestamp'] is String ? json['timestamp'] as String : '',
-      notes: json['notes'] is String ? json['notes'] as String : '',
-      updatedBy: json['updatedBy'] is String ? json['updatedBy'] as String : '',
+      status: _parseString(json['status']),
+      timestamp: _parseString(json['timestamp']),
+      notes: _parseString(json['notes']),
+      updatedBy: _parseString(json['updatedBy']),
     );
   }
 
@@ -442,10 +827,10 @@ class Task extends Equatable {
 
   factory Task.fromJson(Map<String, dynamic> json) {
     return Task(
-      taskType: json['task_type'] is int ? json['task_type'] as int : 0,
-      taskStatus: json['task_status'] is String ? json['task_status'] as String : '',
+      taskType: _parseInt(json['task_type']),
+      taskStatus: _parseString(json['task_status']),
       technician: json['technician'] is Map ? Technician.fromJson(json['technician'] as Map<String, dynamic>) : const Technician(name: '', phone: ''),
-      estimatedEnd: json['estimated_end'] is String ? json['estimated_end'] as String : null,
+      estimatedEnd: _parseOptionalString(json['estimated_end']),
     );
   }
 
@@ -474,8 +859,8 @@ class Technician extends Equatable {
 
   factory Technician.fromJson(Map<String, dynamic> json) {
     return Technician(
-      name: json['name'] is String ? json['name'] as String : '',
-      phone: json['phone'] != null ? json['phone'].toString() : '',
+      name: _parseString(json['name']),
+      phone: _parseString(json['phone']),
     );
   }
 
@@ -519,7 +904,7 @@ class OrdersResponse extends Equatable {
     }
     return OrdersResponse(
       error: json['error'] as bool? ?? true,
-      message: json['message'] as String? ?? 'Unknown error',
+      message: _parseString(json['message'], 'Unknown error'),
       data: data,
     );
   }

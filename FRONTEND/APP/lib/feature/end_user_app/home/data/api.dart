@@ -43,4 +43,13 @@ class SubscriptionApi extends BaseApiService {
       responseParser: (data) => data as Map<String, dynamic>,
     );
   }
+
+  Future<Map<String, dynamic>> storeBleAck(Map<String, dynamic> payload) async {
+    return makeRequest<Map<String, dynamic>>(
+      url: SubscriptionUrl.StoreBleAck.url,
+      method: SubscriptionUrl.StoreBleAck.method,
+      body: payload,
+      responseParser: (data) => data as Map<String, dynamic>,
+    );
+  }
 }
