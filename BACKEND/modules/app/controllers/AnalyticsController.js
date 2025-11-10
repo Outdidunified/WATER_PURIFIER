@@ -1,4 +1,3 @@
-
 const { connectToDatabase } = require('../../../config/db');
 
 exports.getWaterAnalytics = async (req, res) => {
