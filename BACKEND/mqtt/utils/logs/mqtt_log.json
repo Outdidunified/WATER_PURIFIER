@@ -246,5 +246,36 @@
         "timestamp": "2025-10-28T09:17:44Z"
       }
     ]
+  },
+  {
+    "receivedAt": "2025-11-10T12:44:36.559Z",
+    "timestamp": "2025-11-10T12:44:36.536Z",
+    "topic": "waterpurifier/WP_DEFAULT/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "deviceId": "WP_DEFAULT",
+        "status": "ONLINE",
+        "timestamp": "2025-10-28T10:01:42Z",
+        "message": "Device connected to MQTT broker",
+        "ip": "192.168.0.51",
+        "rssi": -81
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-10T12:44:36.696Z",
+    "timestamp": "2025-11-10T12:44:36.677Z",
+    "topic": "waterpurifier/boot",
+    "type": "BOOT",
+    "data": [
+      {
+        "wp_device_id": "WP_DEFAULT",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "powerStatus": 1,
+        "timestamp": "2025-10-28T10:01:42Z"
+      }
+    ]
   }
 ]
