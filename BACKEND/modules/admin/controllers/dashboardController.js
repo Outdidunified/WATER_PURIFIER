@@ -3430,6 +3430,11 @@ const FetchInstalledDevicesForRequests = async (req, res) => {
       ? await deviceDetailsCollection.find({ wp_device_id: { $in: deviceIds } }).toArray()
       : [];
 
+    // Get product models
+    const modelIds = [...new Set(deviceDetails.map(device => device.model_id).filter(Boolean))];
+    const productModelsCollection = db.collection("product_models");
+    const productModels = await productModelsCollection.find({}).toArray();
+
     const orderMap = new Map();
     orders.forEach(order => {
       if (order?.wp_device_id) {
@@ -3464,6 +3469,16 @@ const FetchInstalledDevicesForRequests = async (req, res) => {
       userMap.set(user.user_id, user);
     });
 
+    const modelMap = new Map();
+    productModels.forEach(model => {
+      const id = model.model_id || model._id?.toString() || model.id;
+      if (id) {
+        modelMap.set(id, model);
+        // Also set by string version for cross-matching
+        modelMap.set(id.toString(), model);
+      }
+    });
+
     const normalizedDistrict = String(district || '').trim().toLowerCase();
 
     const devices = installations
@@ -3494,18 +3509,26 @@ const FetchInstalledDevicesForRequests = async (req, res) => {
           item?.selectedDuration
         );
         const macId = detail?.mac_id || detail?.enter_mac_id || null;
+        const modelId =
+          detail?.model_id ||
+          order?.model_id ||
+          order?.productModelId ||
+          null;
         const modelName =
           detail?.model_name ||
           order?.modelName ||
           item.product?.model_name ||
+          modelMap.get(modelId)?.model_name ||
+          modelMap.get(modelId)?.modelName ||
+          modelMap.get(modelId)?.name ||
           null;
         const modelType =
           detail?.model_type ||
           order?.modelType ||
-          null;
-        const modelId =
-          detail?.model_id ||
-          order?.model_id ||
+          order?.modeltype ||
+          modelMap.get(modelId)?.model_type ||
+          modelMap.get(modelId)?.modelType ||
+          modelMap.get(modelId)?.modeltype ||
           null;
         const detailId = detail?._id ? detail._id.toString() : null;
 
@@ -3513,9 +3536,9 @@ const FetchInstalledDevicesForRequests = async (req, res) => {
           task_id: item.task_id || null,
           wp_device_id: deviceId,
           user_id: ownerUserId,
-          customer_name: owner?.name || null,
-          customer_email: owner?.email || null,
-          customer_phone: owner?.phone || null,
+          customer_name: owner?.name || normalizedAddress?.name || null,
+          customer_email: owner?.email || normalizedAddress?.email || null,
+          customer_phone: owner?.phone || normalizedAddress?.phone || null,
           district: normalizedAddress.district || '',
           state: normalizedAddress.state || '',
           city: normalizedAddress.city || '',

@@ -425,7 +425,7 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                   <option value="">Select Device</option>
                   {devices.map((device) => (
                     <option key={device.wp_device_id} value={device.wp_device_id}>
-                      {device.wp_device_id} {device.customer_name ? `- ${device.customer_name}` : ''}
+                      {device.wp_device_id} {device.model_type ? `- ${device.model_type}` : ''} {device.customer_name ? `- ${device.customer_name}` : ''}
                     </option>
                   ))}
                 </select>
