@@ -77,7 +77,7 @@ const UpdateDeliveryStatusModal = ({ isOpen, orderId, currentStatus, onClose, on
       console.log('Updating delivery status for order:', orderId);
       
       const response = await fetch(
-        `/api/website/orders/${orderId}/update-delivery-status`,
+        `/api/api/website/orders/${orderId}/update-delivery-status`,
         {
           method: 'POST',
           headers: {

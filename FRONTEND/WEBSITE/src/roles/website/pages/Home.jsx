@@ -1355,7 +1355,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                                     }
                                                                                 }}
                                                                             >
-                                                                                {isOutOfStock ? "Out of Stock" : "Buy Now"}
+                                                                                {isOutOfStock ? "Buy Now" : "Buy Now"}
                                                                             </button>
                                                                         </div>
                                                                     </div>

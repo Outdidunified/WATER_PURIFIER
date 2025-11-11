@@ -11,8 +11,8 @@ const client = mqtt.connect(process.env.MQTT_BROKER, {
 });
 
 const devices = [
-    { id: 'wp0224455', model: 'Aqua Purifier' },
-    { id: 'wp0224457', model: 'Aqua+' },
+    { id: 'WPSAJJ', model: 'HIVE DRINK' },
+    // { id: 'KK8756', model: 'HIVE  RO PLUS' },
 ];
 
 client.on('connect', () => {
