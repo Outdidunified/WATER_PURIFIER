@@ -13,7 +13,6 @@ const razorpayInstance = new Razorpay({
 });
 
 // Nodemailer transporter
-
 exports.getAssignedTaskDetails = async (req, res) => {
     const { user_id, email, role_id, assigned_technician_id } = req.body;
   
