@@ -637,24 +637,26 @@ exports.storeBleAck = async (req, res) => {
     );
 
 // ✅ Update corresponding order → isSetup: true + BLE details
-if (serviceRecord.linkedRechargeOrderId) {
-  // Recharge order
-  await ordersCollection.updateOne(
-    { _id: new ObjectId(serviceRecord.linkedRechargeOrderId) },
-    {
-      $set: {
-        mac_id: normalizedMacId,
-        ble_ack_status: numericStatus,
-        ble_ack_timestamp: ackTimestamp,
-        isSetup: true,
-        updatedAt: new Date(),
-        ...(hasPlanConfig ? { plan_config: planConfig } : {}),
-      },
-      $push: { ble_ack_history: ackHistoryEntry },
-    }
-  );
+if (serviceRecord.orderType === "Recharge" || serviceRecord.rechargeDetails) {
+  // Recharge order - update by linkedRechargeOrderId
+  if (serviceRecord.linkedRechargeOrderId) {
+    await ordersCollection.updateOne(
+      { _id: new ObjectId(serviceRecord.linkedRechargeOrderId) },
+      {
+        $set: {
+          mac_id: normalizedMacId,
+          ble_ack_status: numericStatus,
+          ble_ack_timestamp: ackTimestamp,
+          isSetup: true,
+          updatedAt: new Date(),
+          ...(hasPlanConfig ? { plan_config: planConfig } : {}),
+        },
+        $push: { ble_ack_history: ackHistoryEntry },
+      }
+    );
+  }
 } else {
-  // Normal order (Installation)
+  // Normal order (Installation) - update by customOrderId or orderId
   const orderId =
     serviceRecord.customOrderId ||
     serviceRecord.order?.customOrderId ||
@@ -692,6 +694,7 @@ if (serviceRecord.linkedRechargeOrderId) {
     );
   }
 }
+
 
 
 
@@ -753,6 +756,7 @@ exports.updateTaskDetails = async (req, res) => {
     const usersCollection = db.collection('users');
     const ordersCollection = db.collection('orders');
     const paymentsCollection = db.collection('payments');
+    const deviceDetailsCollection = db.collection('device_details');
 
     // ✅ Find technician’s assigned task
     const task = await serviceRecordsCollection.findOne({
@@ -765,8 +769,23 @@ exports.updateTaskDetails = async (req, res) => {
     // ✅ Identify linked order
     let order;
     if (task.orderType === "Recharge" || task.rechargeDetails) {
-      order = await ordersCollection.findOne({ _id: new ObjectId(task.linkedRechargeOrderId) });
-      console.log("🔹 Recharge order found:", order?.customOrderId);
+      // Try linkedRechargeOrderId first
+      if (task.linkedRechargeOrderId) {
+        order = await ordersCollection.findOne({ _id: new ObjectId(task.linkedRechargeOrderId) });
+        console.log("🔹 Recharge order found by linkedRechargeOrderId:", order?.customOrderId);
+      }
+      // If not found, try other identifiers
+      if (!order) {
+        order = await ordersCollection.findOne({
+          $or: [
+            { customOrderId: task.customOrderId },
+            { customOrderId: task.order_snapshot?.customOrderId },
+            { customOrderId: task.order?.customOrderId },
+            { _id: task.order_snapshot?.orderId ? new ObjectId(task.order_snapshot.orderId) : null }
+          ].filter(Boolean)
+        });
+        console.log("🔹 Recharge order found by fallback:", order?.customOrderId);
+      }
     } else {
       order = await ordersCollection.findOne({
         customOrderId: task.customOrderId || task.order_snapshot?.customOrderId || task.order?.customOrderId,
@@ -877,6 +896,19 @@ exports.updateTaskDetails = async (req, res) => {
             },
           }
         );
+
+        // 🔹 Update device details
+        if (order.wp_device_id) {
+          await deviceDetailsCollection.updateOne(
+            { wp_device_id: order.wp_device_id },
+            {
+              $set: {
+                isSetup: false,
+                updatedAt: new Date(),
+              },
+            }
+          );
+        }
 
         // 🔹 Update payment record
         await paymentsCollection.updateOne(
