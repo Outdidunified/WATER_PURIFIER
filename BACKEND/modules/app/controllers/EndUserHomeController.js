@@ -1,6 +1,8 @@
 const { connectToDatabase } = require('../../../config/db');
 const { ObjectId } = require('mongodb');
 
+
+
 exports.getActiveSubscriptionDetails = async (req, res) => {
   const { user_id, email, role_id } = req.body;
 
