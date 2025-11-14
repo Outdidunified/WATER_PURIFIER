@@ -4,9 +4,10 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart' as fbs;
-import 'package:permission_handler/permission_handler.dart';
 import 'package:get/get.dart';
 import 'package:barcode_scan2/barcode_scan2.dart' as bs;
 import 'package:ionhive_water_purifier/feature/end_user_app/home/domain/models/home_model.dart';
@@ -74,6 +75,8 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
   bool _isDeviceVerified = false;
   Completer<bool>? _verificationCompleter;
   Completer<bool>? _ackCompleter;
+  DateTime? _lastBluetoothEnableAttempt;
+  bool _isWaitingForBluetoothEnable = false;
 
   final TextEditingController _macIdController = TextEditingController();
   final SubscriptionController subscriptionController = Get.find<SubscriptionController>();
@@ -99,6 +102,9 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
   Future<void> _loadInitialData() async {
     await _initPreferences();
     _setupOrderListener();
+
+    // Start automatic scanning when entering device setup page
+    _startAutomaticScanning();
   }
 
   Future<void> _initPreferences() async {
@@ -359,6 +365,26 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
 
   Future<void> _autoConnectToStoredDevice(String targetMacId) async {
     try {
+      // Check if Bluetooth is enabled
+      final adapterState = await FlutterBluePlus.adapterState.first;
+      if (adapterState != BluetoothAdapterState.on) {
+        // Don't show dialog if we just attempted to enable Bluetooth (within last 5 seconds)
+        if (_lastBluetoothEnableAttempt != null &&
+            DateTime.now().difference(_lastBluetoothEnableAttempt!).inSeconds < 5) {
+          // Wait a bit and try again
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) {
+              _autoConnectToStoredDevice(targetMacId);
+            }
+          });
+          return;
+        }
+        if (mounted) {
+          _showEnableBluetoothDialog();
+        }
+        return;
+      }
+
       // Request permissions
       if (Platform.isAndroid) {
         final status = await Permission.bluetooth.request();
@@ -423,7 +449,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
 
       // If device not found, show message
       if (_connectedDeviceId == null) {
-        CustomSnackbar.showError(message: 'Device with MAC ID $targetMacId not found. Please ensure the device is in range and try manual scanning.');
+        CustomSnackbar.showError(message: 'Device with MAC ID $targetMacId not found');
       }
     } catch (e) {
       debugPrint('Error in auto-connect: $e');
@@ -432,8 +458,170 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
     }
   }
 
+  void _showEnableBluetoothDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 250),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.bluetooth,
+                  size: 48,
+                  color: Colors.blue,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Enable Bluetooth',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Bluetooth is required to scan and connect to devices. Please enable Bluetooth to continue.',
+                  style: TextStyle(fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        _lastBluetoothEnableAttempt = DateTime.now();
+                        _isWaitingForBluetoothEnable = true;
+                        Navigator.of(context, rootNavigator: true).pop();
+                        // Small delay to ensure dialog is fully closed
+                        await Future.delayed(const Duration(milliseconds: 100));
+                        // Try to show system Bluetooth enable dialog
+                        try {
+                          final result = await fbs.FlutterBluetoothSerial.instance.requestEnable();
+                          if (result == true) {
+                            // Bluetooth was enabled successfully
+                            _isWaitingForBluetoothEnable = false;
+                            Future.delayed(const Duration(seconds: 1), () {
+                              if (mounted) {
+                                _startAutomaticScanning();
+                              }
+                            });
+                          } else {
+                            // User denied or failed
+                            _isWaitingForBluetoothEnable = false;
+                            CustomSnackbar.showError(message: 'Bluetooth permission required to scan devices.');
+                          }
+                        } catch (e) {
+                          debugPrint('Error requesting Bluetooth enable: $e');
+                          // Fallback: try FlutterBluePlus
+                          try {
+                            await FlutterBluePlus.turnOn();
+                            Future.delayed(const Duration(seconds: 1), () {
+                              if (mounted) {
+                                _startAutomaticScanning();
+                              }
+                            });
+                          } catch (e2) {
+                            debugPrint('Error turning on Bluetooth: $e2');
+                            CustomSnackbar.showError(message: 'Please enable Bluetooth manually in your device settings.');
+                            _checkBluetoothStateAfterSettings();
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        textStyle: const TextStyle(fontSize: 12),
+                        minimumSize: const Size(80, 32),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.zero,
+                        ),
+                      ),
+                      child: const Text('Enable'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _checkBluetoothStateAfterSettings() {
+    // Check Bluetooth state every 2 seconds for up to 30 seconds
+    int checkCount = 0;
+    const maxChecks = 15;
+
+    Timer.periodic(const Duration(seconds: 2), (timer) async {
+      checkCount++;
+      try {
+        final adapterState = await FlutterBluePlus.adapterState.first;
+        if (adapterState == BluetoothAdapterState.on) {
+          timer.cancel();
+          if (mounted) {
+            _isWaitingForBluetoothEnable = false;
+            // Force a rebuild to dismiss any lingering dialogs
+            setState(() {});
+            _startAutomaticScanning();
+          }
+          return;
+        }
+      } catch (e) {
+        debugPrint('Error checking Bluetooth state: $e');
+      }
+
+      if (checkCount >= maxChecks) {
+        timer.cancel();
+        _isWaitingForBluetoothEnable = false;
+      }
+    });
+  }
+
   Future<void> _startAutomaticScanning() async {
     if (_isScanning) return; // Already scanning
+
+    // Check if Bluetooth is enabled
+    final adapterState = await FlutterBluePlus.adapterState.first;
+    if (adapterState != BluetoothAdapterState.on) {
+      // Don't show dialog if we're currently waiting for Bluetooth to be enabled
+      // or if we just attempted to enable Bluetooth (within last 10 seconds)
+      if (_isWaitingForBluetoothEnable ||
+          (_lastBluetoothEnableAttempt != null &&
+           DateTime.now().difference(_lastBluetoothEnableAttempt!).inSeconds < 10)) {
+        // Wait a bit and try again
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            _startAutomaticScanning();
+          }
+        });
+        return;
+      }
+      if (mounted) {
+        _isWaitingForBluetoothEnable = true;
+        _showEnableBluetoothDialog();
+      }
+      return;
+    }
+
     try {
       setState(() => _isScanning = true);
       _bleDevices.clear();
@@ -498,6 +686,20 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
   }
 
   Future<void> _connectToBleDevice(BluetoothDevice device) async {
+    // Check if Bluetooth is enabled before attempting connection
+    final adapterState = await FlutterBluePlus.adapterState.first;
+    if (adapterState != BluetoothAdapterState.on) {
+      // Don't show dialog if we just attempted to enable Bluetooth (within last 5 seconds)
+      if (_lastBluetoothEnableAttempt != null &&
+          DateTime.now().difference(_lastBluetoothEnableAttempt!).inSeconds < 5) {
+        return; // Just return without showing dialog
+      }
+      if (mounted) {
+        _showEnableBluetoothDialog();
+      }
+      return;
+    }
+
     setState(() {
       _isBleConnecting = true;
       _connectingDeviceId = '${device.remoteId}';
@@ -777,6 +979,20 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
   }
 
   Future<void> _connectToClassicDevice(fbs.BluetoothDiscoveryResult result) async {
+    // Check if Bluetooth is enabled before attempting connection
+    final adapterState = await FlutterBluePlus.adapterState.first;
+    if (adapterState != BluetoothAdapterState.on) {
+      // Don't show dialog if we just attempted to enable Bluetooth (within last 5 seconds)
+      if (_lastBluetoothEnableAttempt != null &&
+          DateTime.now().difference(_lastBluetoothEnableAttempt!).inSeconds < 5) {
+        return; // Just return without showing dialog
+      }
+      if (mounted) {
+        _showEnableBluetoothDialog();
+      }
+      return;
+    }
+
     setState(() {
       _isBleConnecting = true;
       _connectingDeviceId = result.device.address;

@@ -6,6 +6,7 @@ const { ObjectId } = require('mongodb');
 const path = require('path');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
+const { sendEmail } = require('../../website/controllers/Email');
 
 const razorpayInstance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -968,19 +969,43 @@ await serviceRecordsCollection.updateOne(
       }
 
      
-      // ✅ Send completion mail
-      const mailOptions = {
-        from: 'your_email@gmail.com',
-        to: task.task_created_by_user_email,
-        subject: 'Task Completed Successfully',
-        html: `<h3>Hello,</h3>
-               <p>Your service task <strong>#${task.task_id}</strong> has been <span style="color: green;">successfully completed</span>.</p>
-               <p>Subscription expiry has been updated. 🎉</p>`,
-      };
-      transporter.sendMail(mailOptions, (error, info) => {
-        if (error) console.error('Error sending mail:', error);
-        else console.log('Email sent:', info.response);
-      });
+      // ✅ Send completion mail to user, admin, and seller
+      try {
+        const district = order?.deliveryAddress?.district;
+        let adminEmails = [];
+        let sellerEmails = [];
+
+        if (district) {
+          const admins = await usersCollection.find({ role_id: 1 }).toArray();
+          const sellers = await usersCollection.find({ role_id: 2, district: district }).toArray();
+          adminEmails = admins.map(u => u.email).filter(e => e && e.trim());
+          sellerEmails = sellers.map(u => u.email).filter(e => e && e.trim());
+        }
+
+        const subject = 'Task Completed Successfully';
+        const html = `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2>Task Completion Notification</h2>
+            <p>Service task <strong>#${task.task_id}</strong> for device <strong>${task.wp_device_id}</strong> has been <span style="color: green;">successfully completed</span>.</p>
+            <p>Technician: ${technician_id}</p>
+            <p>District: ${district || 'N/A'}</p>
+            <p>Subscription expiry has been updated. 🎉</p>
+            <p>— Water Purifier Team</p>
+          </div>
+        `;
+
+        // Send to user
+        if (task.task_created_by_user_email) {
+          sendEmail(task.task_created_by_user_email, subject, '', html).catch(err => console.error('User email error:', err));
+        }
+
+        // Send to admins, CC sellers
+        if (adminEmails.length > 0) {
+          sendEmail(adminEmails.join(','), subject, '', html, sellerEmails).catch(err => console.error('Admin/Seller email error:', err));
+        }
+      } catch (emailError) {
+        console.error('Error sending completion emails:', emailError);
+      }
     }
 
     // ✅ Response
@@ -1123,6 +1148,55 @@ exports.acceptDeclineTask = async (req, res) => {
       return res
         .status(400)
         .json({ error: true, message: 'Failed to update task status' });
+    }
+
+    // Send email notifications to admins and sellers in the district
+    try {
+      const ordersCollection = db.collection('orders');
+      const usersCollection = db.collection('users');
+
+      const order = await ordersCollection.findOne({ wp_device_id: task.wp_device_id });
+      if (order && order.deliveryAddress && order.deliveryAddress.district) {
+        const district = order.deliveryAddress.district;
+        const admins = await usersCollection.find({ role_id: 1 }).toArray();
+        const sellers = await usersCollection.find({ role_id: 2, district: district }).toArray();
+        const adminEmails = admins.map(u => u.email).filter(e => e && e.trim());
+        const sellerEmails = sellers.map(u => u.email).filter(e => e && e.trim());
+
+        if (adminEmails.length > 0) {
+          const technician = await usersCollection.findOne({
+            $or: [
+              { technician_id: technician_id.trim() },
+              { employee_id: technician_id.trim() }
+            ]
+          });
+          const techName = technician ? (technician.name || technician_id.trim()) : technician_id.trim();
+
+          const subject = `Task ${actionLower}ed by Technician`;
+          const html = `
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2>Task ${actionLower.charAt(0).toUpperCase() + actionLower.slice(1)} Notification</h2>
+              <p>Technician <strong>${techName}</strong> has ${actionLower}ed task <strong>${task_id}</strong>.</p>
+              <p>Device ID: ${task.wp_device_id}</p>
+              <p>District: ${district}</p>
+              ${actionLower === 'decline' ? `<p>Reason: ${decline_reason.trim()}</p>` : ''}
+              <p>Action taken at: ${new Date().toISOString()}</p>
+              <p>— Water Purifier Team</p>
+            </div>
+          `;
+
+          // Send to admins, CC sellers
+          sendEmail(adminEmails.join(','), subject, '', html, sellerEmails).catch(err => console.error('Email send error:', err));
+
+          // Send to user only for accept
+          if (actionLower === 'accept' && task.task_created_by_user_email) {
+            sendEmail(task.task_created_by_user_email, subject, '', html).catch(err => console.error('User email send error:', err));
+          }
+        }
+      }
+    } catch (emailError) {
+      console.error('Error sending notification emails:', emailError);
+      // Don't fail the request if email fails
     }
 
     const actionMessage =

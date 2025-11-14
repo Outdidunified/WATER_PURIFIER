@@ -359408,5 +359408,3551 @@
         "leakDetected": false
       }
     ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:46:26.900Z",
+    "timestamp": "2025-11-14T05:46:26.888Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:15:54Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:46:29.896Z",
+    "timestamp": "2025-11-14T05:46:29.892Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:15:57Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:46:32.850Z",
+    "timestamp": "2025-11-14T05:46:32.847Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:00Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -67,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:46:35.896Z",
+    "timestamp": "2025-11-14T05:46:35.893Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:03Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:46:38.866Z",
+    "timestamp": "2025-11-14T05:46:38.862Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:06Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:46:41.856Z",
+    "timestamp": "2025-11-14T05:46:41.853Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:09Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:46:42.002Z",
+    "timestamp": "2025-11-14T05:46:41.999Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:16:09Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:46:44.954Z",
+    "timestamp": "2025-11-14T05:46:44.950Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:12Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -67,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:46:47.900Z",
+    "timestamp": "2025-11-14T05:46:47.897Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:15Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:46:50.885Z",
+    "timestamp": "2025-11-14T05:46:50.881Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:18Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -69,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:46:53.922Z",
+    "timestamp": "2025-11-14T05:46:53.916Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:21Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -73,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:46:56.890Z",
+    "timestamp": "2025-11-14T05:46:56.887Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:24Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -71,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:46:59.875Z",
+    "timestamp": "2025-11-14T05:46:59.871Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:27Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -67,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:01.915Z",
+    "timestamp": "2025-11-14T05:47:01.911Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:16:29Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:03.074Z",
+    "timestamp": "2025-11-14T05:47:03.072Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:30Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:05.911Z",
+    "timestamp": "2025-11-14T05:47:05.907Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:33Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:08.887Z",
+    "timestamp": "2025-11-14T05:47:08.883Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:36Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -70,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:11.941Z",
+    "timestamp": "2025-11-14T05:47:11.938Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:39Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -67,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:14.914Z",
+    "timestamp": "2025-11-14T05:47:14.911Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:42Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:17.896Z",
+    "timestamp": "2025-11-14T05:47:17.894Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:45Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -67,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:20.962Z",
+    "timestamp": "2025-11-14T05:47:20.959Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:48Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:21.908Z",
+    "timestamp": "2025-11-14T05:47:21.906Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:16:49Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:23.924Z",
+    "timestamp": "2025-11-14T05:47:23.920Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:51Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:26.912Z",
+    "timestamp": "2025-11-14T05:47:26.910Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:54Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -67,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:29.972Z",
+    "timestamp": "2025-11-14T05:47:29.968Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:16:57Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -70,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:32.941Z",
+    "timestamp": "2025-11-14T05:47:32.938Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:00Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -72,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:35.924Z",
+    "timestamp": "2025-11-14T05:47:35.921Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:03Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -74,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:38.984Z",
+    "timestamp": "2025-11-14T05:47:38.979Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:06Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -67,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:41.952Z",
+    "timestamp": "2025-11-14T05:47:41.948Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:09Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -69,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:42.122Z",
+    "timestamp": "2025-11-14T05:47:42.120Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:17:09Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:44.942Z",
+    "timestamp": "2025-11-14T05:47:44.933Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:12Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:48.008Z",
+    "timestamp": "2025-11-14T05:47:48.005Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:15Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -69,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:50.973Z",
+    "timestamp": "2025-11-14T05:47:50.967Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:18Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -69,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:53.957Z",
+    "timestamp": "2025-11-14T05:47:53.948Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:21Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -67,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:57.054Z",
+    "timestamp": "2025-11-14T05:47:57.036Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:24Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -67,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:47:59.980Z",
+    "timestamp": "2025-11-14T05:47:59.976Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:27Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:01.960Z",
+    "timestamp": "2025-11-14T05:48:01.955Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:17:29Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:02.967Z",
+    "timestamp": "2025-11-14T05:48:02.963Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:30Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:06.029Z",
+    "timestamp": "2025-11-14T05:48:06.013Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:33Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:09.055Z",
+    "timestamp": "2025-11-14T05:48:09.016Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:36Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -67,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:12.112Z",
+    "timestamp": "2025-11-14T05:48:12.070Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:39Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -67,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:15.714Z",
+    "timestamp": "2025-11-14T05:48:15.074Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:42Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:18.038Z",
+    "timestamp": "2025-11-14T05:48:17.997Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:45Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -66,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:21.129Z",
+    "timestamp": "2025-11-14T05:48:20.979Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:48Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -66,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:22.055Z",
+    "timestamp": "2025-11-14T05:48:22.015Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:17:49Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:24.089Z",
+    "timestamp": "2025-11-14T05:48:24.041Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:51Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:27.029Z",
+    "timestamp": "2025-11-14T05:48:27.023Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:54Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -67,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:30.006Z",
+    "timestamp": "2025-11-14T05:48:30.000Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:17:57Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -66,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:33.097Z",
+    "timestamp": "2025-11-14T05:48:33.079Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:00Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -65,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:36.032Z",
+    "timestamp": "2025-11-14T05:48:36.027Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:03Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:39.025Z",
+    "timestamp": "2025-11-14T05:48:39.009Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:06Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:42.098Z",
+    "timestamp": "2025-11-14T05:48:42.080Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:09Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -70,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:42.764Z",
+    "timestamp": "2025-11-14T05:48:42.740Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:18:09Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:45.282Z",
+    "timestamp": "2025-11-14T05:48:45.038Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:12Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:48.030Z",
+    "timestamp": "2025-11-14T05:48:48.021Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:15Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -73,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:51.099Z",
+    "timestamp": "2025-11-14T05:48:51.079Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:18Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -71,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:54.089Z",
+    "timestamp": "2025-11-14T05:48:54.070Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:21Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -73,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:48:57.063Z",
+    "timestamp": "2025-11-14T05:48:57.034Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:24Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -72,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:00.098Z",
+    "timestamp": "2025-11-14T05:49:00.091Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:27Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -71,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:02.108Z",
+    "timestamp": "2025-11-14T05:49:02.036Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:18:29Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:03.088Z",
+    "timestamp": "2025-11-14T05:49:03.070Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:30Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -73,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:06.231Z",
+    "timestamp": "2025-11-14T05:49:06.160Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:33Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -74,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:09.213Z",
+    "timestamp": "2025-11-14T05:49:09.117Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:36Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -75,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:12.215Z",
+    "timestamp": "2025-11-14T05:49:12.126Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:39Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -73,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:15.111Z",
+    "timestamp": "2025-11-14T05:49:15.061Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:42Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -73,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:18.178Z",
+    "timestamp": "2025-11-14T05:49:18.114Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:45Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -73,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:21.214Z",
+    "timestamp": "2025-11-14T05:49:21.085Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:48Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -73,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:22.857Z",
+    "timestamp": "2025-11-14T05:49:22.368Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:18:49Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:24.145Z",
+    "timestamp": "2025-11-14T05:49:24.094Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:51Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -71,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:27.138Z",
+    "timestamp": "2025-11-14T05:49:27.134Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:54Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -73,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:30.125Z",
+    "timestamp": "2025-11-14T05:49:30.095Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:18:57Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -71,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:33.089Z",
+    "timestamp": "2025-11-14T05:49:33.084Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:00Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -72,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:36.184Z",
+    "timestamp": "2025-11-14T05:49:36.171Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:03Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -72,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:39.114Z",
+    "timestamp": "2025-11-14T05:49:39.109Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:06Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -71,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:42.104Z",
+    "timestamp": "2025-11-14T05:49:42.099Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:09Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -74,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:42.367Z",
+    "timestamp": "2025-11-14T05:49:42.363Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:19:09Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:45.152Z",
+    "timestamp": "2025-11-14T05:49:45.148Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:12Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -75,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:48.525Z",
+    "timestamp": "2025-11-14T05:49:48.235Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:15Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -72,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:52.493Z",
+    "timestamp": "2025-11-14T05:49:51.595Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:18Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -69,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:54.602Z",
+    "timestamp": "2025-11-14T05:49:54.167Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:21Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -70,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:49:57.149Z",
+    "timestamp": "2025-11-14T05:49:57.135Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:24Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -71,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:00.166Z",
+    "timestamp": "2025-11-14T05:50:00.115Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:27Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -73,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:03.009Z",
+    "timestamp": "2025-11-14T05:50:02.545Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:19:29Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:03.834Z",
+    "timestamp": "2025-11-14T05:50:03.699Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:30Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -69,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:06.808Z",
+    "timestamp": "2025-11-14T05:50:06.385Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:33Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -69,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:09.537Z",
+    "timestamp": "2025-11-14T05:50:09.518Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:36Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -71,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:12.938Z",
+    "timestamp": "2025-11-14T05:50:12.664Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:39Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -71,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:15.469Z",
+    "timestamp": "2025-11-14T05:50:15.400Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:42Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -71,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:18.189Z",
+    "timestamp": "2025-11-14T05:50:18.144Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:45Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -69,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:21.837Z",
+    "timestamp": "2025-11-14T05:50:21.555Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:48Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:23.709Z",
+    "timestamp": "2025-11-14T05:50:23.020Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:19:49Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:26.000Z",
+    "timestamp": "2025-11-14T05:50:25.653Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:51Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -69,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:28.546Z",
+    "timestamp": "2025-11-14T05:50:27.330Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:54Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -72,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:34.070Z",
+    "timestamp": "2025-11-14T05:50:32.151Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:19:57Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -69,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:37.816Z",
+    "timestamp": "2025-11-14T05:50:36.380Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:00Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:40.682Z",
+    "timestamp": "2025-11-14T05:50:39.707Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:03Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -69,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:43.437Z",
+    "timestamp": "2025-11-14T05:50:43.245Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:06Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:45.071Z",
+    "timestamp": "2025-11-14T05:50:45.011Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:09Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -66,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:48.685Z",
+    "timestamp": "2025-11-14T05:50:47.525Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:20:10Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:51.449Z",
+    "timestamp": "2025-11-14T05:50:51.240Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:13Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:52.515Z",
+    "timestamp": "2025-11-14T05:50:52.453Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:16Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -69,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:53.744Z",
+    "timestamp": "2025-11-14T05:50:53.733Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:19Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -70,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:55.230Z",
+    "timestamp": "2025-11-14T05:50:55.071Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:22Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -69,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:50:58.000Z",
+    "timestamp": "2025-11-14T05:50:57.388Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:25Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -72,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:51:00.232Z",
+    "timestamp": "2025-11-14T05:51:00.224Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:28Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -70,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:51:02.846Z",
+    "timestamp": "2025-11-14T05:51:02.685Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:20:30Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:51:06.550Z",
+    "timestamp": "2025-11-14T05:51:05.382Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:31Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -72,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:51:10.916Z",
+    "timestamp": "2025-11-14T05:51:09.700Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:34Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -72,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:51:13.601Z",
+    "timestamp": "2025-11-14T05:51:12.937Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:37Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:51:16.926Z",
+    "timestamp": "2025-11-14T05:51:16.314Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:40Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -70,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:51:22.865Z",
+    "timestamp": "2025-11-14T05:51:21.288Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:43Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -70,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:51:28.999Z",
+    "timestamp": "2025-11-14T05:51:25.594Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:46Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -71,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:51:40.130Z",
+    "timestamp": "2025-11-14T05:51:34.611Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:49Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -67,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:51:54.012Z",
+    "timestamp": "2025-11-14T05:51:51.077Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:20:50Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:51:56.318Z",
+    "timestamp": "2025-11-14T05:51:55.588Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:52Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -67,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:51:58.475Z",
+    "timestamp": "2025-11-14T05:51:57.439Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:55Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -70,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:02.489Z",
+    "timestamp": "2025-11-14T05:52:01.422Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:20:58Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -70,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:04.961Z",
+    "timestamp": "2025-11-14T05:52:04.478Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:01Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -72,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:07.057Z",
+    "timestamp": "2025-11-14T05:52:06.440Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:04Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -73,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:09.882Z",
+    "timestamp": "2025-11-14T05:52:09.545Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:07Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -70,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:11.607Z",
+    "timestamp": "2025-11-14T05:52:11.020Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:10Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -71,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:15.831Z",
+    "timestamp": "2025-11-14T05:52:13.365Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:21:10Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:18.495Z",
+    "timestamp": "2025-11-14T05:52:17.759Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:13Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -69,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:20.336Z",
+    "timestamp": "2025-11-14T05:52:19.261Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:16Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:21.805Z",
+    "timestamp": "2025-11-14T05:52:21.118Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:19Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -70,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:23.435Z",
+    "timestamp": "2025-11-14T05:52:23.402Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:22Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -70,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:24.523Z",
+    "timestamp": "2025-11-14T05:52:24.452Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:25Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -71,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:26.576Z",
+    "timestamp": "2025-11-14T05:52:25.682Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:28Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -70,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:29.583Z",
+    "timestamp": "2025-11-14T05:52:28.642Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:21:30Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:32.463Z",
+    "timestamp": "2025-11-14T05:52:31.483Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:31Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:35.141Z",
+    "timestamp": "2025-11-14T05:52:34.116Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:34Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -67,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:37.559Z",
+    "timestamp": "2025-11-14T05:52:36.232Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:37Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -77,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:38.855Z",
+    "timestamp": "2025-11-14T05:52:38.518Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:40Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:40.413Z",
+    "timestamp": "2025-11-14T05:52:39.489Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:43Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:42.833Z",
+    "timestamp": "2025-11-14T05:52:41.248Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:46Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -70,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:46.969Z",
+    "timestamp": "2025-11-14T05:52:44.636Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:49Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -68,
+        "freeMemory": 104232,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:50.950Z",
+    "timestamp": "2025-11-14T05:52:49.327Z",
+    "topic": "waterpurifier/status",
+    "type": "STATUS",
+    "data": [
+      {
+        "wp_device_id": "KK8756",
+        "mac_id": "58:8C:81:A5:0E:CE",
+        "modelName": "Aqua Purifier",
+        "deviceStatus": 1,
+        "powerStatus": 1,
+        "filterLifeUsed": 0,
+        "timestamp": "2025-11-14T11:21:50Z"
+      }
+    ]
+  },
+  {
+    "receivedAt": "2025-11-14T05:52:53.495Z",
+    "timestamp": "2025-11-14T05:52:52.082Z",
+    "topic": "waterpurifier/telemetry",
+    "type": "TELEMETRY",
+    "data": [
+      {
+        "deviceId": "KK8756",
+        "timestamp": "2025-11-14T11:21:52Z",
+        "totalWaterUsed": 0,
+        "tdsIn": 430,
+        "tdsOut": 45,
+        "pressure": 2.299999952,
+        "temperature": 27.6,
+        "tankLevel": "HALF",
+        "status": "NORMAL",
+        "valveStatus": "OPEN",
+        "powerStatus": "ON",
+        "planType": "basic",
+        "totalWaterLimit": 100,
+        "rssi": -74,
+        "freeMemory": 104092,
+        "currentAlert": "NONE",
+        "leakDetected": false
+      }
+    ]
   }
 ]
