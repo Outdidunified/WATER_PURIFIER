@@ -640,19 +640,22 @@ const Home = ({ userInfo, token, handleLogout }) => {
         setSelectedPlanIndex(0);
         setSelectedDurationIndex(0);
 
-        //  Check if model type is "Base"
+        // If Base model, show popup — but DON'T scroll
         if (model?.model_type === "Base") {
             setShowBaseModelPopup(true);
+            return; //  Stop execution — prevents scrollIntoView
         }
 
-        // scroll into view after short delay
+
+        // Only scroll for non-base models
         setTimeout(() => {
-            document.getElementById("duration-section")?.scrollIntoView({
+            durationRef.current?.scrollIntoView({
                 behavior: "smooth",
                 block: "start",
             });
         }, 100);
     };
+
 
     return (
         <div>
@@ -675,8 +678,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             Welcome - {userInfo.email}
                                         </div>
                                     )}
-
-                                    <h5>Smart Purifiers on Rent. Free Maintenance for Life.</h5>
+                                    <h4>Smart purifiers on rent. Free maintenance for life.</h4>
                                     <p>IoT-enabled RO+UV water purifiers with Copper Filter, Alkaline Filter, & Mineraliser.</p>
                                     <p className="mb-md-5">Pay only rentals and get lifetime free maintenance. ZERO machine cost.</p>
 
@@ -692,7 +694,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                             <div className="col-lg-6">
                                 <div className="hero-image" data-aos="zoom-out" data-aos-delay="300">
-                                    <img src="assets/img/water-purifier.png" alt="Hero Image" className="img-fluid" style={{ width: '100%', animation: 'float-badge 3s ease-in-out infinite' }} />
+                                    <img src="assets/img/water-purifier3.png" alt="Hero Image" className="img-fluid main-image rounded-4" style={{ width: '100%', animation: 'float-badge 3s ease-in-out infinite' }} />
                                 </div>
                             </div>
                         </div>
@@ -802,7 +804,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                             <div className="col-xl-6" data-aos="fade-up" data-aos-delay="300">
                                 <div className="image-wrapper">
                                     <div className="images position-relative" data-aos="zoom-out" data-aos-delay="400">
-                                        <img src="assets/img/water-purifier2.webp" alt="Business Meeting" className="img-fluid main-image rounded-4" />
+                                        <img src="assets/img/new-water-purifier2.png" alt="img" style={{ width: '50%' }} className="img-fluid main-image rounded-4" />
                                     </div>
                                 </div>
                             </div>
@@ -816,7 +818,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 {/* <!-- Features Section --> */}
                 <section id="hero" className="features section">
                     <div className="container section-title" data-aos="fade-up" style={{ paddingBottom: '0px' }}>
-                        <h2>Products That Fit Every Lifestyle And Budget</h2>
+                        <h2 style={{ color: '#0d6efd' }}>Products that fit every Lifestyle and Budget</h2>
                         <p>Each of our smart water purifiers comes with advanced multi-stage purification and IoT technology.</p>
                     </div>
 
@@ -829,7 +831,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                     ) : error ? (
                         // Error Section
                         <div className="container text-center my-5 py-5">
-                            <h4 className="text-danger mb-3">Something went wrong 😔</h4>
+                            <h4 className="text-danger mb-3">Something went wrong </h4>
                             <p>{error}</p>
                             <button
                                 className="btn btn-outline-primary mt-3"
@@ -867,12 +869,13 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 </div>
                                             </div>
                                         </div>
+
                                         {!showAllModels && (
                                             <div className="row mt-4 align-items-start">
                                                 <div className="col-lg-6 col-12" style={{ padding: '20px' }}>
                                                     <div className="d-flex justify-content-center flex-column align-items-center section-title">
                                                         <div className="text-center mb-3">
-                                                            <h2>Select Model</h2>
+                                                            <h2 style={{ color: '#0d6efd' }}>Select Model</h2>
                                                         </div>
                                                         <ul className="nav nav-tabs flex-wrap" style={{ justifyContent: 'center' }}>
                                                             <li className="nav-item">
@@ -906,9 +909,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                                 handleModelSelect(index)
                                                                                 setSelectedPlanIndex(0);
                                                                                 setSelectedDurationIndex(0);
-                                                                                setTimeout(() => {
-                                                                                    durationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                                                                                }, 100);
                                                                             }}
                                                                             style={{
                                                                                 minWidth: '150px',
@@ -992,14 +992,30 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                         )}
 
                                         {/* === Popup Modal for Base Model === */}
-                                        <Modal show={showBaseModelPopup} onHide={() => setShowBaseModelPopup(false)} centered style={{
-                                            border: "2px solid #0d6efd",
-                                            borderRadius: "12px",
-                                            boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
-                                        }}>
+                                        <Modal
+                                            show={showBaseModelPopup}
+                                            onHide={() => {
+                                                setShowBaseModelPopup(false); // Close modal
+
+                                                // Then scroll after modal closes
+                                                setTimeout(() => {
+                                                    durationRef.current?.scrollIntoView({
+                                                        behavior: "smooth",
+                                                        block: "start",
+                                                    });
+                                                }, 300);
+                                            }}
+                                            centered
+                                            style={{
+                                                border: "2px solid #0d6efd",
+                                                borderRadius: "12px",
+                                                boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+                                            }}
+                                        >
                                             <Modal.Header closeButton style={{ backgroundColor: "aliceblue" }}>
-                                                <Modal.Title style={{ color: '#0d6efd' }}>Base Model Information</Modal.Title>
+                                                <Modal.Title style={{ color: "#0d6efd" }}>Base Model Information</Modal.Title>
                                             </Modal.Header>
+
                                             <Modal.Body>
                                                 <p>
                                                     This is our <b>Base Model</b> water purifier device. Once you buy this device, our
@@ -1014,11 +1030,22 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                     support team directly.
                                                 </p>
                                             </Modal.Body>
+
                                             <Modal.Footer style={{ backgroundColor: "aliceblue" }}>
-                                                <Button variant="secondary" onClick={() => setShowBaseModelPopup(false)}>
-                                                    Cancel
-                                                </Button>
-                                                <Button variant="primary" onClick={() => setShowBaseModelPopup(false)}>
+                                                <Button
+                                                    variant="primary"
+                                                    onClick={() => {
+                                                        setShowBaseModelPopup(false); // Close modal
+
+                                                        // Scroll after modal closes
+                                                        setTimeout(() => {
+                                                            durationRef.current?.scrollIntoView({
+                                                                behavior: "smooth",
+                                                                block: "start",
+                                                            });
+                                                        }, 300);
+                                                    }}
+                                                >
                                                     OK, Got It
                                                 </Button>
                                             </Modal.Footer>
@@ -1027,7 +1054,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                         {showAllModels && (
                                             <div className="col-lg-12 col-12" style={{ padding: '20px' }}>
                                                 <div className="section-title text-center" style={{ paddingBottom: '10px' }}>
-                                                    <h2>Select Model</h2>
+                                                    <h2 style={{ color: '#0d6efd' }}>Select Model</h2>
                                                     <ul className="nav flex-wrap" style={{ justifyContent: 'center' }}>
                                                         <li className="nav-item">
                                                             <button
@@ -1264,7 +1291,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                                     <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
                                                                                 ) : (
                                                                                     <>
-                                                                                        {plan.capacity}/<span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
+                                                                                        {plan.capacity}<span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
                                                                                     </>
                                                                                 )}
                                                                             </p>
@@ -1276,7 +1303,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                                 <span style={{ color: "#0d6efd" }}>{formattedPrice}</span>
                                                                             </h4>
                                                                             <p style={{ color: "#666", fontWeight: "500", fontSize: "15px", marginBottom: "0" }}>
-                                                                                / for {durationText}
+                                                                                for {durationText}
                                                                             </p>
 
                                                                             <p style={{ marginTop: "8px", color: "#333", fontWeight: "600", fontSize: "13px" }}>
@@ -1355,7 +1382,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                                     }
                                                                                 }}
                                                                             >
-                                                                                {isOutOfStock ? "Buy Now" : "Buy Now"}
+                                                                                {isOutOfStock ? "Out of Stock" : "Buy Now"}
                                                                             </button>
                                                                         </div>
                                                                     </div>
@@ -1529,7 +1556,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                 <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
                                                             ) : (
                                                                 <>
-                                                                    {plan.capacity}/
+                                                                    {plan.capacity}
                                                                     <span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
                                                                 </>
                                                             )}
@@ -2001,7 +2028,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 ) : products.length > 0 ? (
                     <section id="features" className="features section" style={{ padding: '0px' }}>
                         <div className="container section-title" data-aos="fade-up">
-                            <h3 style={{ textAlign: 'left' }}>Product details</h3>
+                            <h3 style={{ textAlign: 'left', color: '#0d6efd' }}>Product details</h3>
                             <p style={{ textAlign: 'left' }}>
                                 {products[selectedModelIndex]?.product_details}
                             </p>
@@ -2032,7 +2059,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                     {/* <!-- Section Title --> */}
                     <div className="container section-title" data-aos="fade-up">
-                        <h2>The ionHive Advantage Next-gen Water Purification at Best Costs</h2>
+                        <h2 style={{ color: '#0d6efd' }}>The ionHive advantage Next-gen water purification at best costs</h2>
                         <p>Experience the smartest water purification solutions with ionHive.</p>
                     </div>
                     {/* <!-- End Section Title --> */}
@@ -2223,11 +2250,11 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
 
                 {/* <!-- Features 2 Section --> */}
-                <section id="how-it-works" className="features-2 section">
+                <section id="how-it-works" className="features-2 section" style={{ padding: '10px' }}>
 
                     {/* <!-- Section Title --> */}
                     <div className="container section-title" data-aos="fade-up">
-                        <h2>The ionHive Experience: Simple, Smart & Seamless</h2>
+                        <h2 style={{ color: '#0d6efd' }}>The ionHive experience: simple, smart & seamless</h2>
                         <p>
                             Get started with ionHive in just a few easy steps. Buy your purifier, install our app,
                             and enjoy 24/7 access to live water quality, order history, payments, and more — all from your phone.
@@ -2291,7 +2318,6 @@ const Home = ({ userInfo, token, handleLogout }) => {
                             {/* <!-- End Phone Mockup --> */}
 
                             <div className="col-lg-4">
-
                                 <div className="feature-item mb-5" data-aos="fade-left" data-aos-delay="200">
                                     <div className="d-flex align-items-center gap-4">
                                         <div className="feature-icon flex-shrink-0">
@@ -2332,36 +2358,122 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                 {/* <!-- End .feature-item --> */}
                             </div>
 
-                            <div className="container text-center" style={{ marginTop: "20px" }}>
+                            <div className="container text-center">
+                                <h3
+                                    style={{
+                                        color: "#0d6efd",
+                                        marginBottom: "35px",
+                                        fontWeight: "700",
+                                        letterSpacing: "0.5px",
+                                    }}
+                                >
+                                    Download Our App
+                                </h3>
+
                                 <div
-                                    className="d-flex justify-content-center align-items-center"
-                                    style={{ gap: "40px" }} // Adjust this value to control space
+                                    className="d-flex justify-content-center align-items-center flex-wrap"
+                                    style={{ gap: "60px" }}
                                 >
                                     {/* Play Store QR */}
-                                    <div className="phone-mockup text-center">
+                                    <div
+                                        className="qr-card text-center"
+                                        style={{
+                                            background: "#fff",
+                                            borderRadius: "20px",
+                                            padding: "7px",
+                                            width: "240px",
+                                            boxShadow: "0 6px 15px rgba(13,110,253,0.15)",
+                                            transition: "all 0.4s ease",
+                                            cursor: "pointer",
+                                        }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+                                        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                                    >
                                         <img
                                             src="assets/img/water_playStore.png"
                                             alt="Google Play QR"
-                                            style={getStyle("play")}
-                                            onMouseEnter={() => setHoveredQR("play")}
-                                            onMouseLeave={() => setHoveredQR(null)}
+                                            style={{
+                                                width: "130px",
+                                                height: "130px",
+                                                borderRadius: "12px",
+                                                border: "2px solid #0d6efd",
+                                                padding: "6px",
+                                                transition: "transform 0.3s ease",
+                                            }}
                                         />
-                                        <p style={{ marginTop: "10px" }}>Google Play Store Scan to Download</p>
+                                        <div
+                                            className="d-flex justify-content-center align-items-center"
+                                            style={{ gap: "8px", marginTop: "15px" }}
+                                        >
+                                            <img
+                                                src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
+                                                alt="Google Play Icon"
+                                                style={{ width: "90px" }}
+                                            />
+                                        </div>
+                                        <p
+                                            style={{
+                                                marginTop: "8px",
+                                                fontWeight: "600",
+                                                color: "#333",
+                                                fontSize: "15px",
+                                            }}
+                                        >
+                                            <span style={{ color: "#0d6efd" }}>Scan to Download</span>
+                                        </p>
                                     </div>
 
                                     {/* App Store QR */}
-                                    <div className="phone-mockup text-center">
+                                    <div
+                                        className="qr-card text-center"
+                                        style={{
+                                            background: "#fff",
+                                            borderRadius: "20px",
+                                            padding: "7px",
+                                            width: "240px",
+                                            boxShadow: "0 6px 15px rgba(0,0,0,0.1)",
+                                            transition: "all 0.4s ease",
+                                            cursor: "pointer",
+                                        }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+                                        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                                    >
                                         <img
                                             src="assets/img/water_appStore.png"
                                             alt="App Store QR"
-                                            style={getStyle("app")}
-                                            onMouseEnter={() => setHoveredQR("app")}
-                                            onMouseLeave={() => setHoveredQR(null)}
+                                            style={{
+                                                width: "130px",
+                                                height: "130px",
+                                                borderRadius: "12px",
+                                                border: "2px solid #0d6efd",
+                                                padding: "6px",
+                                                transition: "transform 0.3s ease",
+                                            }}
                                         />
-                                        <p style={{ marginTop: "10px" }}>App Store Scan to Download</p>
+                                        <div
+                                            className="d-flex justify-content-center align-items-center"
+                                            style={{ gap: "8px", marginTop: "15px" }}
+                                        >
+                                            <img
+                                                src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
+                                                alt="App Store Icon"
+                                                style={{ width: "100px" }}
+                                            />
+                                        </div>
+                                        <p
+                                            style={{
+                                                marginTop: "8px",
+                                                fontWeight: "600",
+                                                color: "#333",
+                                                fontSize: "15px",
+                                            }}
+                                        >
+                                            <span style={{ color: "#0d6efd" }}>Scan to Download</span>
+                                        </p>
                                     </div>
                                 </div>
                             </div>
+
 
                         </div>
                     </div>
@@ -2369,7 +2481,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 {/* <!-- /Features 2 Section --> */}
 
                 {/* <!-- Faq Section --> */}
-                <section className="faq-9 faq section light-background" id="faq">
+                <section className="faq-9 faq section light-background" id="faq" style={{ padding: '20px' }}>
                     <div className="container">
                         <div className="row">
 
@@ -2406,13 +2518,13 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 {/* <!-- /Faq Section --> */}
 
                 {/* <!-- City Section --> */}
-                <section id="contact" className="contact section light-background">
+                <section id="contact" className="contact section light-background" style={{ padding: '10px' }}>
                     <div
                         className="container section-title"
                         data-aos="fade-up"
                         style={{ paddingBottom: "0px" }}
                     >
-                        <h2>Cities We Are Present In</h2>
+                        <h2 style={{ color: '#0d6efd' }}>Cities we are present in</h2>
                     </div>
 
                     <div
@@ -2540,7 +2652,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                     {/* <!-- Section Title --> */}
                     <div className="container section-title" data-aos="fade-up">
-                        <h2>Contact</h2>
+                        <h2 style={{ color: '#0d6efd' }}>Contact Us</h2>
                         <p>Speak to a water-wellness expert today</p>
                     </div>
                     {/* <!-- End Section Title --> */}

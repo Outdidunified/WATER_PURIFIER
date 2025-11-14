@@ -14,7 +14,7 @@ const Blog = ({ userInfo, token, handleLogout }) => {
                 <section id="hero" className="hero section">
 
                     {/* <!-- Section Title --> */}
-                    <div className="container section-title" data-aos="fade-up" style={{paddingBottom:'0px'}}>
+                    <div className="container section-title" data-aos="fade-up" style={{ paddingBottom: '0px' }}>
                         <h2>ionHive Blogs</h2>
                         <p>ionHive: India's most trusted customized water purifier. Read about the water purifier, its technology, healthy lifestyle habits with safe water and more!</p>
                     </div>
@@ -24,7 +24,7 @@ const Blog = ({ userInfo, token, handleLogout }) => {
                 {/* <!-- /Contact Section --> */}
 
                 {/* <!-- Contact Section --> */}
-                <section id="contact" style={{ textAlign: 'center', padding: '1rem', display: 'flex', justifyContent: 'center'}}>
+                <section id="contact" style={{ textAlign: 'center', padding: '1rem', display: 'flex', justifyContent: 'center' }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', maxWidth: '1140px', width: '100%', gap: '1rem', justifyContent: 'space-between', }}>
                         <div style={{ backgroundColor: '#d5d5d5', borderRadius: '20px', padding: '1rem', width: '32%', minWidth: '280px', height: '300px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', }}>
                             <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

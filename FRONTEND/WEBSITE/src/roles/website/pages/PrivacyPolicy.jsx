@@ -14,7 +14,7 @@ const PrivacyPolicy = ({ userInfo, token, handleLogout }) => {
 
                 {/* <!-- Privacy Policy Section --> */}
 
-                <section id="hero" className="hero section" style={{ marginTop: '10%', marginBottom: '0px', paddingBottom: '0px' }}>
+                <section id="hero" className="hero section" style={{ marginBottom: '0px', paddingBottom: '0px' }}>
 
                     {/* <!-- Section Title --> */}
                     <div className="container section-title" data-aos="fade-up" style={{ paddingBottom: '0px' }}>
