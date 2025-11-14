@@ -52,7 +52,7 @@ class _PlanConfigPageState extends State<PlanConfigPage> with SingleTickerProvid
 
   void _initializeControllers() {
     final totalWaterLimit = _extractTotalWaterLimit();
-    final startDate = DateTime.now().toIso8601String().split('T')[0];
+    final startDate = DateTime.now().toIso8601String();
     final endDate = _calculateEndDate();
 
     _waterLimitController = TextEditingController(text: totalWaterLimit.toString());
@@ -104,7 +104,7 @@ class _PlanConfigPageState extends State<PlanConfigPage> with SingleTickerProvid
     final startDate = DateTime.now();
     final durationDays = _extractDurationDays();
     final endDate = startDate.add(Duration(days: durationDays));
-    return endDate.toIso8601String().split('T')[0];
+    return endDate.toIso8601String();
   }
 
   Map<String, dynamic>? _getSelectedPlan() {
@@ -256,7 +256,7 @@ class _PlanConfigPageState extends State<PlanConfigPage> with SingleTickerProvid
         unawaited(controller.fetchOrders());
 
         debugPrint('[PlanConfig] ✓ API acknowledgement received with status 1');
-        CustomSnackbar.showSuccess(message: 'Plan configuration sent successfully');
+        CustomSnackbar.showSuccess(message: 'plan configuration sent successfully');
         debugPrint('[PlanConfig] → Initiating device disconnection...');
         await _disconnectDevice();
         debugPrint('[PlanConfig] ✓ Device disconnection completed');

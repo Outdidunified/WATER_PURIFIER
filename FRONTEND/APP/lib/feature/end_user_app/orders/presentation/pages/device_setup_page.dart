@@ -179,6 +179,9 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
         }
       });
 
+      // Start automatic scanning when entering setup mode
+      _startAutomaticScanning();
+
       // If we have a stored MAC ID, automatically start scanning and attempt connection
       if (storedMacId != null && storedMacId.isNotEmpty) {
         Future.delayed(const Duration(milliseconds: 500), () {
@@ -193,6 +196,9 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
   }
 
   void _backToOrderList() {
+    // Disconnect device when going back to order list
+    _disconnectCurrentDevice();
+
     setState(() {
       _isOrderListMode = true;
       _currentOrder = null;
@@ -204,6 +210,35 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
       _isScanning = false;
       _isBleConnecting = false;
     });
+  }
+
+  Future<void> _disconnectCurrentDevice() async {
+    try {
+      if (_connectionType == 'BLE' && _connectedDevice != null) {
+        await _connectedDevice!.disconnect();
+        debugPrint('BLE device disconnected');
+      } else if (_connectionType == 'Classic' && _bluetoothConnection != null) {
+        await _bluetoothConnection!.close();
+        debugPrint('Classic BT device disconnected');
+      }
+
+      // Clear connection state
+      setState(() {
+        _connectedDeviceId = null;
+        _connectedDeviceName = null;
+        _connectedDevice = null;
+        _bleWriteChar = null;
+        _bluetoothConnection = null;
+        _connectionType = '';
+        _isDeviceVerified = false;
+      });
+
+      // Cancel subscriptions
+      _notifySubscription?.cancel();
+      _notifySubscription = null;
+    } catch (e) {
+      debugPrint('Error disconnecting device: $e');
+    }
   }
 
   int _extractTotalWaterLimit() {
@@ -397,6 +432,39 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
     }
   }
 
+  Future<void> _startAutomaticScanning() async {
+    if (_isScanning) return; // Already scanning
+    try {
+      setState(() => _isScanning = true);
+      _bleDevices.clear();
+      _classicDevices.clear();
+
+      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
+      _bleScanSubscription = FlutterBluePlus.onScanResults.listen((results) {
+        setState(() {
+          _bleDevices = results;
+        });
+      });
+
+      fbs.FlutterBluetoothSerial.instance.startDiscovery().listen((result) {
+        setState(() {
+          if (!_classicDevices.any((d) => d.device.address == result.device.address)) {
+            _classicDevices.add(result);
+          }
+        });
+      });
+
+      await Future.delayed(const Duration(seconds: 10));
+      await FlutterBluePlus.stopScan();
+      _bleScanSubscription?.cancel();
+      setState(() => _isScanning = false);
+    } catch (e) {
+      debugPrint('Error scanning devices: $e');
+      CustomSnackbar.showError(message: 'Error scanning devices');
+      setState(() => _isScanning = false);
+    }
+  }
+
   Future<void> _startScanning() async {
     try {
       setState(() => _isScanning = true);
@@ -438,45 +506,91 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
     try {
       await device.connect();
       _connectedDevice = device;
-      final deviceId = '${device.remoteId}';
-      setState(() {
-        _connectionType = 'BLE';
-        _connectedDeviceId = deviceId;
-        _connectedDeviceName = device.name.isNotEmpty ? device.name : 'BLE Device';
-      });
 
       await _findAndStoreBleWriteChar(device);
       await _setupBleNotificationListener(device);
 
-      // Send verification payload to device
-      await _sendVerificationPayload(isClassic: false, deviceAddress: device.remoteId.toString());
+      // Small delay to ensure notifications are set up
+      await Future.delayed(const Duration(milliseconds: 1000));
 
+      // Wait for device verification (ACK response)
       _verificationCompleter = Completer<bool>();
       _ackCompleter = Completer<bool>();
+      _bleDataBuffer = ''; // Reset buffer
+
+      // Send verification payload like classic Bluetooth
+      // Use device remoteId for verification
+      final String deviceMacId = device.remoteId.toString();
+      final Map<String, dynamic> verificationPayload = {
+        "wp_device_id": _currentOrder?.wpDeviceId ?? '',
+        "mac_id": _normalizeMac(deviceMacId),
+        "timestamp": DateTime.now().toIso8601String(),
+      };
+
+      debugPrint('Sending verification payload: wp_device_id=${verificationPayload["wp_device_id"]}, mac_id=${verificationPayload["mac_id"]}, timestamp=${verificationPayload["timestamp"]}');
+      if (_bleWriteChar != null) {
+        final data = utf8.encode(jsonEncode(verificationPayload));
+        debugPrint('Writing ${data.length} bytes to BLE characteristic');
+        await _bleWriteChar!.write(data);
+        debugPrint('BLE write completed');
+      } else {
+        debugPrint('⚠️ No BLE write characteristic available');
+        await device.disconnect();
+        return;
+      }
+
+      // Small delay after write to allow device to respond
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Try to read response from the characteristic if it supports read
+      if (_bleWriteChar!.properties.read) {
+        try {
+          final response = await _bleWriteChar!.read();
+          final chunk = utf8.decode(response);
+          debugPrint('BLE Read response: $chunk');
+          _handleBleNotification(response); // Treat as notification data
+        } catch (e) {
+          debugPrint('Error reading BLE char: $e');
+        }
+      }
 
       bool verified = await _verificationCompleter!.future.timeout(
-        const Duration(seconds: 15),
+        const Duration(seconds: 10),
         onTimeout: () {
           debugPrint('⚠️ Device verification timeout');
           CustomSnackbar.showError(message: 'Device verification timeout');
+          Future.microtask(() => device.disconnect());
           return false;
         },
       );
 
       if (!verified) {
+        await device.disconnect();
         return;
       }
 
+      // Set connected status only after verification
+      final deviceId = '${device.remoteId}';
+      setState(() {
+        _connectionType = 'BLE';
+        _connectedDeviceId = deviceId;
+        _connectedDeviceName = device.name.isNotEmpty ? device.name : 'BLE Device';
+        _isDeviceVerified = true;
+      });
+
+      // Wait for ACK response (max 10 seconds)
       bool ackReceived = await _ackCompleter!.future.timeout(
         const Duration(seconds: 10),
         onTimeout: () {
           debugPrint('⚠️ ACK response timeout');
           CustomSnackbar.showError(message: 'Device ACK response timeout');
+          Future.microtask(() => device.disconnect());
           return false;
         },
       );
 
       if (!ackReceived) {
+        await device.disconnect();
         return;
       }
 
@@ -493,6 +607,9 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
     } catch (e) {
       debugPrint('Error connecting to BLE device: $e');
       CustomSnackbar.showError(message: 'Error connecting to BLE device');
+      try {
+        await device.disconnect();
+      } catch (_) {}
     } finally {
       setState(() {
         _isBleConnecting = false;
@@ -522,11 +639,6 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
           await classicConnection.output.allSent;
           debugPrint('✓ Verification payload sent via Classic BT');
         }
-      } else {
-        if (_bleWriteChar != null) {
-          await _bleWriteChar!.write(utf8.encode(payloadJson), withoutResponse: false);
-          debugPrint('✓ Verification payload sent via BLE');
-        }
       }
     } catch (e) {
       debugPrint('Error sending verification payload: $e');
@@ -536,11 +648,13 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
   Future<void> _findAndStoreBleWriteChar(BluetoothDevice device) async {
     try {
       final services = await device.discoverServices();
+
+      // First try any write characteristic
       for (var service in services) {
         for (var characteristic in service.characteristics) {
           if (characteristic.properties.write) {
             _bleWriteChar = characteristic;
-            debugPrint('✓ Found BLE write characteristic');
+            debugPrint('✓ Found BLE write characteristic: ${characteristic.uuid}');
             return;
           }
         }
@@ -554,6 +668,8 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
   Future<void> _setupBleNotificationListener(BluetoothDevice device) async {
     try {
       final services = await device.discoverServices();
+
+      // First try any notify characteristic
       for (var service in services) {
         for (var characteristic in service.characteristics) {
           if (characteristic.properties.notify) {
@@ -562,10 +678,12 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
             _notifySubscription = characteristic.onValueReceived.listen((data) {
               _handleBleNotification(data);
             });
-            debugPrint('✓ Subscribed to BLE notifications');
+            debugPrint('✓ Subscribed to BLE notifications on characteristic: ${characteristic.uuid}');
+            return;
           }
         }
       }
+      debugPrint('⚠️ No notify characteristic found');
     } catch (e) {
       debugPrint('Error setting up BLE notification listener: $e');
     }
@@ -573,36 +691,84 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
 
   void _handleBleNotification(List<int> data) {
     try {
-      final String jsonStr = utf8.decode(data);
-      debugPrint('✓ BLE Data Received: $jsonStr');
+      final chunk = utf8.decode(data);
+      debugPrint('✓ BLE Data Received: $chunk');
+      _bleDataBuffer += chunk;
 
-      final Map<String, dynamic> jsonData = jsonDecode(jsonStr);
+      while (_bleDataBuffer.contains('\n')) {
+        final index = _bleDataBuffer.indexOf('\n');
+        final line = _bleDataBuffer.substring(0, index).trim();
+        _bleDataBuffer = _bleDataBuffer.substring(index + 1);
 
-      // Check if this is device info message
-      if (jsonData.containsKey('mac_id') &&
-          jsonData.containsKey('wp_device_id')) {
-        if (_validateDeviceInfo(jsonData)) {
-          setState(() => _isDeviceVerified = true);
-          if (!_verificationCompleter!.isCompleted) {
-            _verificationCompleter!.complete(true);
+        // Try to parse as JSON for ACK response
+        try {
+          final jsonData = jsonDecode(line);
+          // Check if this is device info message
+          if (jsonData.containsKey('mac_id') &&
+              jsonData.containsKey('wp_device_id')) {
+            if (_validateDeviceInfo(jsonData)) {
+              setState(() => _isDeviceVerified = true);
+              if (!_verificationCompleter!.isCompleted) {
+                _verificationCompleter!.complete(true);
+              }
+            } else {
+              if (!_verificationCompleter!.isCompleted) {
+                _verificationCompleter!.complete(false);
+              }
+            }
           }
-        } else {
-          if (!_verificationCompleter!.isCompleted) {
-            _verificationCompleter!.complete(false);
+
+          // Check if this is ACK message
+          if (jsonData.containsKey('status')) {
+            if (_handleAckResponse(jsonData)) {
+              if (!_ackCompleter!.isCompleted) {
+                _ackCompleter!.complete(true);
+              }
+            } else {
+              if (!_ackCompleter!.isCompleted) {
+                _ackCompleter!.complete(false);
+              }
+            }
           }
+        } catch (e) {
+          debugPrint('Error parsing JSON: $e');
         }
       }
 
-      // Check if this is ACK message
-      if (jsonData.containsKey('status')) {
-        if (_handleAckResponse(jsonData)) {
-          if (!_ackCompleter!.isCompleted) {
-            _ackCompleter!.complete(true);
+      // If buffer doesn't contain \n but has data, try to parse as complete JSON
+      if (_bleDataBuffer.isNotEmpty && !_bleDataBuffer.contains('\n')) {
+        try {
+          final jsonData = jsonDecode(_bleDataBuffer.trim());
+          // Check if this is device info message
+          if (jsonData.containsKey('mac_id') &&
+              jsonData.containsKey('wp_device_id')) {
+            if (_validateDeviceInfo(jsonData)) {
+              setState(() => _isDeviceVerified = true);
+              if (!_verificationCompleter!.isCompleted) {
+                _verificationCompleter!.complete(true);
+              }
+            } else {
+              if (!_verificationCompleter!.isCompleted) {
+                _verificationCompleter!.complete(false);
+              }
+            }
           }
-        } else {
-          if (!_ackCompleter!.isCompleted) {
-            _ackCompleter!.complete(false);
+
+          // Check if this is ACK message
+          if (jsonData.containsKey('status')) {
+            if (_handleAckResponse(jsonData)) {
+              if (!_ackCompleter!.isCompleted) {
+                _ackCompleter!.complete(true);
+              }
+            } else {
+              if (!_ackCompleter!.isCompleted) {
+                _ackCompleter!.complete(false);
+              }
+            }
+            _bleDataBuffer = ''; // Clear buffer
           }
+        } catch (e) {
+          // Not a complete JSON yet, keep in buffer
         }
       }
     } catch (e) {
@@ -648,8 +814,16 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
 
       if (!verified) {
         await _bluetoothConnection?.close();
+        setState(() {
+          _connectedDeviceId = null;
+          _connectedDeviceName = null;
+          _bluetoothConnection = null;
+          _connectionType = '';
+        });
         return;
       }
+
+      setState(() => _isDeviceVerified = true);
 
       bool ackReceived = await _ackCompleter!.future.timeout(
         const Duration(seconds: 10),
@@ -662,6 +836,13 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
 
       if (!ackReceived) {
         await _bluetoothConnection?.close();
+        setState(() {
+          _connectedDeviceId = null;
+          _connectedDeviceName = null;
+          _bluetoothConnection = null;
+          _connectionType = '';
+          _isDeviceVerified = false;
+        });
         return;
       }
 

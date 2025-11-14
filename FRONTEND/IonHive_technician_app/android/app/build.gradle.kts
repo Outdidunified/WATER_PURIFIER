@@ -34,7 +34,7 @@ android {
         getByName("debug") {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
-            storeFile = file("C:/Users/LAPTOPS24/AndroidStudioProjects/WATER_PURIFIER1/FRONTEND/IonHive_technician_app/lib/utils/keystore/debug.keystore")
+            storeFile = file("../../lib/utils/keystore/debug.keystore")
             storePassword = "android"
         }
 

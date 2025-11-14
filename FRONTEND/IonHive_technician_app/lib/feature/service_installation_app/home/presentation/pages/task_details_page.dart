@@ -15,7 +15,10 @@ import 'package:ionhive_technician_app/core/controllers/session_controller.dart'
 import 'package:ionhive_technician_app/core/core.dart';
 import 'package:ionhive_technician_app/feature/service_installation_app/home/domain/models/home_model.dart';
 import 'package:ionhive_technician_app/feature/service_installation_app/home/presentation/controllers/home_controller.dart';
+import 'package:ionhive_technician_app/feature/service_installation_app/home/presentation/pages/device_setup_page.dart';
 import 'package:ionhive_technician_app/feature/service_installation_app/home/presentation/pages/recharge_plan_page.dart';
+import 'package:ionhive_technician_app/feature/service_installation_app/landing_page.dart';
+import 'package:ionhive_technician_app/feature/service_installation_app/landing_page_controller.dart';
 
 class _PlanDisplayItem {
   final ProductWithPlans product;
@@ -916,17 +919,59 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         _accepted = true;
         _selectedStatus = updatedTask.taskStatus ?? 'In Progress';
 
-        _codCollected =
-            updatedTask.orderPaymentStatus?.toLowerCase() == 'completed' ||
-                updatedTask.paymentCollected == true;
-        if (_codCollected && updatedTask.paymentMethod != null) {
-          _selectedPaymentMethod = updatedTask.paymentMethod!;
+        // Update payment status based on task type
+        if (_currentTask.taskType == 3) {
+          // Renewal task
+          _renewalPaymentCollected = updatedTask.orderPaymentStatus?.toLowerCase() == 'completed' ||
+                                    updatedTask.paymentCollected == true;
+          if (_renewalPaymentCollected && updatedTask.paymentMethod != null) {
+            _selectedRenewalPaymentMethod = updatedTask.paymentMethod!;
+          }
+        } else {
+          // Installation task
+          _codCollected = updatedTask.orderPaymentStatus?.toLowerCase() == 'completed' ||
+                         updatedTask.paymentCollected == true;
+          if (_codCollected && updatedTask.paymentMethod != null) {
+            _selectedPaymentMethod = updatedTask.paymentMethod!;
+          }
         }
       });
+
+      // Navigate to device setup only if payment is already collected
+      bool paymentAlreadyCollected = (_currentTask.taskType == 3) ? _renewalPaymentCollected : _codCollected;
+      if (mounted && paymentAlreadyCollected) {
+        _navigateToDeviceSetup();
+      }
     } catch (e) {
       CustomSnackbar.showError(message: e.toString());
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+
+
+  void _navigateToDeviceSetup() {
+    Get.to(() => DeviceSetupPage())?.then((_) {
+      // When returning from device setup, refresh the task data
+      _refreshTaskData();
+    });
+  }
+
+  Future<void> _refreshTaskData() async {
+    try {
+      // Refresh the task data from the controller
+      final updatedTask = controller.allTasks.firstWhere(
+            (task) => task.taskId == _currentTask.taskId,
+        orElse: () => _currentTask,
+      );
+
+      setState(() {
+        _currentTask = updatedTask;
+        _selectedStatus = updatedTask.taskStatus ?? _selectedStatus;
+      });
+    } catch (e) {
+      debugPrint('Error refreshing task data: $e');
     }
   }
 
@@ -1328,7 +1373,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       );
 
       if (mounted) {
-        Navigator.of(context).pop();
+        final landingController = Get.find<TechnicianLandingPageController>();
+        landingController.changePage(0);
+        Get.offAll(() => const TechnicianLandingPage());
       }
     } catch (e) {
       CustomSnackbar.showError(message: 'Failed to update task: $e');
@@ -2606,13 +2653,18 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       setState(() {
         _codCollected = true;
         _currentTask = updatedTask;
-        
-        _codCollected = updatedTask.orderPaymentStatus?.toLowerCase() == 'completed' || 
+
+        _codCollected = updatedTask.orderPaymentStatus?.toLowerCase() == 'completed' ||
                        updatedTask.paymentCollected == true;
         if (_codCollected && updatedTask.paymentMethod != null) {
           _selectedPaymentMethod = updatedTask.paymentMethod!;
         }
       });
+
+      // Navigate to device setup after payment collection
+      if (mounted) {
+        _navigateToDeviceSetup();
+      }
 
     } catch (e) {
       CustomSnackbar.showError(message: 'Failed to mark payment collected: $e');
@@ -2669,8 +2721,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       setState(() {
         _renewalPaymentCollected = true;
         _currentTask = updatedTask;
-        
-        _renewalPaymentCollected = updatedTask.orderPaymentStatus?.toLowerCase() == 'completed' || 
+
+        _renewalPaymentCollected = updatedTask.orderPaymentStatus?.toLowerCase() == 'completed' ||
                                    updatedTask.paymentCollected == true;
         if (_renewalPaymentCollected && updatedTask.paymentMethod != null) {
           _selectedRenewalPaymentMethod = updatedTask.paymentMethod!;
@@ -2678,6 +2730,11 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       });
 
       CustomSnackbar.showSuccess(message: 'Renewal payment collected successfully');
+
+      // Navigate to device setup after renewal payment collection
+      if (mounted) {
+        _navigateToDeviceSetup();
+      }
     } catch (e) {
       CustomSnackbar.showError(message: 'Failed to mark payment collected: $e');
     } finally {
@@ -2694,6 +2751,14 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       backgroundColor: Colors.white,
       appBar: AppBar(
   backgroundColor: theme.primaryColor,
+  leading: IconButton(
+    icon: const Icon(Icons.arrow_back),
+    onPressed: () {
+      final landingController = Get.find<TechnicianLandingPageController>();
+      landingController.changePage(0);
+      Get.offAll(() => const TechnicianLandingPage());
+    },
+  ),
   title: const Text(
     'Task Details',
     style: TextStyle(

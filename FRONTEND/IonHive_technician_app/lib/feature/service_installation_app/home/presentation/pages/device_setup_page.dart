@@ -113,6 +113,13 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
   }
 
   @override
+  void deactivate() {
+    _bleScanSubscription?.cancel();
+    _classicDiscoverySubscription?.cancel();
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _bleScanSubscription?.cancel();
@@ -134,6 +141,9 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
   Future<void> _loadInitialData() async {
     await _initPreferences();
     _setupTaskListener();
+
+    // Start automatic scanning when entering device setup page
+    _startAutomaticScanning();
   }
 
   Future<void> _initPreferences() async {
@@ -158,22 +168,22 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
       final tasks = controller.allTasks;
       _installationTasks = tasks
           .where((task) {
-            if (task.setupComplete == true) {
-              return false;
+        if (task.setupComplete == true) {
+          return false;
+        }
+        if (task.taskType == TaskTypeConstants.installation) {
+          return task.taskStatus == 'In Progress';
+        }
+        if (task.taskType == 3) {
+          if (task.taskStatus == 'In Progress' || task.taskStatus == 'RechargedOpened') {
+            final rechargeDetails = task.rechargeDetails;
+            if (rechargeDetails != null && rechargeDetails['paymentStatus'] == 'Completed') {
+              return true;
             }
-            if (task.taskType == TaskTypeConstants.installation) {
-              return task.taskStatus == 'In Progress';
-            }
-            if (task.taskType == 3) {
-              if (task.taskStatus == 'In Progress' || task.taskStatus == 'RechargedOpened') {
-                final rechargeDetails = task.rechargeDetails;
-                if (rechargeDetails != null && rechargeDetails['paymentStatus'] == 'Completed') {
-                  return true;
-                }
-              }
-            }
-            return false;
-          })
+          }
+        }
+        return false;
+      })
           .toList();
 
       if (_installationTasks.isEmpty) {
@@ -209,8 +219,8 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
         final String? macFromTask = task.macId?.isNotEmpty == true
             ? task.macId
             : task.rechargeDetails != null && task.rechargeDetails!['mac_id'] != null
-                ? task.rechargeDetails!['mac_id'].toString()
-                : null;
+            ? task.rechargeDetails!['mac_id'].toString()
+            : null;
         if (macFromTask != null && macFromTask.isNotEmpty) {
           normalizedRechargeMac = _normalizeMac(macFromTask);
         }
@@ -233,8 +243,13 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
           _macIdStored = false;
           _macId = '';
           _macIdController.clear();
+          // Show MAC ID input for manual entry if not stored
+          _showMacIdInput = true;
         }
       });
+
+      // Start automatic scanning when entering setup mode
+      _startAutomaticScanning();
 
       if (normalizedRechargeMac != null) {
         Future.delayed(const Duration(milliseconds: 500), () {
@@ -249,6 +264,9 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
   }
 
   void _backToTaskList() {
+    // Disconnect device when going back to task list
+    _disconnectCurrentDevice();
+
     setState(() {
       _isTaskListMode = true;
       _currentTask = null;
@@ -284,6 +302,35 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
           _connectionType = '';
         });
       }
+    }
+  }
+
+  Future<void> _disconnectCurrentDevice() async {
+    try {
+      if (_connectionType == 'BLE' && _connectedDevice != null) {
+        await _connectedDevice!.disconnect();
+        debugPrint('BLE device disconnected');
+      } else if (_connectionType == 'Classic' && _bluetoothConnection != null) {
+        await _bluetoothConnection!.close();
+        debugPrint('Classic BT device disconnected');
+      }
+
+      // Clear connection state
+      setState(() {
+        _connectedDeviceId = null;
+        _connectedDeviceName = null;
+        _connectedDevice = null;
+        _bleWriteChar = null;
+        _bluetoothConnection = null;
+        _connectionType = '';
+        _isDeviceVerified = false;
+      });
+
+      // Cancel subscriptions
+      _notifySubscription?.cancel();
+      _notifySubscription = null;
+    } catch (e) {
+      debugPrint('Error disconnecting device: $e');
     }
   }
 
@@ -493,7 +540,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
       if (!connectionStarted && _connectedDeviceId == null) {
         CustomSnackbar.showError(
           message:
-              'Device with MAC ID $targetMacId not found. Ensure the device is powered on and in range, then try scanning again.',
+          'Device with MAC ID $targetMacId not found. Ensure the device is powered on and in range, then try scanning again.',
         );
       }
     } catch (e) {
@@ -503,36 +550,98 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
     }
   }
 
-  Future<void> _startScanning() async {
+  Future<void> _startAutomaticScanning() async {
+    if (_isScanning) return; // Already scanning
     try {
-      setState(() => _isScanning = true);
+      if (mounted) {
+        setState(() => _isScanning = true);
+      }
       _bleDevices.clear();
       _classicDevices.clear();
 
       await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
       _bleScanSubscription = FlutterBluePlus.onScanResults.listen((results) {
-        setState(() {
-          _bleDevices = results;
-        });
+        if (mounted) {
+          setState(() {
+            _bleDevices = results;
+          });
+        }
       });
 
-      fbs.FlutterBluetoothSerial.instance.startDiscovery().listen((result) {
-        setState(() {
-          if (!_classicDevices.any((d) =>
-          d.device.address == result.device.address)) {
-            _classicDevices.add(result);
-          }
-        });
+      _classicDiscoverySubscription = fbs.FlutterBluetoothSerial.instance.startDiscovery().listen((result) {
+        debugPrint('Classic BT device found: ${result.device.name} - ${result.device.address}');
+        if (mounted) {
+          setState(() {
+            if (!_classicDevices.any((d) =>
+            d.device.address == result.device.address)) {
+              _classicDevices.add(result);
+              debugPrint('Added Classic device to list. Total devices: ${_classicDevices.length}');
+            }
+          });
+        }
       });
 
       await Future.delayed(const Duration(seconds: 10));
       await FlutterBluePlus.stopScan();
       _bleScanSubscription?.cancel();
-      setState(() => _isScanning = false);
+      _classicDiscoverySubscription?.cancel();
+      debugPrint('Scan completed - BLE devices: ${_bleDevices.length}, Classic devices: ${_classicDevices.length}');
+      if (mounted) {
+        setState(() => _isScanning = false);
+      }
     } catch (e) {
       debugPrint('Error scanning devices: $e');
-      CustomSnackbar.showError(message: 'Error scanning devices');
-      setState(() => _isScanning = false);
+      if (mounted) {
+        CustomSnackbar.showError(message: 'Error scanning devices');
+        setState(() => _isScanning = false);
+      }
+    }
+  }
+
+  Future<void> _startScanning() async {
+    try {
+      if (mounted) {
+        setState(() => _isScanning = true);
+      }
+      _bleDevices.clear();
+      _classicDevices.clear();
+
+      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
+      _bleScanSubscription = FlutterBluePlus.onScanResults.listen((results) {
+        if (mounted) {
+          setState(() {
+            _bleDevices = results;
+          });
+        }
+      });
+
+      _classicDiscoverySubscription = fbs.FlutterBluetoothSerial.instance.startDiscovery().listen((result) {
+        debugPrint('Classic BT device found: ${result.device.name} - ${result.device.address}');
+        if (mounted) {
+          setState(() {
+            if (!_classicDevices.any((d) =>
+            d.device.address == result.device.address)) {
+              _classicDevices.add(result);
+              debugPrint('Added Classic device to list. Total devices: ${_classicDevices.length}');
+            }
+          });
+        }
+      });
+
+      await Future.delayed(const Duration(seconds: 10));
+      await FlutterBluePlus.stopScan();
+      _bleScanSubscription?.cancel();
+      _classicDiscoverySubscription?.cancel();
+      debugPrint('Scan completed - BLE devices: ${_bleDevices.length}, Classic devices: ${_classicDevices.length}');
+      if (mounted) {
+        setState(() => _isScanning = false);
+      }
+    } catch (e) {
+      debugPrint('Error scanning devices: $e');
+      if (mounted) {
+        CustomSnackbar.showError(message: 'Error scanning devices');
+        setState(() => _isScanning = false);
+      }
     }
   }
 
@@ -545,13 +654,6 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
     try {
       await device.connect();
       _connectedDevice = device;
-      final deviceId = '${device.remoteId}';
-      setState(() {
-        _connectionType = 'BLE';
-        _connectedDeviceId = deviceId;
-        _connectedDeviceName =
-        device.name.isNotEmpty ? device.name : 'BLE Device';
-      });
 
       // Find and store write characteristic
       await _findAndStoreBleWriteChar(device);
@@ -559,22 +661,74 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
       // Setup notification listener for device info and ACK
       await _setupBleNotificationListener(device);
 
-      // Wait for device verification (max 15 seconds)
+      // Small delay to ensure notifications are set up
+      await Future.delayed(const Duration(milliseconds: 1000));
+
+      // Wait for device verification (ACK response)
       _verificationCompleter = Completer<bool>();
       _ackCompleter = Completer<bool>();
+      _bleDataBuffer = ''; // Reset buffer
+
+      // Send verification payload like classic Bluetooth
+      // Use device remoteId for verification
+      final String deviceMacId = device.remoteId.toString();
+      final Map<String, dynamic> verificationPayload = {
+        "wp_device_id": _currentTask?.wpDeviceId ?? '',
+        "mac_id": _normalizeMac(deviceMacId),
+        "timestamp": DateTime.now().toIso8601String(),
+      };
+
+      debugPrint('Sending verification payload: wp_device_id=${verificationPayload["wp_device_id"]}, mac_id=${verificationPayload["mac_id"]}, timestamp=${verificationPayload["timestamp"]}');
+      if (_bleWriteChar != null) {
+        final data = utf8.encode(jsonEncode(verificationPayload));
+        debugPrint('Writing ${data.length} bytes to BLE characteristic');
+        await _bleWriteChar!.write(data);
+        debugPrint('BLE write completed');
+      } else {
+        debugPrint('⚠️ No BLE write characteristic available');
+        await device.disconnect();
+        return;
+      }
+
+      // Small delay after write to allow device to respond
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Try to read response from the characteristic if it supports read
+      if (_bleWriteChar!.properties.read) {
+        try {
+          final response = await _bleWriteChar!.read();
+          final chunk = utf8.decode(response);
+          debugPrint('BLE Read response: $chunk');
+          _handleBleNotification(response); // Treat as notification data
+        } catch (e) {
+          debugPrint('Error reading BLE char: $e');
+        }
+      }
 
       bool verified = await _verificationCompleter!.future.timeout(
-        const Duration(seconds: 15),
+        const Duration(seconds: 10),
         onTimeout: () {
           debugPrint('⚠️ Device verification timeout');
           CustomSnackbar.showError(message: 'Device verification timeout');
+          Future.microtask(() => device.disconnect());
           return false;
         },
       );
 
       if (!verified) {
+        await device.disconnect();
         return;
       }
+
+      // Set connected status only after verification
+      final deviceId = '${device.remoteId}';
+      setState(() {
+        _connectionType = 'BLE';
+        _connectedDeviceId = deviceId;
+        _connectedDeviceName =
+        device.name.isNotEmpty ? device.name : 'BLE Device';
+        _isDeviceVerified = true;
+      });
 
       // Wait for ACK response (max 10 seconds)
       bool ackReceived = await _ackCompleter!.future.timeout(
@@ -582,11 +736,13 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
         onTimeout: () {
           debugPrint('⚠️ ACK response timeout');
           CustomSnackbar.showError(message: 'Device ACK response timeout');
+          Future.microtask(() => device.disconnect());
           return false;
         },
       );
 
       if (!ackReceived) {
+        await device.disconnect();
         return;
       }
 
@@ -605,6 +761,9 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
     } catch (e) {
       debugPrint('Error connecting to BLE device: $e');
       CustomSnackbar.showError(message: 'Error connecting to BLE device');
+      try {
+        await device.disconnect();
+      } catch (_) {}
     } finally {
       setState(() {
         _isBleConnecting = false;
@@ -617,11 +776,12 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
     try {
       final services = await device.discoverServices();
 
+      // First try any write characteristic
       for (var service in services) {
         for (var characteristic in service.characteristics) {
           if (characteristic.properties.write) {
             _bleWriteChar = characteristic;
-            debugPrint('✓ Found BLE write characteristic');
+            debugPrint('✓ Found BLE write characteristic: ${characteristic.uuid}');
             return;
           }
         }
@@ -636,19 +796,21 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
     try {
       final services = await device.discoverServices();
 
+      // First try any notify characteristic
       for (var service in services) {
         for (var characteristic in service.characteristics) {
-          // Subscribe to notify characteristic
           if (characteristic.properties.notify) {
             await characteristic.setNotifyValue(true);
             _notifySubscription?.cancel();
             _notifySubscription = characteristic.onValueReceived.listen((data) {
               _handleBleNotification(data);
             });
-            debugPrint('✓ Subscribed to BLE notifications');
+            debugPrint('✓ Subscribed to BLE notifications on characteristic: ${characteristic.uuid}');
+            return;
           }
         }
       }
+      debugPrint('⚠️ No notify characteristic found');
     } catch (e) {
       debugPrint('Error setting up BLE notification listener: $e');
     }
@@ -656,36 +818,54 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
 
   void _handleBleNotification(List<int> data) {
     try {
-      final String jsonStr = utf8.decode(data);
-      debugPrint('✓ BLE Data Received: $jsonStr');
+      final chunk = utf8.decode(data);
+      debugPrint('✓ BLE Data Received: $chunk');
+      _bleDataBuffer += chunk;
 
-      final Map<String, dynamic> jsonData = jsonDecode(jsonStr);
+      while (_bleDataBuffer.contains('\n')) {
+        final index = _bleDataBuffer.indexOf('\n');
+        final line = _bleDataBuffer.substring(0, index).trim();
+        _bleDataBuffer = _bleDataBuffer.substring(index + 1);
 
-      // Check if this is device info message
-      if (jsonData.containsKey('mac_id') &&
-          jsonData.containsKey('wp_device_id')) {
-        if (_validateDeviceInfo(jsonData)) {
-          setState(() => _isDeviceVerified = true);
-          if (!_verificationCompleter!.isCompleted) {
-            _verificationCompleter!.complete(true);
+        // Try to parse as JSON for ACK response
+        try {
+          final jsonData = jsonDecode(line);
+          if (jsonData.containsKey('status')) {
+            final isValid = _handleAckResponse(jsonData);
+            debugPrint('✓ ACK response received: $jsonData');
+
+            if (!_verificationCompleter!.isCompleted) {
+              _verificationCompleter!.complete(isValid);
+            }
+
+            if (!_ackCompleter!.isCompleted) {
+              _ackCompleter!.complete(isValid);
+            }
           }
-        } else {
-          if (!_verificationCompleter!.isCompleted) {
-            _verificationCompleter!.complete(false);
-          }
+        } catch (e) {
+          debugPrint('Error parsing JSON: $e');
         }
       }
 
-      // Check if this is ACK message
-      if (jsonData.containsKey('status')) {
-        if (_handleAckResponse(jsonData)) {
-          if (!_ackCompleter!.isCompleted) {
-            _ackCompleter!.complete(true);
+      // If buffer doesn't contain \n but has data, try to parse as complete JSON
+      if (_bleDataBuffer.isNotEmpty && !_bleDataBuffer.contains('\n')) {
+        try {
+          final jsonData = jsonDecode(_bleDataBuffer.trim());
+          if (jsonData.containsKey('status')) {
+            final isValid = _handleAckResponse(jsonData);
+            debugPrint('✓ ACK response received (no newline): $jsonData');
+
+            if (!_verificationCompleter!.isCompleted) {
+              _verificationCompleter!.complete(isValid);
+            }
+
+            if (!_ackCompleter!.isCompleted) {
+              _ackCompleter!.complete(isValid);
+            }
+            _bleDataBuffer = ''; // Clear buffer
           }
-        } else {
-          if (!_ackCompleter!.isCompleted) {
-            _ackCompleter!.complete(false);
-          }
+        } catch (e) {
+          // Not a complete JSON yet, keep in buffer
         }
       }
     } catch (e) {
@@ -768,11 +948,11 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
               ackAcknowledged = true;
               debugPrint('✓ ACK response received: $jsonData');
               final isValid = _handleAckResponse(jsonData);
-              
+
               if (!_verificationCompleter!.isCompleted) {
                 _verificationCompleter!.complete(isValid);
               }
-              
+
               if (!_ackCompleter!.isCompleted) {
                 _ackCompleter!.complete(isValid);
               }
@@ -806,10 +986,23 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
       );
 
       if (!verified) {
+        await _bluetoothConnection?.close();
+        setState(() {
+          _connectedDeviceId = null;
+          _connectedDeviceName = null;
+          _bluetoothConnection = null;
+          _connectionType = '';
+        });
         return;
       }
 
-      setState(() => _isDeviceVerified = true);
+      // Set connected status only after verification
+      setState(() {
+        _connectionType = 'Classic';
+        _connectedDeviceId = device.address;
+        _connectedDeviceName = device.name?.isNotEmpty == true ? device.name : 'Classic BT Device';
+        _isDeviceVerified = true;
+      });
 
       // Wait for ACK response before navigating
       bool ackReceived = await _ackCompleter!.future.timeout(
@@ -822,8 +1015,17 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
       );
 
       if (!ackReceived) {
+        await _bluetoothConnection?.close();
+        setState(() {
+          _connectedDeviceId = null;
+          _connectedDeviceName = null;
+          _bluetoothConnection = null;
+          _connectionType = '';
+          _isDeviceVerified = false;
+        });
         return;
       }
+
 
       // Navigate to plan config only after receiving ACK with status=1
       if (mounted) {
@@ -937,7 +1139,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
 
     switch (status) {
       case 1:
-        // Success - no snackbar needed
+      // Success - no snackbar needed
         return true;
       case 2:
         CustomSnackbar.showError(
@@ -1029,17 +1231,17 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
     if (_isTaskListMode) {
       if (_installationTasks.isEmpty) {
         return Scaffold(
-        appBar: AppBar(
-  backgroundColor: theme.primaryColor,
-  elevation: 0,
-  title: const Text(
-    'Installation Tasks',
-    style: TextStyle(
-      fontSize: 18, // You can reduce to 16 if you want smaller text
-      fontWeight: FontWeight.w500,
-    ),
-  ),
-),
+          appBar: AppBar(
+            backgroundColor: theme.primaryColor,
+            elevation: 0,
+            title: const Text(
+              'Installation Tasks',
+              style: TextStyle(
+                fontSize: 18, // You can reduce to 16 if you want smaller text
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
 
           body: Center(
             child: Column(
@@ -1077,137 +1279,137 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
             final taskTypeColor = TaskTypeConstants.getTaskTypeColor(
                 task.taskType);
 
-           return Card(
-  margin: const EdgeInsets.symmetric(vertical: 6),
-  elevation: 1,
-  color: Colors.white,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(8),
-  ),
-  child: InkWell(
-    onTap: () => _selectTaskFromList(task),
-    borderRadius: BorderRadius.circular(8),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 3,
-            height: 60,
-            decoration: BoxDecoration(
-              color: taskTypeColor,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Customer name
-                Text(
-                  task.address?.name ?? 'Unknown Customer',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-
-                // Task type + ID
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: taskTypeColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        TaskTypeConstants.getTaskTypeName(task.taskType),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: taskTypeColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'ID: ${task.taskId}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
-                          fontSize: 11,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 3),
-
-                // Device line + Setup Complete
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Device: ${_getDeviceDisplayName(task)}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade700,
-                          fontSize: 11,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (task.setupComplete == true) ...[
-                      const SizedBox(width: 8),
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              elevation: 1,
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: InkWell(
+                onTap: () => _selectTaskFromList(task),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(
+                    children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        width: 3,
+                        height: 60,
                         decoration: BoxDecoration(
-                          color: Colors.green.shade50,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.green.shade200),
+                          color: taskTypeColor,
+                          borderRadius: BorderRadius.circular(2),
                         ),
-                        child: Row(
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              Icons.check_circle,
-                              size: 12,
-                              color: Colors.green.shade600,
-                            ),
-                            const SizedBox(width: 4),
+                            // Customer name
                             Text(
-                              'Setup Complete',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.green.shade700,
-                                fontSize: 10,
+                              task.address?.name ?? 'Unknown Customer',
+                              style: theme.textTheme.bodyLarge?.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+
+                            // Task type + ID
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: taskTypeColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    TaskTypeConstants.getTaskTypeName(task.taskType),
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: taskTypeColor,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'ID: ${task.taskId}',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 11,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+
+                            // Device line + Setup Complete
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Device: ${_getDeviceDisplayName(task)}',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey.shade700,
+                                      fontSize: 11,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (task.setupComplete == true) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.shade50,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: Colors.green.shade200),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.check_circle,
+                                          size: 12,
+                                          color: Colors.green.shade600,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Setup Complete',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: Colors.green.shade700,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: Colors.grey.shade400,
+                      ),
                     ],
-                  ],
+                  ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Icon(
-            Icons.arrow_forward_ios,
-            size: 16,
-            color: Colors.grey.shade400,
-          ),
-        ],
-      ),
-    ),
-  ),
-);
+              ),
+            );
 
           },
         ),
@@ -1265,14 +1467,14 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
 
             const SizedBox(height: 1),
             if (!_macIdStored) ...[
-      Text(
-      'Step 1: Add Device MAC ID',
-      style: theme.textTheme.titleMedium?.copyWith(
-        fontSize: 14, // 🔹 reduced font size (try 15 or 14 if you want smaller)
-        fontWeight: FontWeight.w600,
-        color: Colors.black87,
-      ),
-    ),
+              Text(
+                'Step 1: Add Device MAC ID',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 14, // 🔹 reduced font size (try 15 or 14 if you want smaller)
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
 
 
               const SizedBox(height: 12),
@@ -1408,9 +1610,9 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
                                 onPressed: _isStoringMacId
                                     ? null
                                     : () {
-                                        setState(() => _macId = _macIdController.text);
-                                        _setupBleConnection();
-                                      },
+                                  setState(() => _macId = _macIdController.text);
+                                  _setupBleConnection();
+                                },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green,
                                   foregroundColor: Colors.white,
@@ -1423,13 +1625,13 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
                                 ),
                                 child: _isStoringMacId
                                     ? const SizedBox(
-                                        height: 16,
-                                        width: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                        ),
-                                      )
+                                  height: 16,
+                                  width: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
                                     : const Text('Save MAC ID', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                               ),
                             ),
@@ -1564,20 +1766,20 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
                             SizedBox(
                               height: 28,
                               child: ElevatedButton(
-                                onPressed: _currentTask != null
+                                onPressed: (_currentTask != null && _isDeviceVerified)
                                     ? () {
-                                        Get.to(() => PlanConfigPage(
-                                              task: _currentTask!,
-                                              macId: _normalizeMac(_connectedDeviceId!),
-                                              deviceName: _connectedDeviceName ??
-                                                  (_connectionType == 'Classic'
-                                                      ? 'Classic Device'
-                                                      : 'BLE Device'),
-                                              isClassic: _connectionType == 'Classic',
-                                              bleWriteChar: _bleWriteChar,
-                                              classicConnection: _bluetoothConnection,
-                                            ));
-                                      }
+                                  Get.to(() => PlanConfigPage(
+                                    task: _currentTask!,
+                                    macId: _normalizeMac(_connectedDeviceId!),
+                                    deviceName: _connectedDeviceName ??
+                                        (_connectionType == 'Classic'
+                                            ? 'Classic Device'
+                                            : 'BLE Device'),
+                                    isClassic: _connectionType == 'Classic',
+                                    bleWriteChar: _bleWriteChar,
+                                    classicConnection: _bluetoothConnection,
+                                  ));
+                                }
                                     : null,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green.shade600,
@@ -1817,7 +2019,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
                                         )
                                       else
                                         ElevatedButton(
-                                          onPressed: _connectingDeviceId == null
+                                          onPressed: (_connectingDeviceId == null && _macId.isNotEmpty)
                                               ? () =>
                                               _connectToBleDevice(device.device)
                                               : null,
@@ -1970,7 +2172,7 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
                                           onPressed: _connectingDeviceId == null
                                               ? () =>
                                               _connectToClassicDevice(
-                                              device.device)
+                                                  device.device)
                                               : null,
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.blue

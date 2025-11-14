@@ -636,24 +636,23 @@ exports.storeBleAck = async (req, res) => {
     );
 
 // ✅ Update corresponding order → isSetup: true + BLE details
-if (serviceRecord.orderType === "Recharge" || serviceRecord.rechargeDetails) {
+if (serviceRecord.linkedRechargeOrderId) {
   // Recharge order - update by linkedRechargeOrderId
-  if (serviceRecord.linkedRechargeOrderId) {
-    await ordersCollection.updateOne(
-      { _id: new ObjectId(serviceRecord.linkedRechargeOrderId) },
-      {
-        $set: {
-          mac_id: normalizedMacId,
-          ble_ack_status: numericStatus,
-          ble_ack_timestamp: ackTimestamp,
-          isSetup: true,
-          updatedAt: new Date(),
-          ...(hasPlanConfig ? { plan_config: planConfig } : {}),
-        },
-        $push: { ble_ack_history: ackHistoryEntry },
-      }
-    );
-  }
+  console.log(`Updating recharge order by linkedRechargeOrderId: ${serviceRecord.linkedRechargeOrderId}`);
+  await ordersCollection.updateOne(
+    { _id: new ObjectId(serviceRecord.linkedRechargeOrderId) },
+    {
+      $set: {
+        mac_id: normalizedMacId,
+        ble_ack_status: numericStatus,
+        ble_ack_timestamp: ackTimestamp,
+        isSetup: true,
+        updatedAt: new Date(),
+        ...(hasPlanConfig ? { plan_config: planConfig } : {}),
+      },
+      $push: { ble_ack_history: ackHistoryEntry },
+    }
+  );
 } else {
   // Normal order (Installation) - update by customOrderId or orderId
   const orderId =
@@ -662,7 +661,8 @@ if (serviceRecord.orderType === "Recharge" || serviceRecord.rechargeDetails) {
     serviceRecord.order_snapshot?.customOrderId;
 
   if (orderId) {
-    await ordersCollection.updateOne(
+    console.log(`Updating installation order by customOrderId: ${orderId}`);
+    const updateResult = await ordersCollection.updateOne(
       { customOrderId: orderId },
       {
         $set: {
@@ -676,7 +676,9 @@ if (serviceRecord.orderType === "Recharge" || serviceRecord.rechargeDetails) {
         $push: { ble_ack_history: ackHistoryEntry },
       }
     );
+    console.log(`Installation order update result: ${updateResult.modifiedCount} documents modified for orderId: ${orderId}`);
   } else if (serviceRecord.order_snapshot?.orderId) {
+    console.log(`Updating order by order_snapshot.orderId: ${serviceRecord.order_snapshot.orderId}`);
     await ordersCollection.updateOne(
       { _id: new ObjectId(serviceRecord.order_snapshot.orderId) },
       {
@@ -691,6 +693,8 @@ if (serviceRecord.orderType === "Recharge" || serviceRecord.rechargeDetails) {
         $push: { ble_ack_history: ackHistoryEntry },
       }
     );
+  } else {
+    console.warn(`⚠️ No order ID found in serviceRecord for task ${task_id}`);
   }
 }
 
