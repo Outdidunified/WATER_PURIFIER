@@ -123,7 +123,7 @@ const ViewManageUser = ({ userInfo, handleLogout }) => {
         {/* Creator & Modifier */}
         <div className="row viewDataCss mb-3">
          
-          <div className="col-md-4 view-data-item"><span className="view-data-label">Modified By</span><span className="view-data-value">{user?.modifiedby || "-"}</span></div>
+          <div className="col-md-4 view-data-item"><span className="view-data-label">Modified By</span><span className="view-data-value">{user?.modifiedBy || "-"}</span></div>
           <div className="col-md-4 view-data-item"><span className="view-data-label">Created Date</span><span className="view-data-value">{user?.createdDate ? formatTimestamp(user.createdDate) : "-"}</span></div>
          <div className="col-md-4 view-data-item"><span className="view-data-label">Modified Date</span><span className="view-data-value">{user?.modifiedDate ? formatTimestamp(user.modifiedDate) : "-"}</span></div>
           

@@ -11,6 +11,8 @@ const useManageRoles = (userInfo) => {
   const [filteredRoles, setFilteredRoles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [tableError, setTableError] = useState(null);
+  const [searchText, setSearchText] = useState('');
+  const [selectedRole, setSelectedRole] = useState('');
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [roleName, setRoleName] = useState('');
@@ -61,13 +63,37 @@ const useManageRoles = (userInfo) => {
     }
   }, [fetchRoles]);
 
-  const handleSearchInputChange = (e) => {
-    const searchTerm = e.target.value.toLowerCase();
-    const filtered = roles.filter(role =>
-      role.role_name?.toLowerCase().includes(searchTerm) ||
-      role.role_id?.toString().includes(searchTerm)
-    );
+  useEffect(() => {
+    const normalizedSearch = searchText.trim().toLowerCase();
+    const normalizedRole = selectedRole.trim().toLowerCase();
+
+    const filtered = roles.filter((role) => {
+      const name = (role.role_name || '').toLowerCase();
+      const id = (role.role_id?.toString() || '').toLowerCase();
+      const matchesSearch =
+        normalizedSearch.length === 0 ||
+        name.includes(normalizedSearch) ||
+        id.includes(normalizedSearch);
+      const matchesRole =
+        normalizedRole.length === 0 ||
+        name === normalizedRole;
+
+      return matchesSearch && matchesRole;
+    });
+
     setFilteredRoles(filtered);
+  }, [roles, searchText, selectedRole]);
+
+  const handleSearchInputChange = (e) => {
+    setSearchText(e.target.value);
+  };
+
+  const handleRoleSelect = (value) => {
+    setSelectedRole(value);
+  };
+
+  const resetRoleFilter = () => {
+    setSelectedRole('');
   };
 
   const handleAddRoleSubmit = async (e) => {
@@ -116,6 +142,16 @@ const useManageRoles = (userInfo) => {
 
   const isAddDisabled = !roleName || isDuplicateRole || formLoading;
 
+  const roleOptions = Array.from(
+    new Set(
+      roles
+        .map((role) => role.role_name?.trim())
+        .filter((name) => name)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  const totalRoles = Array.isArray(roles) ? roles.length : 0;
+
   return {
     roles: filteredRoles,
     isLoading,
@@ -130,6 +166,11 @@ const useManageRoles = (userInfo) => {
     formError,
     handleAddRoleSubmit,
     handleSearchInputChange,
+    handleRoleSelect,
+    resetRoleFilter,
+    roleOptions,
+    selectedRole,
+    totalRoles,
     isDuplicateRole,
   };
 };

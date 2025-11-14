@@ -1,6 +1,5 @@
 //ManageProduct
 import { useState, useEffect, useRef } from 'react';
-import { showErrorAlert, showSuccessAlert } from '../../../../utils/alert';
 import axiosInstance from '../../../../utils/utils';
 
 const useManageProducts = () => {
@@ -8,6 +7,8 @@ const useManageProducts = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedModel, setSelectedModel] = useState('');
   const fetchDataCalled = useRef(false);
 
   // Fetch product model data
@@ -18,8 +19,9 @@ const useManageProducts = () => {
         url: 'api/admin/FetchProductModels'
       })
         .then((res) => {
-          setData(res.data.data);      // store full dataset
-          setPosts(res.data.data);     // store display dataset
+          const responseData = Array.isArray(res.data.data) ? [...res.data.data].reverse() : [];
+          setData(responseData);
+          setPosts(responseData);
           setLoading(false);
         })
         .catch((err) => {
@@ -31,23 +33,49 @@ const useManageProducts = () => {
     }
   }, []);
 
-  // Update posts if data changes
+  // Update posts if data, search term, or selected model changes
   useEffect(() => {
-    setPosts(data);
-  }, [data]);
-
-  // Search functionality by product model name
-  const handleSearchInputChange = (e) => {
-    const inputValue = e.target.value.toUpperCase();
     if (Array.isArray(data)) {
+      const normalizedSearch = searchTerm.trim().toUpperCase();
       const filtered = data.filter((item) => {
-        const name = item.model_name?.toUpperCase() || '';
-        const type = item.model_type?.toUpperCase() || '';
-        return name.includes(inputValue) || type.includes(inputValue);
+        const name = (item.model_name || '').trim().toUpperCase();
+        const type = (item.model_type || '').trim().toUpperCase();
+        const matchesSearch = normalizedSearch.length === 0 || name.includes(normalizedSearch) || type.includes(normalizedSearch);
+        const matchesModel = !selectedModel || name === selectedModel.trim().toUpperCase();
+        return matchesSearch && matchesModel;
       });
       setPosts(filtered);
+    } else {
+      setPosts([]);
     }
+  }, [data, searchTerm, selectedModel]);
+
+  const handleSearchInputChange = (e) => {
+    setSearchTerm(e.target.value);
   };
+
+  const handleModelSelect = (value) => {
+    setSelectedModel(value);
+  };
+
+  const resetModelFilter = () => {
+    setSelectedModel('');
+  };
+
+  const totalModels = Array.isArray(data) ? data.length : 0;
+
+  const modelOptions = Array.isArray(data)
+    ? Array.from(new Set(data.map((item) => item.model_name?.trim()).filter((name) => name))).sort((a, b) => a.localeCompare(b))
+    : [];
+
+  const selectedModelInfo = (() => {
+    if (!selectedModel || !Array.isArray(data)) {
+      return { quantity: 0, entries: 0 };
+    }
+    const matchingItems = data.filter((item) => ((item.model_name || '').trim().toUpperCase()) === selectedModel.trim().toUpperCase());
+    const totalQuantity = matchingItems.reduce((sum, item) => sum + (Number(item.wp_device_quantity) || 0), 0);
+    return { quantity: totalQuantity, entries: matchingItems.length };
+  })();
 
   return {
     data,
@@ -55,6 +83,12 @@ const useManageProducts = () => {
     loading,
     error,
     handleSearchInputChange,
+    handleModelSelect,
+    resetModelFilter,
+    modelOptions,
+    selectedModel,
+    selectedModelInfo,
+    totalModels,
     fetchDataCalled,
   };
 };

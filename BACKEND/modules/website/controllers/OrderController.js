@@ -3,7 +3,84 @@ const razorpay = require('../../../services/Razorpay');
 const crypto = require('crypto');
 const { connectToDatabase } = require('../../../config/db');
 const { ObjectId } = require('mongodb');
-const { sendSubscriptionConfirmationEmail } = require('../controllers/Email');
+const { sendSubscriptionConfirmationEmail, sendEmail } = require('../controllers/Email');
+
+// Function to send order success email to seller and admin
+async function sendOrderSuccessEmailToSellerAndAdmin(order, user) {
+  try {
+    const db = await connectToDatabase();
+
+    // Get all sellers and admins
+    const sellersAndAdmins = await db.collection('users').find({
+      role_id: { $in: [1, 4] } // 1 = Admin, 4 = Seller
+    }).toArray();
+
+    if (!sellersAndAdmins.length) {
+      console.warn('No sellers or admins found to send order success email');
+      return false;
+    }
+
+    const subject = `New Order Success - ${order.customOrderId}`;
+    const text = `
+Dear Team,
+
+A new order has been successfully placed and payment confirmed.
+
+Order Details:
+- Order ID: ${order.customOrderId}
+- Customer: ${user.name || 'N/A'} (${user.email})
+- Product: ${order.modelName}
+- Plan: ${order.selectedPlan?.label || 'N/A'}
+- Amount: ₹${order.grandTotal}
+- Device ID: ${order.wp_device_id}
+- Payment Type: ${order.paymentType}
+
+Please process this order accordingly.
+
+Best regards,
+IonHive System
+    `;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
+        <h2 style="color: #333;">New Order Success Notification</h2>
+        <p style="font-size: 16px; color: #555;">A new order has been successfully placed and payment confirmed.</p>
+        <div style="background-color: #fff; padding: 15px; border-radius: 5px; margin: 15px 0;">
+          <h3 style="margin-top: 0; color: #333;">Order Details:</h3>
+          <ul style="font-size: 16px; color: #555;">
+            <li><strong>Order ID:</strong> ${order.customOrderId}</li>
+            <li><strong>Customer:</strong> ${user.name || 'N/A'} (${user.email})</li>
+            <li><strong>Product:</strong> ${order.modelName}</li>
+            <li><strong>Plan:</strong> ${order.selectedPlan?.label || 'N/A'}</li>
+            <li><strong>Amount:</strong> ₹${order.grandTotal}</li>
+            <li><strong>Device ID:</strong> ${order.wp_device_id}</li>
+            <li><strong>Payment Type:</strong> ${order.paymentType}</li>
+          </ul>
+        </div>
+        <p style="font-size: 16px; color: #555;">Please process this order accordingly.</p>
+        <p style="color: #555;">Best regards,<br><strong>IonHive System</strong></p>
+        <p style="font-size: 14px; color: #888; text-align: center; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px;">
+          This is an automated message from IonHive Water Purifier.
+        </p>
+      </div>
+    `;
+
+    // Send email to all sellers and admins
+    const emailPromises = sellersAndAdmins.map(recipient => {
+      return sendEmail(recipient.email, subject, text, html);
+    });
+
+    const results = await Promise.allSettled(emailPromises);
+    const successCount = results.filter(result => result.status === 'fulfilled' && result.value).length;
+
+    console.log(`Order success email sent to ${successCount}/${sellersAndAdmins.length} recipients`);
+    return successCount > 0;
+
+  } catch (error) {
+    console.error('Error sending order success email to seller and admin:', error);
+    return false;
+  }
+}
 const { validateDeliveryAddress, normalizeDeliveryAddress } = require('../models/DeliveryAddress');
 const { autoAssignInstallation } = require('../../admin/services/autoAssignmentService');
 
@@ -594,11 +671,11 @@ exports.verifyRazorpayPayment = async (req, res) => {
       // await autoAssignInstallation(updatedOrder);
     }
 
-    // 📧 Send payment confirmation email
+    // 📧 Send order success email to seller and admin
     try {
-      await sendPaymentConfirmationEmail(user, updatedOrder);
+      await sendOrderSuccessEmailToSellerAndAdmin(updatedOrder, user);
     } catch (emailError) {
-      console.error('Error sending payment confirmation email:', emailError);
+      console.error('Error sending order success email to seller and admin:', emailError);
     }
 
     return res.status(200).json({

@@ -24,6 +24,7 @@ const useEditDevice = (userInfo) => {
   const [modelId, setModelId] = useState('');
   const [modelName, setModelName] = useState('');
   const [status, setStatus] = useState('active');
+  const [initialStatus, setInitialStatus] = useState('');
 
   // Use effect to populate state after dataItem loads
   useEffect(() => {
@@ -31,7 +32,9 @@ const useEditDevice = (userInfo) => {
       setWpDeviceId(dataItem.wp_device_id || '');
       setModelId(dataItem.model_id?.toString() || '');  // make sure modelId is string for input fields
       setModelName(dataItem.model_name || '');
-      setStatus(dataItem.status === true ? 'active' : 'inactive');
+      const initialStatusValue = dataItem.status === true ? 'active' : 'inactive';
+      setStatus(initialStatusValue);
+      setInitialStatus(initialStatusValue);
     }
   }, [dataItem]);
 
@@ -85,6 +88,7 @@ const useEditDevice = (userInfo) => {
     modelId, setModelId,
     modelName, setModelName,
     status, setStatus,
+    initialStatus,
     updateDevice,
     goBackToManageDevices
   };

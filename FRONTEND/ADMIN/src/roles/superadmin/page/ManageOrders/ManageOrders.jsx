@@ -30,7 +30,53 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
     updateOrderStatus,
     resolveDeviceId,
     confirmCodPayment,
+    calculateOrderSummary,
+    selectedFilter,
+    handleFilterSelect,
   } = useManageOrders(userInfo);
+
+  const orderSummary = calculateOrderSummary(orders);
+
+  const cardGridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gap: '8px',
+    width: '100%'
+  };
+
+  const getCardStyle = (isActive) => ({
+    border: 'none',
+    outline: 'none',
+    borderRadius: '12px',
+    padding: '12px 14px',
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '10px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    boxShadow: isActive ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
+    background: isActive ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
+    color: isActive ? '#ffffff' : '#1b2559',
+    textAlign: 'left',
+    width: '100%'
+  });
+
+  const getLabelStyle = (isActive) => ({
+    fontSize: '11px',
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    opacity: isActive ? 0.9 : 0.65,
+    color: isActive ? 'rgba(255, 255, 255, 0.9)' : '#1b2559',
+    whiteSpace: 'nowrap'
+  });
+
+  const getValueStyle = (isActive) => ({
+    fontSize: '22px',
+    fontWeight: 700,
+    color: isActive ? '#ffffff' : '#1b2559'
+  });
 
   const [codConfirmation, setCodConfirmation] = useState({});
 
@@ -186,6 +232,54 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
               </div>
             </div>
 
+            {/* Summary Cards Grid */}
+            <div className="row mb-1">
+              <div className="col-12">
+                <div style={cardGridStyle}>
+                  <button
+                    type="button"
+                    style={getCardStyle(selectedFilter === '')}
+                    onClick={() => handleFilterSelect('')}
+                  >
+                    <span style={getLabelStyle(selectedFilter === '')}>All Orders</span>
+                    <span style={getValueStyle(selectedFilter === '')}>{orderSummary.totalOrders}</span>
+                  </button>
+                  <button
+                    type="button"
+                    style={getCardStyle(selectedFilter === 'completed')}
+                    onClick={() => handleFilterSelect('completed')}
+                  >
+                    <span style={getLabelStyle(selectedFilter === 'completed')}>Completed</span>
+                    <span style={getValueStyle(selectedFilter === 'completed')}>{orderSummary.completedOrders}</span>
+                  </button>
+                  <button
+                    type="button"
+                    style={getCardStyle(selectedFilter === 'pending')}
+                    onClick={() => handleFilterSelect('pending')}
+                  >
+                    <span style={getLabelStyle(selectedFilter === 'pending')}>Pending</span>
+                    <span style={getValueStyle(selectedFilter === 'pending')}>{orderSummary.pendingOrders}</span>
+                  </button>
+                  <button
+                    type="button"
+                    style={getCardStyle(selectedFilter === 'paymentCompleted')}
+                    onClick={() => handleFilterSelect('paymentCompleted')}
+                  >
+                    <span style={getLabelStyle(selectedFilter === 'paymentCompleted')}>Payment Done</span>
+                    <span style={getValueStyle(selectedFilter === 'paymentCompleted')}>{orderSummary.paymentCompletedCOD + orderSummary.paymentCompletedOnline}</span>
+                  </button>
+                  <button
+                    type="button"
+                    style={getCardStyle(selectedFilter === 'paymentPending')}
+                    onClick={() => handleFilterSelect('paymentPending')}
+                  >
+                    <span style={getLabelStyle(selectedFilter === 'paymentPending')}>Payment Pending</span>
+                    <span style={getValueStyle(selectedFilter === 'paymentPending')}>{orderSummary.paymentPendingCOD + orderSummary.paymentPendingOnline}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Edit Modal
             {showEditForm && (
               <div className="modalStyle" style={modalStyle}>
@@ -267,7 +361,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                 <div className="card">
                   <div className="card-body">
                     {/* Header Section with Title and Search */}
-                    <div className="row mb-3 align-items-center justify-content-between">
+                    <div className="row mb-2 align-items-center justify-content-between">
                       <div className="col-md-6">
                         <h4 className="card-title">List of Orders</h4>
                       </div>
@@ -297,7 +391,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                             <th>Plan</th>
                             <th>Duration</th>
                             <th>User</th>
-                            <th>Email</th>
+                            {/* <th>Email</th> */}
                             <th>City</th>
                             <th>Status</th>
                             <th>Payment</th>
@@ -306,23 +400,23 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                             <th style={{ minWidth: '120px' }}>Money Received</th>
                           </tr>
                         </thead>
-                        <tbody style={{ textAlign: 'center' }}>
+                        <tbody style={{ textAlign: 'center', verticalAlign: 'middle', lineHeight: '1.0' }}>
                           {loading ? (
-                            <tr><td colSpan="13">Loading...</td></tr>
+                            <tr style={{ height: '36px' }}><td colSpan="13">Loading...</td></tr>
                           ) : error ? (
-                            <tr><td colSpan="13">Error: {error}</td></tr>
+                            <tr style={{ height: '36px' }}><td colSpan="13">Error: {error}</td></tr>
                           ) : (
                             (filteredOrders || []).length > 0 ? (
                               filteredOrders.map((order, index) => (
-                                <tr key={order._id}>
-                                  <td>{index + 1}</td>
-                                  <td>{order.customOrderId}</td>
-                                  <td>{order.modelName}</td>
-                                  <td>{order.selectedPlan?.label}</td>
-                                  <td>{order.selectedDuration?.duration_time_limit}</td>
-                                  <td>{order.deliveryAddress?.name}</td>
-                                  <td>{order.email || '-'}</td>
-                                  <td>{order.deliveryAddress?.city}</td>
+                                <tr key={order._id} style={{ height: '36px' }}>
+                                  <td style={{ padding: '4px 2px' }}>{index + 1}</td>
+                                  <td style={{ padding: '4px 2px' }}>{order.customOrderId}</td>
+                                  <td style={{ padding: '4px 4px', maxWidth: '100px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.modelName}</td>
+                                  <td style={{ padding: '4px 2px', maxWidth: '60px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.selectedPlan?.label}</td>
+                                  <td style={{ padding: '4px 2px', maxWidth: '70px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.selectedDuration?.duration_time_limit}</td>
+                                  <td style={{ padding: '4px 4px', maxWidth: '200px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.deliveryAddress?.name}</td>
+                                  {/* <td style={{ padding: '4px 2px', maxWidth: '90px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.email || '-'}</td> */}
+                                  <td style={{ padding: '4px 2px', maxWidth: '100px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.deliveryAddress?.city}</td>
                                   <td>
                                     <span className={`badge-status badge-${order.orderStatus.toLowerCase()}`}>
                                       {order.orderStatus}
@@ -330,22 +424,22 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
 
 
                                   </td>
-                                  <td className="align-middle">
+                                  <td style={{ padding: '4px 2px' }} className="align-middle">
                                     <span>{order.paymentStatus}</span>
                                   </td>
-                                  <td>{formatTimestamp(order.createdAt)}</td>
-                                  <td>
+                                  <td style={{ padding: '4px 2px' }}>{formatTimestamp(order.createdAt)}</td>
+                                  <td style={{ padding: '4px 2px' }}>
                                     <button
                                       type="button"
                                       className="btn btn-outline-success btn-icon-text"
                                       onClick={() => handleViewOrder(order)}
-                                      style={{ marginRight: '10px' }}
+                                      style={{ padding: '3px 6px', fontSize: '10px', marginRight: 0 }}
                                     >
                                       <i className="mdi mdi-eye"></i> View
                                     </button>
                                    
                                   </td>
-                                  <td className="align-middle" style={{ minWidth: '150px', padding: '12px' }}>
+                                  <td style={{ padding: '4px 2px', minWidth: '90px' }} className="align-middle">
                                     <div className="form-check d-flex justify-content-center">
                                       <input
                                         className="form-check-input"

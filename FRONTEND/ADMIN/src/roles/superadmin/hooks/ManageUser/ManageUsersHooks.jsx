@@ -16,6 +16,9 @@ const useManageUsers = (userInfo) => {
   const [posts, setPosts] = useState([]);
   const [tableLoading, setTableLoading] = useState(false);
   const [tableError, setTableError] = useState(null);
+  const [searchText, setSearchText] = useState('');
+  const [selectedRole, setSelectedRole] = useState('');
+  const [roleSummaries, setRoleSummaries] = useState([]);
 
   // Add User modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -83,8 +86,51 @@ const useManageUsers = (userInfo) => {
 
       if (response.status === 200 && response.data.status === 'Success') {
         const fetchedData = response.data.data || [];
-        setData(fetchedData);
-        setPosts(fetchedData);
+        const parseSortableValue = (value) => {
+          if (!value && value !== 0) {
+            return 0;
+          }
+          if (value instanceof Date) {
+            return value.getTime();
+          }
+          if (typeof value === 'number') {
+            return value;
+          }
+          const numericValue = Number(value);
+          if (!Number.isNaN(numericValue)) {
+            return numericValue;
+          }
+          const parsedDate = new Date(value);
+          const time = parsedDate.getTime();
+          return Number.isNaN(time) ? 0 : time;
+        };
+
+        const sortedData = [...fetchedData].sort((a, b) => {
+          const getPrimaryTime = (item) =>
+            parseSortableValue(
+              item?.created_at ||
+                item?.createdAt ||
+                item?.created_date ||
+                item?.createdDate ||
+                item?.updated_at ||
+                item?.updatedAt ||
+                item?.modified_at ||
+                item?.modifiedAt
+            );
+
+          const aTime = getPrimaryTime(a);
+          const bTime = getPrimaryTime(b);
+          if (aTime !== bTime) {
+            return bTime - aTime;
+          }
+
+          const fallbackA = parseSortableValue(a?.user_id || a?.id || a?._id);
+          const fallbackB = parseSortableValue(b?.user_id || b?.id || b?._id);
+          return fallbackB - fallbackA;
+        });
+
+        setData(sortedData);
+        setPosts(sortedData);
       } else {
         setTableError('Failed to fetch users');
         setData([]);
@@ -108,6 +154,64 @@ const useManageUsers = (userInfo) => {
     }
   }, [fetchUsers, fetchRoles]);
 
+  useEffect(() => {
+    if (!Array.isArray(roles) || roles.length === 0) {
+      setRoleSummaries([]);
+      return;
+    }
+
+    const counts = data.reduce((acc, item) => {
+      const key = String(item.role_id || '').trim();
+      if (!key) {
+        return acc;
+      }
+      const currentCount = acc.get(key) || 0;
+      acc.set(key, currentCount + 1);
+      return acc;
+    }, new Map());
+
+    const summaries = roles
+      .map((roleItem) => {
+        const key = String(roleItem.role_id || '').trim();
+        const count = counts.get(key) || 0;
+        return {
+          roleId: roleItem.role_id,
+          roleName: roleItem.role_name,
+          count,
+        };
+      })
+      .filter((item) => item.count > 0)
+      .sort((a, b) => {
+        const nameA = (a.roleName || '').toLowerCase();
+        const nameB = (b.roleName || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+
+    setRoleSummaries((prev) => {
+      if (
+        prev.length === summaries.length &&
+        prev.every((item, index) =>
+          item.roleId === summaries[index].roleId &&
+          item.count === summaries[index].count &&
+          item.roleName === summaries[index].roleName
+        )
+      ) {
+        return prev;
+      }
+      return summaries;
+    });
+  }, [roles, data]);
+
+  useEffect(() => {
+    if (!selectedRole) {
+      return;
+    }
+    const stillExists = roleSummaries.some((item) => String(item.roleId) === String(selectedRole));
+    if (!stillExists) {
+      setSelectedRole('');
+    }
+  }, [roleSummaries, selectedRole]);
+
   // Common modal container style to match other modals
   const modalAddStyle = {
     display: 'block',
@@ -122,16 +226,52 @@ const useManageUsers = (userInfo) => {
   };
 
   const handleSearchInputChange = (e) => {
-    const searchTerm = e.target.value.toUpperCase();
-    const filtered = data.filter((item) =>
-      item.name?.toUpperCase().includes(searchTerm) ||
-      item.email?.toUpperCase().includes(searchTerm) ||
-      item.phone?.toString().includes(searchTerm) ||
-      item.district?.toUpperCase().includes(searchTerm) ||
-      item.city?.toUpperCase().includes(searchTerm) ||
-      item.country?.toUpperCase().includes(searchTerm)
-    );
+    setSearchText(e.target.value);
+  };
+
+  useEffect(() => {
+    if (!Array.isArray(data)) {
+      setPosts([]);
+      return;
+    }
+
+    const normalizedSearch = searchText.trim().toUpperCase();
+    const normalizedRole = String(selectedRole || '').trim();
+
+    const filtered = data.filter((item) => {
+      const name = (item.name || '').toUpperCase();
+      const email = (item.email || '').toUpperCase();
+      const phoneValue = String(item.phone || '');
+      const districtValue = (item.district || '').toUpperCase();
+      const cityValue = (item.city || '').toUpperCase();
+      const countryValue = (item.country || '').toUpperCase();
+      const roleValue = String(item.role_id || '').trim();
+
+      const matchesSearch =
+        normalizedSearch.length === 0 ||
+        name.includes(normalizedSearch) ||
+        email.includes(normalizedSearch) ||
+        phoneValue.includes(normalizedSearch) ||
+        districtValue.includes(normalizedSearch) ||
+        cityValue.includes(normalizedSearch) ||
+        countryValue.includes(normalizedSearch);
+
+      const matchesRole =
+        normalizedRole.length === 0 ||
+        roleValue === normalizedRole;
+
+      return matchesSearch && matchesRole;
+    });
+
     setPosts(filtered);
+  }, [data, searchText, selectedRole]);
+
+  const handleRoleSelect = (roleId) => {
+    setSelectedRole(String(roleId || '').trim());
+  };
+
+  const resetRoleFilter = () => {
+    setSelectedRole('');
   };
 
   const handleViewUser = (dataItem) => {
@@ -266,12 +406,20 @@ const useManageUsers = (userInfo) => {
     setCountry('');
   };
 
+  const totalUsers = data.length;
+
   return {
     // table
     posts,
     isLoading: tableLoading,
     error: tableError,
     handleSearchInputChange,
+    searchText,
+    handleRoleSelect,
+    resetRoleFilter,
+    selectedRole,
+    roleSummaries,
+    totalUsers,
     handleViewUser,
     handleEditUser,
 

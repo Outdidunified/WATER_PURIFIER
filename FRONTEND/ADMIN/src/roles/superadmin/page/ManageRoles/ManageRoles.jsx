@@ -13,6 +13,11 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
   const {
     handleSearchInputChange,
+    handleRoleSelect,
+    resetRoleFilter,
+    roleOptions,
+    selectedRole: selectedRoleFilter,
+    totalRoles,
     roles,
     tableError,
     formError,
@@ -20,7 +25,6 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
     isLoading,
     isAddDisabled,
     setRoleName,
-    openAddModal,
     closeAddModal,
     handleAddRoleSubmit,
     isDuplicateRole,
@@ -28,11 +32,98 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
     roleName,
   } = useManageRoles(userInfo);
 
+  const [showRoleFilter, setShowRoleFilter] = useState(false);
+
   // State for Grant Access Modal
   const [grantModalOpen, setGrantModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
   const [permissions, setPermissions] = useState([]);
   const [permissionsLoading, setPermissionsLoading] = useState(false);
+
+  const summaryCardStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    background: 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)',
+    color: '#ffffff',
+    borderRadius: '18px',
+    padding: '9px 16px',
+    boxShadow: '0 10px 22px rgba(76, 91, 253, 0.25)',
+    cursor: 'pointer',
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    width: 'auto',
+    minHeight: '44px',
+    minWidth: '160px',
+    border: 'none',
+    outline: 'none',
+  };
+
+  const summaryCardContentStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: '12px',
+  };
+
+  const summaryTextStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    lineHeight: 1.1,
+  };
+
+  const summaryLabelStyle = {
+    fontSize: '12px',
+    fontWeight: 600,
+    letterSpacing: '0.02em',
+    textTransform: 'none',
+    opacity: 0.9,
+    whiteSpace: 'nowrap',
+  };
+
+  const summaryValueStyle = {
+    fontSize: '20px',
+    fontWeight: 700,
+    lineHeight: 1,
+  };
+
+  const summaryCaretStyle = {
+    fontSize: '18px',
+    opacity: 0.85,
+  };
+
+  const tableStyle = {
+    '--bs-table-cell-padding-y': '0.45rem',
+    '--bs-table-cell-padding-x': '0.6rem',
+  };
+
+  const nameCellStyle = {
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    maxWidth: '240px',
+  };
+
+  const tableCellStyle = {
+    verticalAlign: 'middle',
+  };
+
+  const handleSummaryCardClick = () => {
+    setShowRoleFilter((prev) => !prev);
+  };
+
+  const handleRoleFilterChange = (event) => {
+    const { value } = event.target;
+    if (value === '') {
+      resetRoleFilter();
+    } else {
+      handleRoleSelect(value);
+    }
+  };
+
+  const handleClearSelection = () => {
+    resetRoleFilter();
+  };
 
   // Fetch permissions + all modules
   const openGrantAccessModal = async (role) => {
@@ -72,8 +163,9 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
       } else {
         showErrorAlert('Error', 'Failed to fetch permissions/modules');
       }
-    } catch (error) {
-      showErrorAlert('Error', 'An error occurred while fetching permissions/modules');
+    } catch (err) {
+      const message = err.response?.data?.message || err.message || 'An error occurred while fetching permissions/modules';
+      showErrorAlert('Error', message);
     } finally {
       setPermissionsLoading(false);
     }
@@ -114,106 +206,172 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
         <Sidebar />
         <div className="main-panel">
           <div className="content-wrapper">
-            {/* Title & Add Button */}
+            {/* Title, Count & Filter */}
             <div className="row">
               <div className="col-md-12 grid-margin">
-                <div className="row">
-                  <div className="col-12 col-xl-8 mb-4 mb-xl-0">
-                    <h3 className="font-weight-bold">Manage Roles</h3>
+                <div className="row align-items-center gx-3 gy-2 flex-wrap">
+                  <div className="col-auto">
+                    <h3 className="font-weight-bold mb-0" style={{ fontSize: '22px' }}>Manage Roles</h3>
                   </div>
-                  <div className="col-12 col-xl-4">
-                    <div className="justify-content-end d-flex">
-                      <button type="button" className="btn btn-success" onClick={openAddModal}>
-                        Add Role
-                      </button>
-
-                      {/* Add Role Modal */}
-                      {isAddModalOpen && (
-                        <div
-                          className="modalStyle"
+                  <div className="col-auto">
+                    <button
+                      type="button"
+                      style={summaryCardStyle}
+                      onClick={handleSummaryCardClick}
+                    >
+                      <div style={summaryCardContentStyle}>
+                        <div style={summaryTextStyle}>
+                          <span style={summaryLabelStyle}>Total Roles</span>
+                          <span style={summaryValueStyle}>{totalRoles}</span>
+                        </div>
+                      </div>
+                      <i className={`mdi ${showRoleFilter ? 'mdi-chevron-up' : 'mdi-chevron-down'}`} style={summaryCaretStyle}></i>
+                    </button>
+                  </div>
+                  {showRoleFilter && (
+                    <div className="col-auto">
+                      <div
+                        style={{
+                          backgroundColor: '#ffffff',
+                          borderRadius: '18px',
+                          boxShadow: '0 10px 24px rgba(23,36,184,0.12)',
+                          padding: '10px 14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '16px',
+                          height: '48px',
+                        }}
+                      >
+                        <span
                           style={{
-                            position: 'fixed',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            backgroundColor: 'rgba(0,0,0,0.5)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            zIndex: 9999,
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: '#1b2559',
+                            whiteSpace: 'nowrap',
                           }}
                         >
-                          <div
-                            className="modalContentStyle"
+                          Filter by role
+                        </span>
+                        <select
+                          className="form-select"
+                          value={selectedRoleFilter}
+                          onChange={handleRoleFilterChange}
+                          style={{
+                            borderRadius: '12px',
+                            padding: '6px 12px',
+                            borderColor: '#d5dbff',
+                            width: '180px',
+                          }}
+                        >
+                          <option value="">All Roles</option>
+                          {roleOptions.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedRoleFilter && (
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary btn-sm"
+                            onClick={handleClearSelection}
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className="col ms-auto d-flex justify-content-end">
+                    {/* <button type="button" className="btn btn-success" onClick={openAddModal}>
+                      Add Role
+                    </button> */}
+
+                    {/* Add Role Modal */}
+                    {isAddModalOpen && (
+                      <div
+                        className="modalStyle"
+                        style={{
+                          position: 'fixed',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          backgroundColor: 'rgba(0,0,0,0.5)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          zIndex: 9999,
+                        }}
+                      >
+                        <div
+                          className="modalContentStyle"
+                          style={{
+                            background: '#fff',
+                            padding: '20px',
+                            borderRadius: '8px',
+                            maxWidth: '600px',
+                            width: '100%',
+                            maxHeight: '680px',
+                            overflowY: 'auto',
+                          }}
+                        >
+                          <span
+                            onClick={closeAddModal}
                             style={{
-                              background: '#fff',
-                              padding: '20px',
-                              borderRadius: '8px',
-                              maxWidth: '600px',
-                              width: '100%',
-                              maxHeight: '680px',
-                              overflowY: 'auto',
+                              float: 'right',
+                              cursor: 'pointer',
+                              fontSize: '30px',
                             }}
                           >
-                            <span
-                              onClick={closeAddModal}
-                              style={{
-                                float: 'right',
-                                cursor: 'pointer',
-                                fontSize: '30px',
-                              }}
-                            >
-                              &times;
-                            </span>
+                            &times;
+                          </span>
 
-                            <form className="card" onSubmit={handleAddRoleSubmit}>
-                              <div className="card-body">
-                                <div style={{ textAlign: 'center' }}>
-                                  <h4 className="card-title">Add Role</h4>
-                                </div>
-
-                                <div className="table-responsive pt-3">
-                                  {/* Role Name input */}
-                                  <div className="input-group mb-3">
-                                    <div className="input-group-prepend">
-                                      <span
-                                        className="input-group-text"
-                                        style={{ width: '125px' }}
-                                      >
-                                        Role Name
-                                      </span>
-                                    </div>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      placeholder="Enter role name"
-                                      value={roleName}
-                                      onChange={(e) => setRoleName(e.target.value)}
-                                      required
-                                    />
-                                  </div>
-                                </div>
-
-                                {formError && <div className="text-danger">{formError}</div>}
-                                {isDuplicateRole && (
-                                  <div className="text-danger">This role already exists.</div>
-                                )}
-                                <br />
-
-                                <ReusableButton
-                                  type="submit"
-                                  loading={formLoading}
-                                  disabled={isAddDisabled}
-                                >
-                                  Add
-                                </ReusableButton>
+                          <form className="card" onSubmit={handleAddRoleSubmit}>
+                            <div className="card-body">
+                              <div style={{ textAlign: 'center' }}>
+                                <h4 className="card-title">Add Role</h4>
                               </div>
-                            </form>
-                          </div>
+
+                              <div className="table-responsive pt-3">
+                                <div className="input-group mb-3">
+                                  <div className="input-group-prepend">
+                                    <span
+                                      className="input-group-text"
+                                      style={{ width: '125px' }}
+                                    >
+                                      Role Name
+                                    </span>
+                                  </div>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Enter role name"
+                                    value={roleName}
+                                    onChange={(e) => setRoleName(e.target.value)}
+                                    required
+                                  />
+                                </div>
+                              </div>
+
+                              {formError && <div className="text-danger">{formError}</div>}
+                              {isDuplicateRole && (
+                                <div className="text-danger">This role already exists.</div>
+                              )}
+                              <br />
+
+                              <ReusableButton
+                                type="submit"
+                                loading={formLoading}
+                                disabled={isAddDisabled}
+                              >
+                                Add
+                              </ReusableButton>
+                            </div>
+                          </form>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -253,13 +411,15 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
                     </div>
 
                     <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                      <table className="table table-striped">
+                      <table className="table table-striped text-center" style={tableStyle}>
                         <thead
                           style={{
                             textAlign: 'center',
                             position: 'sticky',
+                            tableLayout: 'fixed',
                             top: 0,
                             backgroundColor: 'white',
+                            zIndex: 1,
                           }}
                         >
                           <tr>
@@ -273,64 +433,63 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
                             <th>Grant Access</th>
                           </tr>
                         </thead>
-                        <tbody style={{ textAlign: 'center' }}>
+                        <tbody style={{ textAlign: 'center', lineHeight: '1.2' }}>
                           {isLoading ? (
                             <tr>
-                              <td colSpan="8">Loading...</td>
+                              <td colSpan="8" style={tableCellStyle}>Loading...</td>
                             </tr>
                           ) : tableError ? (
                             <tr>
-                              <td colSpan="8">Error: {tableError}</td>
+                              <td colSpan="8" style={tableCellStyle}>Error: {tableError}</td>
                             </tr>
                           ) : Array.isArray(roles) && roles.length > 0 ? (
                             roles.map((dataItem, index) => (
                               <tr key={dataItem._id || index}>
-                                <td>{index + 1}</td>
-                                <td>{dataItem.role_id || '-'}</td>
-                                <td>{dataItem.role_name || '-'}</td>
-                                <td>{dataItem.created_by || '-'}</td>
-                                <td>
+                                <td style={tableCellStyle}>{index + 1}</td>
+                                <td style={tableCellStyle}>{dataItem.role_id || '-'}</td>
+                                <td style={{ ...tableCellStyle, ...nameCellStyle }}>{dataItem.role_name || '-'}</td>
+                                <td style={tableCellStyle}>{dataItem.created_by || '-'}</td>
+                                <td style={tableCellStyle}>
                                   {dataItem.created_date
                                     ? new Date(dataItem.created_date).toLocaleDateString()
                                     : '-'}
                                 </td>
-                                <td>
+                                <td style={tableCellStyle}>
                                   {dataItem.status ? (
                                     <span className="text-success">Active</span>
                                   ) : (
                                     <span className="text-danger">DeActive</span>
                                   )}
                                 </td>
-                                <td>
+                                <td style={tableCellStyle}>
                                   <button
                                     type="button"
                                     className="btn btn-outline-success btn-icon-text"
                                     onClick={() => handleViewRoles(dataItem)}
-                                    style={{ marginBottom: '10px', marginRight: '10px' }}
+                                    style={{ marginBottom: '6px', marginRight: '6px' }}
                                   >
                                     <i className="mdi mdi-eye"></i>View
                                   </button>
                                 </td>
-                               <td>
-  {/* Show Grant Access button only for role_id 1 or 4 */}
-  {Number(dataItem.role_id) === 1 || Number(dataItem.role_id) === 4 ? (
-    <button
-      type="button"
-      className="btn btn-outline-primary btn-icon-text"
-      onClick={() => openGrantAccessModal(dataItem)}
-    >
-      Grant Access
-    </button>
-  ) : (
-    <span>-</span>
-  )}
-</td>
+                                <td style={tableCellStyle}>
+                                  {Number(dataItem.role_id) === 1 || Number(dataItem.role_id) === 4 ? (
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline-primary btn-icon-text"
+                                      onClick={() => openGrantAccessModal(dataItem)}
+                                    >
+                                      Grant Access
+                                    </button>
+                                  ) : (
+                                    <span>-</span>
+                                  )}
+                                </td>
 
                               </tr>
                             ))
                           ) : (
                             <tr>
-                              <td colSpan="8">No roles found</td>
+                              <td colSpan="8" style={tableCellStyle}>No roles found</td>
                             </tr>
                           )}
                         </tbody>

@@ -121,6 +121,39 @@ const useManageInstallation = (userInfo) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [summary, setSummary] = useState({
+    total: 0,
+    pending: 0,
+    inProgress: 0,
+    completed: 0,
+    unassigned: 0,
+    rejected: 0,
+  });
+
+  const calculateInstallationSummary = (tasks) => {
+    const counts = {
+      total: tasks.length,
+      pending: 0,
+      inProgress: 0,
+      completed: 0,
+      unassigned: 0,
+      rejected: 0,
+    };
+
+    tasks.forEach((task) => {
+      const status = (task.task_status || '').toLowerCase();
+      if (status === 'pending') counts.pending += 1;
+      else if (status === 'in progress' || status === 'in_progress') counts.inProgress += 1;
+      else if (status === 'completed') counts.completed += 1;
+      else if (status === 'rejected') counts.rejected += 1;
+
+      if (!task.assigned_technician_id) counts.unassigned += 1;
+    });
+
+    return counts;
+  };
 
   // Fetch API calls
   const fetchTechnicians = async () => {
@@ -372,6 +405,7 @@ const useManageInstallation = (userInfo) => {
 
       setEnrichedTaskList(dedupedEnrichedList);
       setDisplayTasks(dedupedEnrichedList);
+      setSummary(calculateInstallationSummary(dedupedEnrichedList));
     } catch (err) {
       showErrorAlert('Failed to fetch installation data');
       setError('Failed to fetch installation data');
@@ -384,45 +418,74 @@ const useManageInstallation = (userInfo) => {
     fetchData();
   }, [fetchData]);
 
-  // Search functionality
-  const handleSearchChange = (e) => {
-    const value = e.target.value.toLowerCase();
-    setSearchTerm(value);
+  const applyFilters = (filterType, search) => {
+    let filtered = enrichedTaskList;
 
-    if (!value) {
-      setDisplayTasks(enrichedTaskList);
-      return;
+    if (filterType === 'pending') {
+      filtered = filtered.filter(
+        (task) => (task.task_status || '').toLowerCase() === 'pending'
+      );
+    } else if (filterType === 'inProgress') {
+      filtered = filtered.filter((task) => {
+        const status = (task.task_status || '').toLowerCase();
+        return status === 'in progress' || status === 'in_progress';
+      });
+    } else if (filterType === 'completed') {
+      filtered = filtered.filter(
+        (task) => (task.task_status || '').toLowerCase() === 'completed'
+      );
+    } else if (filterType === 'rejected') {
+      filtered = filtered.filter(
+        (task) => (task.task_status || '').toLowerCase() === 'rejected'
+      );
+    } else if (filterType === 'unassigned') {
+      filtered = filtered.filter(
+        (task) => !task.assigned_technician_id
+      );
     }
 
-    const filteredEnriched = enrichedTaskList.filter((task) => {
-      const deviceId = task.wp_device_id?.toLowerCase() || '';
-      const orderId = task.customOrderId?.toLowerCase() || '';
-      const userId = task.user_id?.toString() || task.order_user_id?.toString() || '';
-      const technicianName =
-        task.assignedTechnician?.technician_name?.toLowerCase() ||
-        task.assignedTechnician?.name?.toLowerCase() ||
-        '';
-      const technicianId =
-        task.assignedTechnician?.technician_id?.toLowerCase() ||
-        task.assigned_technician_id?.toLowerCase() ||
-        '';
-      const customerName = task.deliveryAddress?.name?.toLowerCase() || '';
-      const taskStatus = task.task_status?.toLowerCase() || '';
-      const pendingReason = task.pending_reason?.toLowerCase() || '';
+    if (search.trim()) {
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter((task) => {
+        const deviceId = task.wp_device_id?.toLowerCase() || '';
+        const orderId = task.customOrderId?.toLowerCase() || '';
+        const userId = task.user_id?.toString() || task.order_user_id?.toString() || '';
+        const technicianName =
+          task.assignedTechnician?.technician_name?.toLowerCase() ||
+          task.assignedTechnician?.name?.toLowerCase() ||
+          '';
+        const technicianId =
+          task.assignedTechnician?.technician_id?.toLowerCase() ||
+          task.assigned_technician_id?.toLowerCase() ||
+          '';
+        const customerName = task.deliveryAddress?.name?.toLowerCase() || '';
+        const pendingReason = task.pending_reason?.toLowerCase() || '';
 
-      return (
-        deviceId.includes(value) ||
-        orderId.includes(value) ||
-        userId.includes(value) ||
-        technicianName.includes(value) ||
-        technicianId.includes(value) ||
-        customerName.includes(value) ||
-        taskStatus.includes(value) ||
-        pendingReason.includes(value)
-      );
-    });
+        return (
+          deviceId.includes(searchLower) ||
+          orderId.includes(searchLower) ||
+          userId.includes(searchLower) ||
+          technicianName.includes(searchLower) ||
+          technicianId.includes(searchLower) ||
+          customerName.includes(searchLower) ||
+          pendingReason.includes(searchLower)
+        );
+      });
+    }
 
-    setDisplayTasks(filteredEnriched);
+    setDisplayTasks(filtered);
+  };
+
+  const handleFilterSelect = (filterType) => {
+    const newFilter = selectedFilter === filterType ? '' : filterType;
+    setSelectedFilter(newFilter);
+    applyFilters(newFilter, searchText);
+  };
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value.toLowerCase();
+    setSearchText(value);
+    applyFilters(selectedFilter, value);
   };
 
   // Assign new technician
@@ -485,6 +548,9 @@ const useManageInstallation = (userInfo) => {
     assignInstallation,
     reassignInstallation,
     refetch: fetchData,
+    summary,
+    selectedFilter,
+    handleFilterSelect,
   };
 };
 

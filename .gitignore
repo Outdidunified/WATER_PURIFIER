@@ -5,9 +5,10 @@
 # Node.js dependencies
 BACKEND/node_modules/
 BACKEND/Log/*.log
+BACKEND/logs/*.log
+*.log
 
 
 # MacOS system files
 .DS_Store
 FRONTEND/WEBSITE/node_modules/
-

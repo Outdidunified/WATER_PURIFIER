@@ -45,7 +45,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
-    const [emailID, setEmailID] = useState("");
+    const [emailID, setEmailID] = useState(userInfo?.email || "");
     const [street, setStreet] = useState("");
     const [landmark, setLandmark] = useState("");
     const [pincode, setPincode] = useState("");
@@ -64,6 +64,12 @@ const Home = ({ userInfo, token, handleLogout }) => {
     const RAZORPAY_KEY = "rzp_test_oHoZ3Q1fF6pYEI";
 
     const hasFetched = useRef(false);
+
+    useEffect(() => {
+        if (userInfo?.email) {
+            setEmailID(userInfo.email);
+        }
+    }, [userInfo]);
 
     // Fetch products
     useEffect(() => {
@@ -329,7 +335,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                         setShowModal(false);
                         setName("");
                         setPhone("");
-                        setEmailID("");
+                        // setEmailID("");
                         setStreet("");
                         setLandmark("");
                         setPincode("");
@@ -392,7 +398,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                 setShowModal(false);
                                 setName("");
                                 setPhone("");
-                                setEmailID("");
+                                // setEmailID("");
                                 setStreet("");
                                 setLandmark("");
                                 setPincode("");
@@ -804,7 +810,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                             <div className="col-xl-6" data-aos="fade-up" data-aos-delay="300">
                                 <div className="image-wrapper">
                                     <div className="images position-relative" data-aos="zoom-out" data-aos-delay="400">
-                                        <img src="assets/img/new-water-purifier2.png" alt="img" style={{ width: '50%' }} className="img-fluid main-image rounded-4" />
+                                        <img src="assets/img/water-purifier24.png" alt="img" style={{ width: '100%' }} className="img-fluid main-image rounded-4" />
                                     </div>
                                 </div>
                             </div>
@@ -1811,12 +1817,13 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                 {/* Email */}
                                                 <div>
                                                     <label style={{ fontWeight: 600 }}>Email ID</label>
-                                                    <input
-                                                        type="email"
-                                                        className="form-control"
+                                                    <input type="email" className="form-control"
                                                         required
+                                                        readOnly
                                                         value={emailID}
-                                                        onChange={(e) => setEmailID(sanitizeEmail(e.target.value))}
+                                                        style={{
+                                                            backgroundColor: "#f5f5f5", cursor: "not-allowed", color: "#555"
+                                                        }}
                                                     />
                                                 </div>
 
@@ -2518,22 +2525,18 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 {/* <!-- /Faq Section --> */}
 
                 {/* <!-- City Section --> */}
-                <section id="contact" className="contact section light-background" style={{ padding: '10px' }}>
+                <section id="contact" className="contact section light-background" style={{ padding: "20px" }}>
                     <div
                         className="container section-title"
                         data-aos="fade-up"
                         style={{ paddingBottom: "0px" }}
                     >
-                        <h2 style={{ color: '#0d6efd' }}>Cities we are present in</h2>
+                        <h2 style={{ color: "#0d6efd" }}>Cities we are present in</h2>
                     </div>
 
-                    <div
-                        className="container"
-                        data-aos="fade-up"
-                        data-aos-delay="100"
-                    >
+                    <div className="container" data-aos="fade-up" data-aos-delay="100">
                         {(() => {
-                            // Build dynamic state name map
+                            // Build state name map
                             const stateNameMap = {};
                             const indianStates = State.getStatesOfCountry("IN");
                             indianStates.forEach((s) => {
@@ -2551,101 +2554,93 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                 return acc;
                             }, {});
 
-                            const stateEntries = Object.entries(grouped).sort((a, b) =>
-                                a[0].localeCompare(b[0])
-                            );
+                            const stateEntries = Object.entries(grouped).sort((a, b) => a[0].localeCompare(b[0]));
 
-                            const columnStyle = {
-                                flex: "1 1 280px",
-                                minWidth: "280px",
-                                textAlign: "center",
+                            // Local state: which state is selected
+                            const [selectedState, setSelectedState] = useState(stateEntries[0]?.[0] || null);
+
+                            const stateButtonStyle = (isActive) => ({
+                                backgroundColor: isActive ? "#0d6efd" : "#e8f1ff",
+                                color: isActive ? "#fff" : "#0d6efd",
+                                border: "1px solid #0d6efd",
+                                borderRadius: "20px",
+                                fontWeight: 600,
+                                padding: "8px 16px",
+                                margin: "5px",
+                                cursor: "pointer",
+                                transition: "all 0.3s ease",
+                            });
+
+                            const cityCardStyle = {
                                 background: "rgba(13,110,253,0.03)",
                                 borderRadius: "12px",
-                                padding: "20px",
+                                padding: "10px",
                                 boxShadow: "0 0 8px rgba(13,110,253,0.15)",
-                            };
-
-                            const stateTitleStyle = {
-                                fontWeight: "bold",
-                                fontSize: "18px",
+                                textAlign: "center",
+                                fontWeight: 500,
                                 color: "#0d6efd",
-                                borderBottom: "2px solid #0d6efd",
-                                paddingBottom: "5px",
-                                marginBottom: "10px",
-                            };
-
-                            const pStyle = {
-                                margin: "6px 0",
-                                padding: "6px",
-                                borderRadius: "8px",
                                 transition: "all 0.3s ease",
-                                backgroundColor: "rgba(13,110,253,0.05)",
-                                cursor: "default",
                             };
 
-                            // Split stateEntries into chunks of 3 with padding for last row
-                            const rows = [];
-                            for (let i = 0; i < stateEntries.length; i += 3) {
-                                const chunk = stateEntries.slice(i, i + 3);
-                                while (chunk.length < 3) {
-                                    chunk.push(null); // Pad with nulls to keep 3 columns
-                                }
-                                rows.push(chunk);
-                            }
+                            const selectedCities = grouped[selectedState] || [];
 
-                            return rows.map((row, rowIndex) => (
-                                <div
-                                    key={`row-${rowIndex}`}
-                                    style={{
-                                        display: "flex",
-                                        justifyContent: "center",
-                                        gap: "40px",
-                                        marginBottom: "30px",
-                                        flexWrap: "wrap",
-                                    }}
-                                >
-                                    {row.map((entry, colIndex) => {
-                                        if (!entry) {
-                                            // Empty column to maintain layout
-                                            return (
+                            return (
+                                <>
+                                    {/* State Buttons */}
+                                    <div className="text-center mb-4">
+                                        {stateEntries.map(([state]) => (
+                                            <button
+                                                key={state}
+                                                style={stateButtonStyle(selectedState === state)}
+                                                onClick={() => setSelectedState(state)}
+                                            >
+                                                {state}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* City Grid */}
+                                    {selectedState && (
+                                        <div className="text-center mb-3">
+                                            <h4 style={{ color: "#0d6efd", fontWeight: "700" }}>{selectedState}</h4>
+                                        </div>
+                                    )}
+
+                                    <div
+                                        className="row justify-content-center"
+                                        style={{ gap: "20px", padding: "10px" }}
+                                    >
+                                        {selectedCities.length > 0 ? (
+                                            selectedCities.map((city, index) => (
                                                 <div
-                                                    key={`empty-${rowIndex}-${colIndex}`}
-                                                    style={{ flex: "1 1 280px", minWidth: "280px" }}
-                                                />
-                                            );
-                                        }
-
-                                        const [state, cityList] = entry;
-                                        return (
-                                            <div key={`state-${rowIndex}-${colIndex}`} style={columnStyle}>
-                                                <div className="footer-contact pt-3">
-                                                    <h4 style={stateTitleStyle}>{state}</h4>
-                                                    {cityList.map((city, j) => (
-                                                        <p
-                                                            key={`city-${rowIndex}-${colIndex}-${j}`}
-                                                            style={pStyle}
-                                                            onMouseEnter={(e) =>
-                                                            (e.currentTarget.style.backgroundColor =
-                                                                "rgba(13,110,253,0.15)")
-                                                            }
-                                                            onMouseLeave={(e) =>
-                                                            (e.currentTarget.style.backgroundColor =
-                                                                "rgba(13,110,253,0.05)")
-                                                            }
-                                                        >
-                                                            {city}
-                                                        </p>
-                                                    ))}
+                                                    key={index}
+                                                    className="col-lg-3 col-md-4 col-sm-6"
+                                                    style={{ minWidth: "250px" }}
+                                                >
+                                                    <div
+                                                        style={cityCardStyle}
+                                                        onMouseEnter={(e) =>
+                                                            (e.currentTarget.style.backgroundColor = "rgba(13,110,253,0.15)")
+                                                        }
+                                                        onMouseLeave={(e) =>
+                                                            (e.currentTarget.style.backgroundColor = "rgba(13,110,253,0.03)")
+                                                        }
+                                                    >
+                                                        {city}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ));
+                                            ))
+                                        ) : (
+                                            <p className="text-muted" style={{ textAlign: 'center' }}>  Pick a state to explore available cities</p>
+                                        )}
+                                    </div>
+                                </>
+                            );
                         })()}
                     </div>
                 </section>
                 {/* <!-- /City Section --> */}
+
 
                 {/* <!-- Contact Section --> */}
                 <section id="contact" className="contact section light-background">

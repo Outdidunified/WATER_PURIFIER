@@ -13,14 +13,16 @@ code {
 }
 
 .viewDataCss {
-  padding: 10px 10px !important;
+  padding: 6px 6px !important;
+  margin-top: 6px !important;
+  margin-bottom: 6px !important;
 }
 
 .view-data-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 10px;
+  gap: 2px;
+  padding: 6px;
 }
 
 .view-data-label {
