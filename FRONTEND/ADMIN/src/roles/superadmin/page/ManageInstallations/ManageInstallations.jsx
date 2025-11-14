@@ -12,12 +12,16 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
 
   const {
     isLoading,
-    error, technicians,
+    error,
+    technicians,
     filteredInstallations,
     reassignInstallation,
     handleSearchChange,
-    assignInstallation, installationTasks,
-
+    assignInstallation,
+    installationTasks,
+    summary,
+    selectedFilter,
+    handleFilterSelect,
   } = useManageInstallation(userInfo);
   // Modal state
   const [assignModalOpen, setAssignModalOpen] = useState(false);
@@ -25,6 +29,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
   const [assignedTechnicianId, setAssignedTechnicianId] = useState('');
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignMode, setAssignMode] = useState('assign'); // 'assign' | 'reassign'
+  const [filteredDistrictTechnicians, setFilteredDistrictTechnicians] = useState([]);
 
 
   const handleViewInstallation = (installation) => {
@@ -44,6 +49,15 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
     setSelectedInstallation(installation);
     setAssignedTechnicianId(installation.assigned_technician_id || '');
     setAssignMode(mode);
+    
+    // Filter technicians by installation's district
+    const installationDistrict = installation?.deliveryAddress?.district || installation?.district || '';
+    const filtered = technicians.filter(tech => {
+      const techDistrict = (tech?.district || '').toLowerCase();
+      return tech.status && techDistrict === installationDistrict.toLowerCase();
+    });
+    setFilteredDistrictTechnicians(filtered);
+    
     setAssignModalOpen(true);
   };
 
@@ -53,6 +67,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
     setSelectedInstallation(null);
     setAssignedTechnicianId('');
     setAssignLoading(false);
+    setFilteredDistrictTechnicians([]);
   };
 
   const getStatusBadgeClass = (status) => {
@@ -134,15 +149,148 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
               </div>
             </div>
 
+            {/* Summary Cards Grid */}
+            <div className="row mb-1">
+              <div className="col-12">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', width: '100%' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleFilterSelect('')}
+                    style={{
+                      border: 'none',
+                      outline: 'none',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: selectedFilter === '' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: selectedFilter === '' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
+                      color: selectedFilter === '' ? '#ffffff' : '#1b2559',
+                      textAlign: 'left',
+                      width: '100%'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === '' ? 0.9 : 0.65, color: selectedFilter === '' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>All Tasks</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === '' ? '#ffffff' : '#1b2559' }}>{summary.total}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFilterSelect('pending')}
+                    style={{
+                      border: 'none',
+                      outline: 'none',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: selectedFilter === 'pending' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: selectedFilter === 'pending' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
+                      color: selectedFilter === 'pending' ? '#ffffff' : '#1b2559',
+                      textAlign: 'left',
+                      width: '100%'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'pending' ? 0.9 : 0.65, color: selectedFilter === 'pending' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>Pending</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'pending' ? '#ffffff' : '#1b2559' }}>{summary.pending}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFilterSelect('inProgress')}
+                    style={{
+                      border: 'none',
+                      outline: 'none',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: selectedFilter === 'inProgress' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: selectedFilter === 'inProgress' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
+                      color: selectedFilter === 'inProgress' ? '#ffffff' : '#1b2559',
+                      textAlign: 'left',
+                      width: '100%'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'inProgress' ? 0.9 : 0.65, color: selectedFilter === 'inProgress' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>In Progress</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'inProgress' ? '#ffffff' : '#1b2559' }}>{summary.inProgress}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFilterSelect('completed')}
+                    style={{
+                      border: 'none',
+                      outline: 'none',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: selectedFilter === 'completed' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: selectedFilter === 'completed' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
+                      color: selectedFilter === 'completed' ? '#ffffff' : '#1b2559',
+                      textAlign: 'left',
+                      width: '100%'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'completed' ? 0.9 : 0.65, color: selectedFilter === 'completed' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>Completed</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'completed' ? '#ffffff' : '#1b2559' }}>{summary.completed}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFilterSelect('unassigned')}
+                    style={{
+                      border: 'none',
+                      outline: 'none',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: selectedFilter === 'unassigned' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: selectedFilter === 'unassigned' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
+                      color: selectedFilter === 'unassigned' ? '#ffffff' : '#1b2559',
+                      textAlign: 'left',
+                      width: '100%'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'unassigned' ? 0.9 : 0.65, color: selectedFilter === 'unassigned' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>Unassigned</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'unassigned' ? '#ffffff' : '#1b2559' }}>{summary.unassigned}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="row">
               <div className="col-lg-12 grid-margin stretch-card">
                 <div className="card">
                   <div className="card-body">
-                    <div className="row">
+                    <div className="row mb-2">
                       <div className="col-md-12 grid-margin">
                         <div className="row">
                           <div className="col-4 col-xl-8">
-                            <h4 className="card-title" style={{ paddingTop: '10px' }}>
+                            <h4 className="card-title" style={{ paddingTop: '6px', marginBottom: 0 }}>
                               Installation Tasks
                             </h4>
                           </div>
@@ -170,93 +318,92 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                       <table className="table table-striped">
                         <thead style={{ textAlign: 'center', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#fff' }}>
                           <tr>
-                              <th>Sl.No</th>
-        <th>Task ID</th>
-        <th>Model</th>
-        <th>Device ID</th>
-        <th>Customer Name</th>
-        <th>Email</th>
-        <th>Technician Name</th>
-        <th>Technician ID</th>
-        <th>Assigned Date</th>
-        <th>Task Status</th>
-        <th>Pending Reason</th>
-        <th>Assign</th>
-        <th>Actions</th>
+                            <th>Sl.No</th>
+                            <th>Task ID</th>
+                            <th>Model</th>
+                            <th>Device ID</th>
+                            <th>Customer Name</th>
+                            <th>Email</th>
+                            <th>Technician Name</th>
+                            <th>Technician ID</th>
+                            <th>Assigned Date</th>
+                            <th>Task Status</th>
+                            <th>Pending Reason</th>
+                            <th>Assign</th>
+                            <th>Actions</th>
                           </tr>
                         </thead>
-                        <tbody style={{ textAlign: 'center' }}>
+                        <tbody style={{ textAlign: 'center', verticalAlign: 'middle', lineHeight: '1.0' }}>
                           {isLoading ? (
-                            <tr>
-                              <td colSpan="10">Loading...</td>
+                            <tr style={{ height: '36px' }}>
+                              <td colSpan="13">Loading...</td>
                             </tr>
                           ) : error ? (
-                            <tr>
-                              <td colSpan="10">Error: {error}</td>
+                            <tr style={{ height: '36px' }}>
+                              <td colSpan="13">Error: {error}</td>
                             </tr>
                           ) : installationTasks.length > 0 ? (
                             installationTasks
                               .filter((item) => item.task_id)
                               .map((item, index) => (
-                             
-   <tr key={item._id || index}>
-            <td>{index + 1}</td>
-            <td>{item.task_id || '-'}</td>
-            <td >{item.modelName || '-'}</td>
-            <td>{item.wp_device_id || '-'}</td>
-            <td>{item.deliveryAddress?.name || '-'}</td>
-            <td>{item.email || '-'}</td>
-            <td>
-              {item.assignedTechnician?.technician_name ||
-                technicians.find((tech) => tech.technician_id === item.assigned_technician_id)?.name ||
-                '-'}
-            </td>
-            <td>{item.assignedTechnician?.technician_id || item.assigned_technician_id || '-'}</td>
-            <td>
-              {item.task_assigned_date
-                ? new Date(item.task_assigned_date).toLocaleDateString()
-                : '-'}
-            </td>
-            <td>
-              <span className={`badge ${getStatusBadgeClass(item.task_status)}`}>
-                {item.task_status || '-'}
-              </span>
-            </td>
-            <td>{item.pending_reason || '-'}</td>
-            <td>
-              <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => handleAssignClick(item, 'assign')}
-                  disabled={!!item.assigned_technician_id || !item.isAssignable}
-                >
-                  Assign
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-warning"
-                  onClick={() => handleAssignClick(item, 'reassign')}
-                  disabled={!item.assigned_technician_id || !item.isAssignable}
-                >
-                  Reassign
-                </button>
-              </div>
-            </td>
-                                <td>
-                                  <button
-                                    type="button"
-                                    className="btn btn-outline-success btn-icon-text"
-                                    onClick={() => handleViewInstallation(item)}
-                                  >
-                                    <i className="mdi mdi-eye"></i> View
-                                  </button>
-                                </td>
-                              </tr>
+                                <tr key={item._id || index} style={{ height: '36px' }}>
+                                  <td>{index + 1}</td>
+                                  <td style={{ padding: '4px 2px', maxWidth: '70px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{item.task_id || '-'}</td>
+                                   <td style={{ padding: '4px 2px', maxWidth: '70px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{item.modelName || '-'}</td>
+                                  <td>{item.wp_device_id || '-'}</td>
+                                  <td >{item.deliveryAddress?.name || '-'}</td>
+                                  <td style={{ padding: '4px 2px', maxWidth: '200px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{item.email || '-'}</td>
+                                  <td>
+                                    {item.assignedTechnician?.technician_name ||
+                                      technicians.find((tech) => tech.technician_id === item.assigned_technician_id)?.name ||
+                                      '-'}
+                                  </td>
+                                  <td>{item.assignedTechnician?.technician_id || item.assigned_technician_id || '-'}</td>
+                                  <td>
+                                    {item.task_assigned_date
+                                      ? new Date(item.task_assigned_date).toLocaleDateString()
+                                      : '-'}
+                                  </td>
+                                  <td>
+                                    <span className={`badge ${getStatusBadgeClass(item.task_status)}`}>
+                                      {item.task_status || '-'}
+                                    </span>
+                                  </td>
+                                  <td>{item.pending_reason || '-'}</td>
+                                  <td>
+                                    <div className="d-flex justify-content-center" style={{ gap: '8px' }}>
+                                      <button
+                                        type="button"
+                                        className="btn btn-primary"
+                                        onClick={() => handleAssignClick(item, 'assign')}
+                                        disabled={!!item.assigned_technician_id || !item.isAssignable}
+                                      >
+                                        Assign
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-warning"
+                                        onClick={() => handleAssignClick(item, 'reassign')}
+                                        disabled={!item.assigned_technician_id || !item.isAssignable}
+                                      >
+                                        Reassign
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline-success btn-icon-text"
+                                      onClick={() => handleViewInstallation(item)}
+                                    >
+                                      <i className="mdi mdi-eye"></i> View
+                                    </button>
+                                  </td>
+                                </tr>
                               ))
                           ) : (
                             <tr>
-                              <td colSpan="10">No installation records found.</td>
+                              <td colSpan="13">No installation records found.</td>
                             </tr>
                           )}
                         </tbody>
@@ -312,22 +459,36 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
     <label htmlFor="technicianId" className="mb-1" style={{ fontWeight: '500' }}>
       Technician ID
     </label>
-    <select
-      className="form-control"
-      id="technicianId"
-      value={assignedTechnicianId}
-      onChange={(e) => setAssignedTechnicianId(e.target.value)}
-      required
-    >
-      <option value="">Select Technician</option>
-      {technicians
-        .filter((tech) => tech.status)
-        .map((tech) => (
+    {filteredDistrictTechnicians.length === 0 ? (
+      <div 
+        style={{
+          padding: '12px',
+          backgroundColor: '#f8f9fa',
+          border: '1px solid #dee2e6',
+          borderRadius: '4px',
+          textAlign: 'center',
+          color: '#dc3545',
+          fontWeight: '500'
+        }}
+      >
+        No technician found for this district
+      </div>
+    ) : (
+      <select
+        className="form-control"
+        id="technicianId"
+        value={assignedTechnicianId}
+        onChange={(e) => setAssignedTechnicianId(e.target.value)}
+        required
+      >
+        <option value="">Select Technician</option>
+        {filteredDistrictTechnicians.map((tech) => (
           <option key={tech.technician_id} value={tech.technician_id}>
             {tech.technician_id} - {tech.name}
           </option>
         ))}
-    </select>
+      </select>
+    )}
   </div>
 
   <div className="d-flex justify-content-end" style={{ gap: '10px', marginTop: '20px' }}>
@@ -346,6 +507,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
       disabled={
         assignLoading ||
         !assignedTechnicianId ||
+        filteredDistrictTechnicians.length === 0 ||
         assignedTechnicianId === selectedInstallation?.assignedTechnician?.technician_id
       }
     >

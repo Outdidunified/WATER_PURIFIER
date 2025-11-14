@@ -150,6 +150,12 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
     isLoading,
     error,
     handleSearchInputChange,
+    searchText,
+    handleRoleSelect,
+    resetRoleFilter,
+    selectedRole,
+    roleSummaries,
+    totalUsers,
     roles,
     role, setRole,
     name, setName,
@@ -187,7 +193,85 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
     modalAddStyle,
   } = useManageUsers(userInfo);
 
-  console.log(assignModalOpen,'new assign')
+  const cardGridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+    gap: '10px',
+    width: '100%'
+  };
+
+  const skeletonCardStyle = {
+    borderRadius: '12px',
+    padding: '12px 14px',
+    minHeight: '72px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    background: '#f0f2ff',
+    gap: '10px'
+  };
+
+  const skeletonLabelStyle = {
+    width: '60%',
+    height: '10px',
+    borderRadius: '6px',
+    background: 'rgba(27, 37, 89, 0.12)'
+  };
+
+  const skeletonValueStyle = {
+    width: '40%',
+    height: '18px',
+    borderRadius: '8px',
+    background: 'rgba(27, 37, 89, 0.16)',
+    alignSelf: 'flex-end'
+  };
+
+  const getCardStyle = (isActive) => ({
+    border: 'none',
+    outline: 'none',
+    borderRadius: '12px',
+    padding: '12px 14px',
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '10px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    boxShadow: isActive ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
+    background: isActive ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
+    color: isActive ? '#ffffff' : '#1b2559',
+    textAlign: 'left',
+    width: '100%'
+  });
+
+  const getLabelStyle = (isActive) => ({
+    fontSize: '11px',
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    opacity: isActive ? 0.9 : 0.65,
+    color: isActive ? 'rgba(255, 255, 255, 0.9)' : '#1b2559',
+    whiteSpace: 'nowrap'
+  });
+
+  const getValueStyle = (isActive) => ({
+    fontSize: '22px',
+    fontWeight: 700,
+    color: isActive ? '#ffffff' : '#1b2559'
+  });
+
+  const handleRoleCardClick = (roleId) => {
+    if (String(selectedRole) === String(roleId)) {
+      resetRoleFilter();
+      return;
+    }
+    handleRoleSelect(roleId);
+  };
+
+  const skeletonCount = Math.max(1, roleSummaries.length || roles.length || 4);
+  const skeletonCards = Array.from({ length: skeletonCount });
+  const isCardSkeletonVisible = isLoading && posts.length === 0;
+
   return (
     <div className='container-scroller'>
       <Header userInfo={userInfo} handleLogout={handleLogout} />
@@ -205,6 +289,46 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                 <button className="btn btn-success" onClick={openAddModal}>
                   Add User
                 </button>
+              </div>
+            </div>
+
+            <div className="row" style={{ marginBottom: '20px' }}>
+              <div className="col-12">
+                <div style={cardGridStyle}>
+                  {isCardSkeletonVisible ? (
+                    skeletonCards.map((_, index) => (
+                      <div key={index} style={skeletonCardStyle}>
+                        <div style={skeletonLabelStyle}></div>
+                        <div style={skeletonValueStyle}></div>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        style={getCardStyle(selectedRole === '')}
+                        onClick={resetRoleFilter}
+                      >
+                        <span style={getLabelStyle(selectedRole === '')}>All Users</span>
+                        <span style={getValueStyle(selectedRole === '')}>{totalUsers}</span>
+                      </button>
+                      {roleSummaries.map((item) => {
+                        const isActive = String(selectedRole) === String(item.roleId);
+                        return (
+                          <button
+                            type="button"
+                            key={item.roleId}
+                            style={getCardStyle(isActive)}
+                            onClick={() => handleRoleCardClick(item.roleId)}
+                          >
+                            <span style={getLabelStyle(isActive)}>{item.roleName || 'Role'}</span>
+                            <span style={getValueStyle(isActive)}>{item.count}</span>
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -482,7 +606,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                         <h4 className="card-title">List Of Users</h4>
                       </div>
                       <div className="col-4">
-                        <InputField placeholder="Search now" onChange={handleSearchInputChange} />
+                        <InputField placeholder="Search now" value={searchText} onChange={handleSearchInputChange} />
                       </div>
                     </div>
 

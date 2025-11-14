@@ -138,6 +138,7 @@ const EditManageDevice = ({ userInfo, handleLogout }) => {
                                             <ReusableButton
                                                 type="submit"
                                                 loading={loading}
+                                                disabled={loading || !status || !wpDeviceId || !modelId || !modelName}
                                             >
                                                 Update
                                             </ReusableButton>

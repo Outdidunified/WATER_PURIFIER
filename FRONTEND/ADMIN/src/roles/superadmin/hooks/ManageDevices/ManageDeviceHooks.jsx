@@ -13,6 +13,7 @@ const useManageDevice = (userInfo) => {
   const [stations, setStations] = useState([]);
   const [filteredStations, setFilteredStations] = useState([]);
   const [searchText, setSearchText] = useState('');
+  const [selectedModel, setSelectedModel] = useState('');
   const [loading, setLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -39,8 +40,9 @@ const useManageDevice = (userInfo) => {
     try {
       const res = await axiosInstance.post('api/admin/FetchDeviceDetails');
       if (res.data.status === 'Success') {
-        setStations(res.data.data);
-        setFilteredStations(res.data.data);
+        const devices = Array.isArray(res.data.data) ? [...res.data.data].reverse() : [];
+        setStations(devices);
+        setFilteredStations(devices);
         setError('');
       } else {
         setError(res.data.message || 'Failed to fetch stations');
@@ -125,24 +127,58 @@ const useManageDevice = (userInfo) => {
   };
 
   const handleSearchInputChange = (e) => {
-    const text = e.target.value.toLowerCase();
-    setSearchText(text);
-    if (!text) {
-      setFilteredStations(stations);
-    } else {
-      const filtered = stations.filter((station) =>
-        station.wp_device_id?.toLowerCase().includes(text) ||
-        station.model_name?.toLowerCase().includes(text) ||
-        station.email?.toLowerCase().includes(text)
-      );
-      setFilteredStations(filtered);
-    }
+    setSearchText(e.target.value);
   };
+
+  useEffect(() => {
+    const normalizedSearch = searchText.trim().toLowerCase();
+    const normalizedModel = selectedModel.trim().toLowerCase();
+
+    const filtered = stations.filter((station) => {
+      const deviceId = (station.wp_device_id || '').toLowerCase();
+      const modelName = (station.model_name || '').toLowerCase();
+      const createdBy = (station.createdby || '').toLowerCase();
+      const email = (station.email || '').toLowerCase();
+
+      const matchesSearch =
+        normalizedSearch.length === 0 ||
+        deviceId.includes(normalizedSearch) ||
+        modelName.includes(normalizedSearch) ||
+        createdBy.includes(normalizedSearch) ||
+        email.includes(normalizedSearch);
+
+      const matchesModel =
+        normalizedModel.length === 0 ||
+        modelName === normalizedModel;
+
+      return matchesSearch && matchesModel;
+    });
+
+    setFilteredStations(filtered);
+  }, [stations, searchText, selectedModel]);
 
   useEffect(() => {
     fetchModels();
     fetchDevices();
   }, []);
+
+  const handleModelSelect = (value) => {
+    setSelectedModel(value);
+  };
+
+  const resetModelFilter = () => {
+    setSelectedModel('');
+  };
+
+  const modelOptions = Array.from(
+    new Set(
+      stations
+        .map((station) => station.model_name?.trim())
+        .filter((name) => name)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  const totalDevices = Array.isArray(stations) ? stations.length : 0;
 
   return {
     stationData,
@@ -160,6 +196,11 @@ const useManageDevice = (userInfo) => {
     closeAddModal,
     addStation,
     handleSearchInputChange,
+    handleModelSelect,
+    resetModelFilter,
+    modelOptions,
+    selectedModel,
+    totalDevices,
   };
 };
 

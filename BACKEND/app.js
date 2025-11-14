@@ -12,7 +12,7 @@ const { connectToDatabase } = require('./config/db');
 const cron = require('node-cron');
 const { autoAssignPendingTasks, autoAssignPendingInstallations, autoReassignOverdueTasks, autoReassignRejectedTasksImmediate, autoReassignForwardedTasksImmediate, autoReassignTimeBasedTasks } = require('./modules/admin/services/autoAssignmentService');
 const fs = require('fs'); //  Add this line
-require('./mqtt/publisher');
+// require('./mqtt/publisher');
 
 // Import Routes
 const adminRoutes = require('./routes/adminRoutes');

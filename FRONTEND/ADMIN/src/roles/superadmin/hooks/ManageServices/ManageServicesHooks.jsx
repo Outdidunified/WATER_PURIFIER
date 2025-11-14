@@ -10,6 +10,36 @@ const useManageServices = (userInfo) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [summary, setSummary] = useState({
+    total: 0,
+    pending: 0,
+    inProgress: 0,
+    completed: 0,
+    unassigned: 0,
+  });
+
+  const calculateServiceSummary = (tasks) => {
+    const counts = {
+      total: tasks.length,
+      pending: 0,
+      inProgress: 0,
+      completed: 0,
+      unassigned: 0,
+    };
+
+    tasks.forEach((task) => {
+      const status = (task.task_status || '').toLowerCase();
+      if (status === 'pending') counts.pending += 1;
+      else if (status === 'in progress' || status === 'in_progress') counts.inProgress += 1;
+      else if (status === 'completed') counts.completed += 1;
+      
+      if (!task.assigned_technician_id) counts.unassigned += 1;
+    });
+
+    return counts;
+  };
 
 const fetchTechnicians = async () => {
   const res = await axiosInstance.post('/api/admin/FetchTechniciansByDistrict');
@@ -131,6 +161,7 @@ const fetchTechnicians = async () => {
       setTechnicians(filteredTechnicians);
       setServiceTasks(enriched);
       setDisplayTasks(enriched);
+      setSummary(calculateServiceSummary(enriched));
     } catch (err) {
       console.error('Fetch error:', err);
       setError('Failed to fetch service task data');
@@ -144,18 +175,52 @@ const fetchTechnicians = async () => {
     fetchData();
   }, [fetchData]);
 
-  const handleSearchChange = (e) => {
-    const value = e.target.value.toLowerCase();
-    setSearchTerm(value);
+  const applyFilters = (filterType, search) => {
+    let filtered = serviceTasks;
 
-    const filtered = serviceTasks.filter(task =>
-      task.task_description?.toLowerCase().includes(value) ||
-      task.wp_device_id?.toLowerCase().includes(value) ||
-      task.task_id?.toString().includes(value) ||
-      task.assigned_technician_id?.toLowerCase().includes(value)
-    );
+    if (filterType === 'pending') {
+      filtered = filtered.filter(
+        (task) => (task.task_status || '').toLowerCase() === 'pending'
+      );
+    } else if (filterType === 'inProgress') {
+      filtered = filtered.filter((task) => {
+        const status = (task.task_status || '').toLowerCase();
+        return status === 'in progress' || status === 'in_progress';
+      });
+    } else if (filterType === 'completed') {
+      filtered = filtered.filter(
+        (task) => (task.task_status || '').toLowerCase() === 'completed'
+      );
+    } else if (filterType === 'unassigned') {
+      filtered = filtered.filter(
+        (task) => !task.assigned_technician_id
+      );
+    }
+
+    if (search.trim()) {
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter(
+        (task) =>
+          task.task_description?.toLowerCase().includes(searchLower) ||
+          task.wp_device_id?.toLowerCase().includes(searchLower) ||
+          task.task_id?.toString().includes(searchLower) ||
+          task.assigned_technician_id?.toLowerCase().includes(searchLower)
+      );
+    }
 
     setDisplayTasks(filtered);
+  };
+
+  const handleFilterSelect = (filterType) => {
+    const newFilter = selectedFilter === filterType ? '' : filterType;
+    setSelectedFilter(newFilter);
+    applyFilters(newFilter, searchText);
+  };
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value.toLowerCase();
+    setSearchText(value);
+    applyFilters(selectedFilter, value);
   };
 
   const assignServiceTask = async ({
@@ -214,6 +279,9 @@ const fetchTechnicians = async () => {
     assignServiceTask,
     reassignServiceTask,
     refetch: fetchData,
+    summary,
+    selectedFilter,
+    handleFilterSelect,
   };
 };
 

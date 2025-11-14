@@ -53,25 +53,46 @@ async function delayForEmailRateLimit(delayMs = 500) {
 
 // Email transporter setup
 const transporter = nodemailer.createTransport({
-    host: 'smtppro.zoho.in', // SMTP server address
-    port: 465, // Use 465 for SSL, 587 for TLS
-    secure: true, // Use SSL (true) or TLS (false)
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
     auth: {
-        user: 'kesavan@outdidtech.com', // Your email address
-        pass: 'qShPZ1czL5Gm', // Your email password
+        user: "info@outdidunified.com",
+        pass: "yylh zjwo psvr slqb",
     },
 });
 
+const sendMailWithRetry = async (payload, retries = 2) => {
+    let attempt = 0;
+    let lastError = null;
+    while (attempt <= retries) {
+        try {
+            const delay = attempt === 0 ? 500 : Math.min(1500 * attempt, 5000);
+            await delayForEmailRateLimit(delay);
+            const info = await transporter.sendMail(payload);
+            console.log('Message sent: %s', info.messageId);
+            return info;
+        } catch (error) {
+            lastError = error;
+            const code = error?.responseCode;
+            if (!code || code < 500 || code >= 600) {
+                break;
+            }
+        }
+        attempt += 1;
+    }
+    throw lastError;
+};
+
 async function sendEmail(to, subject, text, html) {
     try {
-        const info = await transporter.sendMail({
-            from: `IonHive Water Purifier <kesavan@outdidtech.com>`,
+        await sendMailWithRetry({
+            from: `Water Purifier Service <info@outdidunified.com>`,
             to,
             subject,
             text,
             html,
         });
-        console.log('Message sent: %s', info.messageId);
         return true;
     } catch (error) {
         console.error('Error sending email:', error);
@@ -148,6 +169,44 @@ async function sendAssignServiceEmail(email, otp) {
     } catch (error) {
         console.error('Error in sendAssignServiceEmail:', error);
         return null;
+    }
+}
+
+async function getDistrictSellers(db, district) {
+    if (!district) return [];
+    try {
+        const usersCollection = db.collection('users');
+        const sellers = await usersCollection.find({
+            role_id: 4,
+            district: { $regex: new RegExp(district, 'i') }
+        }).toArray();
+        return sellers.map(s => ({ email: s.email, name: s.name })).filter(s => s.email);
+    } catch (err) {
+        console.error('Error fetching district sellers:', err);
+        return [];
+    }
+}
+
+async function logToAssignmentHistory(db, historyData) {
+    try {
+        const assignmentHistory = db.collection('assignment_history');
+        await assignmentHistory.insertOne({
+            ...historyData,
+            created_at: new Date()
+        });
+    } catch (err) {
+        console.error('Error logging to assignment history:', err);
+    }
+}
+
+async function sendEmailToMultiple(recipients, subject, text, html) {
+    if (!Array.isArray(recipients) || recipients.length === 0) return;
+    for (const recipient of recipients) {
+        try {
+            await sendEmail(recipient, subject, text, html);
+        } catch (err) {
+            console.error(`Error sending email to ${recipient}:`, err);
+        }
     }
 }
 
@@ -533,6 +592,51 @@ async function autoAssignInstallation(order) {
             });
             await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
 
+            // Get district sellers and send notification emails
+            const districtSellers = await getDistrictSellers(db, normalizedAddress.district);
+            const sellerEmails = districtSellers.map(s => s.email);
+            const adminEmails = ['admin@gmail.com'];
+            const allNotificationEmails = [...sellerEmails, ...adminEmails];
+
+            const notificationHtml = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
+                    <h2 style="color: #333;">Installation Task Auto-assigned</h2>
+                    <ul style="font-size: 16px; color: #555;">
+                        <li><strong>Task ID:</strong> ${nextTaskId}</li>
+                        <li><strong>Device ID:</strong> ${order.wp_device_id}</li>
+                        <li><strong>Technician:</strong> ${technician.name || 'N/A'}</li>
+                        <li><strong>Customer Email:</strong> ${orderUser.email}</li>
+                        <li><strong>Location:</strong> ${normalizedAddress.city}, ${normalizedAddress.district}, ${normalizedAddress.state}</li>
+                        <li><strong>Product:</strong> ${order.modelName}</li>
+                    </ul>
+                    <p style="font-size: 14px; color: #888; text-align: center; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px;">This is an automated notification from IonHive Water Purifier.</p>
+                </div>
+            `;
+
+            await sendEmailToMultiple(allNotificationEmails, 'Installation Task Auto-assigned - IonHive', '', notificationHtml);
+            await delayForEmailRateLimit(500);
+
+            // Log to assignment history
+            await logToAssignmentHistory(db, {
+                task_id: nextTaskId,
+                task_type: 1,
+                assignment_type: 'Installation',
+                action: 'assign',
+                assignment_mode: 'auto',
+                technician_id: technician.technician_id,
+                technician_name: technician.name,
+                previous_technician_id: null,
+                device_id: order.wp_device_id,
+                customer_email: orderUser.email,
+                location: {
+                    city: normalizedAddress.city,
+                    district: normalizedAddress.district,
+                    state: normalizedAddress.state
+                },
+                assigned_by: 'system',
+                reason: null
+            });
+
             console.log(`Installation auto-assigned to technician ${technician.technician_id}`);
         }
 
@@ -720,6 +824,50 @@ async function autoAssignService(taskId) {
             normalizedAddress
         });
         await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
+
+        // Get district sellers and send notification emails
+        const districtSellers = await getDistrictSellers(db, normalizedAddress.district);
+        const sellerEmails = districtSellers.map(s => s.email);
+        const adminEmails = ['admin@gmail.com'];
+        const allNotificationEmails = [...sellerEmails, ...adminEmails];
+
+        const notificationHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
+                <h2 style="color: #333;">Service Task Auto-assigned</h2>
+                <ul style="font-size: 16px; color: #555;">
+                    <li><strong>Task ID:</strong> ${taskId}</li>
+                    <li><strong>Device ID:</strong> ${task.wp_device_id || task.device_id}</li>
+                    <li><strong>Technician:</strong> ${technician.name || 'N/A'}</li>
+                    <li><strong>Customer Email:</strong> ${task.task_created_by_user_email}</li>
+                    <li><strong>Location:</strong> ${normalizedAddress.city}, ${normalizedAddress.district}, ${normalizedAddress.state}</li>
+                </ul>
+                <p style="font-size: 14px; color: #888; text-align: center; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px;">This is an automated notification from IonHive Water Purifier.</p>
+            </div>
+        `;
+
+        await sendEmailToMultiple(allNotificationEmails, 'Service Task Auto-assigned - IonHive', '', notificationHtml);
+        await delayForEmailRateLimit(500);
+
+        // Log to assignment history
+        await logToAssignmentHistory(db, {
+            task_id: taskId,
+            task_type: 2,
+            assignment_type: 'Service',
+            action: 'assign',
+            assignment_mode: 'auto',
+            technician_id: technician.technician_id,
+            technician_name: technician.name,
+            previous_technician_id: null,
+            device_id: task.wp_device_id || task.device_id,
+            customer_email: task.task_created_by_user_email,
+            location: {
+                city: normalizedAddress.city,
+                district: normalizedAddress.district,
+                state: normalizedAddress.state
+            },
+            assigned_by: 'system',
+            reason: null
+        });
 
         console.log(`Service auto-assigned to technician ${technician.technician_id}`);
 

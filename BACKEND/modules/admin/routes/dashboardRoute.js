@@ -139,6 +139,9 @@ router.post('/AssignService', verifyToken, Controller.AssignService);
 // Route to ReAssignService
 router.post('/ReAssignService', verifyToken, Controller.ReAssignService);
 
+// Route to UnAssignTask
+router.post('/UnAssignTask', verifyToken, Controller.UnAssignTask);
+
 // Manual request routes
 router.post('/FetchInstalledDevicesForRequests', verifyToken, Controller.FetchInstalledDevicesForRequests);
 router.post('/CreateManualRequest', verifyToken, Controller.CreateManualRequest);

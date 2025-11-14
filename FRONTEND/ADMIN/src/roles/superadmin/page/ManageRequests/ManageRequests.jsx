@@ -19,6 +19,9 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
     assignManualRequest,
     reassignManualRequest,
     createManualRequest,
+    summary,
+    selectedFilter,
+    handleFilterSelect,
   } = useManageRequests(userInfo);
 
   const [assignModalOpen, setAssignModalOpen] = useState(false);
@@ -34,6 +37,7 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
     technicianId: '',
     requestType: '',
   });
+  const [filteredDistrictTechnicians, setFilteredDistrictTechnicians] = useState([]);
 
   const resolveTechnicianName = (request) => {
     return (
@@ -56,7 +60,8 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
     const lower = (status || '').toLowerCase();
     if (lower === 'pending') return 'badge-warning';
     if (lower === 'completed') return 'badge-success';
-    if (lower === 'unassigned') return 'badge-danger';
+    if (lower === 'in progress' || lower === 'in_progress') return 'badge-info';
+    if (lower === 'rejected') return 'badge-danger';
     return 'badge-secondary';
   };
 
@@ -65,6 +70,14 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
     setSelectedRequest(request);
     setAssignedTechnicianId(request?.assigned_technician_id || '');
     setAssignMode(mode);
+
+    const requestDistrict = request?.district || '';
+    const filtered = technicians.filter(tech => {
+      const techDistrict = (tech?.district || '').toLowerCase();
+      return tech.status && techDistrict === requestDistrict.toLowerCase();
+    });
+    setFilteredDistrictTechnicians(filtered);
+
     setAssignModalOpen(true);
   };
 
@@ -73,6 +86,7 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
     setSelectedRequest(null);
     setAssignedTechnicianId('');
     setAssignLoading(false);
+    setFilteredDistrictTechnicians([]);
   };
 
   const handleAssignSubmit = async (e) => {
@@ -103,16 +117,27 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
 
   const openCreateModal = () => {
     setCreateForm({ deviceId: '', technicianId: '', requestType: '' });
+    setFilteredDistrictTechnicians([]);
     setCreateModalOpen(true);
   };
 
   const closeCreateModal = () => {
     setCreateModalOpen(false);
     setCreateLoading(false);
+    setFilteredDistrictTechnicians([]);
   };
 
   const handleCreateChange = (field, value) => {
     setCreateForm((prev) => ({ ...prev, [field]: value }));
+    if (field === 'deviceId') {
+      const device = devices.find((d) => d.wp_device_id === value);
+      const deviceDistrict = device?.district || '';
+      const filtered = technicians.filter(tech => {
+        const techDistrict = (tech?.district || '').toLowerCase();
+        return tech.status && techDistrict === deviceDistrict.toLowerCase();
+      });
+      setFilteredDistrictTechnicians(filtered);
+    }
   };
 
   const handleCreateSubmit = async (e) => {
@@ -171,6 +196,139 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
               </div>
             </div>
 
+            {/* Summary Cards Grid */}
+            <div className="row mb-3">
+              <div className="col-12">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', width: '100%' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleFilterSelect('')}
+                    style={{
+                      border: 'none',
+                      outline: 'none',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: selectedFilter === '' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: selectedFilter === '' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
+                      color: selectedFilter === '' ? '#ffffff' : '#1b2559',
+                      textAlign: 'left',
+                      width: '100%'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === '' ? 0.9 : 0.65, color: selectedFilter === '' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>All Requests</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === '' ? '#ffffff' : '#1b2559' }}>{summary.total}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFilterSelect('pending')}
+                    style={{
+                      border: 'none',
+                      outline: 'none',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: selectedFilter === 'pending' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: selectedFilter === 'pending' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
+                      color: selectedFilter === 'pending' ? '#ffffff' : '#1b2559',
+                      textAlign: 'left',
+                      width: '100%'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'pending' ? 0.9 : 0.65, color: selectedFilter === 'pending' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>Pending</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'pending' ? '#ffffff' : '#1b2559' }}>{summary.pending}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFilterSelect('completed')}
+                    style={{
+                      border: 'none',
+                      outline: 'none',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: selectedFilter === 'completed' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: selectedFilter === 'completed' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
+                      color: selectedFilter === 'completed' ? '#ffffff' : '#1b2559',
+                      textAlign: 'left',
+                      width: '100%'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'completed' ? 0.9 : 0.65, color: selectedFilter === 'completed' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>Completed</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'completed' ? '#ffffff' : '#1b2559' }}>{summary.completed}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFilterSelect('inProgress')}
+                    style={{
+                      border: 'none',
+                      outline: 'none',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: selectedFilter === 'inProgress' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: selectedFilter === 'inProgress' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
+                      color: selectedFilter === 'inProgress' ? '#ffffff' : '#1b2559',
+                      textAlign: 'left',
+                      width: '100%'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'inProgress' ? 0.9 : 0.65, color: selectedFilter === 'inProgress' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>In Progress</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'inProgress' ? '#ffffff' : '#1b2559' }}>{summary.inProgress}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFilterSelect('rejected')}
+                    style={{
+                      border: 'none',
+                      outline: 'none',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: selectedFilter === 'rejected' ? '0 10px 20px rgba(220, 53, 69, 0.3)' : '0 4px 12px rgba(220, 53, 69, 0.12)',
+                      background: selectedFilter === 'rejected' ? 'linear-gradient(135deg, #dc3545 0%, #f56565 100%)' : '#fff5f5',
+                      color: selectedFilter === 'rejected' ? '#ffffff' : '#dc3545',
+                      textAlign: 'left',
+                      width: '100%'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'rejected' ? 0.9 : 0.65, color: selectedFilter === 'rejected' ? 'rgba(255, 255, 255, 0.9)' : '#dc3545', whiteSpace: 'nowrap' }}>Rejected</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'rejected' ? '#ffffff' : '#dc3545' }}>{summary.rejected}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="row">
               <div className="col-lg-12 grid-margin stretch-card">
                 <div className="card">
@@ -202,6 +360,7 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                         </div>
                       </div>
                     </div>
+
                     <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
                       <table className="table table-striped">
                         <thead style={{ textAlign: 'center', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#fff' }}>
@@ -331,22 +490,36 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                 <label htmlFor="technicianId" className="mb-1" style={{ fontWeight: '500' }}>
                   Technician ID
                 </label>
-                <select
-                  className="form-control"
-                  id="technicianId"
-                  value={assignedTechnicianId}
-                  onChange={(e) => setAssignedTechnicianId(e.target.value)}
-                  required
-                >
-                  <option value="">Select Technician</option>
-                  {technicians
-                    .filter((tech) => tech.status)
-                    .map((tech) => (
+                {filteredDistrictTechnicians.length === 0 ? (
+                  <div 
+                    style={{
+                      padding: '12px',
+                      backgroundColor: '#f8f9fa',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '4px',
+                      textAlign: 'center',
+                      color: '#dc3545',
+                      fontWeight: '500'
+                    }}
+                  >
+                    No technician found for this district
+                  </div>
+                ) : (
+                  <select
+                    className="form-control"
+                    id="technicianId"
+                    value={assignedTechnicianId}
+                    onChange={(e) => setAssignedTechnicianId(e.target.value)}
+                    required
+                  >
+                    <option value="">Select Technician</option>
+                    {filteredDistrictTechnicians.map((tech) => (
                       <option key={tech.technician_id} value={tech.technician_id}>
                         {tech.technician_id} - {tech.name}
                       </option>
                     ))}
-                </select>
+                  </select>
+                )}
               </div>
 
               <div className="d-flex justify-content-end" style={{ gap: '10px', marginTop: '20px' }}>
@@ -361,7 +534,7 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                 <button
                   type="submit"
                   className={`btn ${assignMode === 'reassign' ? 'btn-warning' : 'btn-success'}`}
-                  disabled={assignLoading || !assignedTechnicianId}
+                  disabled={assignLoading || !assignedTechnicianId || filteredDistrictTechnicians.length === 0}
                 >
                   {assignLoading
                     ? assignMode === 'reassign'
@@ -435,22 +608,50 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                 <label htmlFor="technicianId" className="mb-1" style={{ fontWeight: '500' }}>
                   Technician
                 </label>
-                <select
-                  className="form-control"
-                  id="technicianId"
-                  value={createForm.technicianId}
-                  onChange={(e) => handleCreateChange('technicianId', e.target.value)}
-                  required
-                >
-                  <option value="">Select Technician</option>
-                  {technicians
-                    .filter((tech) => tech.status)
-                    .map((tech) => (
+                {!createForm.deviceId ? (
+                  <div 
+                    style={{
+                      padding: '12px',
+                      backgroundColor: '#f8f9fa',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '4px',
+                      textAlign: 'center',
+                      color: '#6c7293',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Select a device first
+                  </div>
+                ) : filteredDistrictTechnicians.length === 0 ? (
+                  <div 
+                    style={{
+                      padding: '12px',
+                      backgroundColor: '#f8f9fa',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '4px',
+                      textAlign: 'center',
+                      color: '#dc3545',
+                      fontWeight: '500'
+                    }}
+                  >
+                    No technician found for this district
+                  </div>
+                ) : (
+                  <select
+                    className="form-control"
+                    id="technicianId"
+                    value={createForm.technicianId}
+                    onChange={(e) => handleCreateChange('technicianId', e.target.value)}
+                    required
+                  >
+                    <option value="">Select Technician</option>
+                    {filteredDistrictTechnicians.map((tech) => (
                       <option key={tech.technician_id} value={tech.technician_id}>
                         {tech.technician_id} - {tech.name}
                       </option>
                     ))}
-                </select>
+                  </select>
+                )}
               </div>
 
               <div className="form-group mb-3">
@@ -482,7 +683,7 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                 <button
                   type="submit"
                   className="btn btn-success"
-                  disabled={createLoading}
+                  disabled={createLoading || !createForm.deviceId || filteredDistrictTechnicians.length === 0}
                 >
                   {createLoading ? 'Creating...' : 'Create'}
                 </button>

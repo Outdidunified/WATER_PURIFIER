@@ -15,6 +15,8 @@ const useManageOrders = (userInfo) => {
     const [showEditForm, setShowEditForm] = useState(false);
     const [modalStyle, setModalStyle] = useState({ display: 'none' });
     const [codConfirmationLoading, setCodConfirmationLoading] = useState(false);
+    const [selectedFilter, setSelectedFilter] = useState('');
+    const [searchText, setSearchText] = useState('');
 
     const fetchOrdersCalled = useRef(false);
 
@@ -112,6 +114,59 @@ const useManageOrders = (userInfo) => {
 
     const resolveDeviceId = (order = {}) => order.wp_device_id || order?.order_snapshot?.wp_device_id || null;
 
+    const calculateOrderSummary = (ordersList) => {
+        const summary = {
+            totalOrders: ordersList.length,
+            pendingOrders: 0,
+            completedOrders: 0,
+            paymentCompletedCOD: 0,
+            paymentCompletedOnline: 0,
+            paymentPendingCOD: 0,
+            paymentPendingOnline: 0,
+            deliveryPending: 0,
+            deliveryCompleted: 0,
+        };
+
+        ordersList.forEach((order) => {
+            const paymentType = (order.paymentType || '').toUpperCase();
+            const paymentStatus = (order.paymentStatus || '').toLowerCase();
+            const orderStatus = order.orderStatus || '';
+            const deliveryCompletionStatus = order.deliveryCompletionStatus;
+            const deliveryHistory = order.deliveryHistory || [];
+            const lastDeliveryStatus = deliveryHistory.length > 0 
+                ? (deliveryHistory[deliveryHistory.length - 1]?.status || '').toLowerCase()
+                : '';
+            
+            const isCOD = paymentType === 'COD';
+            const isOnline = paymentType === 'ONLINE' || paymentType === 'RAZORPAY';
+            const isPaymentCompleted = paymentStatus === 'completed' || paymentStatus === 'success';
+            const isDeliveryCompleted = deliveryCompletionStatus === true || lastDeliveryStatus === 'completed' || isPaymentCompleted;
+
+            if (isDeliveryCompleted) {
+                summary.completedOrders += 1;
+                if (deliveryCompletionStatus === true || lastDeliveryStatus === 'completed') {
+                    summary.deliveryCompleted += 1;
+                }
+            } else {
+                summary.pendingOrders += 1;
+            }
+
+            if (isPaymentCompleted) {
+                if (isCOD) summary.paymentCompletedCOD += 1;
+                if (isOnline) summary.paymentCompletedOnline += 1;
+            } else {
+                if (isCOD) summary.paymentPendingCOD += 1;
+                if (isOnline) summary.paymentPendingOnline += 1;
+            }
+
+            if (!isDeliveryCompleted && orderStatus !== 'Cancelled') {
+                summary.deliveryPending += 1;
+            }
+        });
+
+        return summary;
+    };
+
     useEffect(() => {
         if (!fetchOrdersCalled.current) {
             fetchOrders();
@@ -120,15 +175,65 @@ const useManageOrders = (userInfo) => {
     }, []);
 
   const handleSearchInputChange = (e) => {
-  const inputValue = e.target.value.toUpperCase();
-  const filtered = orders.filter((order) =>
-    order.customOrderId?.toUpperCase().includes(inputValue) ||
-    order.deliveryAddress?.name?.toUpperCase().includes(inputValue) ||
-    order.email?.toUpperCase().includes(inputValue)|| 
-    order.phoneNumber?.toUpperCase().includes(inputValue)
-  );
-  setFilteredOrders(filtered);
-};
+    const inputValue = e.target.value.toUpperCase();
+    setSearchText(inputValue);
+    applyFilters(selectedFilter, inputValue);
+  };
+
+  const applyFilters = (filterType, searchQuery) => {
+    let filtered = orders;
+
+    if (filterType === 'completed') {
+      filtered = orders.filter(order => {
+        const deliveryCompletionStatus = order.deliveryCompletionStatus;
+        const deliveryHistory = order.deliveryHistory || [];
+        const lastDeliveryStatus = deliveryHistory.length > 0 
+          ? (deliveryHistory[deliveryHistory.length - 1]?.status || '').toLowerCase()
+          : '';
+        return deliveryCompletionStatus === true || lastDeliveryStatus === 'completed';
+      });
+    } else if (filterType === 'pending') {
+      filtered = orders.filter(order => {
+        const deliveryCompletionStatus = order.deliveryCompletionStatus;
+        const deliveryHistory = order.deliveryHistory || [];
+        const lastDeliveryStatus = deliveryHistory.length > 0 
+          ? (deliveryHistory[deliveryHistory.length - 1]?.status || '').toLowerCase()
+          : '';
+        return !(deliveryCompletionStatus === true || lastDeliveryStatus === 'completed');
+      });
+    } else if (filterType === 'paymentCompleted') {
+      filtered = orders.filter(order => {
+        const paymentStatus = (order.paymentStatus || '').toLowerCase();
+        return paymentStatus === 'completed' || paymentStatus === 'success';
+      });
+    } else if (filterType === 'paymentPending') {
+      filtered = orders.filter(order => {
+        const paymentStatus = (order.paymentStatus || '').toLowerCase();
+        return !(paymentStatus === 'completed' || paymentStatus === 'success');
+      });
+    }
+
+    if (searchQuery) {
+      filtered = filtered.filter((order) =>
+        order.customOrderId?.toUpperCase().includes(searchQuery) ||
+        order.deliveryAddress?.name?.toUpperCase().includes(searchQuery) ||
+        order.email?.toUpperCase().includes(searchQuery) || 
+        order.phoneNumber?.toUpperCase().includes(searchQuery)
+      );
+    }
+
+    setFilteredOrders(filtered);
+  };
+
+  const handleFilterSelect = (filterType) => {
+    if (selectedFilter === filterType) {
+      setSelectedFilter('');
+      setFilteredOrders(orders);
+    } else {
+      setSelectedFilter(filterType);
+      applyFilters(filterType, searchText);
+    }
+  };
 
 
 
@@ -190,6 +295,9 @@ const useManageOrders = (userInfo) => {
         updateOrderStatus,
         resolveDeviceId,
         confirmCodPayment,
+        calculateOrderSummary,
+        selectedFilter,
+        handleFilterSelect,
     };
 };
 

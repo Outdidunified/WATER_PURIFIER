@@ -10,6 +10,35 @@ const useManageRequests = (userInfo) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [summary, setSummary] = useState({
+    total: 0,
+    pending: 0,
+    completed: 0,
+    inProgress: 0,
+    rejected: 0,
+  });
+
+  const calculateRequestSummary = (reqs) => {
+    const counts = {
+      total: reqs.length,
+      pending: 0,
+      completed: 0,
+      inProgress: 0,
+      rejected: 0,
+    };
+
+    reqs.forEach((request) => {
+      const status = (request.task_status || '').toLowerCase();
+      if (status === 'pending') counts.pending += 1;
+      else if (status === 'completed') counts.completed += 1;
+      else if (status === 'in progress' || status === 'in_progress') counts.inProgress += 1;
+      else if (status === 'rejected') counts.rejected += 1;
+    });
+
+    return counts;
+  };
 
   const isSeller = Number(userInfo?.role_id) === 4;
   const sellerDistrict = userInfo?.district || '';
@@ -139,6 +168,7 @@ const useManageRequests = (userInfo) => {
       setDevices(availableDevices);
       setRequests(enriched);
       setDisplayRequests(enriched);
+      setSummary(calculateRequestSummary(enriched));
       setError('');
     } catch (err) {
       setError('Failed to fetch manual requests');
@@ -152,25 +182,53 @@ const useManageRequests = (userInfo) => {
     fetchData();
   }, [fetchData]);
 
-  const handleSearchChange = (e) => {
-    const value = e.target.value || '';
-    setSearchTerm(value);
-    const lower = value.toLowerCase();
-    if (!lower) {
-      setDisplayRequests(requests);
-      return;
+  const applyFilters = (filterType, search) => {
+    let filtered = requests;
+
+    if (filterType === 'pending') {
+      filtered = filtered.filter(
+        (request) => (request.task_status || '').toLowerCase() === 'pending'
+      );
+    } else if (filterType === 'completed') {
+      filtered = filtered.filter(
+        (request) => (request.task_status || '').toLowerCase() === 'completed'
+      );
+    } else if (filterType === 'inProgress') {
+      filtered = filtered.filter((request) => {
+        const status = (request.task_status || '').toLowerCase();
+        return status === 'in progress' || status === 'in_progress';
+      });
+    } else if (filterType === 'rejected') {
+      filtered = filtered.filter(
+        (request) => (request.task_status || '').toLowerCase() === 'rejected'
+      );
     }
 
-    const filtered = requests.filter((request) => {
-      const idMatch = request?.task_id?.toString().toLowerCase().includes(lower);
-      const deviceMatch = (request?.wp_device_id || '').toLowerCase().includes(lower);
-      const emailMatch = (request?.task_created_by_user_email || '').toLowerCase().includes(lower);
-      const technicianMatch = (request?.assignedTechnician?.name || request?.assignedTechnician?.technician_name || '').toLowerCase().includes(lower);
-      const statusMatch = (request?.task_status || '').toLowerCase().includes(lower);
-      return idMatch || deviceMatch || emailMatch || technicianMatch || statusMatch;
-    });
+    if (search.trim()) {
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter((request) => {
+        const idMatch = request?.task_id?.toString().toLowerCase().includes(searchLower);
+        const deviceMatch = (request?.wp_device_id || '').toLowerCase().includes(searchLower);
+        const emailMatch = (request?.task_created_by_user_email || '').toLowerCase().includes(searchLower);
+        const technicianMatch = (request?.assignedTechnician?.name || request?.assignedTechnician?.technician_name || '').toLowerCase().includes(searchLower);
+        return idMatch || deviceMatch || emailMatch || technicianMatch;
+      });
+    }
 
     setDisplayRequests(filtered);
+  };
+
+  const handleFilterSelect = (filterType) => {
+    const sanitized = filterType || '';
+    const newFilter = selectedFilter === sanitized ? '' : sanitized;
+    setSelectedFilter(newFilter);
+    applyFilters(newFilter, searchText);
+  };
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value || '';
+    setSearchText(value);
+    applyFilters(selectedFilter, value);
   };
 
   const assignManualRequest = async ({ task_id, technician_id }) => {
@@ -234,6 +292,9 @@ const useManageRequests = (userInfo) => {
     reassignManualRequest,
     createManualRequest,
     refetch: fetchData,
+    summary,
+    selectedFilter,
+    handleFilterSelect,
   };
 };
 
