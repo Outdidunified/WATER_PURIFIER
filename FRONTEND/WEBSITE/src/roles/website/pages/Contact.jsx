@@ -4,7 +4,7 @@ import Footer from '../components/Footer';
 import useContact from "../hooks/useContact";
 const Contact = ({ userInfo, token, handleLogout }) => {
     const { formData, handleChange, handleSubmits, loading, sanitizeEmail } = useContact();
-    
+
     return (
         <div>
 
@@ -18,7 +18,7 @@ const Contact = ({ userInfo, token, handleLogout }) => {
 
                     {/* <!-- Section Title --> */}
                     <div className="container section-title" data-aos="fade-up">
-                        <h2>Contact</h2>
+                        <h2>Contact Us</h2>
                         <p>Speak to a water-wellness expert today</p>
                     </div>
                     {/* <!-- End Section Title --> */}
@@ -69,7 +69,7 @@ const Contact = ({ userInfo, token, handleLogout }) => {
                                 <div className="contact-form" data-aos="fade-up" data-aos-delay="300">
                                     <h3>Get In Touch</h3>
                                     <p>How Can We Assist You Today?</p>
-            
+
                                     <form className="php-email-form" onSubmit={handleSubmits}>
                                         <div className="row gy-4">
                                             <div className="col-md-6">

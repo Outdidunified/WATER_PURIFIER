@@ -17,7 +17,7 @@ const FAQs = ({ userInfo, token, handleLogout }) => {
                 <section id="hero" className="hero section">
 
                     {/* <!-- Section Title --> */}
-                    <div className="container section-title" data-aos="fade-up">
+                    <div className="container section-title" data-aos="fade-up" style={{ paddingBottom: '0px' }}>
                         <h2>FAQs</h2>
                         <p>Find Answers To Your Queries</p>
                     </div>

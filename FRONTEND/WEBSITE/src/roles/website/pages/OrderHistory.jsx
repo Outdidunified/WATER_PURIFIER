@@ -190,6 +190,7 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                     const selectedPlan = order.selectedPlan || {};
                                     const selectedDuration = order.selectedDuration || {};
                                     const isExpanded = expandedOrderId === order._id;
+                                    const orderKey = order._id || payment._id || `${index}`;
 
                                     return (
                                         <div
@@ -259,7 +260,7 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                     ) : (
                                                         <>
                                                             <p>
-                                                                <strong>Delivery Status: </strong>
+                                                                <strong>Delivery Status </strong>
                                                                 <span
                                                                     style={{
                                                                         ...getStatusClass2(order.deliveryCurrentStatus),
@@ -310,406 +311,345 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                     })()}
                                                                 </span>
                                                             </p>
-
-                                                            <button
-                                                                type="button"
-                                                                style={{
-                                                                    marginTop: "8px",
-                                                                    backgroundColor: "#0d6efd",
-                                                                    color: "#fff",
-                                                                    border: "none",
-                                                                    padding: "6px 12px",
-                                                                    borderRadius: "6px",
-                                                                    fontSize: "14px",
-                                                                    fontWeight: "600",
-                                                                    cursor: "pointer",
-                                                                    boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-                                                                    transition: "all 0.3s ease",
-                                                                }}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setSelectedOrderStatus(order);
-                                                                    setShowStatusModal(true);
-                                                                }}
-                                                            >
-                                                                View Delivery Status
-                                                            </button>
                                                         </>
                                                     )}
                                                 </div>
-
                                             </div>
-
-                                            {showStatusModal && selectedOrderStatus && (
-                                                <div
-                                                    style={{
-                                                        position: "fixed",
-                                                        top: 0,
-                                                        left: 0,
-                                                        width: "100%",
-                                                        height: "100%",
-                                                        backgroundColor: "rgba(0,0,0,0.5)",
-                                                        display: "flex",
-                                                        justifyContent: "center",
-                                                        alignItems: "center",
-                                                        zIndex: 2000,
-                                                    }}
-                                                >
-                                                    <div
-                                                        style={{
-                                                            width: window.innerWidth < 768 ? "90%" : "420px",
-                                                            backgroundColor: "#fff",
-                                                            borderRadius: "12px",
-                                                            boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-                                                            display: "flex",
-                                                            flexDirection: "column",
-                                                            overflow: "hidden",
-                                                        }}
-                                                    >
-                                                        {/* Header */}
-                                                        <div
-                                                            style={{
-                                                                backgroundColor: "aliceblue",
-                                                                padding: "12px 16px",
-                                                                display: "flex",
-                                                                justifyContent: "space-between",
-                                                                alignItems: "center",
-                                                                borderBottom: "1px solid #dce3f0",
-                                                            }}
-                                                        >
-                                                            <h5
-                                                                style={{
-                                                                    margin: 0,
-                                                                    fontSize: "16px",
-                                                                    fontWeight: "700",
-                                                                    color: "#0d6efd",
-                                                                }}
-                                                            >
-                                                                Delivery Status Timeline
-                                                            </h5>
-                                                            <button
-                                                                onClick={() => setShowStatusModal(false)}
-                                                                style={{
-                                                                    background: "transparent",
-                                                                    border: "none",
-                                                                    fontSize: "20px",
-                                                                    color: "#333",
-                                                                    cursor: "pointer",
-                                                                    lineHeight: "1",
-                                                                }}
-                                                            >
-                                                                ×
-                                                            </button>
-                                                        </div>
-
-                                                        {/* Body */}
-                                                        <div
-                                                            style={{
-                                                                padding: "20px",
-                                                                maxHeight: "70vh",
-                                                                overflowY: "auto",
-                                                            }}
-                                                        >
-                                                            {getDeliveryTimeline(selectedOrderStatus).map((step, i, arr) => (
-                                                                <div
-                                                                    key={i}
-                                                                    style={{
-                                                                        display: "flex",
-                                                                        alignItems: "flex-start",
-                                                                        position: "relative",
-                                                                        marginBottom: i !== arr.length - 1 ? "25px" : "0",
-                                                                    }}
-                                                                >
-                                                                    {/* Connector Line */}
-                                                                    {i !== arr.length - 1 && (
-                                                                        <div
-                                                                            style={{
-                                                                                position: "absolute",
-                                                                                left: "7px",
-                                                                                top: "15px",
-                                                                                width: "2px",
-                                                                                height: "calc(100% - 15px)",
-                                                                                backgroundColor:
-                                                                                    step.isCompleted && arr[i + 1]?.isCompleted
-                                                                                        ? "#28a745"
-                                                                                        : "#ccc",
-                                                                                zIndex: 0,
-                                                                            }}
-                                                                        />
-                                                                    )}
-
-                                                                    {/* Circle */}
-                                                                    <div
-                                                                        style={{
-                                                                            width: "15px",
-                                                                            height: "15px",
-                                                                            borderRadius: "50%",
-                                                                            backgroundColor: step.isCompleted ? "#28a745" : "#ccc",
-                                                                            marginRight: "10px",
-                                                                            zIndex: 1,
-                                                                            flexShrink: 0,
-                                                                        }}
-                                                                    ></div>
-
-                                                                    {/* Text */}
-                                                                    <div style={{ flex: 1 }}>
-                                                                        <div style={{ fontWeight: "600", color: "#000" }}>{step.label}</div>
-                                                                        <div
-                                                                            style={{
-                                                                                color: step.isCompleted ? "#28a745" : "#888",
-                                                                                fontSize: "13px",
-                                                                            }}
-                                                                        >
-                                                                            {step.date || "—"}
-                                                                        </div>
-                                                                        <div
-                                                                            style={{
-                                                                                color: step.notes ? "#555" : "#888",
-                                                                                fontSize: "13px",
-                                                                                marginTop: "4px",
-                                                                            }}
-                                                                        >
-                                                                            {step.notes || "Pending update"}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-
-                                                        {/* Footer */}
-                                                        <div
-                                                            style={{
-                                                                backgroundColor: "aliceblue",
-                                                                padding: "10px 15px",
-                                                                borderTop: "1px solid #dce3f0",
-                                                                display: "flex",
-                                                                justifyContent: "center",
-                                                            }}
-                                                        >
-                                                            <button
-                                                                onClick={() => setShowStatusModal(false)}
-                                                                style={{
-                                                                    backgroundColor: "#0d6efd",
-                                                                    color: "#fff",
-                                                                    border: "none",
-                                                                    borderRadius: "6px",
-                                                                    padding: "8px 20px",
-                                                                    fontWeight: "600",
-                                                                    cursor: "pointer",
-                                                                    fontSize: "14px",
-                                                                    boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-                                                                }}
-                                                            >
-                                                                Close
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
 
                                             {/* Expanded details */}
                                             {isExpanded && (
-                                                <div className="row" style={{ gap: "20px", width: "110%", padding: '10px' }}>
-                                                    {/* Left Column: Plan & Payment Details */}
-                                                    <div className="col-md-6">
+                                                <div style={{ padding: "20px", maxHeight: "70vh", overflowY: "auto" }}>
+                                                    {/* Timeline */}
+                                                    <div
+                                                        style={{
+                                                            display: "flex",
+                                                            justifyContent: "space-between",
+                                                            alignItems: "flex-start",
+                                                            marginBottom: "20px",
+                                                            position: "relative",
+                                                        }}
+                                                    >
+                                                        {/* Base grey connector line */}
                                                         <div
                                                             style={{
-                                                                borderTop: "1px solid #0d6efd",
-                                                                padding: "20px",
-                                                                backgroundColor: "#fff",
-                                                                borderRadius: "10px",
-                                                                height: "100%",
+                                                                position: "absolute",
+                                                                top: "calc(10px)", // ✅ Center line vertically through dots (half of 20px)
+                                                                left: "5%",
+                                                                right: "5%",
+                                                                height: "2px",
+                                                                backgroundColor: "#ccc",
+                                                                zIndex: 0,
                                                             }}
-                                                        >
-                                                            <h5
-                                                                style={{
-                                                                    color: "#0d6efd",
-                                                                    fontWeight: "700",
-                                                                    fontSize: "16px",
-                                                                    borderBottom: "2px solid #0d6efd",
-                                                                    display: "inline-block",
-                                                                    marginBottom: "15px",
-                                                                }}
-                                                            >
-                                                                Plan & Payment Details
-                                                            </h5>
+                                                        ></div>
 
-                                                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                                                                <tbody>
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Model</td>
-                                                                        <td style={{ textAlign: "right", color: "#0d6efd", fontWeight: "600" }}>
-                                                                            {order.modelName || "N/A"}
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Plan</td>
-                                                                        <td style={{ textAlign: "right", color: "#0d6efd", fontWeight: "600" }}>
-                                                                            {selectedPlan.label || "N/A"}
-                                                                        </td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Capacity</td>
-                                                                        <td style={{ textAlign: "right" }}>
-                                                                            {selectedPlan.label?.toLowerCase() === "unlimited" ? (
-                                                                                <span style={{ color: "#0d6efd", fontWeight: "600" }}>Unlimited</span>
-                                                                            ) : (
-                                                                                <>
-                                                                                    {selectedPlan.capacity}/
-                                                                                    <span style={{ color: "#0d6efd", fontWeight: "600" }}>Ltr</span>
-                                                                                </>
-                                                                            )}
-                                                                        </td>
-                                                                    </tr>
-                                                                    <hr style={{ textAlign: 'center', color: '#0d6efd' }}></hr>
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Payment Type</td>
-                                                                        <td style={{ textAlign: "right" }}>{payment.paymentType || "N/A"}</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Duration</td>
-                                                                        <td style={{ textAlign: "right" }}>{selectedDuration.duration_time_limit || "N/A"}</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Price</td>
-                                                                        <td style={{ textAlign: "right" }}>₹{payment.price || order.price || "N/A"}</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Discount ({selectedDuration.discount || 0}%)</td>
-                                                                        <td style={{ textAlign: "right" }}>₹{payment.discountAmount || "N/A"}</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Discounted Price {selectedDuration.discountedPrice}</td>
-                                                                        <td style={{ textAlign: "right" }}>₹{payment.discountedPrice || "N/A"}</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>GST ({selectedDuration.gst || 0}%)</td>
-                                                                        <td style={{ textAlign: "right" }}>₹{payment.gstAmount || "N/A"}</td>
-                                                                    </tr>
+                                                        {getDeliveryTimeline(order).map((step, i, arr) => {
+                                                            const isLast = i === arr.length - 1;
+                                                            const nextStep = arr[i + 1];
+                                                            const showGreenLine = step.isCompleted && nextStep?.isCompleted;
 
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Subtotal</td>
-                                                                        <td style={{ textAlign: "right" }}>₹{payment.subtotal || order.priceWithGST || "N/A"}</td>
-                                                                    </tr>
-                                                                    {(order.orderType !== "Recharge" && !order.isRecharge) && (
-                                                                        <tr>
-                                                                            <td style={{ fontWeight: "600", color: "#333" }}>Security Deposit</td>
-                                                                            <td style={{ textAlign: "right" }}>₹{selectedDuration.security_deposit || "N/A"}</td>
-                                                                        </tr>
-                                                                    )}
-                                                                    {payment.paymentType === "COD" && Number(payment.codFee) > 0 && (
-                                                                        <tr>
-                                                                            <td style={{ fontWeight: "600", color: "#333" }}>COD Fee</td>
-                                                                            <td style={{ textAlign: "right" }}>₹{payment.codFee}</td>
-                                                                        </tr>
-                                                                    )}
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "700", color: "#000" }}>Grand Total</td>
-                                                                        <td style={{ textAlign: "right", color: "#0d6efd", fontWeight: "700" }}>
-                                                                            ₹{order.grandTotal || payment.totalPrice || "N/A"}
-                                                                        </td>
-                                                                    </tr>
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Right Column: Delivery Address */}
-                                                    <div className="col-md-5">
-                                                        <div
-                                                            style={{
-                                                                borderTop: "1px solid #0d6efd",
-                                                                padding: "20px",
-                                                                backgroundColor: "#fff",
-                                                                borderRadius: "10px",
-                                                                height: "100%",
-                                                            }}
-                                                        >
-                                                            <h5
-                                                                style={{
-                                                                    color: "#0d6efd",
-                                                                    fontWeight: "700",
-                                                                    fontSize: "16px",
-                                                                    borderBottom: "2px solid #0d6efd",
-                                                                    display: "inline-block",
-                                                                    marginBottom: "15px",
-                                                                }}
-                                                            >
-                                                                Delivery Address
-                                                            </h5>
-
-                                                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                                                                <tbody>
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Name</td>
-                                                                        <td style={{ textAlign: "right", color: "#333" }}>{address.name || "N/A"}</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Phone</td>
-                                                                        <td style={{ textAlign: "right", color: "#333" }}>{address.phone || "N/A"}</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Email</td>
-                                                                        <td style={{ textAlign: "right", color: "#333" }}>{address.email || "N/A"}</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <td style={{ fontWeight: "600", color: "#333" }}>Address</td>
-                                                                        <td style={{ textAlign: "right", color: "#333" }}>
-                                                                            {address.street || "N/A"}, {address.landmark || ""}<br />
-                                                                            {address.city || ""}, {address.district || ""}, {address.state || ""} - {address.pincode || ""}
-                                                                        </td>
-                                                                    </tr>
-                                                                </tbody>
-                                                            </table>
-
-                                                            <hr style={{ textAlign: 'center', color: '#0d6efd' }}></hr>
-
-                                                            <p>
-                                                                <strong>Order Status: </strong>
-                                                                <span style={getStatusClass2(order.orderStatus)}>
-                                                                    {order.orderStatus || "N/A"}
-                                                                </span>
-                                                            </p>
-                                                            <p>
-                                                                <strong>Payment Status: </strong>
-                                                                <span style={getStatusClass2(payment.paymentStatus)}>
-                                                                    {payment.paymentStatus || "N/A"}
-                                                                </span>
-                                                            </p>
-                                                            {!(order.orderType === "Recharge" || order.isRecharge) && (
-                                                                <p>
-                                                                    <strong>Installation Status: </strong>
-                                                                    <span style={getStatusClass2(order.task_status)}>
-                                                                        {order.task_status || "N/A"}
-                                                                    </span>
-                                                                </p>
-                                                            )}
-
-                                                            {/* Download Invoice Button */}
-                                                            <div style={{ textAlign: "center", marginTop: "20px" }}>
-                                                                <button
-                                                                    className="btn btn-primary"
+                                                            return (
+                                                                <div
+                                                                    key={`${orderKey}-step-${i}`}
                                                                     style={{
-                                                                        background: order.task_status === "Completed" ? "#0d6efd" : "#b0b0b0",
-                                                                        border: "none",
-                                                                        padding: "8px 20px",
-                                                                        borderRadius: "6px",
-                                                                        fontWeight: "600",
-                                                                        cursor: order.task_status === "Completed" ? "pointer" : "not-allowed",
-                                                                        opacity: order.task_status === "Completed" ? 1 : 0.6,
-                                                                        transition: "all 0.3s ease",
-                                                                    }}
-                                                                    disabled={order.task_status !== "Completed"}
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        if (order.task_status === "Completed") {
-                                                                            handleDownloadInvoice(order.customOrderId);
-                                                                        }
+                                                                        flex: "1",
+                                                                        textAlign: "center",
+                                                                        position: "relative",
+                                                                        zIndex: 2,
                                                                     }}
                                                                 >
-                                                                    <i className="bi bi-download" style={{ marginRight: "5px" }}></i>
-                                                                    Download Invoice
-                                                                </button>
+                                                                    {/* Green connector between completed steps */}
+                                                                    {!isLast && (
+                                                                        <div
+                                                                            style={{
+                                                                                position: "absolute",
+                                                                                top: "calc(10px)", // ✅ Same as base line — perfectly centered
+                                                                                left: "50%",
+                                                                                width: "100%",
+                                                                                height: "2px",
+                                                                                backgroundColor: showGreenLine ? "#28a745" : "transparent",
+                                                                                zIndex: 1,
+                                                                                transition: "background-color 0.3s ease",
+                                                                            }}
+                                                                        ></div>
+                                                                    )}
+
+                                                                    {/* Step Circle */}
+                                                                    <div
+                                                                        style={{
+                                                                            width: "20px",
+                                                                            height: "20px",
+                                                                            borderRadius: "50%",
+                                                                            backgroundColor: step.isCompleted ? "#28a745" : "#ccc",
+                                                                            margin: "0 auto",
+                                                                            position: "relative",
+                                                                            zIndex: 2,
+                                                                            transition: "background-color 0.3s ease",
+                                                                        }}
+                                                                    ></div>
+
+                                                                    {/* Step Label */}
+                                                                    <div
+                                                                        style={{
+                                                                            marginTop: "10px",
+                                                                            fontWeight: "600",
+                                                                            color: "#000",
+                                                                        }}
+                                                                    >
+                                                                        {step.label}
+                                                                    </div>
+
+                                                                    {/* Date */}
+                                                                    <div
+                                                                        style={{
+                                                                            color: step.isCompleted ? "#28a745" : "#888",
+                                                                            fontSize: "13px",
+                                                                            marginTop: "3px",
+                                                                        }}
+                                                                    >
+                                                                        {step.date || "—"}
+                                                                    </div>
+
+                                                                    {/* Notes */}
+                                                                    <div
+                                                                        style={{
+                                                                            color: step.notes ? "#555" : "#888",
+                                                                            fontSize: "12px",
+                                                                            marginTop: "4px",
+                                                                        }}
+                                                                    >
+                                                                        {step.notes || "Pending update"}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    <div className="row" style={{ gap: "20px", width: "110%", padding: '10px' }}>
+                                                        {/* Left Column: Plan & Payment Details */}
+                                                        <div className="col-md-6">
+                                                            <div
+                                                                style={{
+                                                                    borderTop: "1px solid #0d6efd",
+                                                                    padding: "20px",
+                                                                    backgroundColor: "#fff",
+                                                                    borderRadius: "10px",
+                                                                    height: "100%",
+                                                                }}
+                                                            >
+                                                                <h5
+                                                                    style={{
+                                                                        color: "#0d6efd",
+                                                                        fontWeight: "700",
+                                                                        fontSize: "16px",
+                                                                        borderBottom: "2px solid #0d6efd",
+                                                                        display: "inline-block",
+                                                                        marginBottom: "15px",
+                                                                    }}
+                                                                >
+                                                                    Plan & Payment Details
+                                                                </h5>
+
+                                                                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                                                    <tbody>
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "600", color: "#333" }}>Model</td>
+                                                                            <td style={{ textAlign: "right", color: "#0d6efd", fontWeight: "600" }}>
+                                                                                {order.modelName || "N/A"}
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "600", color: "#333" }}>Plan</td>
+                                                                            <td style={{ textAlign: "right", color: "#0d6efd", fontWeight: "600" }}>
+                                                                                {selectedPlan.label || "N/A"}
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "600", color: "#333" }}>Capacity</td>
+                                                                            <td style={{ textAlign: "right" }}>
+                                                                                {selectedPlan.label?.toLowerCase() === "unlimited" ? (
+                                                                                    <span style={{ color: "#0d6efd", fontWeight: "600" }}>Unlimited</span>
+                                                                                ) : (
+                                                                                    <>
+                                                                                        {selectedPlan.capacity}
+                                                                                        <span style={{ color: "#0d6efd", fontWeight: "600" }}>Ltr</span>
+                                                                                    </>
+                                                                                )}
+                                                                            </td>
+                                                                        </tr>
+                                                                        <hr style={{ textAlign: 'center', color: '#0d6efd' }}></hr>
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "600", color: "#333" }}>Payment Type</td>
+                                                                            <td style={{ textAlign: "right" }}>{payment.paymentType || "N/A"}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "600", color: "#333" }}>Duration</td>
+                                                                            <td style={{ textAlign: "right" }}>{selectedDuration.duration_time_limit || "N/A"}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "600", color: "#333" }}>Price</td>
+                                                                            <td style={{ textAlign: "right" }}>₹{payment.price || order.price || "N/A"}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "600", color: "#333" }}>Discount ({selectedDuration.discount || 0}%)</td>
+                                                                            <td style={{ textAlign: "right" }}>₹{payment.discountAmount || "N/A"}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "600", color: "#333" }}>Discounted Price {selectedDuration.discountedPrice}</td>
+                                                                            <td style={{ textAlign: "right" }}>₹{payment.discountedPrice || "N/A"}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "600", color: "#333" }}>GST ({selectedDuration.gst || 0}%)</td>
+                                                                            <td style={{ textAlign: "right" }}>₹{payment.gstAmount || "N/A"}</td>
+                                                                        </tr>
+
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "600", color: "#333" }}>Subtotal</td>
+                                                                            <td style={{ textAlign: "right" }}>₹{payment.subtotal || order.priceWithGST || "N/A"}</td>
+                                                                        </tr>
+                                                                        {(order.orderType !== "Recharge" && !order.isRecharge) && (
+                                                                            <tr>
+                                                                                <td style={{ fontWeight: "600", color: "#333" }}>Security Deposit</td>
+                                                                                <td style={{ textAlign: "right" }}>₹{selectedDuration.security_deposit || "N/A"}</td>
+                                                                            </tr>
+                                                                        )}
+                                                                        {payment.paymentType === "COD" && Number(payment.codFee) > 0 && (
+                                                                            <tr>
+                                                                                <td style={{ fontWeight: "600", color: "#333" }}>COD Fee</td>
+                                                                                <td style={{ textAlign: "right" }}>₹{payment.codFee}</td>
+                                                                            </tr>
+                                                                        )}
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "700", color: "#000" }}>Grand Total</td>
+                                                                            <td style={{ textAlign: "right", color: "#0d6efd", fontWeight: "700" }}>
+                                                                                ₹{order.grandTotal || payment.totalPrice || "N/A"}
+                                                                            </td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Right Column: Delivery Address */}
+                                                        <div className="col-md-5">
+                                                            <div
+                                                                style={{
+                                                                    borderTop: "1px solid #0d6efd",
+                                                                    padding: "20px",
+                                                                    backgroundColor: "#fff",
+                                                                    borderRadius: "10px",
+                                                                    height: "100%",
+                                                                }}
+                                                            >
+                                                                <h5
+                                                                    style={{
+                                                                        color: "#0d6efd",
+                                                                        fontWeight: "700",
+                                                                        fontSize: "16px",
+                                                                        borderBottom: "2px solid #0d6efd",
+                                                                        display: "inline-block",
+                                                                        marginBottom: "15px",
+                                                                    }}
+                                                                >
+                                                                    Delivery Address
+                                                                </h5>
+
+                                                                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                                                    <tbody>
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "600", color: "#333" }}>Name</td>
+                                                                            <td style={{ textAlign: "right", color: "#333" }}>{address.name || "N/A"}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "600", color: "#333" }}>Phone</td>
+                                                                            <td style={{ textAlign: "right", color: "#333" }}>{address.phone || "N/A"}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "600", color: "#333" }}>Email</td>
+                                                                            <td style={{ textAlign: "right", color: "#333" }}>{address.email || "N/A"}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td style={{ fontWeight: "600", color: "#333" }}>Address</td>
+                                                                            <td style={{ textAlign: "right", color: "#333" }}>
+                                                                                {address.street || "N/A"}, {address.landmark || ""}<br />
+                                                                                {address.city || ""}, {address.district || ""}, {address.state || ""} - {address.pincode || ""}
+                                                                            </td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
+
+                                                                <hr style={{ textAlign: 'center', color: '#0d6efd' }}></hr>
+
+                                                                <p
+                                                                    style={{
+                                                                        display: "flex",
+                                                                        justifyContent: "space-between",
+                                                                        alignItems: "center",
+                                                                        margin: "4px 0",
+                                                                    }}
+                                                                >
+                                                                    <strong>Order Status</strong>
+                                                                    <span style={getStatusClass2(order.orderStatus)}>
+                                                                        {order.orderStatus || "N/A"}
+                                                                    </span>
+                                                                </p>
+
+                                                                <p
+                                                                    style={{
+                                                                        display: "flex",
+                                                                        justifyContent: "space-between",
+                                                                        alignItems: "center",
+                                                                        margin: "4px 0",
+                                                                    }}
+                                                                >
+                                                                    <strong>Payment Status</strong>
+                                                                    <span style={getStatusClass2(payment.paymentStatus)}>
+                                                                        {payment.paymentStatus || "N/A"}
+                                                                    </span>
+                                                                </p>
+
+                                                                {!(order.orderType === "Recharge" || order.isRecharge) && (
+                                                                    <p
+                                                                        style={{
+                                                                            display: "flex",
+                                                                            justifyContent: "space-between",
+                                                                            alignItems: "center",
+                                                                            margin: "4px 0",
+                                                                        }}
+                                                                    >
+                                                                        <strong>Installation Status</strong>
+                                                                        <span style={getStatusClass2(order.task_status)}>
+                                                                            {order.task_status || "N/A"}
+                                                                        </span>
+                                                                    </p>
+                                                                )}
+
+
+                                                                {/* Download Invoice Button */}
+                                                                <div style={{ textAlign: "center", marginTop: "20px" }}>
+                                                                    <button
+                                                                        className="btn btn-primary"
+                                                                        style={{
+                                                                            background: order.task_status === "Completed" ? "#0d6efd" : "#b0b0b0",
+                                                                            border: "none",
+                                                                            padding: "8px 20px",
+                                                                            borderRadius: "6px",
+                                                                            fontWeight: "600",
+                                                                            cursor: order.task_status === "Completed" ? "pointer" : "not-allowed",
+                                                                            opacity: order.task_status === "Completed" ? 1 : 0.6,
+                                                                            transition: "all 0.3s ease",
+                                                                        }}
+                                                                        disabled={order.task_status !== "Completed"}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            if (order.task_status === "Completed") {
+                                                                                handleDownloadInvoice(order.customOrderId);
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <i className="bi bi-download" style={{ marginRight: "5px" }}></i>
+                                                                        Download Invoice
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>

@@ -14,11 +14,11 @@ const TermsOfService = ({ userInfo, token, handleLogout }) => {
 
                 {/* <!-- Terms Of Service Section --> */}
 
-                <section id="hero" className="hero section" style={{ marginTop: '5%', marginBottom:'0px', paddingBottom:'0px'}}>
+                <section id="hero" className="hero section" style={{ marginBottom: '0px', paddingBottom: '0px' }}>
 
                     {/* <!-- Section Title --> */}
                     <div className="container section-title" data-aos="fade-up" style={{ paddingBottom: '0px' }}>
-                        <h2>ionHive Terms of Service</h2>
+                        <h2>ionHive Terms and Service</h2>
                         <p> Last Updated: May 15, 2025</p>
                     </div>
                     {/* <!-- End Section Title --> */}
@@ -27,8 +27,8 @@ const TermsOfService = ({ userInfo, token, handleLogout }) => {
                 {/* <!-- Terms Of Service Section --> */}
 
                 {/* <!-- Terms Of Service Section --> */}
-                <div style={{ display: 'flex', justifyContent: 'center', padding:'10px'}}>
-                    <section id="terms-of-service" className="contact section light-background" style={{ fontFamily: 'Arial, sans-serif', lineHeight: 1.6, color: '#333', maxWidth: '1140px', width: '100%',}}>
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '10px' }}>
+                    <section id="terms-of-service" className="contact section light-background" style={{ fontFamily: 'Arial, sans-serif', lineHeight: 1.6, color: '#333', maxWidth: '1140px', width: '100%', }}>
                         <h2 style={{ fontSize: '1.5rem', marginTop: '1.5rem' }}>1. Definitions</h2>
                         <p><strong>"Service(s)"</strong> means services provided through the Platform, as described in clause 3 below. Services may change at the Company’s sole discretion.</p>
                         <p><strong>“User” or “You”</strong> refers to individuals who use or wish to use the Services.</p>

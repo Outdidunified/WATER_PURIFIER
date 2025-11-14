@@ -347,19 +347,21 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
 
     const handleModelSelect = (index) => {
         const model = filteredProducts[index];
+        const product = filteredProducts.filter(p => p.model_type === "Smart")[index];
         setSelectedModelIndex(index);
         setSelectedPlanIndex(0);
         setSelectedDurationIndex(0);
         setSelectedDeviceIndex(null); // Reset device selection when model changes
+        setMainImage(product.main_img); // set main image immediately
 
         if (model?.model_type === "Base") {
             setShowBaseModelPopup(true);
         }
 
         // scroll to plans
-        setTimeout(() => {
-            durationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 100);
+        // setTimeout(() => {
+        //     durationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        // }, 100);
     };
 
     // Reference flag
@@ -436,25 +438,27 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
     // selectedDevice is defined
     const parseEndDate = (dateStr) => {
         if (!dateStr) return null;
-        const [y, m, d] = dateStr.split("-").map(Number);
-        return new Date(y, m - 1, d);
+        const d = new Date(dateStr);
+        return isNaN(d) ? null : d;
     };
 
     const formatDate = (date) => {
-        if (!date || !(date instanceof Date) || isNaN(date)) return "N/A";
-        return date.toLocaleDateString("en-IN", {
+        if (!date) return "N/A";
+        return date.toLocaleString("en-IN", {
             day: "2-digit",
             month: "2-digit",
             year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true
         });
     };
 
     // Use correct path
     const endDateStr = selectedDevice?.deviceDetails?.plan_config?.endDate;
     const expiry = parseEndDate(endDateStr);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const isExpired = !expiry || today > expiry;
+    const now = new Date(); // Use full datetime comparison
+    const isExpired = !expiry || now >= expiry;
 
     return (
         <div>
@@ -467,7 +471,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                 {/* <!-- Features Section --> */}
                 <section id="hero" className="features section" style={{ marginTop: '5%' }}>
                     <div className="container section-title" data-aos="fade-up" style={{ paddingBottom: '0px' }}>
-                        <h2>Products That Fit Every Lifestyle And Budget</h2>
+                        <h2>Products that fit every Lifestyle and Budget</h2>
                         <p>Each of our smart water purifiers comes with advanced multi-stage purification and IoT technology.</p>
                     </div>
 
@@ -591,7 +595,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                                                 behavior: "smooth",
                                                                                                 block: "start"
                                                                                             });
-                                                                                        }, 100);
+                                                                                        }, 500);
                                                                                     }}
                                                                                     style={{
                                                                                         minWidth: '150px',
@@ -616,19 +620,23 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                 </div>
 
                                                 <div className="col-lg-6 col-12 text-center" style={{ padding: '20px' }}>
-                                                    <img
-                                                        src={`/upload/img/${mainImage || selectedProductByModelId?.main_img || 'placeholder.png'}`}
-                                                        alt="Main Product"
-                                                        className="img-fluid mb-3"
-                                                        style={{
-                                                            boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
-                                                            borderRadius: '20px',
-                                                            maxWidth: '100%',
-                                                            width: '400px',
-                                                            height: '300px',
-                                                            objectFit: 'contain',
-                                                        }}
-                                                    />
+                                                    {selectedProductByModelId?.main_img ? (
+                                                        <img
+                                                            src={`/upload/img/${selectedProductByModelId.main_img}`}
+                                                            alt={selectedProductByModelId.model_name || "Product"}
+                                                            className="img-fluid mb-3"
+                                                            style={{
+                                                                boxShadow: 'rgb(0 111 255 / 72%) 0px 8px 15px',
+                                                                borderRadius: '20px',
+                                                                maxWidth: '100%',
+                                                                width: '400px',
+                                                                height: '300px',
+                                                                objectFit: 'contain',
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <div className="text-muted py-5" style={{ marginTop: '20%' }}><h4>Select a model device to view image</h4></div>
+                                                    )}
 
                                                     <div className="d-flex justify-content-center align-items-center flex-wrap gap-3 mt-3">
                                                         {[1, 2, 3, 4].map((num) => {
@@ -732,12 +740,14 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                         </li>
                                                     </ul>
                                                 </div>
+
                                                 {/* Left Column – Select Model */}
                                                 <div className="col-lg-6 col-12 text-center">
 
                                                     <div ref={scrollRef}
                                                         className="d-flex overflow-auto py-3"
                                                         style={{
+                                                            padding: '10px',
                                                             gap: "20px",
                                                             scrollBehavior: "smooth",
                                                             cursor: "grab",
@@ -1049,23 +1059,22 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                                 {selectedDevice ? (
                                                                                     <div className="text-center mb-3">
                                                                                         {/* 1. Show End Date */}
-                                                                                        {selectedDevice.deviceDetails?.plan_config?.endDate ? (
+                                                                                        {/* {selectedDevice.deviceDetails?.plan_config?.endDate ? (
                                                                                             <p className="mb-1" style={{ fontSize: "0.9rem", color: "#444" }}>
                                                                                                 <strong>Plan ends on:</strong>{" "}
                                                                                                 {formatDate(parseEndDate(selectedDevice.deviceDetails.plan_config.endDate))}
                                                                                             </p>
                                                                                         ) : (
                                                                                             <p className="mb-1" style={{ fontSize: "0.9rem", color: "#d00" }}>
-                                                                                                {/* <strong>No plan assigned</strong> */}
+                                                                                                <strong>No plan assigned</strong>
                                                                                             </p>
-                                                                                        )}
+                                                                                        )} */}
 
                                                                                         {/* 2. Status Message */}
                                                                                         {(() => {
                                                                                             const endDateStr = selectedDevice.deviceDetails?.plan_config?.endDate;
                                                                                             const expiry = parseEndDate(endDateStr);
-                                                                                            const today = new Date();
-                                                                                            today.setHours(0, 0, 0, 0);
+                                                                                            const now = new Date();
 
                                                                                             if (!expiry) {
                                                                                                 return (
@@ -1075,24 +1084,23 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                                                 );
                                                                                             }
 
-                                                                                            const isExpired = today > expiry;
+                                                                                            const isExpired = now >= expiry;
 
                                                                                             if (isExpired) {
                                                                                                 return (
-                                                                                                    <p style={{ color: "#ff9900", fontWeight: 600 }}>
-                                                                                                        {today.getTime() === expiry.getTime()
-                                                                                                            ? "Plan ends today — you can recharge now"
-                                                                                                            : `Plan expired on ${formatDate(expiry)}`}
+                                                                                                    <p style={{ color: "#ff2600ff", fontWeight: 500 }}>
+                                                                                                        Plan expired on {formatDate(expiry)}
                                                                                                     </p>
                                                                                                 );
                                                                                             }
 
                                                                                             return (
                                                                                                 <p style={{ color: "green", fontWeight: 600 }}>
-                                                                                                    Plan Active(Recharge available from) {formatDate(expiry)}
+                                                                                                    Plan Active (ends on {formatDate(expiry)})
                                                                                                 </p>
                                                                                             );
                                                                                         })()}
+
                                                                                     </div>
                                                                                 ) : (
                                                                                     <div className="text-center mb-3 text-muted">

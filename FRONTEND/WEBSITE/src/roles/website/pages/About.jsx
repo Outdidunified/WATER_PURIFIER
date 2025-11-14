@@ -12,8 +12,8 @@ const About = ({ userInfo, token, handleLogout }) => {
 
                 {/* Hero / Intro Section */}
                 <section id="hero" className="hero section">
-                    <div className="container section-title" data-aos="fade-up">
-                        <h2>We Are On A Mission To Provide Access To Clean, <br />Safe, And Healthy Drinking Water.</h2>
+                    <div className="container section-title" data-aos="fade-up" style={{ paddingBottom: '0px' }}>
+                        <h2>We are on a mission to provide access to clean, <br />Safe and healthy drinking water.</h2>
                         <p>
                             ionHive was started to solve a personal problem - How do we get access to clean,
                             safe, and healthy drinking water? Seems simple, but here’s what we found.
@@ -59,7 +59,7 @@ const About = ({ userInfo, token, handleLogout }) => {
                             the face of India’s water purifier industry.
                         </p>
                     </div>
-                    <div className="container" data-aos="fade-up" style={{paddingTop:'20px'}}>
+                    <div className="container" data-aos="fade-up" style={{ paddingTop: '20px' }}>
                         <h3>Our Vision</h3>
                         <p>
                             ionHive strives to make every Indian healthy and ensure purity in their lives

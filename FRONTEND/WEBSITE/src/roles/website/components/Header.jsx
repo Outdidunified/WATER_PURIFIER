@@ -113,7 +113,7 @@ const Header = ({ userInfo, handleLogout }) => {
                             <Link to="/faqs" style={getLinkStyle('/faqs')} onClick={closeMobileNav}>FAQs</Link>
                         </li>
                         <li style={navItemStyle}>
-                            <Link to="/contact" style={getLinkStyle('/contact')} onClick={closeMobileNav}>Contact</Link>
+                            <Link to="/contact" style={getLinkStyle('/contact')} onClick={closeMobileNav}>Contact Us</Link>
                         </li>
                         {userInfo?.email && (
                             <li
