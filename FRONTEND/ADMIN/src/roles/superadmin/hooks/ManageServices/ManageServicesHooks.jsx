@@ -18,6 +18,7 @@ const useManageServices = (userInfo) => {
     inProgress: 0,
     completed: 0,
     unassigned: 0,
+    rejected: 0,
   });
 
   const calculateServiceSummary = (tasks) => {
@@ -27,6 +28,7 @@ const useManageServices = (userInfo) => {
       inProgress: 0,
       completed: 0,
       unassigned: 0,
+      rejected: 0,
     };
 
     tasks.forEach((task) => {
@@ -34,7 +36,8 @@ const useManageServices = (userInfo) => {
       if (status === 'pending') counts.pending += 1;
       else if (status === 'in progress' || status === 'in_progress') counts.inProgress += 1;
       else if (status === 'completed') counts.completed += 1;
-      
+      else if (status === 'rejected') counts.rejected += 1;
+
       if (!task.assigned_technician_id) counts.unassigned += 1;
     });
 
@@ -190,6 +193,10 @@ const fetchTechnicians = async () => {
     } else if (filterType === 'completed') {
       filtered = filtered.filter(
         (task) => (task.task_status || '').toLowerCase() === 'completed'
+      );
+    } else if (filterType === 'rejected') {
+      filtered = filtered.filter(
+        (task) => (task.task_status || '').toLowerCase() === 'rejected'
       );
     } else if (filterType === 'unassigned') {
       filtered = filtered.filter(

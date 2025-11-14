@@ -286,6 +286,83 @@ const transporter = nodemailer.createTransport({
 
 const waitForEmailWindow = (ms = 500) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// Function to send order success email to seller and admin
+async function sendOrderSuccessEmailToSellerAndAdmin(order, user) {
+  try {
+    const db = await database.connectToDatabase();
+
+    // Get all sellers and admins
+    const sellersAndAdmins = await db.collection('users').find({
+      role_id: { $in: [1, 4] } // 1 = Admin, 4 = Seller
+    }).toArray();
+
+    if (!sellersAndAdmins.length) {
+      console.warn('No sellers or admins found to send order success email');
+      return false;
+    }
+
+    const subject = `New Order Success - ${order.customOrderId}`;
+    const text = `
+Dear Team,
+
+A new order has been successfully placed and payment confirmed.
+
+Order Details:
+- Order ID: ${order.customOrderId}
+- Customer: ${user.name || 'N/A'} (${user.email})
+- Product: ${order.modelName}
+- Plan: ${order.selectedPlan?.label || 'N/A'}
+- Amount: ₹${order.grandTotal}
+- Device ID: ${order.wp_device_id}
+- Payment Type: ${order.paymentType}
+
+Please process this order accordingly.
+
+Best regards,
+IonHive System
+    `;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
+        <h2 style="color: #333;">New Order Success Notification</h2>
+        <p style="font-size: 16px; color: #555;">A new order has been successfully placed and payment confirmed.</p>
+        <div style="background-color: #fff; padding: 15px; border-radius: 5px; margin: 15px 0;">
+          <h3 style="margin-top: 0; color: #333;">Order Details:</h3>
+          <ul style="font-size: 16px; color: #555;">
+            <li><strong>Order ID:</strong> ${order.customOrderId}</li>
+            <li><strong>Customer:</strong> ${user.name || 'N/A'} (${user.email})</li>
+            <li><strong>Product:</strong> ${order.modelName}</li>
+            <li><strong>Plan:</strong> ${order.selectedPlan?.label || 'N/A'}</li>
+            <li><strong>Amount:</strong> ₹${order.grandTotal}</li>
+            <li><strong>Device ID:</strong> ${order.wp_device_id}</li>
+            <li><strong>Payment Type:</strong> ${order.paymentType}</li>
+          </ul>
+        </div>
+        <p style="font-size: 16px; color: #555;">Please process this order accordingly.</p>
+        <p style="color: #555;">Best regards,<br><strong>IonHive System</strong></p>
+        <p style="font-size: 14px; color: #888; text-align: center; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px;">
+          This is an automated message from IonHive Water Purifier.
+        </p>
+      </div>
+    `;
+
+    // Send email to all sellers and admins
+    const emailPromises = sellersAndAdmins.map(recipient => {
+      return sendEmailService(recipient.email, subject, text, html);
+    });
+
+    const results = await Promise.allSettled(emailPromises);
+    const successCount = results.filter(result => result.status === 'fulfilled' && result.value).length;
+
+    console.log(`Order success email sent to ${successCount}/${sellersAndAdmins.length} recipients`);
+    return successCount > 0;
+
+  } catch (error) {
+    console.error('Error sending order success email to seller and admin:', error);
+    return false;
+  }
+}
+
 const sendMailWithRetry = async (payload, retries = 2) => {
     let attempt = 0;
     let lastError = null;
@@ -1387,6 +1464,16 @@ const ConfirmCodPayment = async (req, res) => {
             console.log("Order Type is Recharge → Skipping Service Record Update ✅");
         }
 
+        // 📧 Send order success email to seller and admin for COD payment confirmation
+        try {
+            const user = await db.collection('users').findOne({ user_id: order.user_id });
+            if (user) {
+                await sendOrderSuccessEmailToSellerAndAdmin(order, user);
+            }
+        } catch (emailError) {
+            console.error('Error sending order success email for COD confirmation:', emailError);
+        }
+
         return res.status(200).json({
             status: "success",
             message: "COD payment confirmed successfully",
@@ -1614,16 +1701,84 @@ const UpdateUserRoles = async (req, res) => {
     }
 };
 
-async function sendUserCredentialsEmail(email, user_id, password, role_name) {
+async function sendUserUpdateEmail(email, updatedData) {
     try {
-        const subject = `Welcome to IonHive - Your Account Credentials`;
-        const text = `Hi ${role_name},
+        const subject = `Your IonHive Account Has Been Updated`;
+        const text = `
+Hi,
 
-        Your IonHive account has been created successfully. Below are your login credentials:
+Your IonHive account information has been updated. Here are your current details:
+
+Email: ${email}
+${updatedData.name ? `Name: ${updatedData.name}` : ''}
+${updatedData.phone ? `Phone: ${updatedData.phone}` : ''}
+${updatedData.addressline1 ? `Address: ${updatedData.addressline1}${updatedData.addressline2 ? `, ${updatedData.addressline2}` : ''}` : ''}
+${updatedData.city ? `City: ${updatedData.city}` : ''}
+${updatedData.district ? `District: ${updatedData.district}` : ''}
+${updatedData.state ? `State: ${updatedData.state}` : ''}
+${updatedData.country ? `Country: ${updatedData.country}` : ''}
+${updatedData.pincode ? `Pincode: ${updatedData.pincode}` : ''}
+${updatedData.status !== undefined ? `Status: ${updatedData.status ? 'Active' : 'Inactive'}` : ''}
+
+If you did not request this change or have any questions, please contact our support team.
+
+Thank you for being part of IonHive!
+        `;
+
+        const html = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
+                <h2 style="color: #333;">Your IonHive Account Has Been Updated</h2>
+                <p style="font-size: 16px; color: #555;">
+                    Your IonHive account information has been updated. Here are your current details:
+                </p>
+                <ul style="font-size: 16px; color: #555;">
+                    <li><strong>Email:</strong> ${email}</li>
+                    ${updatedData.name ? `<li><strong>Name:</strong> ${updatedData.name}</li>` : ''}
+                    ${updatedData.phone ? `<li><strong>Phone:</strong> ${updatedData.phone}</li>` : ''}
+                    ${updatedData.addressline1 ? `<li><strong>Address:</strong> ${updatedData.addressline1}${updatedData.addressline2 ? `, ${updatedData.addressline2}` : ''}</li>` : ''}
+                    ${updatedData.city ? `<li><strong>City:</strong> ${updatedData.city}</li>` : ''}
+                    ${updatedData.district ? `<li><strong>District:</strong> ${updatedData.district}</li>` : ''}
+                    ${updatedData.state ? `<li><strong>State:</strong> ${updatedData.state}</li>` : ''}
+                    ${updatedData.country ? `<li><strong>Country:</strong> ${updatedData.country}</li>` : ''}
+                    ${updatedData.pincode ? `<li><strong>Pincode:</strong> ${updatedData.pincode}</li>` : ''}
+                    ${updatedData.status !== undefined ? `<li><strong>Status:</strong> ${updatedData.status ? 'Active' : 'Inactive'}</li>` : ''}
+                </ul>
+                <p style="font-size: 16px; color: #555;">
+                    If you did not request this change or have any questions, please contact our support team.
+                </p>
+                <p style="color: #555;">Thank you for being part of <strong>IonHive</strong>!</p>
+                <p style="font-size: 14px; color: #888; text-align: center; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px;">
+                    This is an automated message from IonHive Water Purifier.
+                </p>
+            </div>
+        `;
+
+        await sendEmailService(email, subject, text, html);
+        return true;
+    } catch (error) {
+        console.error('Error in sendUserUpdateEmail:', error);
+        return false;
+    }
+}
+
+async function sendUserCredentialsEmail(email, user_id, password, role_name, userDetails = {}) {
+    try {
+        const { name, createdby, addressline1, addressline2, city, district, state, country, pincode } = userDetails;
+        const subject = `Welcome to IonHive - Your Account Credentials`;
+        const text = `Hi ${name || role_name},
+
+        Your IonHive account has been created successfully. Below are your login credentials and details:
 
         Email: ${email}
         User ID: ${user_id}
         Password: ${password}
+        Role: ${role_name}
+        Created By: ${createdby || 'System'}
+
+        Address:
+        ${addressline1 || ''} ${addressline2 || ''}
+        ${city || ''}, ${district || ''}, ${state || ''}
+        ${country || ''} - ${pincode || ''}
 
         Please use these credentials to log in to your IonHive account. For security, we recommend changing your password after your first login.
 
@@ -1631,15 +1786,23 @@ async function sendUserCredentialsEmail(email, user_id, password, role_name) {
 
         const html = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
-                <h2 style="color: #333;">Welcome to IonHive, ${role_name}!</h2>
+                <h2 style="color: #333;">Welcome to IonHive, ${name || role_name}!</h2>
                 <p style="font-size: 16px; color: #555;">
-                    Your IonHive account has been created successfully. Below are your login credentials:
+                    Your IonHive account has been created successfully. Below are your login credentials and details:
                 </p>
                 <ul style="font-size: 16px; color: #555;">
                     <li><strong>Email:</strong> ${email}</li>
                     <li><strong>User ID:</strong> ${user_id}</li>
                     <li><strong>Password:</strong> ${password}</li>
+                    <li><strong>Role:</strong> ${role_name}</li>
+                    <li><strong>Created By:</strong> ${createdby || 'System'}</li>
                 </ul>
+                <p style="font-size: 16px; color: #555;"><strong>Address:</strong></p>
+                <p style="font-size: 16px; color: #555;">
+                    ${addressline1 || ''} ${addressline2 || ''}<br>
+                    ${city || ''}, ${district || ''}, ${state || ''}<br>
+                    ${country || ''} - ${pincode || ''}
+                </p>
                 <p style="font-size: 16px; color: #555;">
                     Please use these credentials to log in to your IonHive account. For security, we recommend changing your password after your first login.
                 </p>
@@ -1823,19 +1986,28 @@ const AddUsers = async (req, res) => {
 
         await collection.insertMany(docsToInsert);
 
-        // Send email to users with role Technician or Seller
+        // Send email to all users with their credentials and details
         for (const user of docsToInsert) {
-            if (user.role_name === 'Technician' || user.role_name === 'Seller') {
-                const emailSent = await sendUserCredentialsEmail(
-                    user.email,
-                    user.user_id,
-                    user.password,
-                    user.role_name
-                );
-                if (!emailSent) {
-                    console.warn(`Failed to send credentials email to ${user.email}`);
-                    // Optionally, you could collect failed emails and include in response
+            const emailSent = await sendUserCredentialsEmail(
+                user.email,
+                user.user_id,
+                user.password,
+                user.role_name,
+                {
+                    name: user.name,
+                    createdby: user.createdby,
+                    addressline1: user.addressline1,
+                    addressline2: user.addressline2,
+                    city: user.city,
+                    district: user.district,
+                    state: user.state,
+                    country: user.country,
+                    pincode: user.pincode
                 }
+            );
+            if (!emailSent) {
+                console.warn(`Failed to send credentials email to ${user.email}`);
+                // Optionally, you could collect failed emails and include in response
             }
         }
 
@@ -1970,6 +2142,12 @@ const UpdateUsers = async (req, res) => {
             { role_id, user_id },
             { $set: updatedData }
         );
+
+        // Send email notification to the updated user
+        const emailSent = await sendUserUpdateEmail(existingUser.email, updatedData);
+        if (!emailSent) {
+            console.warn(`Failed to send update notification email to ${existingUser.email}`);
+        }
 
         res.status(200).json({
             status: 'Success',
@@ -2362,14 +2540,12 @@ const AssignInstallation = async (req, res) => {
             { upsert: true }
         );
 
-        // Send OTP email to customer
-        await sendAssignInstallationEmail(orderUser.email, otp);
-
-        // Get district sellers and send notification emails
+        // Get district sellers and send notification emails to admin, seller, and technician (NOT to user)
         const districtSellers = await getDistrictSellers(db, normalizedAddress.district);
         const sellerEmails = districtSellers.map(s => s.email);
         const adminEmails = ['admin@gmail.com'];
-        const allNotificationEmails = [...sellerEmails, ...adminEmails];
+        const technicianEmail = [technicianUser.email];
+        const allNotificationEmails = [...sellerEmails, ...adminEmails, ...technicianEmail];
 
         const notificationHtml = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
@@ -2504,11 +2680,12 @@ if (
     );
 
     if (updateResult.modifiedCount === 1) {
-      // Get district sellers and send notification emails
+      // Get district sellers and send notification emails to admin, seller, and new technician (NOT to user)
       const districtSellers = await getDistrictSellers(db, normalizedOrderAddress.district);
       const sellerEmails = districtSellers.map(s => s.email);
       const adminEmails = ['admin@gmail.com'];
-      const allNotificationEmails = [...sellerEmails, ...adminEmails];
+      const technicianEmail = [technicianUser.email];
+      const allNotificationEmails = [...sellerEmails, ...adminEmails, ...technicianEmail];
 
       const notificationHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
@@ -2983,14 +3160,12 @@ const AssignService = async (req, res) => {
             { upsert: true }
         );
 
-        // Send OTP to the user who created the task
-        await sendAssignServiceEmail(task_created_by_user_email, otp);
-
-        // Get district sellers and send notification emails
+        // Get district sellers and send notification emails to admin, seller, and technician (NOT to user)
         const districtSellers = await getDistrictSellers(db, normalizedOrderAddress.district);
         const sellerEmails = districtSellers.map(s => s.email);
         const adminEmails = ['admin@gmail.com'];
-        const allNotificationEmails = [...sellerEmails, ...adminEmails];
+        const technicianEmail = [technicianUser.email];
+        const allNotificationEmails = [...sellerEmails, ...adminEmails, ...technicianEmail];
 
         const notificationHtml = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
@@ -3121,11 +3296,12 @@ const ReAssignService = async (req, res) => {
     );
 
     if (updateResult.modifiedCount === 1) {
-      // Get district sellers and send notification emails
+      // Get district sellers and send notification emails to admin, seller, and new technician (NOT to user)
       const districtSellers = await getDistrictSellers(db, normalizedOrderAddress.district);
       const sellerEmails = districtSellers.map(s => s.email);
       const adminEmails = ['admin@gmail.com'];
-      const allNotificationEmails = [...sellerEmails, ...adminEmails];
+      const technicianEmail = [technicianUser.email];
+      const allNotificationEmails = [...sellerEmails, ...adminEmails, ...technicianEmail];
 
       const notificationHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
@@ -4323,9 +4499,28 @@ const AssignManualRequest = async (req, res) => {
       }
     }
 
-    if (customerEmail) {
-      await sendAssignServiceEmail(customerEmail, otp);
-    }
+    // Send notification emails to admin, seller, and technician (NOT to user)
+    const districtSellers = await getDistrictSellers(db, taskDistrict);
+    const sellerEmails = districtSellers.map(s => s.email);
+    const adminEmails = ['admin@gmail.com'];
+    const technicianEmail = [technician.email];
+    const allNotificationEmails = [...sellerEmails, ...adminEmails, ...technicianEmail];
+
+    const notificationHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
+            <h2 style="color: #333;">New Manual Request Assigned</h2>
+            <ul style="font-size: 16px; color: #555;">
+                <li><strong>Task ID:</strong> ${numericTaskId}</li>
+                <li><strong>Technician:</strong> ${technician.name || 'N/A'}</li>
+                <li><strong>Customer Email:</strong> ${customerEmail || 'N/A'}</li>
+                <li><strong>Location:</strong> ${taskDistrict || 'N/A'}</li>
+                <li><strong>Description:</strong> ${task.task_description || 'Manual request'}</li>
+            </ul>
+            <p style="font-size: 14px; color: #888; text-align: center; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px;">This is an automated notification from IonHive Water Purifier.</p>
+        </div>
+    `;
+
+    await sendEmailToMultiple(allNotificationEmails, 'Manual Request Assigned - IonHive', '', notificationHtml);
 
     return res.status(200).json({ status: 'Success', message: 'Manual request assigned successfully' });
   } catch (error) {
@@ -4446,9 +4641,29 @@ const ReAssignManualRequest = async (req, res) => {
       }
     }
 
-    if (customerEmail) {
-      await sendAssignServiceEmail(customerEmail, otp);
-    }
+    // Send notification emails to admin, seller, and technician (NOT to user)
+    const districtSellers = await getDistrictSellers(db, taskDistrict);
+    const sellerEmails = districtSellers.map(s => s.email);
+    const adminEmails = ['admin@gmail.com'];
+    const technicianEmail = [technician.email];
+    const allNotificationEmails = [...sellerEmails, ...adminEmails, ...technicianEmail];
+
+    const notificationHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
+            <h2 style="color: #333;">Manual Request Re-assigned</h2>
+            <ul style="font-size: 16px; color: #555;">
+                <li><strong>Task ID:</strong> ${numericTaskId}</li>
+                <li><strong>New Technician:</strong> ${technician.name || 'N/A'}</li>
+                <li><strong>Previous Technician ID:</strong> ${task.assigned_technician_id || 'N/A'}</li>
+                <li><strong>Customer Email:</strong> ${customerEmail || 'N/A'}</li>
+                <li><strong>Location:</strong> ${taskDistrict || 'N/A'}</li>
+                <li><strong>Description:</strong> ${task.task_description || 'Manual request'}</li>
+            </ul>
+            <p style="font-size: 14px; color: #888; text-align: center; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px;">This is an automated notification from IonHive Water Purifier.</p>
+        </div>
+    `;
+
+    await sendEmailToMultiple(allNotificationEmails, 'Manual Request Re-assigned - IonHive', '', notificationHtml);
 
     return res.status(200).json({ status: 'Success', message: 'Manual request reassigned successfully' });
   } catch (error) {

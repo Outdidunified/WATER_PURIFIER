@@ -115,6 +115,7 @@ const ManageServices = ({ userInfo, handleLogout }) => {
     if (lowerStatus === 'pending') return 'badge-danger';
     if (lowerStatus === 'in progress' || lowerStatus === 'in_progress') return 'badge-warning';
     if (lowerStatus === 'completed') return 'badge-success';
+    if (lowerStatus === 'rejected') return 'badge-dark';
     return 'badge-secondary'; // default
   };
 
@@ -307,6 +308,31 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                   >
                     <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'unassigned' ? 0.9 : 0.65, color: selectedFilter === 'unassigned' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>Unassigned</span>
                     <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'unassigned' ? '#ffffff' : '#1b2559' }}>{summary.unassigned}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFilterSelect('rejected')}
+                    style={{
+                      border: 'none',
+                      outline: 'none',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: selectedFilter === 'rejected' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: selectedFilter === 'rejected' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
+                      color: selectedFilter === 'rejected' ? '#ffffff' : '#1b2559',
+                      textAlign: 'left',
+                      width: '100%'
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'rejected' ? 0.9 : 0.65, color: selectedFilter === 'rejected' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>Rejected</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'rejected' ? '#ffffff' : '#1b2559' }}>{summary.rejected || 0}</span>
                   </button>
                 </div>
               </div>

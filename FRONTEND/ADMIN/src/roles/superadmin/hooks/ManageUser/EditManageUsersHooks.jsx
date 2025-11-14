@@ -82,13 +82,16 @@ const useEditManageUsers = (userInfo) => {
         state,
         country,
         pincode,
-        modifiedby: userInfo.email,
+        modifiedBy: userInfo.email,
         status: selectStatus === 'true'
       };
 
       const response = await axiosInstance.post('/api/admin/UpdateUsers', updatedUser);
 
       if (response.status === 200) {
+        // Update the localStorage data with the new modifiedby
+        const updatedDataItem = { ...dataItem, modifiedby: userInfo.email };
+        localStorage.setItem('editUserData', JSON.stringify(updatedDataItem));
         showSuccessAlert('User updated successfully');
         backManageUser();
       } else {
