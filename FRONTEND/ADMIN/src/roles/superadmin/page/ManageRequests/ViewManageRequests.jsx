@@ -65,7 +65,7 @@ const ViewManageRequests = ({ userInfo, handleLogout }) => {
   const assignedDateValue =
     request?.assigned_date || request?.task_assigned_date || request?.assignedDate;
   const createdDateValue =
-    request?.created_at || request?.task_created_at || request?.createdAt;
+    request?.created_at || request?.task_created_at || request?.createdAt || request?.created_date || request?.taskCreatedAt;
   const completionDateValue =
     request?.completion_date || request?.task_completion_date || request?.completionDate;
   const addressDetails =
@@ -127,7 +127,7 @@ const ViewManageRequests = ({ userInfo, handleLogout }) => {
                             </div>
                             <div className="detail-item">
                               <span className="detail-label">Preferred Schedule</span>
-                              <span className="detail-value">{request.preferred_schedule || '-'}</span>
+                              <span className="detail-value">{request.preferred_schedule || request.preferredSchedule || '-'}</span>
                             </div>
                             <div className="detail-item">
                               <span className="detail-label">Request Source</span>
@@ -153,7 +153,8 @@ const ViewManageRequests = ({ userInfo, handleLogout }) => {
                           <div className="detail-grid">
                             <div className="detail-item">
                               <span className="detail-label">Name</span>
-                              <span className="detail-value">{request.customer_name || '-'}</span>
+                              <span className="detail-value">{request.customer_name
+                                || addressDetails?.name || request.task_created_by_user_name    ||  '-'}</span>
                             </div>
                             <div className="detail-item">
                               <span className="detail-label">Email</span>
@@ -161,7 +162,7 @@ const ViewManageRequests = ({ userInfo, handleLogout }) => {
                             </div>
                             <div className="detail-item">
                               <span className="detail-label">Phone</span>
-                              <span className="detail-value">{request.customer_phone || '-'}</span>
+                              <span className="detail-value">{request.customer_phone || addressDetails?.phone || '-'}</span>
                             </div>
                             <div className="detail-item">
                               <span className="detail-label">Address</span>

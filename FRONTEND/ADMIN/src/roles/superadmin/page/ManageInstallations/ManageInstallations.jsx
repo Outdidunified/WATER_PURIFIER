@@ -385,7 +385,13 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                                    <td style={{ padding: '4px 2px', maxWidth: '250px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{item.modelName || '-'}</td>
                                   <td>{item.wp_device_id || '-'}</td>
                                   <td >{item.deliveryAddress?.name || '-'}</td>
-                                  <td style={{ padding: '4px 2px', maxWidth: '200px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{item.email || '-'}</td>
+                                  <td style={{ padding: '4px 2px', maxWidth: '200px', wordWrap: 'break-word', wordBreak: 'break-word' }}>
+                                    {item.email ||
+                                     item.task_created_by_user_email ||
+                                     item.order_snapshot?.deliveryAddress?.email ||
+                                     item.address?.email ||
+                                     '-'}
+                                  </td>
                                   <td>
                                     {item.assignedTechnician?.technician_name ||
                                       technicians.find((tech) => tech.technician_id === item.assigned_technician_id)?.name ||

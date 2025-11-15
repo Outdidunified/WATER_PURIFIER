@@ -401,7 +401,9 @@ const useManageInstallation = (userInfo) => {
         .sort((a, b) => (b._timestamp || 0) - (a._timestamp || 0))
         .map(({ _timestamp, ...rest }) => rest);
 
-      const dedupedEnrichedList = dedupeTasksByIdentity(enrichedTasks);
+      const filteredEnrichedTasks = enrichedTasks.filter((task) => task.task_id && String(task.task_id).trim() !== '' && task.task_id !== '-');
+
+      const dedupedEnrichedList = dedupeTasksByIdentity(filteredEnrichedTasks);
 
       setEnrichedTaskList(dedupedEnrichedList);
       setDisplayTasks(dedupedEnrichedList);
