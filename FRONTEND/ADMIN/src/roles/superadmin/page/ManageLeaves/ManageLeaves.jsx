@@ -23,11 +23,55 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
     error,
     searchTerm,
     setSearchTerm,
+    selectedFilter,
+    summary,
     getStatusBadgeClass,
     fetchLeaveRequests,
+    handleFilterSelect,
   } = ManageLeaveHooks();
 
   const adminName = sessionStorage.getItem('superAdminName') || 'Admin';
+
+  const cardGridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gap: '8px',
+    width: '100%'
+  };
+
+  const getCardStyle = (isActive) => ({
+    border: 'none',
+    outline: 'none',
+    borderRadius: '12px',
+    padding: '12px 14px',
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '10px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    boxShadow: isActive ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
+    background: isActive ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
+    color: isActive ? '#ffffff' : '#1b2559',
+    textAlign: 'left',
+    width: '100%'
+  });
+
+  const getLabelStyle = (isActive) => ({
+    fontSize: '11px',
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    opacity: isActive ? 0.9 : 0.65,
+    color: isActive ? 'rgba(255, 255, 255, 0.9)' : '#1b2559',
+    whiteSpace: 'nowrap'
+  });
+
+  const getValueStyle = (isActive) => ({
+    fontSize: '22px',
+    fontWeight: 700,
+    color: isActive ? '#ffffff' : '#1b2559'
+  });
 
   const handleApproveLeave = async (leaveId) => {
     try {
@@ -96,6 +140,21 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
     });
   };
 
+  const handleViewTechnician = (leave) => {
+    // Create a minimal user object from the leave request data
+    // Assuming technicians have role_id = 3
+    const technicianData = {
+      user_id: leave.technician_id,
+      technician_id: leave.technician_id,
+      name: leave.technician_name,
+      email: leave.technician_email,
+      role_id: 3, // Technician role
+      status: 'active', // Assume active
+    };
+
+    navigate('/superadmin/ViewManageUser', { state: { dataItem: technicianData } });
+  };
+
   const isLeaveProcessed = (status) => {
     return status !== 'Requested';
   };
@@ -141,6 +200,46 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
                   <div className="col-12 col-xl-8 mb-4 mb-xl-0">
                     <h3 className="font-weight-bold">Manage Leave Requests</h3>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Summary Cards Grid */}
+            <div className="row mb-1">
+              <div className="col-12">
+                <div style={cardGridStyle}>
+                  <button
+                    type="button"
+                    style={getCardStyle(selectedFilter === '')}
+                    onClick={() => handleFilterSelect('')}
+                  >
+                    <span style={getLabelStyle(selectedFilter === '')}>All Requests</span>
+                    <span style={getValueStyle(selectedFilter === '')}>{summary.total}</span>
+                  </button>
+                  <button
+                    type="button"
+                    style={getCardStyle(selectedFilter === 'requested')}
+                    onClick={() => handleFilterSelect('requested')}
+                  >
+                    <span style={getLabelStyle(selectedFilter === 'requested')}>Pending</span>
+                    <span style={getValueStyle(selectedFilter === 'requested')}>{summary.requested}</span>
+                  </button>
+                  <button
+                    type="button"
+                    style={getCardStyle(selectedFilter === 'approved')}
+                    onClick={() => handleFilterSelect('approved')}
+                  >
+                    <span style={getLabelStyle(selectedFilter === 'approved')}>Approved</span>
+                    <span style={getValueStyle(selectedFilter === 'approved')}>{summary.approved}</span>
+                  </button>
+                  <button
+                    type="button"
+                    style={getCardStyle(selectedFilter === 'rejected')}
+                    onClick={() => handleFilterSelect('rejected')}
+                  >
+                    <span style={getLabelStyle(selectedFilter === 'rejected')}>Rejected</span>
+                    <span style={getValueStyle(selectedFilter === 'rejected')}>{summary.rejected}</span>
+                  </button>
                 </div>
               </div>
             </div>

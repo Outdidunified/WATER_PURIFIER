@@ -5,6 +5,7 @@ import Sidebar from '../../components/Sidebar';
 import Footer from '../../components/Footer';
 import { useNavigate } from 'react-router-dom';
 import InputField from '../../../../utils/InputField';
+import { showErrorAlert } from '../../../../utils/alert';
 import useManageInstallation from '../../hooks/ManageInstallations/ManageInstallationsHooks'; // singular
 
 const ManageInstallations = ({ userInfo, handleLogout }) => {
@@ -14,7 +15,6 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
     isLoading,
     error,
     technicians,
-    filteredInstallations,
     reassignInstallation,
     handleSearchChange,
     assignInstallation,
@@ -43,6 +43,14 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
         ],
       },
     });
+  };
+
+  const handleViewTechnician = (technicianId) => {
+    // Find the technician data from the technicians array
+    const technician = technicians.find(tech => tech.technician_id === technicianId);
+    if (technician) {
+      navigate('/superadmin/ViewManageUser', { state: { dataItem: technician } });
+    }
   };
 
   const handleAssignClick = (installation, mode = 'assign') => {
@@ -383,7 +391,24 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                                       technicians.find((tech) => tech.technician_id === item.assigned_technician_id)?.name ||
                                       '-'}
                                   </td>
-                                  <td>{item.assignedTechnician?.technician_id || item.assigned_technician_id || '-'}</td>
+                                  <td>
+                                    {(item.assignedTechnician?.technician_id || item.assigned_technician_id) ? (
+                                      <span
+                                        style={{
+                                          color: '#007bff',
+
+                                          cursor: 'pointer',
+
+                                        }}
+                                        title="View technician details"
+                                        onClick={() => handleViewTechnician(item.assignedTechnician?.technician_id || item.assigned_technician_id)}
+                                      >
+                                        {item.assignedTechnician?.technician_id || item.assigned_technician_id}
+                                      </span>
+                                    ) : (
+                                      '-'
+                                    )}
+                                  </td>
                                   <td>
                                     {item.task_assigned_date
                                       ? new Date(item.task_assigned_date).toLocaleDateString()
