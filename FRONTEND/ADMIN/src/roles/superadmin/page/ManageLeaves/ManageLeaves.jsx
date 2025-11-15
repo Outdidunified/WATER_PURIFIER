@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import InputField from '../../../../utils/InputField';
 import ManageLeaveHooks from '../../hooks/ManageLeaves/ManageLeaveHooks';
 import { showErrorAlert, showSuccessAlert } from '../../../../utils/alert';
+import axiosInstance from '../../../../utils/utils';
 
 const ManageLeaves = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
@@ -20,8 +21,6 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
     filteredLeaves,
     loading,
     error,
-    selectedStatus,
-    setSelectedStatus,
     searchTerm,
     setSearchTerm,
     getStatusBadgeClass,
@@ -33,33 +32,20 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
   const handleApproveLeave = async (leaveId) => {
     try {
       setActionLoading(true);
-      const token = sessionStorage.getItem('superAdminToken');
-      const response = await fetch(`/api/api/admin/leave-requests/${leaveId}/approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-        body: JSON.stringify({ approvedBy: adminName }),
+      const response = await axiosInstance.post(`/api/admin/leave-requests/${leaveId}/approve`, {
+        approvedBy: adminName,
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        showErrorAlert('Error', data.message || `HTTP ${response.status}: Failed to approve leave`);
-        return;
-      }
-
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.data.success) {
         showSuccessAlert('Success', 'Leave approved successfully');
         fetchLeaveRequests();
       } else {
-        showErrorAlert('Error', data.message || 'Failed to approve leave');
+        showErrorAlert('Error', response.data.message || 'Failed to approve leave');
       }
     } catch (err) {
       console.error('Error approving leave:', err);
-      showErrorAlert('Error', err.message || 'Failed to approve leave');
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to approve leave';
+      showErrorAlert('Error', errorMsg);
     } finally {
       setActionLoading(false);
     }
@@ -79,39 +65,24 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
 
     try {
       setActionLoading(true);
-      const token = sessionStorage.getItem('superAdminToken');
-      const response = await fetch(`/api/api/admin/leave-requests/${selectedLeaveId}/reject`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-        },
-        body: JSON.stringify({
-          rejectionReason: rejectionReason,
-          approvedBy: adminName,
-        }),
+      const response = await axiosInstance.post(`/api/admin/leave-requests/${selectedLeaveId}/reject`, {
+        rejectionReason: rejectionReason,
+        approvedBy: adminName,
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        showErrorAlert('Error', data.message || `HTTP ${response.status}: Failed to reject leave`);
-        return;
-      }
-
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.data.success) {
         showSuccessAlert('Success', 'Leave rejected successfully');
         setShowRejectModal(false);
         setRejectionReason('');
         setSelectedLeaveId(null);
         fetchLeaveRequests();
       } else {
-        showErrorAlert('Error', data.message || 'Failed to reject leave');
+        showErrorAlert('Error', response.data.message || 'Failed to reject leave');
       }
     } catch (err) {
       console.error('Error rejecting leave:', err);
-      showErrorAlert('Error', err.message || 'Failed to reject leave');
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to reject leave';
+      showErrorAlert('Error', errorMsg);
     } finally {
       setActionLoading(false);
     }
@@ -212,25 +183,7 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
                       </div>
                     </div>
 
-                    {/* Status Filter */}
-                    <div className="row mb-3">
-                      <div className="col-md-12">
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                          <label style={{ fontWeight: '500', marginBottom: '0' }}>Filter by Status:</label>
-                          <select
-                            value={selectedStatus}
-                            onChange={(e) => setSelectedStatus(e.target.value)}
-                            className="form-control"
-                            style={{ maxWidth: '200px' }}
-                          >
-                            <option value="all">All Requests</option>
-                            <option value="Requested">Pending</option>
-                            <option value="Approved">Approved</option>
-                            <option value="Rejected">Rejected</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
+
 
                     {/* Error Message */}
                     {error && !dismissError && (

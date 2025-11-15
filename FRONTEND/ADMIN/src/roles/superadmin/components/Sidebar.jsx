@@ -30,7 +30,7 @@ const Sidebar = ({ userInfo, permissions: propsPermissions }) => {
                 backgroundColor: '#fff', // keeps background solid when scrolling
             }}
         >
-            <ul className="nav">
+            <ul className="nav" style={{marginLeft:0}}>
                 {canView('dashboard') && (
                     <li className={location.pathname === '/superadmin/Dashboard' ? 'nav-item active' : 'nav-item'}>
                         <Link className="nav-link" to="/superadmin/Dashboard">

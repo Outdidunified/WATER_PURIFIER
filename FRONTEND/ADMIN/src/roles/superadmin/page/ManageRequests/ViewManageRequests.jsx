@@ -228,7 +228,7 @@ const ViewManageRequests = ({ userInfo, handleLogout }) => {
                           </div>
                         </div>
 
-                        <div className="detail-section">
+                        {/* <div className="detail-section">
                           <div className="detail-section-title" style={{ color: '#007bff' }}>Assignment History</div>
                           <div className="detail-table">
                             <table>
@@ -247,7 +247,7 @@ const ViewManageRequests = ({ userInfo, handleLogout }) => {
                               </tbody>
                             </table>
                           </div>
-                        </div>
+                        </div> */}
                       </div>
                     ) : (
                       <div className="alert alert-warning" role="alert">

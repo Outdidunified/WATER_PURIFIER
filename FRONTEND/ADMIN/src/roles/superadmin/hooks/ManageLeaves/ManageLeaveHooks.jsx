@@ -7,47 +7,29 @@ const ManageLeaveHooks = () => {
     const [filteredLeaves, setFilteredLeaves] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [selectedStatus, setSelectedStatus] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
 
     // Fetch all leave requests
     useEffect(() => {
         fetchLeaveRequests();
-    }, [selectedStatus]);
+    }, []);
 
     const fetchLeaveRequests = async () => {
         try {
             setLoading(true);
             setError(null);
 
-            const params = new URLSearchParams();
-            if (selectedStatus !== 'all') {
-                params.append('status', selectedStatus);
-            }
+            const response = await axiosInstance.get('/api/admin/leave-requests');
 
-            const token = sessionStorage.getItem('superAdminToken');
-            const queryString = params.toString();
-            const url = queryString ? `/api/api/admin/leave-requests?${queryString}` : '/api/api/admin/leave-requests';
-
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { 'Authorization': `Bearer ${token}` }),
-                },
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                setLeaveRequests(data.data);
-                setFilteredLeaves(data.data);
+            if (response.data.success) {
+                setLeaveRequests(response.data.data);
+                setFilteredLeaves(response.data.data);
             } else {
-                showErrorAlert('Error', data.message || 'Failed to fetch leave requests');
+                showErrorAlert('Error', response.data.message || 'Failed to fetch leave requests');
             }
         } catch (err) {
             console.error('Error fetching leave requests:', err);
-            const errorMsg = err.message || 'Failed to fetch leave requests';
+            const errorMsg = err.response?.data?.message || err.message || 'Failed to fetch leave requests';
             setError(errorMsg);
             showErrorAlert('Error', errorMsg);
         } finally {
@@ -93,8 +75,6 @@ const ManageLeaveHooks = () => {
         filteredLeaves,
         loading,
         error,
-        selectedStatus,
-        setSelectedStatus,
         searchTerm,
         setSearchTerm,
         fetchLeaveRequests,

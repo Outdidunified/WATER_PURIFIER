@@ -16,7 +16,7 @@ import { GeoService } from '../../../../services/GeoService';
 const ManageUsers = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
 
-  // Location dropdown states for add user
+  // Location dropdown states for Create User
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
   const [cities, setCities] = useState([]);
@@ -35,7 +35,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
   const [assignSelectedDistrict, setAssignSelectedDistrict] = useState(null);
 
   useEffect(() => {
-    // Load countries for add user using GeoService (India will be first)
+    // Load countries for Create User using GeoService (India will be first)
     const countryOptions = GeoService.getCountriesForSelect();
     setCountries(countryOptions);
     setAssignCountries(countryOptions);
@@ -57,7 +57,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
 
   useEffect(() => {
     if (selectedCountry) {
-      // Load states for add user using GeoService
+      // Load states for Create User using GeoService
       const stateOptions = GeoService.getStatesForSelect(selectedCountry.isoCode);
       setStates(stateOptions);
       setSelectedState(null);
@@ -287,7 +287,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
               </div>
               <div className="col-auto">
                 <button className="btn btn-success" onClick={openAddModal}>
-                  Add User
+                  Create User
                 </button>
               </div>
             </div>
@@ -332,7 +332,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
               </div>
             </div>
 
-            {/* Add User Modal */}
+            {/* Create User Modal */}
    {isAddModalOpen && (
   <div className="modalStyle" style={modalAddStyle}>
     <div
@@ -365,7 +365,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
       >
         <div className="card-body">
           <h4 className="card-title text-center mb-4" style={{ color: '#495057', fontWeight: '600' }}>
-            Add User
+            Create User
           </h4>
 
           <style jsx>{`
@@ -627,7 +627,7 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                         </thead>
                         <tbody style={{ textAlign: 'center' }}>
                           {isLoading ? (
-                            <tr><td colSpan={userInfo?.role_id === 4 ? 6 : 7}>Loading...</td></tr>
+                            <tr><td colSpan={userInfo?.role_id === 4 ? 6 : 9}>Loading...</td></tr>
                           ) : error ? (
                             <tr><td colSpan={userInfo?.role_id === 4 ? 6 : 7}>Error: {error}</td></tr>
                           ) : posts.length > 0 ? (

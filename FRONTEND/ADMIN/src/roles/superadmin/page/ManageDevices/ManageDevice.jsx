@@ -214,7 +214,7 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                                 onClick={() => { handleAddStationToggle(); fetchModels(); }}
                                                 style={{ padding: '9px 28px', fontSize: '14px', borderRadius: '12px' }}
                                             >
-                                                Add Device
+                                                Create Device
                                             </button>
                                         </div>
 
@@ -235,28 +235,9 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                                     <div className="card-body">
                                                         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                                                             <h4 className="card-title" style={{ color: '#222' }}>
-                                                                Add Device
+                                                                Create Device
                                                             </h4>
                                                         </div>
-
-                                                        <div className="input-group mb-3">
-                                                            <div className="input-group-prepend">
-                                                                <span className="input-group-text" style={{ width: '120px' }}>WP Device ID</span>
-                                                            </div>
-                                                            <InputField
-                                                                type="text"
-                                                                name="wp_device_id"
-                                                                placeholder="Enter WP Device ID"
-                                                                value={stationData.wp_device_id || ''}
-                                                                onChange={(e) => {
-                                                                    const value = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
-                                                                    setStationData(prev => ({ ...prev, wp_device_id: value }));
-                                                                }}
-                                                                maxLength={50}
-                                                                required
-                                                            />
-                                                        </div>
-
                                                         <div className="input-group mb-3">
                                                             <div className="input-group-prepend">
                                                                 <span className="input-group-text" style={{ width: '120px' }}>Model</span>
@@ -280,11 +261,31 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                                             </select>
                                                         </div>
 
+                                                        <div className="input-group mb-3">
+                                                            <div className="input-group-prepend">
+                                                                <span className="input-group-text" style={{ width: '120px' }}>WP Device ID</span>
+                                                            </div>
+                                                            <InputField
+                                                                type="text"
+                                                                name="wp_device_id"
+                                                                placeholder="Enter WP Device ID"
+                                                                value={stationData.wp_device_id || ''}
+                                                                onChange={(e) => {
+                                                                    const value = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
+                                                                    setStationData(prev => ({ ...prev, wp_device_id: value }));
+                                                                }}
+                                                                maxLength={50}
+                                                                required
+                                                            />
+                                                        </div>
+
+                                                        
+
                                                         {error && <div className="text-danger mt-2">{error}</div>}
 
                                                         <div className="text-center mt-4 mr-5">
                                                             <ReusableButton type="submit" loading={loading} disabled={loading || !stationData.wp_device_id || !stationData.model_name}>
-                                                                Add Device
+                                                                Create Device
                                                             </ReusableButton>
                                                         </div>
                                                     </div>
