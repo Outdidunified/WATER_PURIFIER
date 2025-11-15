@@ -560,7 +560,7 @@ const getChartData = () => {
             <Header userInfo={userInfo} handleLogout={handleLogout} />
             <div className="container-fluid page-body-wrapper" style={{ backgroundColor: '#f9fafc' }}>
                 <Sidebar />
-                <div className="main-panel" style={{ marginLeft: '300px' }}>
+                <div className="main-panel">
                     <div className="content-wrapper">
                         {loading ? (
                             <div className="d-flex justify-content-center align-items-center" style={{ height: "70vh" }}>
