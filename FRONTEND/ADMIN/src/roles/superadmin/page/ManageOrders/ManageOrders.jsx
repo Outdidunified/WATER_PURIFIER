@@ -222,18 +222,16 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
         <Sidebar />
         <div className="main-panel">
           <div className="content-wrapper">
-                <div style={cardGridStyle}>
-            <div className="row" style={{ marginBottom: '0px' }}>
-  <div className="col-12" style={{ marginBottom: '0px' }}>
-    <h3 className="font-weight-bold" style={{ marginBottom: '5px' }}>Manage Orders</h3>
-  </div>
-</div>
+                <div className="row" style={{ marginBottom: '0px' }}>
+              <div className="col-12" style={{ marginBottom: '10px' }}>
+                <h3 className="font-weight-bold" style={{ marginBottom: '5px' }}>Manage Orders</h3>
+              </div>
             </div>
 
             {/* Summary Cards Grid */}
-            <div className="row mb-1">
-              <div className="col-12">
-                <div style={cardGridStyle}>
+            <div className="row mb-1" >
+              <div className="col-12" style={{ marginBottom: '10px' }}>
+                <div style={{ ...cardGridStyle, marginBottom: '10px' }}>
                   <button
                     type="button"
                     style={getCardStyle(selectedFilter === '')}
@@ -374,7 +372,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                     </div>
 
                     {/* Table Section */}
-                    <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                   <div className="table-responsive dynamic-table">
                       <table className="table table-striped">
                         <thead style={{
                           textAlign: 'center',

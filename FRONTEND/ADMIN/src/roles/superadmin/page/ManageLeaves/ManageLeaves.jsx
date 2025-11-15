@@ -165,7 +165,7 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
           <div className="content-wrapper">
             {/* Page Title */}
             <div className="row">
-              <div className="col-md-12 grid-margin">
+              <div className="col-md-12 grid-margin" style={{ marginBottom: '10px' }}>
                 <div className="row">
                   <div className="col-12 col-xl-8 mb-4 mb-xl-0">
                     <h3 className="font-weight-bold">Manage Leave Requests</h3>

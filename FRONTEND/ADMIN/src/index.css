@@ -151,7 +151,6 @@ code {
    LAYOUT FIX — SIDEBAR + MAIN PANEL
    ========================================================= */
 
-/* Default expanded sidebar (desktop) */
 #sidebar {
     width: 260px !important;
     position: fixed;
@@ -164,7 +163,6 @@ code {
     z-index: 1000;
 }
 
-/* Main content panel */
 .main-panel {
     margin-left: 260px !important;
     width: calc(100% - 260px) !important;
@@ -183,7 +181,6 @@ code {
     width: calc(100% - 70px) !important;
 }
 
-/* Remove text labels when collapsed */
 .sidebar-icon-only #sidebar .menu-title {
     display: none !important;
 }
@@ -198,27 +195,23 @@ code {
 
 @media (max-width: 991px) {
     #sidebar {
-      
         width: 250px !important;
         left: -250px;
         position: fixed;
         transition: left 0.35s ease;
         z-index: 999;
-        padding-top: 80px
+        padding-top: 80px;
     }
 
-    /* When sidebar is opened */
     .sidebar-icon-only #sidebar {
         left: 0 !important;
     }
 
-    /* Main panel on mobile stays full width */
     .main-panel {
         margin-left: 0 !important;
         width: 100% !important;
     }
 
-    /* Overlay behind sidebar */
     .sidebar-overlay {
         position: fixed;
         top: 0;
@@ -236,9 +229,19 @@ code {
 }
 
 /* =========================================================
-   CONTENT WRAPPER SPACING FIX
+   CONTENT WRAPPER SPACING
    ========================================================= */
 
 .content-wrapper {
     padding: 24px !important;
+}
+
+/* =========================================================
+   RESPONSIVE TABLE HEIGHT
+   ========================================================= */
+
+.dynamic-table {
+    max-height: calc(100vh - 280px); /* responsive auto height */
+    overflow-y: auto;
+    overflow-x: auto;
 }

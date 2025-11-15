@@ -141,9 +141,9 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
         <div className="main-panel">
           <div className="content-wrapper">
             <div className="row">
-              <div className="col-md-12 grid-margin">
+              <div className="col-md-12 grid-margin" style={{ marginBottom: '10px' }} >
                 <div className="row">
-                  <div className="col-12 col-xl-8 mb-4 mb-xl-0">
+                  <div className="col-12 col-xl-8 mb-4 mb-xl-0" >
                     <h3 className="font-weight-bold">Manage Installations</h3>
                   </div>
                 </div>
@@ -308,15 +308,15 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
               </div>
             </div>
 
-            <div className="row">
+            <div className="row" >
               <div className="col-lg-12 grid-margin stretch-card">
                 <div className="card">
                   <div className="card-body">
                     <div className="row mb-2">
                       <div className="col-md-12 grid-margin">
                         <div className="row">
-                          <div className="col-4 col-xl-8">
-                            <h4 className="card-title" style={{ paddingTop: '6px', marginBottom: 0 }}>
+                          <div className="col-4 col-xl-8" >
+                            <h4 className="card-title" style={{ paddingTop: '6px', marginBottom: '-10px' }}>
                               Installation Tasks
                             </h4>
                           </div>
@@ -340,7 +340,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                       </div>
                     </div>
 
-                    <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                       <div className="table-responsive dynamic-table">
                       <table className="table table-striped">
                         <thead style={{ textAlign: 'center', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#fff' }}>
                           <tr>
@@ -374,7 +374,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                                 <tr key={item._id || index} style={{ height: '36px' }}>
                                   <td>{index + 1}</td>
                                   <td style={{ padding: '4px 2px', maxWidth: '70px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{item.task_id || '-'}</td>
-                                   <td style={{ padding: '4px 2px', maxWidth: '70px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{item.modelName || '-'}</td>
+                                   <td style={{ padding: '4px 2px', maxWidth: '250px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{item.modelName || '-'}</td>
                                   <td>{item.wp_device_id || '-'}</td>
                                   <td >{item.deliveryAddress?.name || '-'}</td>
                                   <td style={{ padding: '4px 2px', maxWidth: '200px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{item.email || '-'}</td>

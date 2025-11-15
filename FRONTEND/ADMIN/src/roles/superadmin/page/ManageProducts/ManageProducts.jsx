@@ -103,8 +103,8 @@ const ManageProducts = ({ userInfo, handleLogout }) => {
                 <Sidebar />
                 <div className="main-panel">
                     <div className="content-wrapper">
-                        <div className="row">
-                            <div className="col-md-12 grid-margin">
+                        <div className="row" style={{ marginBottom: '0px' }}>
+                            <div className="col-md-12 grid-margin" style={{ marginBottom: '10px' }}>
                                 <div className="row align-items-center gx-3 gy-2 flex-wrap">
                                     <div className="col-auto">
                                         <h3 className="font-weight-bold mb-0" style={{ fontSize: '22px' }}>
@@ -241,7 +241,7 @@ const ManageProducts = ({ userInfo, handleLogout }) => {
                                         </div>
 
                                         {/* Product Table */}
-                                        <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                                        <div className="table-responsive dynamic-table">
                                             <table className="table table-striped text-center">
                                                 <thead style={{ textAlign: 'center', position: 'sticky', tableLayout: 'fixed', top: 0, backgroundColor: 'white', zIndex: 1 }}>
                                                     <tr>
