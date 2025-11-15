@@ -222,14 +222,12 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
         <Sidebar />
         <div className="main-panel">
           <div className="content-wrapper">
-            <div className="row">
-              <div className="col-md-12 grid-margin">
-                <div className="row">
-                  <div className="col-12 col-xl-8 mb-4 mb-xl-0">
-                    <h3 className="font-weight-bold">Manage Orders</h3>
-                  </div>
-                </div>
-              </div>
+                <div style={cardGridStyle}>
+            <div className="row" style={{ marginBottom: '0px' }}>
+  <div className="col-12" style={{ marginBottom: '0px' }}>
+    <h3 className="font-weight-bold" style={{ marginBottom: '5px' }}>Manage Orders</h3>
+  </div>
+</div>
             </div>
 
             {/* Summary Cards Grid */}

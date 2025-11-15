@@ -362,15 +362,14 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                         <tbody style={{ textAlign: 'center', verticalAlign: 'middle', lineHeight: '1.0' }}>
                           {isLoading ? (
                             <tr style={{ height: '36px' }}>
-                              <td colSpan="13">Loading...</td>
+                              <td colSpan="14">Loading...</td>
                             </tr>
                           ) : error ? (
                             <tr style={{ height: '36px' }}>
-                              <td colSpan="13">Error: {error}</td>
+                              <td colSpan="14">Error: {error}</td>
                             </tr>
                           ) : installationTasks.length > 0 ? (
                             installationTasks
-                              .filter((item) => item.task_id)
                               .map((item, index) => (
                                 <tr key={item._id || index} style={{ height: '36px' }}>
                                   <td>{index + 1}</td>

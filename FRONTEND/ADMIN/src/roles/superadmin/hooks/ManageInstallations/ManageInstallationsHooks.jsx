@@ -143,9 +143,9 @@ const useManageInstallation = (userInfo) => {
     };
 
     tasks.forEach((task) => {
-      const status = (task.task_status || '').toLowerCase();
+      const status = (task.task_status || '').toLowerCase().trim();
       if (status === 'pending') counts.pending += 1;
-      else if (status === 'in progress' || status === 'in_progress') counts.inProgress += 1;
+      else if (status === 'in progress' || status === 'in_progress' || status === 'in progess') counts.inProgress += 1;
       else if (status === 'completed') counts.completed += 1;
       else if (status === 'rejected') counts.rejected += 1;
 

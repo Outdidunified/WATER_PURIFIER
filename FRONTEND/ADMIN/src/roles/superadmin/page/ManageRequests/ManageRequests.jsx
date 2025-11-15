@@ -610,29 +610,13 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                 </label>
                 {!createForm.deviceId ? (
                   <div 
-                    style={{
-                      padding: '12px',
-                      backgroundColor: '#f8f9fa',
-                      border: '1px solid #dee2e6',
-                      borderRadius: '4px',
-                      textAlign: 'center',
-                      color: '#6c7293',
-                      fontWeight: '500'
-                    }}
+                  className="form-control"  style={{padding:'12px'}}      
                   >
                     Select a device first
                   </div>
                 ) : filteredDistrictTechnicians.length === 0 ? (
                   <div 
-                    style={{
-                      padding: '12px',
-                      backgroundColor: '#f8f9fa',
-                      border: '1px solid #dee2e6',
-                      borderRadius: '4px',
-                      textAlign: 'center',
-                      color: '#dc3545',
-                      fontWeight: '500'
-                    }}
+                   className="form-control"
                   >
                     No technician found for this district
                   </div>
