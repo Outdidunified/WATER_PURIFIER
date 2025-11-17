@@ -388,7 +388,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                             <th>Duration</th>
                             <th>User</th>
                             {/* <th>Email</th> */}
-                            <th>City</th>
+                            <th>District</th>
                             <th>Status</th>
                             <th>Payment</th>
                             <th>Created At</th>
@@ -407,12 +407,12 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                                 <tr key={order._id} style={{ height: '36px' }}>
                                   <td style={{ padding: '4px 2px' }}>{index + 1}</td>
                                   <td style={{ padding: '4px 2px' }}>{order.customOrderId}</td>
-                                  <td style={{ padding: '4px 4px', maxWidth: '100px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.modelName}</td>
+                                  <td style={{ padding: '4px 4px', maxWidth: '200px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.modelName}</td>
                                   <td style={{ padding: '4px 2px', maxWidth: '60px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.selectedPlan?.label}</td>
                                   <td style={{ padding: '4px 2px', maxWidth: '70px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.selectedDuration?.duration_time_limit}</td>
                                   <td style={{ padding: '4px 4px', maxWidth: '200px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.deliveryAddress?.name}</td>
                                   {/* <td style={{ padding: '4px 2px', maxWidth: '90px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.email || '-'}</td> */}
-                                  <td style={{ padding: '4px 2px', maxWidth: '100px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.deliveryAddress?.city}</td>
+                                  <td style={{ padding: '4px 2px', maxWidth: '100px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.deliveryAddress?.district}</td>
                                   <td>
                                     <span className={`badge-status badge-${order.orderStatus.toLowerCase()}`}>
                                       {order.orderStatus}

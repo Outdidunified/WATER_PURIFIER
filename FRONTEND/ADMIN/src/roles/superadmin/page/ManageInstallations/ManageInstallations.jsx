@@ -357,7 +357,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                             <th>Model</th>
                             <th>Device ID</th>
                             <th>Customer Name</th>
-                            <th>Email</th>
+                            <th>Customer Email</th>
                             <th>Technician Name</th>
                             <th>Technician ID</th>
                             <th>Assigned Date</th>

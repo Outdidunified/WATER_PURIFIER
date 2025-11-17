@@ -383,7 +383,7 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                           <tr>
                             <th>Sl.No</th>
                             <th>Task Type</th>
-                            <th>Email ID</th>
+                            <th>Customer Email</th>
                             <th>Technician Name</th>
                             <th>Technician ID</th>
                             <th>Device ID</th>
@@ -423,7 +423,7 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                                       style={{
                                         color: '#007bff',
                                         cursor: 'pointer',
-                                        textDecoration: 'underline'
+                                      
                                       }}
                                       title="View technician details"
                                       onClick={() => handleViewTechnician(resolveTechnicianId(item))}

@@ -3,15 +3,57 @@ import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
 import Footer from '../../components/Footer';
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import useViewInstallations from '../../hooks/ManageInstallations/useViewInstallationsHooks';
 
 const ViewInstallations = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
   const installationTasks = useViewInstallations();
+  const [assignmentHistory, setAssignmentHistory] = useState({});
+  const [loadingHistory, setLoadingHistory] = useState({});
 
   const handleBack = () => {
     navigate('/superadmin/ManageInstallations');
   };
+
+  const fetchAssignmentHistory = async (taskId) => {
+    if (!taskId || loadingHistory[taskId]) return;
+
+    setLoadingHistory(prev => ({ ...prev, [taskId]: true }));
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/assignment-history/${taskId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'Success') {
+          setAssignmentHistory(prev => ({ ...prev, [taskId]: result.data }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching assignment history:', error);
+    } finally {
+      setLoadingHistory(prev => ({ ...prev, [taskId]: false }));
+    }
+  };
+
+  // Fetch assignment history for all tasks when they load
+  useEffect(() => {
+    if (installationTasks && installationTasks.length > 0) {
+      installationTasks.forEach(task => {
+        if (task.task_id && !assignmentHistory[task.task_id] && !loadingHistory[task.task_id]) {
+          fetchAssignmentHistory(task.task_id);
+        }
+      });
+    }
+  }, [installationTasks]);
 
   const extractDateValue = (value) => {
     if (!value) return null;
@@ -324,7 +366,11 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                   serviceRecord.created_at ||
                   serviceRecord.createdAt;
                 const imageAfterService = task.image_after_service || serviceRecord.image_after_service || [];
-                const historySourceEntries = collectAssignmentHistoryEntries(task);
+                // Use fetched assignment history data, fallback to task data
+                const fetchedHistory = assignmentHistory[task.task_id] || [];
+                const historySourceEntries = fetchedHistory.length > 0
+                  ? fetchedHistory
+                  : collectAssignmentHistoryEntries(task);
                 const fallbackServiceEntries = Array.isArray(task.service_records)
                   ? task.service_records
                   : [];
@@ -415,7 +461,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                               <span className="view-data-label">Name</span><span className="view-data-value">{delivery.name || '-'}</span>
                             </div>
                             <div className="col-md-4 view-data-item">
-                              <span className="view-data-label">Email</span><span className="view-data-value">{customerEmail || '-'}</span>
+                              <span className="view-data-label">Customer Email</span><span className="view-data-value">{customerEmail || '-'}</span>
                             </div>
                             <div className="col-md-4 view-data-item">
                               <span className="view-data-label">Phone</span><span className="view-data-value">{customerPhone || '-'}</span>
@@ -494,7 +540,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                               <span className="view-data-label">Technician ID</span><span className="view-data-value">{technicianId || '-'}</span>
                             </div>
                             <div className="col-md-4 view-data-item">
-                              <span className="view-data-label">Email</span><span className="view-data-value">{technicianEmail || '-'}</span>
+                              <span className="view-data-label">Customer Email</span><span className="view-data-value">{technicianEmail || '-'}</span>
                             </div>
                           </div>
 
@@ -562,7 +608,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                             </div>
                           )}
 
-                          {/* {historyRows.length > 0 && (
+                          {historyRows.length > 0 && (
                             <div className="row viewDataCss mt-4">
                               <div className="col-12">
                                 <h5 className="font-weight-bold" style={{ color: '#007bff' }}>
@@ -573,11 +619,11 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                                   <table className="table table-striped">
                                     <thead>
                                       <tr>
-                                        <th>#</th>
+                                        <th>S.No</th>
                                         <th>Technician</th>
                                         <th>Assigned By</th>
-                                        <th>Assigned Date</th>
-                                        <th>Pending Reason</th>
+                              
+                                        <th>Reason</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -585,9 +631,8 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                                         <tr key={`${record.technicianLabel || record.technicianId || 'row'}-${recordIndex}`}>
                                           <td>{recordIndex + 1}</td>
                                           <td>{record.technicianLabel || record.technicianId || '-'}</td>
-                                          <td>{record.assignedBy || '-'}</td>
-                                          <td>{formatDateTime(record.assignedDate)}</td>
-                                          <td>{record.pendingReason || '-'}</td>
+                                          <td>{record.assigned_by || '-'}</td>                                    
+                                          <td>{record.reason || '-'}</td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -595,7 +640,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                                 </div>
                               </div>
                             </div>
-                          )} */}
+                          )}
 
                         </div>
                       </div>
