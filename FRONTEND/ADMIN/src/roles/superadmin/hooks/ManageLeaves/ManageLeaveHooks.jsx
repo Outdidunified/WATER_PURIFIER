@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { showErrorAlert, showSuccessAlert } from '../../../../utils/alert';
+import { showErrorAlert } from '../../../../utils/alert';
 import axiosInstance from '../../../../utils/utils';
 
 const ManageLeaveHooks = () => {
@@ -7,47 +7,51 @@ const ManageLeaveHooks = () => {
     const [filteredLeaves, setFilteredLeaves] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [selectedStatus, setSelectedStatus] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedFilter, setSelectedFilter] = useState('');
+    const [summary, setSummary] = useState({
+        total: 0,
+        requested: 0,
+        approved: 0,
+        rejected: 0,
+    });
 
-    // Fetch all leave requests
-    useEffect(() => {
-        fetchLeaveRequests();
-    }, [selectedStatus]);
+    const calculateLeaveSummary = (leaves) => {
+        const counts = {
+            total: leaves.length,
+            requested: 0,
+            approved: 0,
+            rejected: 0,
+        };
+
+        leaves.forEach((leave) => {
+            const status = (leave.status || '').toLowerCase().trim();
+            if (status === 'requested') counts.requested += 1;
+            else if (status === 'approved') counts.approved += 1;
+            else if (status === 'rejected') counts.rejected += 1;
+        });
+
+        return counts;
+    };
 
     const fetchLeaveRequests = async () => {
         try {
             setLoading(true);
             setError(null);
 
-            const params = new URLSearchParams();
-            if (selectedStatus !== 'all') {
-                params.append('status', selectedStatus);
-            }
+            const response = await axiosInstance.get('/api/admin/leave-requests');
 
-            const token = sessionStorage.getItem('superAdminToken');
-            const queryString = params.toString();
-            const url = queryString ? `/api/api/admin/leave-requests?${queryString}` : '/api/api/admin/leave-requests';
-
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { 'Authorization': `Bearer ${token}` }),
-                },
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                setLeaveRequests(data.data);
-                setFilteredLeaves(data.data);
+            if (response.data.success) {
+                const leaves = response.data.data;
+                setLeaveRequests(leaves);
+                setFilteredLeaves(leaves);
+                setSummary(calculateLeaveSummary(leaves));
             } else {
-                showErrorAlert('Error', data.message || 'Failed to fetch leave requests');
+                showErrorAlert('Error', response.data.message || 'Failed to fetch leave requests');
             }
         } catch (err) {
             console.error('Error fetching leave requests:', err);
-            const errorMsg = err.message || 'Failed to fetch leave requests';
+            const errorMsg = err.response?.data?.message || err.message || 'Failed to fetch leave requests';
             setError(errorMsg);
             showErrorAlert('Error', errorMsg);
         } finally {
@@ -55,16 +59,54 @@ const ManageLeaveHooks = () => {
         }
     };
 
-    // Filter leaves by search term
+    // Fetch all leave requests
     useEffect(() => {
-        const filtered = leaveRequests.filter(
-            (leave) =>
-                (leave.technician_name && leave.technician_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                (leave.technician_id && leave.technician_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                (leave.technician_email && leave.technician_email.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
+        fetchLeaveRequests();
+    }, []);
+
+    const applyFilters = (filterType, search) => {
+        let filtered = leaveRequests;
+
+        if (filterType === 'requested') {
+            filtered = filtered.filter(
+                (leave) => (leave.status || '').toLowerCase() === 'requested'
+            );
+        } else if (filterType === 'approved') {
+            filtered = filtered.filter(
+                (leave) => (leave.status || '').toLowerCase() === 'approved'
+            );
+        } else if (filterType === 'rejected') {
+            filtered = filtered.filter(
+                (leave) => (leave.status || '').toLowerCase() === 'rejected'
+            );
+        }
+
+        if (search.trim()) {
+            const searchLower = search.toLowerCase();
+            filtered = filtered.filter((leave) =>
+                (leave.technician_name && leave.technician_name.toLowerCase().includes(searchLower)) ||
+                (leave.technician_id && leave.technician_id.toLowerCase().includes(searchLower)) ||
+                (leave.technician_email && leave.technician_email.toLowerCase().includes(searchLower))
+            );
+        }
+
         setFilteredLeaves(filtered);
-    }, [searchTerm, leaveRequests]);
+    };
+
+    // Filter leaves by search term and status
+    useEffect(() => {
+        applyFilters(selectedFilter, searchTerm);
+    }, [searchTerm, leaveRequests, selectedFilter]);
+
+    const handleFilterSelect = (filterType) => {
+        if (selectedFilter === filterType) {
+            setSelectedFilter('');
+            applyFilters('', searchTerm);
+        } else {
+            setSelectedFilter(filterType);
+            applyFilters(filterType, searchTerm);
+        }
+    };
 
     const getStatusBadgeColor = (status) => {
         switch (status) {
@@ -93,11 +135,12 @@ const ManageLeaveHooks = () => {
         filteredLeaves,
         loading,
         error,
-        selectedStatus,
-        setSelectedStatus,
         searchTerm,
         setSearchTerm,
+        selectedFilter,
+        summary,
         fetchLeaveRequests,
+        handleFilterSelect,
         getStatusBadgeColor,
         getStatusBadgeClass,
     };

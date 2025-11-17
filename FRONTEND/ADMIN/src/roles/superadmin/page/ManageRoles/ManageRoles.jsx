@@ -208,7 +208,7 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
           <div className="content-wrapper">
             {/* Title, Count & Filter */}
             <div className="row">
-              <div className="col-md-12 grid-margin">
+              <div className="col-md-12 grid-margin" style={{ marginBottom: '10px' }}>
                 <div className="row align-items-center gx-3 gy-2 flex-wrap">
                   <div className="col-auto">
                     <h3 className="font-weight-bold mb-0" style={{ fontSize: '22px' }}>Manage Roles</h3>
@@ -410,7 +410,7 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
                       </div>
                     </div>
 
-                    <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                       <div className="table-responsive dynamic-table">
                       <table className="table table-striped text-center" style={tableStyle}>
                         <thead
                           style={{

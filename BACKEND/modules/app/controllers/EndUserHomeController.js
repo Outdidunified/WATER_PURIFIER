@@ -75,23 +75,8 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
       });
     }
 
-    // ✅ Filter out old orders for devices that have been renewed
-    const deviceHasRenewal = new Set();
-    orders.forEach(order => {
-      if (order.isRenewal === true) {
-        deviceHasRenewal.add(order.wp_device_id);
-      }
-    });
-
-    const filteredOrders = orders.filter(order => {
-      if (deviceHasRenewal.has(order.wp_device_id)) {
-        return order.isRenewal === true;
-      }
-      return true;
-    });
-
     const ordersWithStatus = await Promise.all(
-      filteredOrders.map(async (order) => {
+      orders.map(async (order) => {
         const serviceRecords = await serviceRecordsCollection.find({
           wp_device_id: order.wp_device_id
         }).toArray();
@@ -206,15 +191,14 @@ exports.userStoreBleAck = async (req, res) => {
     const deviceDetailsCollection = db.collection('device_details');
     const ordersCollection = db.collection('orders');
 
-    // ✅ Find the most recent order for this user and wp_device_id with Recharge type
+    // ✅ Find the order for this user and wp_device_id with Recharge type
     const orderFilter = {
       wp_device_id,
       user_id: Number(user_id),
       orderType: 'Recharge',
     };
 
-    const orders = await ordersCollection.find(orderFilter).sort({ createdAt: -1 }).limit(1).toArray();
-    const order = orders[0];
+    const order = await ordersCollection.findOne(orderFilter);
     if (!order) {
       return res.status(404).json({
         error: true,

@@ -562,7 +562,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                             </div>
                           )}
 
-                          {historyRows.length > 0 && (
+                          {/* {historyRows.length > 0 && (
                             <div className="row viewDataCss mt-4">
                               <div className="col-12">
                                 <h5 className="font-weight-bold" style={{ color: '#007bff' }}>
@@ -595,7 +595,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                                 </div>
                               </div>
                             </div>
-                          )}
+                          )} */}
 
                         </div>
                       </div>

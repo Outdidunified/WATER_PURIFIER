@@ -393,6 +393,7 @@ async function autoAssignInstallation(order) {
         const existingInstallation = await serviceRecords.findOne({
             wp_device_id: order.wp_device_id,
             task_type: 1,
+            task_status: { $ne: 'Unassigned' }
         });
 
         if (existingInstallation) {
@@ -400,138 +401,138 @@ async function autoAssignInstallation(order) {
             return;
         }
 
-        // Enforce order confirmation and payment rules based on payment type
-        const normalizedPaymentType = (order.paymentType || '').toString().toUpperCase();
-        const isOrderConfirmed = order.orderStatus === 'Confirmed';
-        const isPaymentCompleted = order.paymentStatus === 'Completed';
-        const isDeliveryCompleted = order.deliveryCurrentStatus === 'completed';
+        // Check if there's an existing Unassigned task to assign instead of creating new
+        let task = await serviceRecords.findOne({
+            wp_device_id: order.wp_device_id,
+            task_type: 1,
+            task_status: 'Unassigned'
+        });
 
-        if (!isOrderConfirmed) {
-            console.log(`Skipping auto-assign for unconfirmed order ${order.customOrderId || order.wp_device_id}`);
-            return;
+        let taskId;
+        const now = new Date();
+
+        if (!task) {
+            // Enforce order confirmation and payment rules based on payment type
+            const normalizedPaymentType = (order.paymentType || '').toString().toUpperCase();
+            const isOrderConfirmed = order.orderStatus === 'Confirmed';
+            const isPaymentCompleted = order.paymentStatus === 'Completed';
+            const isDeliveryCompleted = order.deliveryCurrentStatus === 'completed';
+
+            if (!isOrderConfirmed) {
+                console.log(`Skipping auto-assign for unconfirmed order ${order.customOrderId || order.wp_device_id}`);
+                return;
+            }
+
+            if (normalizedPaymentType !== 'COD' && !isPaymentCompleted) {
+                console.log(`Skipping auto-assign for unpaid order ${order.customOrderId || order.wp_device_id} (paymentType: ${normalizedPaymentType || 'N/A'})`);
+                return;
+            }
+
+            if (!isDeliveryCompleted) {
+                console.log(`Skipping auto-assign for order ${order.customOrderId || order.wp_device_id}: delivery not marked completed (currentStatus: ${order.deliveryCurrentStatus})`);
+                return;
+            }
+
+            const paymentDetails = order?._id ? await paymentsCollection.findOne({ orderId: order._id }) : null;
+
+            const normalizeId = (value) =>
+                value && typeof value.toString === 'function' ? value.toString() : value ?? null;
+
+            const sanitizeDuration = (duration) => {
+                if (!duration || typeof duration !== 'object') return duration ?? null;
+                const { plans, ...rest } = duration;
+                return rest;
+            };
+
+            const orderSnapshot = {
+                orderId: normalizeId(order?._id),
+                customOrderId: order?.customOrderId ?? null,
+                user_id: order?.user_id ?? null,
+                productModelId: order?.productModelId ?? null,
+                modelName: order?.modelName ?? null,
+                modeltype: order?.modeltype ?? null,
+                main_image: order?.main_image ?? null,
+                sub_images: Array.isArray(order?.sub_images) ? order.sub_images : [],
+                wp_device_id: order?.wp_device_id ?? null,
+                selectedPlan: order?.selectedPlan ?? null,
+                selectedDuration: sanitizeDuration(order?.selectedDuration ?? null),
+                grandTotal: order?.grandTotal ?? null,
+                price: order?.price ?? null,
+                subtotal: order?.subtotal ?? null,
+                securityDeposit: order?.securityDeposit ?? null,
+                paymentType: normalizedPaymentType || null,
+                paymentStatus: order?.paymentStatus ?? null,
+                orderStatus: order?.orderStatus ?? null,
+                razorpayOrderId: order?.razorpayOrderId ?? null,
+                deliveryAddress: order?.deliveryAddress ?? null,
+                totalLitre: order?.totalLitre ?? null,
+                createdAt: order?.createdAt ?? null,
+                updatedAt: order?.updatedAt ?? null
+            };
+
+            const paymentSnapshot = paymentDetails
+                ? {
+                      paymentId: normalizeId(paymentDetails._id),
+                      orderId: normalizeId(paymentDetails.orderId),
+                      paymentType: paymentDetails.paymentType ?? null,
+                      paymentStatus: paymentDetails.paymentStatus ?? null,
+                      finalMonthlyPrice: paymentDetails.finalMonthlyPrice ?? null,
+                      discountAmount: paymentDetails.discountAmount ?? null,
+                      priceWithGST: paymentDetails.priceWithGST ?? null,
+                      gstAmount: paymentDetails.gstAmount ?? null,
+                      securityDeposit: paymentDetails.securityDeposit ?? null,
+                      totalPrice: paymentDetails.totalPrice ?? null,
+                      subtotal: paymentDetails.subtotal ?? null,
+                      price: paymentDetails.price ?? null,
+                      razorpayOrderId: paymentDetails.razorpayOrderId ?? null,
+                      razorpayPaymentId: paymentDetails.razorpayPaymentId ?? null,
+                      createdAt: paymentDetails.createdAt ?? null,
+                      updatedAt: paymentDetails.updatedAt ?? null
+                  }
+                : null;
+
+            // Generate task ID
+            const lastTask = await serviceRecords.find().sort({ task_id: -1 }).limit(1).toArray();
+            taskId = lastTask.length > 0 ? lastTask[0].task_id + 1 : 1;
+
+            // Prepare new task (unassigned initially)
+            const newTask = {
+                task_id: taskId,
+                task_status: "Unassigned",
+                task_type: 1, // Installation
+                task_description: "Ordered a new device",
+                assigned_technician_id: null,
+                task_created_by_user_id: order.user_id,
+                task_created_by_user_email: orderUser.email,
+                wp_device_id: order.wp_device_id,
+                created_date: now,
+                created_by: 'system',
+                assignment_history: [],
+                address: normalizedAddress,
+                product: {
+                    model_name: order.modelName,
+                    modeltype: order.modeltype ?? null,
+                    wp_device_id: order.wp_device_id,
+                    selectedPlan: order.selectedPlan,
+                    selectedDuration: sanitizeDuration(order.selectedDuration)
+                },
+                order_snapshot: orderSnapshot,
+                payment_snapshot: paymentSnapshot
+            };
+
+            // Insert task
+            await serviceRecords.insertOne(newTask);
+            task = newTask;
+        } else {
+            taskId = task.task_id;
         }
 
-        if (normalizedPaymentType !== 'COD' && !isPaymentCompleted) {
-            console.log(`Skipping auto-assign for unpaid order ${order.customOrderId || order.wp_device_id} (paymentType: ${normalizedPaymentType || 'N/A'})`);
-            return;
-        }
-
-        if (!isDeliveryCompleted) {
-            console.log(`Skipping auto-assign for order ${order.customOrderId || order.wp_device_id}: delivery not marked completed (currentStatus: ${order.deliveryCurrentStatus})`);
-            return;
-        }
-
-        const paymentDetails = order?._id ? await paymentsCollection.findOne({ orderId: order._id }) : null;
-
-        const normalizeId = (value) =>
-            value && typeof value.toString === 'function' ? value.toString() : value ?? null;
-
-        const sanitizeDuration = (duration) => {
-            if (!duration || typeof duration !== 'object') return duration ?? null;
-            const { plans, ...rest } = duration;
-            return rest;
-        };
-
-        const orderSnapshot = {
-            orderId: normalizeId(order?._id),
-            customOrderId: order?.customOrderId ?? null,
-            user_id: order?.user_id ?? null,
-            productModelId: order?.productModelId ?? null,
-            modelName: order?.modelName ?? null,
-            modeltype: order?.modeltype ?? null,
-            main_image: order?.main_image ?? null,
-            sub_images: Array.isArray(order?.sub_images) ? order.sub_images : [],
-            wp_device_id: order?.wp_device_id ?? null,
-            selectedPlan: order?.selectedPlan ?? null,
-            selectedDuration: sanitizeDuration(order?.selectedDuration ?? null),
-            grandTotal: order?.grandTotal ?? null,
-            price: order?.price ?? null,
-            subtotal: order?.subtotal ?? null,
-            securityDeposit: order?.securityDeposit ?? null,
-            paymentType: normalizedPaymentType || null,
-            paymentStatus: order?.paymentStatus ?? null,
-            orderStatus: order?.orderStatus ?? null,
-            razorpayOrderId: order?.razorpayOrderId ?? null,
-            deliveryAddress: order?.deliveryAddress ?? null,
-            totalLitre: order?.totalLitre ?? null,
-            createdAt: order?.createdAt ?? null,
-            updatedAt: order?.updatedAt ?? null
-        };
-
-        const paymentSnapshot = paymentDetails
-            ? {
-                  paymentId: normalizeId(paymentDetails._id),
-                  orderId: normalizeId(paymentDetails.orderId),
-                  paymentType: paymentDetails.paymentType ?? null,
-                  paymentStatus: paymentDetails.paymentStatus ?? null,
-                  finalMonthlyPrice: paymentDetails.finalMonthlyPrice ?? null,
-                  discountAmount: paymentDetails.discountAmount ?? null,
-                  priceWithGST: paymentDetails.priceWithGST ?? null,
-                  gstAmount: paymentDetails.gstAmount ?? null,
-                  securityDeposit: paymentDetails.securityDeposit ?? null,
-                  totalPrice: paymentDetails.totalPrice ?? null,
-                  subtotal: paymentDetails.subtotal ?? null,
-                  price: paymentDetails.price ?? null,
-                  razorpayOrderId: paymentDetails.razorpayOrderId ?? null,
-                  razorpayPaymentId: paymentDetails.razorpayPaymentId ?? null,
-                  createdAt: paymentDetails.createdAt ?? null,
-                  updatedAt: paymentDetails.updatedAt ?? null
-              }
-            : null;
-
-        const orderDetailsForRecord = {
-            customOrderId: order.customOrderId,
-            user_id: order.user_id,
-            orderMongoId: orderSnapshot.orderId,
-            paymentType: normalizedPaymentType || null,
-            paymentStatus: order.paymentStatus ?? null,
-            orderStatus: order.orderStatus ?? null,
-            grandTotal: order.grandTotal ?? null,
-            price: order.price ?? null,
-            subtotal: order.subtotal ?? null,
-            securityDeposit: order.securityDeposit ?? null,
-            razorpayOrderId: order.razorpayOrderId ?? null
-        };
-
-        // Fetch user info
+        // Fetch user info (needed for emails)
         const orderUser = await usersCollection.findOne({ user_id: order.user_id });
         if (!orderUser) {
             console.log('User not found for order');
             return;
         }
-
-        // Generate task ID
-        const lastTask = await serviceRecords.find().sort({ task_id: -1 }).limit(1).toArray();
-        const nextTaskId = lastTask.length > 0 ? lastTask[0].task_id + 1 : 1;
-        const now = new Date();
-
-        // Prepare new task (unassigned initially)
-        const newTask = {
-            task_id: nextTaskId,
-            task_status: "Unassigned",
-            task_type: 1, // Installation
-            task_description: "Ordered a new device",
-            assigned_technician_id: null,
-            task_created_by_user_id: order.user_id,
-            task_created_by_user_email: orderUser.email,
-            wp_device_id: order.wp_device_id,
-            created_date: now,
-            created_by: 'system',
-            assignment_history: [],
-            address: normalizedAddress,
-            product: {
-                model_name: order.modelName,
-                modeltype: order.modeltype ?? null,
-                wp_device_id: order.wp_device_id,
-                selectedPlan: order.selectedPlan,
-                selectedDuration: sanitizeDuration(order.selectedDuration)
-            },
-            order_snapshot: orderSnapshot,
-            payment_snapshot: paymentSnapshot
-        };
-
-        // Insert task
-        await serviceRecords.insertOne(newTask);
 
         // Find best technician
         const technician = await findBestTechnician(normalizedAddress);
@@ -545,7 +546,7 @@ async function autoAssignInstallation(order) {
 
             // Assign the task
             await serviceRecords.updateOne(
-                { task_id: nextTaskId },
+                { task_id: taskId },
                 {
                     $set: {
                         task_status: "Pending",
@@ -585,7 +586,7 @@ async function autoAssignInstallation(order) {
             await sendAssignInstallationEmail(orderUser.email, otp);
             await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
             await sendTechnicianAssignmentEmail(technician, {
-                taskId: nextTaskId,
+                taskId: taskId,
                 otp,
                 taskType: 1,
                 normalizedAddress
