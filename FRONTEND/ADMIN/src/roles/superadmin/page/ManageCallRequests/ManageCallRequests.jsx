@@ -70,7 +70,7 @@ const ManageCallRequests = ({ userInfo, handleLogout }) => {
                     </div>
 
                     {/* Call Request Table */}
-                       <div className="table-responsive dynamic-table">
+                    <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
                       <table className="table table-striped">
                         <thead style={{ textAlign: 'center', position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
                           <tr>

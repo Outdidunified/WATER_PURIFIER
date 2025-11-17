@@ -170,23 +170,6 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
     setDistricts(districtOptions);
   }, [selectedState]);
 
-  // 🧩 When user selects a district → refresh cities (reset city selection)
-  useEffect(() => {
-    if (!selectedCountry || !selectedState) return;
-
-    // Since district-based city filtering is not available,
-    // we reload all cities for the state and reset city selection
-    const cityOptions = GeoService.getCitiesForSelect(
-      selectedCountry.isoCode,
-      selectedState.value
-    );
-
-    setCities(cityOptions);
-    // Reset city selection when district changes
-    setSelectedCity(null);
-    setCity('');
-  }, [selectedDistrict, selectedCountry, selectedState]);
-
   const formFieldStyle = { marginBottom: '15px', display: 'flex', flexDirection: 'column' };
   const labelStyle = { marginBottom: '5px', fontWeight: '500', fontSize: '14px', color: '#495057' };
   const inputStyle = { height: '38px', borderRadius: '8px' };
@@ -313,23 +296,6 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                       required
                     />
                   </div>
-                   <div style={formFieldStyle}>
-                    <label style={labelStyle}>District</label>
-                    <SelectField
-                      value={selectedDistrict}
-                      onChange={(option) => {
-                        setSelectedDistrict(option);
-                        setDistrict(option?.value || '');
-                        // Reset city when district changes
-                        setSelectedCity(null);
-                        setCity('');
-                      }}
-                      options={districts}
-                      placeholder="Select District"
-                      isDisabled={!selectedState}
-                      required
-                    />
-                  </div>
                   <div style={formFieldStyle}>
                     <label style={labelStyle}>City</label>
                     <SelectField
@@ -340,11 +306,24 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                       }}
                       options={cities}
                       placeholder="Select City"
-                      isDisabled={!selectedDistrict}
+                      isDisabled={!selectedState}
                       required
                     />
                   </div>
-                 
+                  <div style={formFieldStyle}>
+                    <label style={labelStyle}>District</label>
+                    <SelectField
+                      value={selectedDistrict}
+                      onChange={(option) => {
+                        setSelectedDistrict(option);
+                        setDistrict(option?.value || '');
+                      }}
+                      options={districts}
+                      placeholder="Select District"
+                      isDisabled={!selectedState}
+                      required
+                    />
+                  </div>
                   <div style={formFieldStyle}>
                     <label style={labelStyle}>Pincode</label>
                     <InputField

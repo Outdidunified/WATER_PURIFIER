@@ -320,111 +320,109 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                             {isExpanded && (
                                                 <div style={{ padding: "20px", maxHeight: "70vh", overflowY: "auto" }}>
                                                     {/* Timeline */}
-                                                    {!(order.orderType === "Recharge" || order.isRecharge) && (
+                                                    <div
+                                                        style={{
+                                                            display: "flex",
+                                                            justifyContent: "space-between",
+                                                            alignItems: "flex-start",
+                                                            marginBottom: "20px",
+                                                            position: "relative",
+                                                        }}
+                                                    >
+                                                        {/* Base grey connector line */}
                                                         <div
                                                             style={{
-                                                                display: "flex",
-                                                                justifyContent: "space-between",
-                                                                alignItems: "flex-start",
-                                                                marginBottom: "20px",
-                                                                position: "relative",
+                                                                position: "absolute",
+                                                                top: "calc(10px)", // ✅ Center line vertically through dots (half of 20px)
+                                                                left: "5%",
+                                                                right: "5%",
+                                                                height: "2px",
+                                                                backgroundColor: "#ccc",
+                                                                zIndex: 0,
                                                             }}
-                                                        >
-                                                            {/* Base grey connector line */}
-                                                            <div
-                                                                style={{
-                                                                    position: "absolute",
-                                                                    top: "calc(10px)", // ✅ Center line vertically through dots (half of 20px)
-                                                                    left: "5%",
-                                                                    right: "5%",
-                                                                    height: "2px",
-                                                                    backgroundColor: "#ccc",
-                                                                    zIndex: 0,
-                                                                }}
-                                                            ></div>
+                                                        ></div>
 
-                                                            {getDeliveryTimeline(order).map((step, i, arr) => {
-                                                                const isLast = i === arr.length - 1;
-                                                                const nextStep = arr[i + 1];
-                                                                const showGreenLine = step.isCompleted && nextStep?.isCompleted;
+                                                        {getDeliveryTimeline(order).map((step, i, arr) => {
+                                                            const isLast = i === arr.length - 1;
+                                                            const nextStep = arr[i + 1];
+                                                            const showGreenLine = step.isCompleted && nextStep?.isCompleted;
 
-                                                                return (
-                                                                    <div
-                                                                        key={`${orderKey}-step-${i}`}
-                                                                        style={{
-                                                                            flex: "1",
-                                                                            textAlign: "center",
-                                                                            position: "relative",
-                                                                            zIndex: 2,
-                                                                        }}
-                                                                    >
-                                                                        {/* Green connector between completed steps */}
-                                                                        {!isLast && (
-                                                                            <div
-                                                                                style={{
-                                                                                    position: "absolute",
-                                                                                    top: "calc(10px)", // ✅ Same as base line — perfectly centered
-                                                                                    left: "50%",
-                                                                                    width: "100%",
-                                                                                    height: "2px",
-                                                                                    backgroundColor: showGreenLine ? "#28a745" : "transparent",
-                                                                                    zIndex: 1,
-                                                                                    transition: "background-color 0.3s ease",
-                                                                                }}
-                                                                            ></div>
-                                                                        )}
-
-                                                                        {/* Step Circle */}
+                                                            return (
+                                                                <div
+                                                                    key={`${orderKey}-step-${i}`}
+                                                                    style={{
+                                                                        flex: "1",
+                                                                        textAlign: "center",
+                                                                        position: "relative",
+                                                                        zIndex: 2,
+                                                                    }}
+                                                                >
+                                                                    {/* Green connector between completed steps */}
+                                                                    {!isLast && (
                                                                         <div
                                                                             style={{
-                                                                                width: "20px",
-                                                                                height: "20px",
-                                                                                borderRadius: "50%",
-                                                                                backgroundColor: step.isCompleted ? "#28a745" : "#ccc",
-                                                                                margin: "0 auto",
-                                                                                position: "relative",
-                                                                                zIndex: 2,
+                                                                                position: "absolute",
+                                                                                top: "calc(10px)", // ✅ Same as base line — perfectly centered
+                                                                                left: "50%",
+                                                                                width: "100%",
+                                                                                height: "2px",
+                                                                                backgroundColor: showGreenLine ? "#28a745" : "transparent",
+                                                                                zIndex: 1,
                                                                                 transition: "background-color 0.3s ease",
                                                                             }}
                                                                         ></div>
+                                                                    )}
 
-                                                                        {/* Step Label */}
-                                                                        <div
-                                                                            style={{
-                                                                                marginTop: "10px",
-                                                                                fontWeight: "600",
-                                                                                color: "#000",
-                                                                            }}
-                                                                        >
-                                                                            {step.label}
-                                                                        </div>
+                                                                    {/* Step Circle */}
+                                                                    <div
+                                                                        style={{
+                                                                            width: "20px",
+                                                                            height: "20px",
+                                                                            borderRadius: "50%",
+                                                                            backgroundColor: step.isCompleted ? "#28a745" : "#ccc",
+                                                                            margin: "0 auto",
+                                                                            position: "relative",
+                                                                            zIndex: 2,
+                                                                            transition: "background-color 0.3s ease",
+                                                                        }}
+                                                                    ></div>
 
-                                                                        {/* Date */}
-                                                                        <div
-                                                                            style={{
-                                                                                color: step.isCompleted ? "#28a745" : "#888",
-                                                                                fontSize: "13px",
-                                                                                marginTop: "3px",
-                                                                            }}
-                                                                        >
-                                                                            {step.date || "—"}
-                                                                        </div>
-
-                                                                        {/* Notes */}
-                                                                        <div
-                                                                            style={{
-                                                                                color: step.notes ? "#555" : "#888",
-                                                                                fontSize: "12px",
-                                                                                marginTop: "4px",
-                                                                            }}
-                                                                        >
-                                                                            {step.notes || "Pending update"}
-                                                                        </div>
+                                                                    {/* Step Label */}
+                                                                    <div
+                                                                        style={{
+                                                                            marginTop: "10px",
+                                                                            fontWeight: "600",
+                                                                            color: "#000",
+                                                                        }}
+                                                                    >
+                                                                        {step.label}
                                                                     </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    )}
+
+                                                                    {/* Date */}
+                                                                    <div
+                                                                        style={{
+                                                                            color: step.isCompleted ? "#28a745" : "#888",
+                                                                            fontSize: "13px",
+                                                                            marginTop: "3px",
+                                                                        }}
+                                                                    >
+                                                                        {step.date || "—"}
+                                                                    </div>
+
+                                                                    {/* Notes */}
+                                                                    <div
+                                                                        style={{
+                                                                            color: step.notes ? "#555" : "#888",
+                                                                            fontSize: "12px",
+                                                                            marginTop: "4px",
+                                                                        }}
+                                                                    >
+                                                                        {step.notes || "Pending update"}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
 
                                                     <div className="row" style={{ gap: "20px", width: "110%", padding: '10px' }}>
                                                         {/* Left Column: Plan & Payment Details */}

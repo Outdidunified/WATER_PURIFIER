@@ -57,7 +57,6 @@ const stateCorrections = {
   'mz': 'Mizoram',
   'mn': 'Manipur',
   'as': 'Assam',
-  'br': 'Bihar',
   'jh': 'Jharkhand',
   'cg': 'Chhattisgarh',
   // Add more as needed

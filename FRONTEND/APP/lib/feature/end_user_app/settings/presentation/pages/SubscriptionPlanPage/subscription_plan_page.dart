@@ -18,6 +18,7 @@ import 'dart:io';
 import 'package:open_file/open_file.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class DashedLinePainter extends CustomPainter {
   final Color color;
@@ -1158,7 +1159,8 @@ class SubscriptionPlanPage extends StatelessWidget {
       };
 
       final encodedData = Uri.encodeComponent(jsonEncode(data));
-      final finalUrl = 'http://192.168.0.55:5050/recharge?data=$encodedData';
+      final baseUrl = dotenv.env['BASE_URL_WEBVIEW'] ?? 'http://192.168.0.16:5050/';
+      final finalUrl = '${baseUrl}?data=$encodedData';
 
       debugPrint("✅ Recharge WebView loading URL: $finalUrl");
 

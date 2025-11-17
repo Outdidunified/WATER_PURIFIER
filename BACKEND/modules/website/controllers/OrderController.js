@@ -469,10 +469,9 @@ exports.renewSubscription = async (req, res) => {
       isRecharge: true,
       totalLitre,
       razorpayOrderId: razorpayOrder?.id || null,
-      razorpayPaymentId: null,
       mac_id: macId
-
-
+      
+      
     };
 
     const orderResult = await orders.insertOne(renewOrder);

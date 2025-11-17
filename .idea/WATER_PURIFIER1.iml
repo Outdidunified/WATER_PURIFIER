@@ -279,6 +279,9 @@
       <excludeFolder url="file://$MODULE_DIR$/FRONTEND/IonHive_technician_app/plugins/flutter_bluetooth_serial/example/.dart_tool" />
       <excludeFolder url="file://$MODULE_DIR$/FRONTEND/IonHive_technician_app/plugins/flutter_bluetooth_serial/example/.pub" />
       <excludeFolder url="file://$MODULE_DIR$/FRONTEND/IonHive_technician_app/plugins/flutter_bluetooth_serial/example/build" />
+      <excludeFolder url="file://$MODULE_DIR$/FRONTEND/APP/linux/flutter/ephemeral/.plugin_symlinks/flutter_blue_plus_linux/.dart_tool" />
+      <excludeFolder url="file://$MODULE_DIR$/FRONTEND/APP/linux/flutter/ephemeral/.plugin_symlinks/flutter_blue_plus_linux/.pub" />
+      <excludeFolder url="file://$MODULE_DIR$/FRONTEND/APP/linux/flutter/ephemeral/.plugin_symlinks/flutter_blue_plus_linux/build" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

@@ -3,13 +3,10 @@ import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
 import Footer from '../../components/Footer';
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
 import useViewServices from '../../hooks/ManageServices/ViewServicesHooks';
 const ViewServices = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
   const installationTasks = useViewServices();
-  const [assignmentHistory, setAssignmentHistory] = useState({});
-  const [loadingHistory, setLoadingHistory] = useState({});
 
   const formatDateTime = (value) => {
     if (!value) return '-';
@@ -77,121 +74,9 @@ const ViewServices = ({ userInfo, handleLogout }) => {
   const resolveModifiedDate = (task) =>
     formatDateTime(task.modified_date || task.modifiedDate || task.modified_at || task.modifiedAt);
 
-  const extractDateValue = (value) => {
-    if (!value) return null;
-    if (value instanceof Date) return value.toISOString();
-    if (typeof value === 'object' && value !== null) {
-      if ('$date' in value) {
-        const nested = value.$date;
-        if (typeof nested === 'object' && nested !== null) {
-          if ('$numberLong' in nested) return Number(nested.$numberLong);
-          if ('$numberInt' in nested) return Number(nested.$numberInt);
-          return extractDateValue(nested);
-        }
-        return nested;
-      }
-      if ('$numberLong' in value) return Number(value.$numberLong);
-      if ('$numberInt' in value) return Number(value.$numberInt);
-    }
-    return value;
-  };
-
-  const mapHistoryEntry = (entry) => {
-    if (!entry) return null;
-    const technicianIdValue =
-      entry.technician_id ||
-      entry.assigned_technician_id ||
-      entry.technicianId ||
-      '';
-    const technicianNameValue =
-      entry.technician_name ||
-      entry.name ||
-      entry.technician?.technician_name ||
-      entry.technician?.name ||
-      '';
-    const technicianLabel =
-      [technicianIdValue, technicianNameValue].filter(Boolean).join(' - ') ||
-      technicianIdValue ||
-      technicianNameValue ||
-      '-';
-    const assignedByValue = entry.assigned_by || entry.assignedBy || '-';
-    const assignedDateValue =
-      entry.assigned_date ||
-      entry.assignedDate ||
-      entry.created_at ||
-      entry.recorded_at ||
-      entry.recordedAt ||
-      null;
-    const pendingReasonValue =
-      entry.unassigned_reason ||
-      entry.unassignedReason ||
-      entry.pending_reason ||
-      entry.pendingReason ||
-      entry.pending_reason_text ||
-      entry.pendingReasonText ||
-      entry.reassigned_reason ||
-      entry.reassignedReason ||
-      entry.reason ||
-      '-';
-
-    return {
-      technicianLabel,
-      technicianId: technicianIdValue || technicianNameValue || '-',
-      assignedBy: assignedByValue,
-      assignedDate: assignedDateValue,
-      pendingReason: pendingReasonValue,
-    };
-  };
-
-  const toValidTimestamp = (value) => {
-    const resolved = extractDateValue(value);
-    if (!resolved) return 0;
-    const timestamp = new Date(resolved).getTime();
-    return Number.isNaN(timestamp) ? 0 : timestamp;
-  };
-
   const handleBack = () => {
     navigate('/superadmin/ManageServices');
   };
-
-  const fetchAssignmentHistory = async (taskId) => {
-    if (!taskId || loadingHistory[taskId]) return;
-
-    setLoadingHistory(prev => ({ ...prev, [taskId]: true }));
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/assignment-history/${taskId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.status === 'Success') {
-          setAssignmentHistory(prev => ({ ...prev, [taskId]: result.data }));
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching assignment history:', error);
-    } finally {
-      setLoadingHistory(prev => ({ ...prev, [taskId]: false }));
-    }
-  };
-
-  // Fetch assignment history for all tasks when they load
-  useEffect(() => {
-    if (installationTasks && installationTasks.length > 0) {
-      installationTasks.forEach(task => {
-        if (task.task_id && !assignmentHistory[task.task_id] && !loadingHistory[task.task_id]) {
-          fetchAssignmentHistory(task.task_id);
-        }
-      });
-    }
-  }, [installationTasks]);
 
  
  return (
@@ -343,51 +228,7 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                         </div>
                       </div>
 
-                      {/* Assignment History */}
-                      {(() => {
-                        const fetchedHistory = assignmentHistory[task.task_id] || [];
-                        const historyRows = fetchedHistory
-                          .map((entry) => mapHistoryEntry(entry))
-                          .filter(Boolean)
-                          .sort(
-                            (a, b) => toValidTimestamp(b.assignedDate) - toValidTimestamp(a.assignedDate),
-                          );
-
-                        return historyRows.length > 0 ? (
-                          <div className="row viewDataCss mt-4">
-                            <div className="col-12">
-                              <h5 className="font-weight-bold" style={{ color: '#007bff' }}>
-                                Assignment History
-                              </h5>
-                              <hr />
-                              <div className="table-responsive">
-                                <table className="table table-striped">
-                                  <thead>
-                                    <tr>
-                                      <th>#</th>
-                                      <th>Technician</th>
-                                      <th>Assigned By</th>
-                                      <th>Assigned Date</th>
-                                      <th>Reason</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {historyRows.map((record, recordIndex) => (
-                                      <tr key={`${record.technicianLabel || record.technicianId || 'row'}-${recordIndex}`}>
-                                        <td>{recordIndex + 1}</td>
-                                        <td>{record.technicianLabel || record.technicianId || '-'}</td>
-                                        <td>{record.assignedBy || '-'}</td>
-                                        <td>{formatDateTime(record.assignedDate)}</td>
-                                        <td>{record.pendingReason || '-'}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          </div>
-                        ) : null;
-                      })()}
+                      
 
                       {/* Image Before Service */}
                       {task.image_before_service?.length > 0 && (

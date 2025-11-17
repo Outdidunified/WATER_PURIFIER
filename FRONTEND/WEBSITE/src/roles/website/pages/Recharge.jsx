@@ -470,7 +470,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
 
                 {/* <!-- Features Section --> */}
                 <section id="hero" className="features section" style={{ marginTop: '5%' }}>
-                    <div className="container section-title" data-aos="fade-up" style={{ paddingBottom: '0px', padding: '10px' }}>
+                    <div className="container section-title" data-aos="fade-up" style={{ paddingBottom: '0px' }}>
                         <h2>Products that fit every Lifestyle and Budget</h2>
                         <p>Each of our smart water purifiers comes with advanced multi-stage purification and IoT technology.</p>
                     </div>
@@ -1055,6 +1055,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                                 </div>
 
                                                                                 {/* BUTTON */}
+                                                                                {/* BUTTON + STATUS */}
                                                                                 {selectedDevice ? (
                                                                                     <div className="text-center mb-3">
                                                                                         {/* 1. Show End Date */}

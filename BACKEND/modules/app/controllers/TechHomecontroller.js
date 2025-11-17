@@ -6,6 +6,8 @@ const { ObjectId } = require('mongodb');
 const path = require('path');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
+const { sendEmail } = require('../../website/controllers/Email');
+
 
 const razorpayInstance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -13,7 +15,6 @@ const razorpayInstance = new Razorpay({
 });
 
 // Nodemailer transporter
-
 exports.getAssignedTaskDetails = async (req, res) => {
     const { user_id, email, role_id, assigned_technician_id } = req.body;
   
@@ -638,7 +639,8 @@ exports.storeBleAck = async (req, res) => {
 
 // ✅ Update corresponding order → isSetup: true + BLE details
 if (serviceRecord.linkedRechargeOrderId) {
-  // Recharge order
+  // Recharge order - update by linkedRechargeOrderId
+  console.log(`Updating recharge order by linkedRechargeOrderId: ${serviceRecord.linkedRechargeOrderId}`);
   await ordersCollection.updateOne(
     { _id: new ObjectId(serviceRecord.linkedRechargeOrderId) },
     {
@@ -654,14 +656,15 @@ if (serviceRecord.linkedRechargeOrderId) {
     }
   );
 } else {
-  // Normal order (Installation)
+  // Normal order (Installation) - update by customOrderId or orderId
   const orderId =
     serviceRecord.customOrderId ||
     serviceRecord.order?.customOrderId ||
     serviceRecord.order_snapshot?.customOrderId;
 
   if (orderId) {
-    await ordersCollection.updateOne(
+    console.log(`Updating installation order by customOrderId: ${orderId}`);
+    const updateResult = await ordersCollection.updateOne(
       { customOrderId: orderId },
       {
         $set: {
@@ -675,7 +678,9 @@ if (serviceRecord.linkedRechargeOrderId) {
         $push: { ble_ack_history: ackHistoryEntry },
       }
     );
+    console.log(`Installation order update result: ${updateResult.modifiedCount} documents modified for orderId: ${orderId}`);
   } else if (serviceRecord.order_snapshot?.orderId) {
+    console.log(`Updating order by order_snapshot.orderId: ${serviceRecord.order_snapshot.orderId}`);
     await ordersCollection.updateOne(
       { _id: new ObjectId(serviceRecord.order_snapshot.orderId) },
       {
@@ -690,8 +695,11 @@ if (serviceRecord.linkedRechargeOrderId) {
         $push: { ble_ack_history: ackHistoryEntry },
       }
     );
+  } else {
+    console.warn(`⚠️ No order ID found in serviceRecord for task ${task_id}`);
   }
 }
+
 
 
 
@@ -753,6 +761,7 @@ exports.updateTaskDetails = async (req, res) => {
     const usersCollection = db.collection('users');
     const ordersCollection = db.collection('orders');
     const paymentsCollection = db.collection('payments');
+    const deviceDetailsCollection = db.collection('device_details');
 
     // ✅ Find technician’s assigned task
     const task = await serviceRecordsCollection.findOne({
@@ -765,8 +774,23 @@ exports.updateTaskDetails = async (req, res) => {
     // ✅ Identify linked order
     let order;
     if (task.orderType === "Recharge" || task.rechargeDetails) {
-      order = await ordersCollection.findOne({ _id: new ObjectId(task.linkedRechargeOrderId) });
-      console.log("🔹 Recharge order found:", order?.customOrderId);
+      // Try linkedRechargeOrderId first
+      if (task.linkedRechargeOrderId) {
+        order = await ordersCollection.findOne({ _id: new ObjectId(task.linkedRechargeOrderId) });
+        console.log("🔹 Recharge order found by linkedRechargeOrderId:", order?.customOrderId);
+      }
+      // If not found, try other identifiers
+      if (!order) {
+        order = await ordersCollection.findOne({
+          $or: [
+            { customOrderId: task.customOrderId },
+            { customOrderId: task.order_snapshot?.customOrderId },
+            { customOrderId: task.order?.customOrderId },
+            { _id: task.order_snapshot?.orderId ? new ObjectId(task.order_snapshot.orderId) : null }
+          ].filter(Boolean)
+        });
+        console.log("🔹 Recharge order found by fallback:", order?.customOrderId);
+      }
     } else {
       order = await ordersCollection.findOne({
         customOrderId: task.customOrderId || task.order_snapshot?.customOrderId || task.order?.customOrderId,
@@ -878,6 +902,19 @@ exports.updateTaskDetails = async (req, res) => {
           }
         );
 
+        // 🔹 Update device details
+        if (order.wp_device_id) {
+          await deviceDetailsCollection.updateOne(
+            { wp_device_id: order.wp_device_id },
+            {
+              $set: {
+                isSetup: false,
+                updatedAt: new Date(),
+              },
+            }
+          );
+        }
+
         // 🔹 Update payment record
         await paymentsCollection.updateOne(
           { orderId: order._id },
@@ -933,19 +970,43 @@ await serviceRecordsCollection.updateOne(
       }
 
      
-      // ✅ Send completion mail
-      const mailOptions = {
-        from: 'your_email@gmail.com',
-        to: task.task_created_by_user_email,
-        subject: 'Task Completed Successfully',
-        html: `<h3>Hello,</h3>
-               <p>Your service task <strong>#${task.task_id}</strong> has been <span style="color: green;">successfully completed</span>.</p>
-               <p>Subscription expiry has been updated. 🎉</p>`,
-      };
-      transporter.sendMail(mailOptions, (error, info) => {
-        if (error) console.error('Error sending mail:', error);
-        else console.log('Email sent:', info.response);
-      });
+      // ✅ Send completion mail to user, admin, and seller
+      try {
+        const district = order?.deliveryAddress?.district;
+        let adminEmails = [];
+        let sellerEmails = [];
+
+        if (district) {
+          const admins = await usersCollection.find({ role_id: 1 }).toArray();
+          const sellers = await usersCollection.find({ role_id: 2, district: district }).toArray();
+          adminEmails = admins.map(u => u.email).filter(e => e && e.trim());
+          sellerEmails = sellers.map(u => u.email).filter(e => e && e.trim());
+        }
+
+        const subject = 'Task Completed Successfully';
+        const html = `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2>Task Completion Notification</h2>
+            <p>Service task <strong>#${task.task_id}</strong> for device <strong>${task.wp_device_id}</strong> has been <span style="color: green;">successfully completed</span>.</p>
+            <p>Technician: ${technician_id}</p>
+            <p>District: ${district || 'N/A'}</p>
+            <p>Subscription expiry has been updated. 🎉</p>
+            <p>— Water Purifier Team</p>
+          </div>
+        `;
+
+        // Send to user
+        if (task.task_created_by_user_email) {
+          sendEmail(task.task_created_by_user_email, subject, '', html).catch(err => console.error('User email error:', err));
+        }
+
+        // Send to admins, CC sellers
+        if (adminEmails.length > 0) {
+          sendEmail(adminEmails.join(','), subject, '', html, sellerEmails).catch(err => console.error('Admin/Seller email error:', err));
+        }
+      } catch (emailError) {
+        console.error('Error sending completion emails:', emailError);
+      }
     }
 
     // ✅ Response
@@ -1088,6 +1149,55 @@ exports.acceptDeclineTask = async (req, res) => {
       return res
         .status(400)
         .json({ error: true, message: 'Failed to update task status' });
+    }
+
+    // Send email notifications to admins and sellers in the district
+    try {
+      const ordersCollection = db.collection('orders');
+      const usersCollection = db.collection('users');
+
+      const order = await ordersCollection.findOne({ wp_device_id: task.wp_device_id });
+      if (order && order.deliveryAddress && order.deliveryAddress.district) {
+        const district = order.deliveryAddress.district;
+        const admins = await usersCollection.find({ role_id: 1 }).toArray();
+        const sellers = await usersCollection.find({ role_id: 2, district: district }).toArray();
+        const adminEmails = admins.map(u => u.email).filter(e => e && e.trim());
+        const sellerEmails = sellers.map(u => u.email).filter(e => e && e.trim());
+
+        if (adminEmails.length > 0) {
+          const technician = await usersCollection.findOne({
+            $or: [
+              { technician_id: technician_id.trim() },
+              { employee_id: technician_id.trim() }
+            ]
+          });
+          const techName = technician ? (technician.name || technician_id.trim()) : technician_id.trim();
+
+          const subject = `Task ${actionLower}ed by Technician`;
+          const html = `
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2>Task ${actionLower.charAt(0).toUpperCase() + actionLower.slice(1)} Notification</h2>
+              <p>Technician <strong>${techName}</strong> has ${actionLower}ed task <strong>${task_id}</strong>.</p>
+              <p>Device ID: ${task.wp_device_id}</p>
+              <p>District: ${district}</p>
+              ${actionLower === 'decline' ? `<p>Reason: ${decline_reason.trim()}</p>` : ''}
+              <p>Action taken at: ${new Date().toISOString()}</p>
+              <p>— Water Purifier Team</p>
+            </div>
+          `;
+
+          // Send to admins, CC sellers
+          sendEmail(adminEmails.join(','), subject, '', html, sellerEmails).catch(err => console.error('Email send error:', err));
+
+          // Send to user only for accept
+          if (actionLower === 'accept' && task.task_created_by_user_email) {
+            sendEmail(task.task_created_by_user_email, subject, '', html).catch(err => console.error('User email send error:', err));
+          }
+        }
+      }
+    } catch (emailError) {
+      console.error('Error sending notification emails:', emailError);
+      // Don't fail the request if email fails
     }
 
     const actionMessage =

@@ -118,8 +118,8 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                 <div className="main-panel">
                     <div className="content-wrapper">
                         <div className="row">
-                            <div className="col-md-12 grid-margin" style={{ marginBottom: '10px' }}>
-                                <div className="row align-items-center gx-3 gy-2 flex-wrap" >
+                            <div className="col-md-12 grid-margin">
+                                <div className="row align-items-center gx-3 gy-2 flex-wrap">
                                     <div className="col-auto">
                                         <h3 className="font-weight-bold mb-0" style={{ fontSize: '22px' }}>Manage Device</h3>
                                     </div>
@@ -214,7 +214,7 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                                 onClick={() => { handleAddStationToggle(); fetchModels(); }}
                                                 style={{ padding: '9px 28px', fontSize: '14px', borderRadius: '12px' }}
                                             >
-                                                Create Device
+                                                Add Device
                                             </button>
                                         </div>
 
@@ -235,9 +235,28 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                                     <div className="card-body">
                                                         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                                                             <h4 className="card-title" style={{ color: '#222' }}>
-                                                                Create Device
+                                                                Add Device
                                                             </h4>
                                                         </div>
+
+                                                        <div className="input-group mb-3">
+                                                            <div className="input-group-prepend">
+                                                                <span className="input-group-text" style={{ width: '120px' }}>WP Device ID</span>
+                                                            </div>
+                                                            <InputField
+                                                                type="text"
+                                                                name="wp_device_id"
+                                                                placeholder="Enter WP Device ID"
+                                                                value={stationData.wp_device_id || ''}
+                                                                onChange={(e) => {
+                                                                    const value = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
+                                                                    setStationData(prev => ({ ...prev, wp_device_id: value }));
+                                                                }}
+                                                                maxLength={50}
+                                                                required
+                                                            />
+                                                        </div>
+
                                                         <div className="input-group mb-3">
                                                             <div className="input-group-prepend">
                                                                 <span className="input-group-text" style={{ width: '120px' }}>Model</span>
@@ -261,31 +280,11 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                                             </select>
                                                         </div>
 
-                                                        <div className="input-group mb-3">
-                                                            <div className="input-group-prepend">
-                                                                <span className="input-group-text" style={{ width: '120px' }}>WP Device ID</span>
-                                                            </div>
-                                                            <InputField
-                                                                type="text"
-                                                                name="wp_device_id"
-                                                                placeholder="Enter WP Device ID"
-                                                                value={stationData.wp_device_id || ''}
-                                                                onChange={(e) => {
-                                                                    const value = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
-                                                                    setStationData(prev => ({ ...prev, wp_device_id: value }));
-                                                                }}
-                                                                maxLength={50}
-                                                                required
-                                                            />
-                                                        </div>
-
-                                                        
-
                                                         {error && <div className="text-danger mt-2">{error}</div>}
 
                                                         <div className="text-center mt-4 mr-5">
                                                             <ReusableButton type="submit" loading={loading} disabled={loading || !stationData.wp_device_id || !stationData.model_name}>
-                                                                Create Device
+                                                                Add Device
                                                             </ReusableButton>
                                                         </div>
                                                     </div>
@@ -324,7 +323,7 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                             </div>
                                         </div>
 
-                                           <div className="table-responsive dynamic-table">
+                                        <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
                                             <table className="table table-striped text-center">
                                                 <thead style={{ textAlign: 'center', position: 'sticky', tableLayout: 'fixed', top: 0, backgroundColor: 'white', zIndex: 1 }}>
                                                     <tr>

@@ -140,13 +140,11 @@ const useManageRequests = (userInfo) => {
         };
       });
 
-      const enriched = enrichRequests(reqs, filteredTechnicians)
-        .filter((request) => request.task_id && String(request.task_id).trim() !== '' && request.task_id !== '-')  // Only include requests with valid task_id
-        .sort((a, b) => {
-          const aTime = new Date(a?.created_date || a?.createdAt || 0).getTime();
-          const bTime = new Date(b?.created_date || b?.createdAt || 0).getTime();
-          return bTime - aTime;
-        });
+      const enriched = enrichRequests(reqs, filteredTechnicians).sort((a, b) => {
+        const aTime = new Date(a?.created_date || a?.createdAt || 0).getTime();
+        const bTime = new Date(b?.created_date || b?.createdAt || 0).getTime();
+        return bTime - aTime;
+      });
 
       const blockedDeviceIds = new Set(
         enriched

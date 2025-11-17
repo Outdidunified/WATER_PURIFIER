@@ -361,7 +361,6 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                             <th>Technician Name</th>
                             <th>Technician ID</th>
                             <th>Assigned Date</th>
-                            <th>Task Status</th>
                             <th>Pending Reason</th>
                             <th>Assign</th>
                             <th>Actions</th>

@@ -22,8 +22,12 @@ class _TechnicianHomePageState extends State<TechnicianHomePage> {
   void initState() {
     super.initState();
     controller = Get.find<TechnicianController>();
-    // Load tasks immediately
-    controller.loadTasks();
+    // Load tasks only if not already loaded to avoid setState during build
+    if (controller.allTasks.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.loadTasks();
+      });
+    }
   }
 
   @override

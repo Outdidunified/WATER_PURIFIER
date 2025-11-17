@@ -2260,7 +2260,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 <section id="how-it-works" className="features-2 section" style={{ padding: '10px' }}>
 
                     {/* <!-- Section Title --> */}
-                    <div className="container section-title" data-aos="fade-up" style={{ paddingBottom: '0px' }}>
+                    <div className="container section-title" data-aos="fade-up">
                         <h2 style={{ color: '#0d6efd' }}>The ionHive experience: simple, smart & seamless</h2>
                         <p>
                             Get started with ionHive in just a few easy steps. Buy your purifier, install our app,
@@ -2319,7 +2319,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                             <div className="col-lg-4" data-aos="zoom-in" data-aos-delay="200">
                                 <div className="phone-mockup text-center">
-                                    <img src="assets/img/phone-app-screen.png" alt="Phone Mockup" className="img-fluid" />
+                                    <img src="assets/img/phone-app-screen.webp" alt="Phone Mockup" className="img-fluid" />
                                 </div>
                             </div>
                             {/* <!-- End Phone Mockup --> */}
@@ -2388,7 +2388,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             background: "#fff",
                                             borderRadius: "20px",
                                             padding: "7px",
-                                            width: "210px",
+                                            width: "240px",
                                             boxShadow: "0 6px 15px rgba(13,110,253,0.15)",
                                             transition: "all 0.4s ease",
                                             cursor: "pointer",
@@ -2437,7 +2437,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                             background: "#fff",
                                             borderRadius: "20px",
                                             padding: "7px",
-                                            width: "210px",
+                                            width: "240px",
                                             boxShadow: "0 6px 15px rgba(0,0,0,0.1)",
                                             transition: "all 0.4s ease",
                                             cursor: "pointer",

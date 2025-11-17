@@ -23,15 +23,19 @@ let transporter = nodemailer.createTransport({
 });
 
 // Generic send email
-async function sendEmail(to, subject, text, html) {
+async function sendEmail(to, subject, text, html, cc = []) {
   try {
-    const info = await transporter.sendMail({
+    const mailOptions = {
       from: '"Water Purifier Service" <info@outdidunified.com>',
       to,
       subject,
       text,
       html,
-    });
+    };
+    if (cc.length > 0) {
+      mailOptions.cc = cc;
+    }
+    const info = await transporter.sendMail(mailOptions);
     console.log('Email sent: %s', info.messageId);
     return true;
   } catch (err) {

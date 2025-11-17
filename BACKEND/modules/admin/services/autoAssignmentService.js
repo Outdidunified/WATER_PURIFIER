@@ -188,17 +188,14 @@ async function getDistrictSellers(db, district) {
 }
 
 async function logToAssignmentHistory(db, historyData) {
-    console.log('Attempting to log to assignment_history:', historyData);
     try {
         const assignmentHistory = db.collection('assignment_history');
-        const result = await assignmentHistory.insertOne({
+        await assignmentHistory.insertOne({
             ...historyData,
             created_at: new Date()
         });
-        console.log('Successfully logged to assignment_history:', result.insertedId);
     } catch (err) {
         console.error('Error logging to assignment history:', err);
-        throw err; // Re-throw to see if it affects the assignment
     }
 }
 
@@ -403,7 +400,6 @@ async function autoAssignInstallation(order) {
         const existingInstallation = await serviceRecords.findOne({
             wp_device_id: order.wp_device_id,
             task_type: 1,
-            task_status: { $ne: 'Unassigned' }
         });
 
         if (existingInstallation) {
@@ -411,132 +407,142 @@ async function autoAssignInstallation(order) {
             return;
         }
 
-        // Check if there's an existing Unassigned task to assign instead of creating new
-        let task = await serviceRecords.findOne({
-            wp_device_id: order.wp_device_id,
-            task_type: 1,
-            task_status: 'Unassigned'
-        });
+        // Enforce order confirmation and payment rules based on payment type
+        const normalizedPaymentType = (order.paymentType || '').toString().toUpperCase();
+        const isOrderConfirmed = order.orderStatus === 'Confirmed';
+        const isPaymentCompleted = order.paymentStatus === 'Completed';
+        const isDeliveryCompleted = order.deliveryCurrentStatus === 'completed';
 
-        let taskId;
-        const now = new Date();
-
-        if (!task) {
-            // Enforce order confirmation and payment rules based on payment type
-            const normalizedPaymentType = (order.paymentType || '').toString().toUpperCase();
-            const isOrderConfirmed = order.orderStatus === 'Confirmed';
-            const isPaymentCompleted = order.paymentStatus === 'Completed';
-            const isDeliveryCompleted = order.deliveryCurrentStatus === 'completed';
-
-            if (!isOrderConfirmed) {
-                console.log(`Skipping auto-assign for unconfirmed order ${order.customOrderId || order.wp_device_id}`);
-                return;
-            }
-
-            if (normalizedPaymentType !== 'COD' && !isPaymentCompleted) {
-                console.log(`Skipping auto-assign for unpaid order ${order.customOrderId || order.wp_device_id} (paymentType: ${normalizedPaymentType || 'N/A'})`);
-                return;
-            }
-
-            if (!isDeliveryCompleted) {
-                console.log(`Skipping auto-assign for order ${order.customOrderId || order.wp_device_id}: delivery not marked completed (currentStatus: ${order.deliveryCurrentStatus})`);
-                return;
-            }
-
-            const paymentDetails = order?._id ? await paymentsCollection.findOne({ orderId: order._id }) : null;
-
-            const normalizeId = (value) =>
-                value && typeof value.toString === 'function' ? value.toString() : value ?? null;
-
-            const sanitizeDuration = (duration) => {
-                if (!duration || typeof duration !== 'object') return duration ?? null;
-                const { plans, ...rest } = duration;
-                return rest;
-            };
-
-            const orderSnapshot = {
-                orderId: normalizeId(order?._id),
-                customOrderId: order?.customOrderId ?? null,
-                user_id: order?.user_id ?? null,
-                productModelId: order?.productModelId ?? null,
-                modelName: order?.modelName ?? null,
-                modeltype: order?.modeltype ?? null,
-                main_image: order?.main_image ?? null,
-                sub_images: Array.isArray(order?.sub_images) ? order.sub_images : [],
-                wp_device_id: order?.wp_device_id ?? null,
-                selectedPlan: order?.selectedPlan ?? null,
-                selectedDuration: sanitizeDuration(order?.selectedDuration ?? null),
-                grandTotal: order?.grandTotal ?? null,
-                price: order?.price ?? null,
-                subtotal: order?.subtotal ?? null,
-                securityDeposit: order?.securityDeposit ?? null,
-                paymentType: normalizedPaymentType || null,
-                paymentStatus: order?.paymentStatus ?? null,
-                orderStatus: order?.orderStatus ?? null,
-                razorpayOrderId: order?.razorpayOrderId ?? null,
-                deliveryAddress: order?.deliveryAddress ?? null,
-                totalLitre: order?.totalLitre ?? null,
-                createdAt: order?.createdAt ?? null,
-                updatedAt: order?.updatedAt ?? null
-            };
-
-            const paymentSnapshot = paymentDetails
-                ? {
-                      paymentId: normalizeId(paymentDetails._id),
-                      orderId: normalizeId(paymentDetails.orderId),
-                      paymentType: paymentDetails.paymentType ?? null,
-                      paymentStatus: paymentDetails.paymentStatus ?? null,
-                      finalMonthlyPrice: paymentDetails.finalMonthlyPrice ?? null,
-                      discountAmount: paymentDetails.discountAmount ?? null,
-                      priceWithGST: paymentDetails.priceWithGST ?? null,
-                      gstAmount: paymentDetails.gstAmount ?? null,
-                      securityDeposit: paymentDetails.securityDeposit ?? null,
-                      totalPrice: paymentDetails.totalPrice ?? null,
-                      subtotal: paymentDetails.subtotal ?? null,
-                      price: paymentDetails.price ?? null,
-                      razorpayOrderId: paymentDetails.razorpayOrderId ?? null,
-                      razorpayPaymentId: paymentDetails.razorpayPaymentId ?? null,
-                      createdAt: paymentDetails.createdAt ?? null,
-                      updatedAt: paymentDetails.updatedAt ?? null
-                  }
-                : null;
-
-            // Generate task ID
-            const lastTask = await serviceRecords.find().sort({ task_id: -1 }).limit(1).toArray();
-            taskId = lastTask.length > 0 ? lastTask[0].task_id + 1 : 1;
-
-            // Prepare new task (unassigned initially)
-            const newTask = {
-                task_id: taskId,
-                task_status: "Unassigned",
-                task_type: 1, // Installation
-                task_description: "Ordered a new device",
-                assigned_technician_id: null,
-                task_created_by_user_id: order.user_id,
-                task_created_by_user_email: orderUser.email,
-                wp_device_id: order.wp_device_id,
-                created_date: now,
-                created_by: 'system',
-                assignment_history: [],
-                address: normalizedAddress,
-                product: {
-                    model_name: order.modelName,
-                    modeltype: order.modeltype ?? null,
-                    wp_device_id: order.wp_device_id,
-                    selectedPlan: order.selectedPlan,
-                    selectedDuration: sanitizeDuration(order.selectedDuration)
-                },
-                order_snapshot: orderSnapshot,
-                payment_snapshot: paymentSnapshot
-            };
-
-            // Insert task
-            await serviceRecords.insertOne(newTask);
-            task = newTask;
-        } else {
-            taskId = task.task_id;
+        if (!isOrderConfirmed) {
+            console.log(`Skipping auto-assign for unconfirmed order ${order.customOrderId || order.wp_device_id}`);
+            return;
         }
 
+<<<<<<< HEAD
+=======
+        if (normalizedPaymentType !== 'COD' && !isPaymentCompleted) {
+            console.log(`Skipping auto-assign for unpaid order ${order.customOrderId || order.wp_device_id} (paymentType: ${normalizedPaymentType || 'N/A'})`);
+            return;
+        }
+
+        if (!isDeliveryCompleted) {
+            console.log(`Skipping auto-assign for order ${order.customOrderId || order.wp_device_id}: delivery not marked completed (currentStatus: ${order.deliveryCurrentStatus})`);
+            return;
+        }
+
+        const paymentDetails = order?._id ? await paymentsCollection.findOne({ orderId: order._id }) : null;
+
+        const normalizeId = (value) =>
+            value && typeof value.toString === 'function' ? value.toString() : value ?? null;
+
+        const sanitizeDuration = (duration) => {
+            if (!duration || typeof duration !== 'object') return duration ?? null;
+            const { plans, ...rest } = duration;
+            return rest;
+        };
+
+        const orderSnapshot = {
+            orderId: normalizeId(order?._id),
+            customOrderId: order?.customOrderId ?? null,
+            user_id: order?.user_id ?? null,
+            productModelId: order?.productModelId ?? null,
+            modelName: order?.modelName ?? null,
+            modeltype: order?.modeltype ?? null,
+            main_image: order?.main_image ?? null,
+            sub_images: Array.isArray(order?.sub_images) ? order.sub_images : [],
+            wp_device_id: order?.wp_device_id ?? null,
+            selectedPlan: order?.selectedPlan ?? null,
+            selectedDuration: sanitizeDuration(order?.selectedDuration ?? null),
+            grandTotal: order?.grandTotal ?? null,
+            price: order?.price ?? null,
+            subtotal: order?.subtotal ?? null,
+            securityDeposit: order?.securityDeposit ?? null,
+            paymentType: normalizedPaymentType || null,
+            paymentStatus: order?.paymentStatus ?? null,
+            orderStatus: order?.orderStatus ?? null,
+            razorpayOrderId: order?.razorpayOrderId ?? null,
+            deliveryAddress: order?.deliveryAddress ?? null,
+            totalLitre: order?.totalLitre ?? null,
+            createdAt: order?.createdAt ?? null,
+            updatedAt: order?.updatedAt ?? null
+        };
+
+        const paymentSnapshot = paymentDetails
+            ? {
+                  paymentId: normalizeId(paymentDetails._id),
+                  orderId: normalizeId(paymentDetails.orderId),
+                  paymentType: paymentDetails.paymentType ?? null,
+                  paymentStatus: paymentDetails.paymentStatus ?? null,
+                  finalMonthlyPrice: paymentDetails.finalMonthlyPrice ?? null,
+                  discountAmount: paymentDetails.discountAmount ?? null,
+                  priceWithGST: paymentDetails.priceWithGST ?? null,
+                  gstAmount: paymentDetails.gstAmount ?? null,
+                  securityDeposit: paymentDetails.securityDeposit ?? null,
+                  totalPrice: paymentDetails.totalPrice ?? null,
+                  subtotal: paymentDetails.subtotal ?? null,
+                  price: paymentDetails.price ?? null,
+                  razorpayOrderId: paymentDetails.razorpayOrderId ?? null,
+                  razorpayPaymentId: paymentDetails.razorpayPaymentId ?? null,
+                  createdAt: paymentDetails.createdAt ?? null,
+                  updatedAt: paymentDetails.updatedAt ?? null
+              }
+            : null;
+
+        const orderDetailsForRecord = {
+            customOrderId: order.customOrderId,
+            user_id: order.user_id,
+            orderMongoId: orderSnapshot.orderId,
+            paymentType: normalizedPaymentType || null,
+            paymentStatus: order.paymentStatus ?? null,
+            orderStatus: order.orderStatus ?? null,
+            grandTotal: order.grandTotal ?? null,
+            price: order.price ?? null,
+            subtotal: order.subtotal ?? null,
+            securityDeposit: order.securityDeposit ?? null,
+            razorpayOrderId: order.razorpayOrderId ?? null
+        };
+
+        // Fetch user info
+        const orderUser = await usersCollection.findOne({ user_id: order.user_id });
+        if (!orderUser) {
+            console.log('User not found for order');
+            return;
+        }
+
+        // Generate task ID
+        const lastTask = await serviceRecords.find().sort({ task_id: -1 }).limit(1).toArray();
+        const nextTaskId = lastTask.length > 0 ? lastTask[0].task_id + 1 : 1;
+        const now = new Date();
+
+        // Prepare new task (unassigned initially)
+        const newTask = {
+            task_id: nextTaskId,
+            task_status: "Unassigned",
+            task_type: 1, // Installation
+            task_description: "Ordered a new device",
+            assigned_technician_id: null,
+            task_created_by_user_id: order.user_id,
+            task_created_by_user_email: orderUser.email,
+            wp_device_id: order.wp_device_id,
+            created_date: now,
+            created_by: 'system',
+            assignment_history: [],
+            address: normalizedAddress,
+            product: {
+                model_name: order.modelName,
+                modeltype: order.modeltype ?? null,
+                wp_device_id: order.wp_device_id,
+                selectedPlan: order.selectedPlan,
+                selectedDuration: sanitizeDuration(order.selectedDuration)
+            },
+            order_snapshot: orderSnapshot,
+            payment_snapshot: paymentSnapshot
+        };
+
+        // Insert task
+        await serviceRecords.insertOne(newTask);
+
+>>>>>>> 17ec83330ec7fe23d55e505815273f96404ce9aa
         // Find best technician
         const technician = await findBestTechnician(normalizedAddress);
 
@@ -549,7 +555,7 @@ async function autoAssignInstallation(order) {
 
             // Assign the task
             await serviceRecords.updateOne(
-                { task_id: taskId },
+                { task_id: nextTaskId },
                 {
                     $set: {
                         task_status: "Pending",
@@ -589,7 +595,7 @@ async function autoAssignInstallation(order) {
             await sendAssignInstallationEmail(orderUser.email, otp);
             await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
             await sendTechnicianAssignmentEmail(technician, {
-                taskId: taskId,
+                taskId: nextTaskId,
                 otp,
                 taskType: 1,
                 normalizedAddress
@@ -606,7 +612,7 @@ async function autoAssignInstallation(order) {
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
                     <h2 style="color: #333;">Installation Task Auto-assigned</h2>
                     <ul style="font-size: 16px; color: #555;">
-                        <li><strong>Task ID:</strong> ${taskId}</li>
+                        <li><strong>Task ID:</strong> ${nextTaskId}</li>
                         <li><strong>Device ID:</strong> ${order.wp_device_id}</li>
                         <li><strong>Technician:</strong> ${technician.name || 'N/A'}</li>
                         <li><strong>Customer Email:</strong> ${orderUser.email}</li>
@@ -622,7 +628,7 @@ async function autoAssignInstallation(order) {
 
             // Log to assignment history
             await logToAssignmentHistory(db, {
-                task_id: taskId,
+                task_id: nextTaskId,
                 task_type: 1,
                 assignment_type: 'Installation',
                 action: 'assign',
@@ -1047,27 +1053,6 @@ async function autoAssignPendingTasks() {
                 });
                 await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
 
-                // Log to assignment history
-                await logToAssignmentHistory(db, {
-                    task_id: task.task_id,
-                    task_type: 1,
-                    assignment_type: 'Installation',
-                    action: 'assign',
-                    assignment_mode: 'auto',
-                    technician_id: technician.technician_id,
-                    technician_name: technician.name,
-                    previous_technician_id: null,
-                    device_id: task.wp_device_id,
-                    customer_email: user?.email,
-                    location: {
-                        city: normalizedAddress.city,
-                        district: normalizedAddress.district,
-                        state: normalizedAddress.state
-                    },
-                    assigned_by: 'system',
-                    reason: null
-                });
-
             } else if (task.task_type === 2) {
                 const serviceUpdateSet = {
                     task_status: "Pending",
@@ -1123,27 +1108,6 @@ async function autoAssignPendingTasks() {
                     normalizedAddress
                 });
                 await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
-
-                // Log to assignment history
-                await logToAssignmentHistory(db, {
-                    task_id: task.task_id,
-                    task_type: 2,
-                    assignment_type: 'Service',
-                    action: 'assign',
-                    assignment_mode: 'auto',
-                    technician_id: technician.technician_id,
-                    technician_name: technician.name,
-                    previous_technician_id: null,
-                    device_id: task.wp_device_id || task.device_id,
-                    customer_email: task.task_created_by_user_email,
-                    location: {
-                        city: normalizedAddress.city,
-                        district: normalizedAddress.district,
-                        state: normalizedAddress.state
-                    },
-                    assigned_by: 'system',
-                    reason: null
-                });
             }
 
             console.log(`Auto-assigned pending task ${task.task_id} to technician ${technician.technician_id}`);
@@ -1433,27 +1397,6 @@ async function autoReassignOverdueTasks() {
             });
             await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
 
-            // Log to assignment history
-            await logToAssignmentHistory(db, {
-                task_id: task.task_id,
-                task_type: task.task_type,
-                assignment_type: task.task_type === 1 ? 'Installation' : 'Service',
-                action: 'reassign',
-                assignment_mode: 'auto',
-                technician_id: technician.technician_id,
-                technician_name: technician.name,
-                previous_technician_id: currentTechnicianId,
-                device_id: task.wp_device_id || task.device_id,
-                customer_email: task.task_created_by_user_email,
-                location: {
-                    city: normalizedAddress.city,
-                    district: normalizedAddress.district,
-                    state: normalizedAddress.state
-                },
-                assigned_by: 'system',
-                reason: unassignedReason
-            });
-
             await logOverdueEvent(`Overdue ${taskTypeLabel} task ${task.task_id} reassigned to technician ${technician.technician_id} at ${locationSummary}`);
         }
 
@@ -1647,27 +1590,6 @@ async function autoReassignRejectedTasks() {
                     normalizedAddress
                 });
                 await delayForEmailRateLimit(500); // 500ms delay after technician email
-
-                // Log to assignment history
-                await logToAssignmentHistory(db, {
-                    task_id: task.task_id,
-                    task_type: task.task_type,
-                    assignment_type: task.task_type === 1 ? 'Installation' : 'Service',
-                    action: 'reassign',
-                    assignment_mode: 'auto',
-                    technician_id: technician.technician_id,
-                    technician_name: technician.name,
-                    previous_technician_id: task.assigned_technician_id,
-                    device_id: task.wp_device_id || task.device_id,
-                    customer_email: task.task_created_by_user_email,
-                    location: {
-                        city: normalizedAddress.city,
-                        district: normalizedAddress.district,
-                        state: normalizedAddress.state
-                    },
-                    assigned_by: 'system',
-                    reason: 'Rejected by previous technician'
-                });
 
                 console.log(`✅ Rejected task ${task.task_id} reassigned to technician ${technician.technician_id}`);
 
@@ -2078,27 +2000,6 @@ async function autoReassignRejectedTasksImmediate() {
                     isReassignment: true
                 });
                 await delayForEmailRateLimit(500);
-
-                // Log to assignment history
-                await logToAssignmentHistory(db, {
-                    task_id: task.task_id,
-                    task_type: task.task_type,
-                    assignment_type: task.task_type === 1 ? 'Installation' : 'Service',
-                    action: 'reassign',
-                    assignment_mode: 'auto',
-                    technician_id: technician.technician_id,
-                    technician_name: technician.name,
-                    previous_technician_id: currentTechnicianId,
-                    device_id: task.wp_device_id || task.device_id,
-                    customer_email: task.task_created_by_user_email,
-                    location: {
-                        city: normalizedAddress.city,
-                        district: normalizedAddress.district,
-                        state: normalizedAddress.state
-                    },
-                    assigned_by: 'system',
-                    reason: reassignmentReason
-                });
 
                 await logEvent(`[REJECTED] Task ${task.task_id} reassigned to ${technician.technician_id} | Reason: ${reassignmentReason}`);
 

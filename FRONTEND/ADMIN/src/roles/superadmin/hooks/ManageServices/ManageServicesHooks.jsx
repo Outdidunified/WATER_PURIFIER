@@ -32,9 +32,9 @@ const useManageServices = (userInfo) => {
     };
 
     tasks.forEach((task) => {
-      const status = (task.task_status || '').toLowerCase().trim();
+      const status = (task.task_status || '').toLowerCase();
       if (status === 'pending') counts.pending += 1;
-      else if (status === 'in progress' || status === 'in_progress' || status === 'forwarded') counts.inProgress += 1;
+      else if (status === 'in progress' || status === 'in_progress') counts.inProgress += 1;
       else if (status === 'completed') counts.completed += 1;
       else if (status === 'rejected') counts.rejected += 1;
 
@@ -188,7 +188,7 @@ const fetchTechnicians = async () => {
     } else if (filterType === 'inProgress') {
       filtered = filtered.filter((task) => {
         const status = (task.task_status || '').toLowerCase();
-        return status === 'in progress' || status === 'in_progress' || status === 'forwarded';
+        return status === 'in progress' || status === 'in_progress';
       });
     } else if (filterType === 'completed') {
       filtered = filtered.filter(

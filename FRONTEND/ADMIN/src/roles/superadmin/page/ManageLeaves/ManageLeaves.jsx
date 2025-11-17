@@ -7,7 +7,6 @@ import { useNavigate } from 'react-router-dom';
 import InputField from '../../../../utils/InputField';
 import ManageLeaveHooks from '../../hooks/ManageLeaves/ManageLeaveHooks';
 import { showErrorAlert, showSuccessAlert } from '../../../../utils/alert';
-import axiosInstance from '../../../../utils/utils';
 
 const ManageLeaves = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
@@ -21,75 +20,46 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
     filteredLeaves,
     loading,
     error,
+    selectedStatus,
+    setSelectedStatus,
     searchTerm,
     setSearchTerm,
-    selectedFilter,
-    summary,
     getStatusBadgeClass,
     fetchLeaveRequests,
-    handleFilterSelect,
   } = ManageLeaveHooks();
 
   const adminName = sessionStorage.getItem('superAdminName') || 'Admin';
 
-  const cardGridStyle = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-    gap: '8px',
-    width: '100%'
-  };
-
-  const getCardStyle = (isActive) => ({
-    border: 'none',
-    outline: 'none',
-    borderRadius: '12px',
-    padding: '12px 14px',
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '10px',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    boxShadow: isActive ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
-    background: isActive ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
-    color: isActive ? '#ffffff' : '#1b2559',
-    textAlign: 'left',
-    width: '100%'
-  });
-
-  const getLabelStyle = (isActive) => ({
-    fontSize: '11px',
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
-    opacity: isActive ? 0.9 : 0.65,
-    color: isActive ? 'rgba(255, 255, 255, 0.9)' : '#1b2559',
-    whiteSpace: 'nowrap'
-  });
-
-  const getValueStyle = (isActive) => ({
-    fontSize: '22px',
-    fontWeight: 700,
-    color: isActive ? '#ffffff' : '#1b2559'
-  });
-
   const handleApproveLeave = async (leaveId) => {
     try {
       setActionLoading(true);
-      const response = await axiosInstance.post(`/api/admin/leave-requests/${leaveId}/approve`, {
-        approvedBy: adminName,
+      const token = sessionStorage.getItem('superAdminToken');
+      const response = await fetch(`/api/api/admin/leave-requests/${leaveId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify({ approvedBy: adminName }),
       });
 
-      if (response.data.success) {
+      if (!response.ok) {
+        const data = await response.json();
+        showErrorAlert('Error', data.message || `HTTP ${response.status}: Failed to approve leave`);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
         showSuccessAlert('Success', 'Leave approved successfully');
         fetchLeaveRequests();
       } else {
-        showErrorAlert('Error', response.data.message || 'Failed to approve leave');
+        showErrorAlert('Error', data.message || 'Failed to approve leave');
       }
     } catch (err) {
       console.error('Error approving leave:', err);
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to approve leave';
-      showErrorAlert('Error', errorMsg);
+      showErrorAlert('Error', err.message || 'Failed to approve leave');
     } finally {
       setActionLoading(false);
     }
@@ -109,24 +79,39 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
 
     try {
       setActionLoading(true);
-      const response = await axiosInstance.post(`/api/admin/leave-requests/${selectedLeaveId}/reject`, {
-        rejectionReason: rejectionReason,
-        approvedBy: adminName,
+      const token = sessionStorage.getItem('superAdminToken');
+      const response = await fetch(`/api/api/admin/leave-requests/${selectedLeaveId}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          rejectionReason: rejectionReason,
+          approvedBy: adminName,
+        }),
       });
 
-      if (response.data.success) {
+      if (!response.ok) {
+        const data = await response.json();
+        showErrorAlert('Error', data.message || `HTTP ${response.status}: Failed to reject leave`);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
         showSuccessAlert('Success', 'Leave rejected successfully');
         setShowRejectModal(false);
         setRejectionReason('');
         setSelectedLeaveId(null);
         fetchLeaveRequests();
       } else {
-        showErrorAlert('Error', response.data.message || 'Failed to reject leave');
+        showErrorAlert('Error', data.message || 'Failed to reject leave');
       }
     } catch (err) {
       console.error('Error rejecting leave:', err);
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to reject leave';
-      showErrorAlert('Error', errorMsg);
+      showErrorAlert('Error', err.message || 'Failed to reject leave');
     } finally {
       setActionLoading(false);
     }
@@ -138,21 +123,6 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
         dataItem: [leave],
       },
     });
-  };
-
-  const handleViewTechnician = (leave) => {
-    // Create a minimal user object from the leave request data
-    // Assuming technicians have role_id = 3
-    const technicianData = {
-      user_id: leave.technician_id,
-      technician_id: leave.technician_id,
-      name: leave.technician_name,
-      email: leave.technician_email,
-      role_id: 3, // Technician role
-      status: 'active', // Assume active
-    };
-
-    navigate('/superadmin/ViewManageUser', { state: { dataItem: technicianData } });
   };
 
   const isLeaveProcessed = (status) => {
@@ -195,51 +165,11 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
           <div className="content-wrapper">
             {/* Page Title */}
             <div className="row">
-              <div className="col-md-12 grid-margin" style={{ marginBottom: '10px' }}>
+              <div className="col-md-12 grid-margin">
                 <div className="row">
                   <div className="col-12 col-xl-8 mb-4 mb-xl-0">
                     <h3 className="font-weight-bold">Manage Leave Requests</h3>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Summary Cards Grid */}
-            <div className="row mb-1">
-              <div className="col-12">
-                <div style={cardGridStyle}>
-                  <button
-                    type="button"
-                    style={getCardStyle(selectedFilter === '')}
-                    onClick={() => handleFilterSelect('')}
-                  >
-                    <span style={getLabelStyle(selectedFilter === '')}>All Requests</span>
-                    <span style={getValueStyle(selectedFilter === '')}>{summary.total}</span>
-                  </button>
-                  <button
-                    type="button"
-                    style={getCardStyle(selectedFilter === 'requested')}
-                    onClick={() => handleFilterSelect('requested')}
-                  >
-                    <span style={getLabelStyle(selectedFilter === 'requested')}>Pending</span>
-                    <span style={getValueStyle(selectedFilter === 'requested')}>{summary.requested}</span>
-                  </button>
-                  <button
-                    type="button"
-                    style={getCardStyle(selectedFilter === 'approved')}
-                    onClick={() => handleFilterSelect('approved')}
-                  >
-                    <span style={getLabelStyle(selectedFilter === 'approved')}>Approved</span>
-                    <span style={getValueStyle(selectedFilter === 'approved')}>{summary.approved}</span>
-                  </button>
-                  <button
-                    type="button"
-                    style={getCardStyle(selectedFilter === 'rejected')}
-                    onClick={() => handleFilterSelect('rejected')}
-                  >
-                    <span style={getLabelStyle(selectedFilter === 'rejected')}>Rejected</span>
-                    <span style={getValueStyle(selectedFilter === 'rejected')}>{summary.rejected}</span>
-                  </button>
                 </div>
               </div>
             </div>
@@ -282,7 +212,25 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
                       </div>
                     </div>
 
-
+                    {/* Status Filter */}
+                    <div className="row mb-3">
+                      <div className="col-md-12">
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                          <label style={{ fontWeight: '500', marginBottom: '0' }}>Filter by Status:</label>
+                          <select
+                            value={selectedStatus}
+                            onChange={(e) => setSelectedStatus(e.target.value)}
+                            className="form-control"
+                            style={{ maxWidth: '200px' }}
+                          >
+                            <option value="all">All Requests</option>
+                            <option value="Requested">Pending</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Rejected">Rejected</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
 
                     {/* Error Message */}
                     {error && !dismissError && (
