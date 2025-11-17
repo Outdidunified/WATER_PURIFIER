@@ -392,6 +392,13 @@ async function autoAssignInstallation(order) {
 
         const normalizedAddress = normalizeDeliveryAddress(order.deliveryAddress || {});
 
+        // Fetch user info (needed for task creation)
+        const orderUser = await usersCollection.findOne({ user_id: order.user_id });
+        if (!orderUser) {
+            console.log('User not found for order');
+            return;
+        }
+
         // Check if Installation already assigned
         const existingInstallation = await serviceRecords.findOne({
             wp_device_id: order.wp_device_id,
@@ -528,13 +535,6 @@ async function autoAssignInstallation(order) {
             task = newTask;
         } else {
             taskId = task.task_id;
-        }
-
-        // Fetch user info (needed for emails)
-        const orderUser = await usersCollection.findOne({ user_id: order.user_id });
-        if (!orderUser) {
-            console.log('User not found for order');
-            return;
         }
 
         // Find best technician
