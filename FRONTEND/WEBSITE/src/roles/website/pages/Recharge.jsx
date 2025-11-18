@@ -566,43 +566,48 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                 })}
 
                                                             {selectedModelDevices.length > 0 && (
-                                                                <div className="mt-3 text-center" style={{ padding: '10px' }}>
-                                                                    <h5>Devices for {selectedModelName}</h5>
-                                                                    <div className="d-flex flex-wrap justify-content-center gap-2 mt-2">
-                                                                        {selectedModelDevices.map((device, i) => {
-                                                                            const isDeviceActive = selectedDeviceIndex === i;
-                                                                            return (
-                                                                                <button
-                                                                                    key={i}
-                                                                                    className="btn"
-                                                                                    onClick={() => {
-                                                                                        setSelectedDeviceIndex(i);
-                                                                                        setSelectedPlanIndex(0);
-                                                                                        setSelectedDurationIndex(0);
-                                                                                        setTimeout(() => {
-                                                                                            durationRef.current?.scrollIntoView({
-                                                                                                behavior: "smooth",
-                                                                                                block: "start"
-                                                                                            });
-                                                                                        }, 500);
-                                                                                    }}
-                                                                                    style={{
-                                                                                        minWidth: '150px',
-                                                                                        margin: '5px',
-                                                                                        backgroundColor: isDeviceActive ? '#0d6efd' : '#e8f1ff',
-                                                                                        color: isDeviceActive ? '#fff' : '#0d6efd',
-                                                                                        border: '1px solid #0d6efd',
-                                                                                        borderRadius: '15px',
-                                                                                        fontWeight: '600',
-                                                                                        transition: 'all 0.3s ease'
-                                                                                    }}
-                                                                                >
-                                                                                    {device.deviceId}
-                                                                                </button>
-                                                                            );
-                                                                        })}
+                                                                <>
+                                                                    <hr style={{ width: "80%", margin: "20px auto" }} />
+
+                                                                    <div className="mt-3 text-center" style={{ padding: '10px', paddingTop: '0px' }}>
+                                                                        <h5>Devices for {selectedModelName}</h5>
+
+                                                                        <div className="d-flex flex-wrap justify-content-center gap-2 mt-2">
+                                                                            {selectedModelDevices.map((device, i) => {
+                                                                                const isDeviceActive = selectedDeviceIndex === i;
+                                                                                return (
+                                                                                    <button
+                                                                                        key={i}
+                                                                                        className="btn"
+                                                                                        onClick={() => {
+                                                                                            setSelectedDeviceIndex(i);
+                                                                                            setSelectedPlanIndex(0);
+                                                                                            setSelectedDurationIndex(0);
+                                                                                            setTimeout(() => {
+                                                                                                durationRef.current?.scrollIntoView({
+                                                                                                    behavior: "smooth",
+                                                                                                    block: "start"
+                                                                                                });
+                                                                                            }, 500);
+                                                                                        }}
+                                                                                        style={{
+                                                                                            minWidth: '150px',
+                                                                                            margin: '5px',
+                                                                                            backgroundColor: isDeviceActive ? '#0d6efd' : '#e8f1ff',
+                                                                                            color: isDeviceActive ? '#fff' : '#0d6efd',
+                                                                                            border: '1px solid #0d6efd',
+                                                                                            borderRadius: '15px',
+                                                                                            fontWeight: '600',
+                                                                                            transition: 'all 0.3s ease'
+                                                                                        }}
+                                                                                    >
+                                                                                        {device.deviceId}
+                                                                                    </button>
+                                                                                );
+                                                                            })}
+                                                                        </div>
                                                                     </div>
-                                                                </div>
+                                                                </>
                                                             )}
                                                         </ul>
                                                     </div>
