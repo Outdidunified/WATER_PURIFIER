@@ -343,8 +343,6 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
         };
     }, []);
 
-    const [showBaseModelPopup, setShowBaseModelPopup] = useState(false);
-
     const handleModelSelect = (index) => {
         const model = filteredProducts[index];
         const product = filteredProducts.filter(p => p.model_type === "Smart")[index];
@@ -353,15 +351,6 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
         setSelectedDurationIndex(0);
         setSelectedDeviceIndex(null); // Reset device selection when model changes
         setMainImage(product.main_img); // set main image immediately
-
-        if (model?.model_type === "Base") {
-            setShowBaseModelPopup(true);
-        }
-
-        // scroll to plans
-        // setTimeout(() => {
-        //     durationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        // }, 100);
     };
 
     // Reference flag
@@ -470,7 +459,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
 
                 {/* <!-- Features Section --> */}
                 <section id="hero" className="features section" style={{ marginTop: '5%' }}>
-                    <div className="container section-title" data-aos="fade-up" style={{ paddingBottom: '0px' }}>
+                    <div className="container section-title" data-aos="fade-up" style={{ paddingBottom: '0px', padding: '10px' }}>
                         <h2>Products that fit every Lifestyle and Budget</h2>
                         <p>Each of our smart water purifiers comes with advanced multi-stage purification and IoT technology.</p>
                     </div>
@@ -681,39 +670,6 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
 
                                             </div>
                                         )}
-
-                                        {/* === Popup Modal for Base Model === */}
-                                        <Modal show={showBaseModelPopup} onHide={() => setShowBaseModelPopup(false)} centered style={{
-                                            border: "2px solid #0d6efd",
-                                            borderRadius: "12px",
-                                            boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
-                                        }}>
-                                            <Modal.Header closeButton style={{ backgroundColor: "aliceblue" }}>
-                                                <Modal.Title style={{ color: '#0d6efd' }}>Base Model Information</Modal.Title>
-                                            </Modal.Header>
-                                            <Modal.Body>
-                                                <p>
-                                                    This is our <b>Base Model</b> water purifier device. Once you buy this device, our
-                                                    service team will install it for you.
-                                                </p>
-                                                <p className="mb-2">
-                                                    Please note that the app <b>does not provide live data</b> or remote access for this base
-                                                    model.
-                                                </p>
-                                                <p>
-                                                    For any <b>plan renewals</b> or <b>service requests</b>, please contact our seller
-                                                    support team directly.
-                                                </p>
-                                            </Modal.Body>
-                                            <Modal.Footer style={{ backgroundColor: "aliceblue" }}>
-                                                <Button variant="secondary" onClick={() => setShowBaseModelPopup(false)}>
-                                                    Cancel
-                                                </Button>
-                                                <Button variant="primary" onClick={() => setShowBaseModelPopup(false)}>
-                                                    OK, Got It
-                                                </Button>
-                                            </Modal.Footer>
-                                        </Modal>
 
                                         {showAllModels && (
                                             <div className="row" style={{ padding: '20px' }}>
@@ -1055,7 +1011,6 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                                 </div>
 
                                                                                 {/* BUTTON */}
-                                                                                {/* BUTTON + STATUS */}
                                                                                 {selectedDevice ? (
                                                                                     <div className="text-center mb-3">
                                                                                         {/* 1. Show End Date */}
