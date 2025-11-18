@@ -77,6 +77,29 @@ const ViewServices = ({ userInfo, handleLogout }) => {
   const resolveModifiedDate = (task) =>
     formatDateTime(task.modified_date || task.modifiedDate || task.modified_at || task.modifiedAt);
 
+  const resolveTaskDescription = (task) => {
+    let description = task.task_description || '-';
+    if (description !== '-') {
+      // Remove "Device ID: ..." pattern from the description
+      description = description.replace(/Device ID:\s*[^\s]+/gi, '').trim();
+    }
+    return description;
+  };
+
+  const resolveCustomerName = (task) => (
+    task.customer_name ||
+    task.deliveryAddress?.name ||
+    task.task_created_by_user_name ||
+    '-'
+  );
+
+  const resolveCustomerEmail = (task) => (
+    task.customer_email ||
+    task.deliveryAddress?.email ||
+    task.task_created_by_user_email ||
+    '-'
+  );
+
   const extractDateValue = (value) => {
     if (!value) return null;
     if (value instanceof Date) return value.toISOString();
@@ -288,7 +311,7 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                           </h5>
                           <hr />
                         </div>
-                        <div className="col-md-4 view-data-item">
+                                            <div className="col-md-4 view-data-item">
                           <span className="view-data-label">Device ID</span> <span className="view-data-value">{resolveDeviceId(task)}</span>
                         </div>
                         <div className="col-md-4 view-data-item">
@@ -341,7 +364,12 @@ const ViewServices = ({ userInfo, handleLogout }) => {
                         <div className="col-md-4 view-data-item">
                           <span className="view-data-label">Modified By</span> <span className="view-data-value">{task.modified_by || '-'}</span>
                         </div>
+                         <div className="col-md-12 view-data-item mb-3">
+                          <span className="view-data-label">Task Description</span>
+                          <span className="view-data-value" style={{ whiteSpace: 'pre-line' }}>{resolveTaskDescription(task)}</span>
+                        </div>
                       </div>
+                      
 
                       {/* Assignment History */}
                       {(() => {

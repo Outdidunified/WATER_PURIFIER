@@ -136,13 +136,15 @@ const EditManageDevice = ({ userInfo, handleLogout }) => {
                                                 </div>
                                             </div>
 
-                                            <ReusableButton
-                                                type="submit"
-                                                loading={loading}
-                                                disabled={loading || status === initialStatus || !status}
-                                            >
-                                                Update
-                                            </ReusableButton>
+                                            <div className="d-flex justify-content-center">
+                                                <ReusableButton
+                                                    type="submit"
+                                                    loading={loading}
+                                                    disabled={loading || status === initialStatus || !status}
+                                                >
+                                                    Update
+                                                </ReusableButton>
+                                            </div>
                                         </form>
 
                                     </div>

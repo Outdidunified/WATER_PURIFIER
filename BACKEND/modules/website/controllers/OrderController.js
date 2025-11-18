@@ -469,10 +469,9 @@ exports.renewSubscription = async (req, res) => {
       isRecharge: true,
       totalLitre,
       razorpayOrderId: razorpayOrder?.id || null,
-      razorpayPaymentId: null,
       mac_id: macId
-
-
+      
+      
     };
 
     const orderResult = await orders.insertOne(renewOrder);
@@ -1384,7 +1383,8 @@ exports.getUserDevices = async (req, res) => {
       user_id: parseInt(userId),
       orderStatus: 'Confirmed',
       deliveryCurrentStatus: 'completed',
-      paymentStatus: 'Completed'
+      paymentStatus: 'Completed',
+      modeltype:"Smart"
     }).toArray();
 
     if (!orders.length) {

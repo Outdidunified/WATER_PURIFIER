@@ -470,22 +470,22 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
 
                           <div className="row viewDataCss mt-2">
                             <div className="col-md-4 view-data-item">
-                              <span className="view-data-label">Address</span><span className="view-data-value">{fullAddress || '-'}</span>
+                              <span className="view-data-label">Street</span><span className="view-data-value">{delivery.street || '-'}</span>
+                            </div>
+                            <div className="col-md-4 view-data-item">
+                              <span className="view-data-label">Landmark</span><span className="view-data-value">{delivery.landmark || '-'}</span>
                             </div>
                             <div className="col-md-4 view-data-item">
                               <span className="view-data-label">City</span><span className="view-data-value">{city || '-'}</span>
-                            </div>
-                            <div className="col-md-4 view-data-item">
-                              <span className="view-data-label">District</span><span className="view-data-value">{district || '-'}</span>
                             </div>
                           </div>
 
                           <div className="row viewDataCss mt-2">
                             <div className="col-md-4 view-data-item">
-                              <span className="view-data-label">State</span><span className="view-data-value">{state || '-'}</span>
+                              <span className="view-data-label">District</span><span className="view-data-value">{district || '-'}</span>
                             </div>
                             <div className="col-md-4 view-data-item">
-                              <span className="view-data-label">Country</span><span className="view-data-value">{country || '-'}</span>
+                              <span className="view-data-label">State</span><span className="view-data-value">{state || '-'}</span>
                             </div>
                             <div className="col-md-4 view-data-item">
                               <span className="view-data-label">Pincode</span><span className="view-data-value">{pincode || '-'}</span>

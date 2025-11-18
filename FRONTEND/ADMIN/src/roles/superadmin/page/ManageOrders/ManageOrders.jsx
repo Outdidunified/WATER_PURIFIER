@@ -82,7 +82,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
 
   // Initialize codConfirmation state based on order data
   // For COD orders: checked if moneyReceived is true
-  // For non-COD orders: checked if paymentStatus is 'completed'
+  // For online orders: checked if paymentStatus is 'completed' or 'success'
   useEffect(() => {
     const confirmationState = (filteredOrders || []).reduce((accumulator, order) => {
       const stateKey = buildConfirmationStateKey(order);
@@ -91,12 +91,17 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
         return accumulator;
       }
 
-      if (!isCodPaymentEligible(order)) {
-        accumulator[stateKey] = false;
-        return accumulator;
+      if (isCodPaymentEligible(order)) {
+        // For COD orders: checked if moneyReceived is true
+        accumulator[stateKey] = Boolean(order.moneyReceived);
+      } else {
+        // For online orders: checked if paymentStatus is 'completed' or 'success'
+        const paymentStatus = (order.paymentStatus || '').toLowerCase();
+        const isChecked = paymentStatus === 'completed' || paymentStatus === 'success';
+        console.log(`Order ${order.customOrderId}: paymentType=${order.paymentType}, paymentStatus=${order.paymentStatus}, isChecked=${isChecked}`);
+        accumulator[stateKey] = isChecked;
       }
 
-      accumulator[stateKey] = Boolean(order.moneyReceived);
       return accumulator;
     }, {});
 
@@ -115,9 +120,9 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
 
   // Handle checkbox toggle for Money Received
   // Logic:
-  // - If order already has moneyReceived=true or paymentStatus='completed', set checked
+  // - If order already has moneyReceived=true (COD), set checked
   // - If unchecking, ignore (prevents undoing confirmation)
-  // - If not COD eligible, set unchecked
+  // - For online payments, set checked if paymentStatus='completed' or 'success'
   // - For COD orders, call confirmCodPayment API to confirm payment
   // - On success, set checked; on failure, set unchecked
   const handleMoneyReceivedToggle = async (order, isChecked) => {
@@ -146,7 +151,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
 
     // If already confirmed in backend, ensure UI reflects this
     if (order.moneyReceived) {
-      console.log('Order already marked as received');
+      console.log('Order already marked as received (COD)');
       setCodConfirmation((previousState) => ({
         ...previousState,
         [stateKey]: true,
@@ -154,12 +159,14 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
       return;
     }
 
-    // Only allow confirmation for COD payments
+    // Handle online payments - check if payment is completed or successful
     if (!isCodPaymentEligible(order)) {
-      console.log('Order is not COD payment eligible');
+      const paymentStatus = (order.paymentStatus || '').toLowerCase();
+      const isOnlinePaymentCompleted = paymentStatus === 'completed' || paymentStatus === 'success';
+      console.log('Online payment - setting checked status:', isOnlinePaymentCompleted, 'for status:', paymentStatus);
       setCodConfirmation((previousState) => ({
         ...previousState,
-        [stateKey]: false,
+        [stateKey]: isOnlinePaymentCompleted,
       }));
       return;
     }

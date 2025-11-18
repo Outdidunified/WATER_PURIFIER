@@ -21,6 +21,14 @@ const DELIVERY_STATUS_LABELS = {
 
 const DELIVERY_STATUS_ORDER = ['accepted', 'packed', 'intransit', 'outfordelivery', 'completed'];
 
+const formatPaymentType = (paymentType) => {
+  if (!paymentType) return '-';
+  const type = paymentType.toLowerCase();
+  if (type.includes('cod') || type.includes('cash')) return 'COD';
+  if (type.includes('online') || type.includes('razorpay') || type.includes('card')) return 'ONLINE';
+  return paymentType.toUpperCase();
+};
+
 const ViewOrders = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -163,36 +171,74 @@ const ViewOrders = ({ userInfo, handleLogout }) => {
                     </div>
 
                     <div className="row viewDataCss mt-3">
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Payment Type</span><span className="view-data-value">{formatPaymentType(order.paymentType || order.payment_type)}</span></div>
                       <div className="col-md-4 view-data-item"><span className="view-data-label">Payment Status</span><span className="view-data-value">{order.paymentStatus || '-'}</span></div>
                       <div className="col-md-4 view-data-item"><span className="view-data-label">Order Status</span><span className="view-data-value">{order.orderStatus || '-'}</span></div>
-                      <div className="col-md-4 view-data-item"><span className="view-data-label">Installation Status</span><span className="view-data-value">{order.installation_status || '-'}</span></div>
                     </div>
 
-                    <div className="row viewDataCss mt-3">
-                      <div className="col-md-4 view-data-item"><span className="view-data-label">Current Delivery Status</span><span className="view-data-value text-capitalize">{currentDeliveryStatus || '-'}</span></div>
-                      <div className="col-md-4 view-data-item"><span className="view-data-label">Delivery Accepted At</span><span className="view-data-value">{order.deliveryAcceptanceTimestamp ? formatTimestamp(order.deliveryAcceptanceTimestamp) : '-'}</span></div>
-                      <div className="col-md-4 view-data-item"><span className="view-data-label">Delivery Completed At</span><span className="view-data-value">{order.deliveryCompletionTimestamp ? formatTimestamp(order.deliveryCompletionTimestamp) : '-'}</span></div>
-                    </div>
+                    {order.paymentType !== 'COD' && order.payment_type !== 'COD' ? (
+                      <div className="row viewDataCss mt-3">
+                        {order.isRecharge ? (
+                          <>
+                            <div className="col-md-4 view-data-item"><span className="view-data-label">Order Type</span><span className="view-data-value">{order.orderType || '-'}</span></div>
+                            <div className="col-md-4 view-data-item"><span className="view-data-label">Razorpay Order ID</span><span className="view-data-value">{order.razorpayOrderId || '-'}</span></div>
+                            <div className="col-md-4 view-data-item"><span className="view-data-label">Razorpay Payment ID</span><span className="view-data-value">{order.razorpayPaymentId || '-'}</span></div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="col-md-4 view-data-item"><span className="view-data-label">Installation Status</span><span className="view-data-value">{order.installation_status || '-'}</span></div>
+                            <div className="col-md-4 view-data-item"><span className="view-data-label">Razorpay Order ID</span><span className="view-data-value">{order.razorpayOrderId || '-'}</span></div>
+                            <div className="col-md-4 view-data-item"><span className="view-data-label">Razorpay Payment ID</span><span className="view-data-value">{order.razorpayPaymentId || '-'}</span></div>
+                          </>
+                        )}
+                      </div>
+                    ) : order.isRecharge ? (
+                      <div className="row viewDataCss mt-3">
+                        <div className="col-md-4 view-data-item"><span className="view-data-label">Order Type</span><span className="view-data-value">{order.orderType || '-'}</span></div>
+                        <div className="col-md-4 view-data-item"><span className="view-data-label">Payment Collected At</span><span className="view-data-value">{order.paymentCollectedAt ? formatTimestamp(order.paymentCollectedAt) : '-'}</span></div>
+                        <div className="col-md-4 view-data-item"><span className="view-data-label">Payment Collected By</span><span className="view-data-value">{order.paymentCollectedBy || '-'}</span></div>
+                      </div>
+                    ) : (
+                      <div className="row viewDataCss mt-3">
+                        <div className="col-md-4 view-data-item"><span className="view-data-label">Installation Status</span><span className="view-data-value">{order.installation_status || '-'}</span></div>
+                        <div className="col-md-4 view-data-item"><span className="view-data-label">Current Delivery Status</span><span className="view-data-value text-capitalize">{currentDeliveryStatus || '-'}</span></div>
+                        <div className="col-md-4 view-data-item"><span className="view-data-label">Delivery Accepted At</span><span className="view-data-value">{order.deliveryAcceptanceTimestamp ? formatTimestamp(order.deliveryAcceptanceTimestamp) : '-'}</span></div>
+                      </div>
+                    )}
+
+                    {!order.isRecharge && order.paymentType !== 'COD' && order.payment_type !== 'COD' && (
+                      <div className="row viewDataCss mt-3">
+                        <div className="col-md-4 view-data-item"><span className="view-data-label">Current Delivery Status</span><span className="view-data-value text-capitalize">{currentDeliveryStatus || '-'}</span></div>
+                        <div className="col-md-4 view-data-item"><span className="view-data-label">Delivery Accepted At</span><span className="view-data-value">{order.deliveryAcceptanceTimestamp ? formatTimestamp(order.deliveryAcceptanceTimestamp) : '-'}</span></div>
+                        <div className="col-md-4 view-data-item"><span className="view-data-label">Delivery Completed At</span><span className="view-data-value">{order.deliveryCompletionTimestamp ? formatTimestamp(order.deliveryCompletionTimestamp) : '-'}</span></div>
+                      </div>
+                    )}
 
                     <div className="row viewDataCss mt-3">
                       <div className="col-md-4 view-data-item"><span className="view-data-label">Created At</span><span className="view-data-value">{order.createdAt ? formatTimestamp(order.createdAt) : '-'}</span></div>
                       <div className="col-md-4 view-data-item"><span className="view-data-label">Updated At</span><span className="view-data-value">{order.updatedAt ? formatTimestamp(order.updatedAt) : '-'}</span></div>
-                      <div className="col-md-4 view-data-item"><span className="view-data-label">Subscription Expiry</span><span className="view-data-value">{order.subscriptionExpiryDate ? formatTimestamp(order.subscriptionExpiryDate) : '-'}</span></div>
+                      {!order.isRecharge && (order.paymentType === 'COD' || order.payment_type === 'COD') ? (
+                        <div className="col-md-4 view-data-item"><span className="view-data-label">Delivery Completed At</span><span className="view-data-value">{order.deliveryCompletionTimestamp ? formatTimestamp(order.deliveryCompletionTimestamp) : '-'}</span></div>
+                      ) : (
+                        <div className="col-md-4 view-data-item"><span className="view-data-label">Plan End Date</span><span className="view-data-value">{order.subscriptionExpiryDate ? formatTimestamp(order.subscriptionExpiryDate) : '-'}</span></div>
+                      )}
                     </div>
 
-                    <div className="row viewDataCss mt-3">
-                      <div className="col-md-4 view-data-item"><span className="view-data-label">Razorpay Order ID</span><span className="view-data-value">{order.razorpayOrderId || '-'}</span></div>
-                      <div className="col-md-4 view-data-item"><span className="view-data-label">Razorpay Payment ID</span><span className="view-data-value">{order.razorpayPaymentId || '-'}</span></div>
-                      <div className="col-md-4 view-data-item"><span className="view-data-label">Total Litre</span><span className="view-data-value">{order.totalLitre || '-'}</span></div>
-                    </div>
+
 
                     <div className="row viewDataCss mt-3">
                       <div className="col-md-4 view-data-item"><span className="view-data-label">Customer Name</span><span className="view-data-value">{order.deliveryAddress?.name || '-'}</span></div>
                       <div className="col-md-4 view-data-item"><span className="view-data-label">Phone</span><span className="view-data-value">{order.deliveryAddress?.phone || '-'}</span></div>
-                      <div className="col-md-4 view-data-item"><span className="view-data-label">Address</span><span className="view-data-value">{order.deliveryAddress?.addressLine1 || '-'}, {order.deliveryAddress?.city || '-'}, {order.deliveryAddress?.state || '-'} - {order.deliveryAddress?.pincode || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Street</span><span className="view-data-value">{order.deliveryAddress?.street || '-'}</span></div>
                     </div>
                     <div className="row viewDataCss mt-3">
-                      <div className="col-md-4 view-data-item"><span className="view-data-label">Address Line 2</span><span className="view-data-value">{order.deliveryAddress?.addressLine2 || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Landmark</span><span className="view-data-value">{order.deliveryAddress?.landmark || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">City</span><span className="view-data-value">{order.deliveryAddress?.city || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">District</span><span className="view-data-value">{order.deliveryAddress?.district || '-'}</span></div>
+                    </div>
+                    <div className="row viewDataCss mt-3">
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">State</span><span className="view-data-value">{order.deliveryAddress?.state || '-'}</span></div>
+                      <div className="col-md-4 view-data-item"><span className="view-data-label">Pincode</span><span className="view-data-value">{order.deliveryAddress?.pincode || '-'}</span></div>
                       <div className="col-md-4 view-data-item"><span className="view-data-label">Email</span><span className="view-data-value">{order.deliveryAddress?.email || '-'}</span></div>
                     </div>
 

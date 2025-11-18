@@ -153,6 +153,12 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
       return;
     }
 
+    // Check if trying to create renewal request for smart model
+    if (createForm.requestType === 'renewal' && device.model_type?.toLowerCase() === 'smart') {
+      showErrorAlert('Renewal requests are not allowed for smart model devices');
+      return;
+    }
+
     const technician = technicians.find((tech) => tech.technician_id === createForm.technicianId);
     if (!technician) {
       showErrorAlert('Selected technician not found');
@@ -651,7 +657,9 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                 >
                   <option value="">Select Request</option>
                   <option value="return">Return</option>
-                  <option value="renewal">Renewal</option>
+                  {devices.find((d) => d.wp_device_id === createForm.deviceId)?.model_type?.toLowerCase() !== 'smart' && (
+                    <option value="renewal">Renewal</option>
+                  )}
                 </select>
               </div>
 
