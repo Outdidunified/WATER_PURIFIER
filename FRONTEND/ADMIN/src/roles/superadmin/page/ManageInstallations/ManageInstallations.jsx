@@ -5,6 +5,7 @@ import Sidebar from '../../components/Sidebar';
 import Footer from '../../components/Footer';
 import { useNavigate } from 'react-router-dom';
 import InputField from '../../../../utils/InputField';
+import { showErrorAlert } from '../../../../utils/alert';
 import useManageInstallation from '../../hooks/ManageInstallations/ManageInstallationsHooks'; // singular
 
 const ManageInstallations = ({ userInfo, handleLogout }) => {
@@ -14,7 +15,6 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
     isLoading,
     error,
     technicians,
-    filteredInstallations,
     reassignInstallation,
     handleSearchChange,
     assignInstallation,
@@ -43,6 +43,14 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
         ],
       },
     });
+  };
+
+  const handleViewTechnician = (technicianId) => {
+    // Find the technician data from the technicians array
+    const technician = technicians.find(tech => tech.technician_id === technicianId);
+    if (technician) {
+      navigate('/superadmin/ViewManageUser', { state: { dataItem: technician } });
+    }
   };
 
   const handleAssignClick = (installation, mode = 'assign') => {
@@ -141,9 +149,9 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
         <div className="main-panel">
           <div className="content-wrapper">
             <div className="row">
-              <div className="col-md-12 grid-margin">
+              <div className="col-md-12 grid-margin" style={{ marginBottom: '10px' }} >
                 <div className="row">
-                  <div className="col-12 col-xl-8 mb-4 mb-xl-0">
+                  <div className="col-12 col-xl-8 mb-4 mb-xl-0" >
                     <h3 className="font-weight-bold">Manage Installations</h3>
                   </div>
                 </div>
@@ -308,15 +316,15 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
               </div>
             </div>
 
-            <div className="row">
+            <div className="row" >
               <div className="col-lg-12 grid-margin stretch-card">
                 <div className="card">
                   <div className="card-body">
                     <div className="row mb-2">
                       <div className="col-md-12 grid-margin">
                         <div className="row">
-                          <div className="col-4 col-xl-8">
-                            <h4 className="card-title" style={{ paddingTop: '6px', marginBottom: 0 }}>
+                          <div className="col-4 col-xl-8" >
+                            <h4 className="card-title" style={{ paddingTop: '6px', marginBottom: '-10px' }}>
                               Installation Tasks
                             </h4>
                           </div>
@@ -340,7 +348,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                       </div>
                     </div>
 
-                    <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                       <div className="table-responsive dynamic-table">
                       <table className="table table-striped">
                         <thead style={{ textAlign: 'center', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#fff' }}>
                           <tr>
@@ -349,7 +357,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                             <th>Model</th>
                             <th>Device ID</th>
                             <th>Customer Name</th>
-                            <th>Email</th>
+                            <th>Customer Email</th>
                             <th>Technician Name</th>
                             <th>Technician ID</th>
                             <th>Assigned Date</th>
@@ -362,29 +370,51 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                         <tbody style={{ textAlign: 'center', verticalAlign: 'middle', lineHeight: '1.0' }}>
                           {isLoading ? (
                             <tr style={{ height: '36px' }}>
-                              <td colSpan="13">Loading...</td>
+                              <td colSpan="14">Loading...</td>
                             </tr>
                           ) : error ? (
                             <tr style={{ height: '36px' }}>
-                              <td colSpan="13">Error: {error}</td>
+                              <td colSpan="14">Error: {error}</td>
                             </tr>
                           ) : installationTasks.length > 0 ? (
                             installationTasks
-                              .filter((item) => item.task_id)
                               .map((item, index) => (
                                 <tr key={item._id || index} style={{ height: '36px' }}>
                                   <td>{index + 1}</td>
                                   <td style={{ padding: '4px 2px', maxWidth: '70px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{item.task_id || '-'}</td>
-                                   <td style={{ padding: '4px 2px', maxWidth: '70px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{item.modelName || '-'}</td>
+                                   <td style={{ padding: '4px 2px', maxWidth: '250px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{item.modelName || '-'}</td>
                                   <td>{item.wp_device_id || '-'}</td>
                                   <td >{item.deliveryAddress?.name || '-'}</td>
-                                  <td style={{ padding: '4px 2px', maxWidth: '200px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{item.email || '-'}</td>
+                                  <td style={{ padding: '4px 2px', maxWidth: '200px', wordWrap: 'break-word', wordBreak: 'break-word' }}>
+                                    {item.email ||
+                                     item.task_created_by_user_email ||
+                                     item.order_snapshot?.deliveryAddress?.email ||
+                                     item.address?.email ||
+                                     '-'}
+                                  </td>
                                   <td>
                                     {item.assignedTechnician?.technician_name ||
                                       technicians.find((tech) => tech.technician_id === item.assigned_technician_id)?.name ||
                                       '-'}
                                   </td>
-                                  <td>{item.assignedTechnician?.technician_id || item.assigned_technician_id || '-'}</td>
+                                  <td>
+                                    {(item.assignedTechnician?.technician_id || item.assigned_technician_id) ? (
+                                      <span
+                                        style={{
+                                          color: '#007bff',
+
+                                          cursor: 'pointer',
+
+                                        }}
+                                        title="View technician details"
+                                        onClick={() => handleViewTechnician(item.assignedTechnician?.technician_id || item.assigned_technician_id)}
+                                      >
+                                        {item.assignedTechnician?.technician_id || item.assigned_technician_id}
+                                      </span>
+                                    ) : (
+                                      '-'
+                                    )}
+                                  </td>
                                   <td>
                                     {item.task_assigned_date
                                       ? new Date(item.task_assigned_date).toLocaleDateString()

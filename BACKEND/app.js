@@ -82,7 +82,7 @@ app.use('/api', logRoutes);
 app.use('/api', uploadRoutes);
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'mqtt', 'public', 'index.html'));
 });
 
 app.get('/view/:filename', (req, res) => {

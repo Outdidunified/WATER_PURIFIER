@@ -69,7 +69,7 @@ const ManageContact = ({ userInfo, handleLogout }) => {
                     </div>
 
                     {/* Contact Table */}
-                    <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                       <div className="table-responsive dynamic-table">
                       <table className="table table-striped">
                         <thead style={{ textAlign: 'center', position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
                           <tr>

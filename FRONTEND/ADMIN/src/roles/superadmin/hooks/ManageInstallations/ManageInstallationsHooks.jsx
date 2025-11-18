@@ -143,9 +143,9 @@ const useManageInstallation = (userInfo) => {
     };
 
     tasks.forEach((task) => {
-      const status = (task.task_status || '').toLowerCase();
+      const status = (task.task_status || '').toLowerCase().trim();
       if (status === 'pending') counts.pending += 1;
-      else if (status === 'in progress' || status === 'in_progress') counts.inProgress += 1;
+      else if (status === 'in progress' || status === 'in_progress' || status === 'in progess') counts.inProgress += 1;
       else if (status === 'completed') counts.completed += 1;
       else if (status === 'rejected') counts.rejected += 1;
 
@@ -401,7 +401,9 @@ const useManageInstallation = (userInfo) => {
         .sort((a, b) => (b._timestamp || 0) - (a._timestamp || 0))
         .map(({ _timestamp, ...rest }) => rest);
 
-      const dedupedEnrichedList = dedupeTasksByIdentity(enrichedTasks);
+      const filteredEnrichedTasks = enrichedTasks.filter((task) => task.task_id && String(task.task_id).trim() !== '' && task.task_id !== '-');
+
+      const dedupedEnrichedList = dedupeTasksByIdentity(filteredEnrichedTasks);
 
       setEnrichedTaskList(dedupedEnrichedList);
       setDisplayTasks(dedupedEnrichedList);

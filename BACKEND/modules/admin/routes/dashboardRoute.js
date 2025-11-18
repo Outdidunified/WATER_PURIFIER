@@ -169,6 +169,9 @@ router.get('/analytics',  Controller.GetAnalytics);
 // Analytics by district
 router.get('/analytics/by-district',  Controller.GetAnalyticsByDistrict);
 
+// Assignment History API
+router.get('/assignment-history/:task_id', Controller.getAssignmentHistory);
+
 // 11. Leave Requests Management
 router.use('/', leaveRequestsRoute);
 

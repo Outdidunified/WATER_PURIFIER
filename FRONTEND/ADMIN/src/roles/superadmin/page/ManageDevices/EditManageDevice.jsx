@@ -49,7 +49,7 @@ const EditManageDevice = ({ userInfo, handleLogout }) => {
                         </div>
 
                         <div className="row">
-                            <div className="col-lg-12 grid-margin stretch-card">
+                            <div className="col-lg-12 grid-margin stretch-card" >
                                 <div className="card">
                                     <div className="card-body">
                                         <h4 className="card-title">Manage Device</h4>
@@ -136,13 +136,15 @@ const EditManageDevice = ({ userInfo, handleLogout }) => {
                                                 </div>
                                             </div>
 
-                                            <ReusableButton
-                                                type="submit"
-                                                loading={loading}
-                                                disabled={loading || status === initialStatus || !status}
-                                            >
-                                                Update
-                                            </ReusableButton>
+                                            <div className="d-flex justify-content-center">
+                                                <ReusableButton
+                                                    type="submit"
+                                                    loading={loading}
+                                                    disabled={loading || status === initialStatus || !status}
+                                                >
+                                                    Update
+                                                </ReusableButton>
+                                            </div>
                                         </form>
 
                                     </div>

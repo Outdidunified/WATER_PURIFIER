@@ -85,6 +85,14 @@ const ManageServices = ({ userInfo, handleLogout }) => {
     });
   };
 
+  const handleViewTechnician = (technicianId) => {
+    // Find the technician data from the technicians array
+    const technician = technicians.find(tech => tech.technician_id === technicianId);
+    if (technician) {
+      navigate('/superadmin/ViewManageUser', { state: { dataItem: technician } });
+    }
+  };
+
   const handleAssignClick = (installation, mode = 'assign') => {
     setSelectedInstallation(installation);
     setAssignedTechnicianId(installation.assigned_technician_id || '');
@@ -171,7 +179,7 @@ const ManageServices = ({ userInfo, handleLogout }) => {
         <div className="main-panel">
           <div className="content-wrapper">
             <div className="row">
-              <div className="col-md-12 grid-margin">
+              <div className="col-md-12 grid-margin" style={{ marginBottom: '10px' }}>
                 <div className="row">
                   <div className="col-12 col-xl-8 mb-4 mb-xl-0">
                     <h3 className="font-weight-bold">Manage Services</h3>
@@ -369,13 +377,13 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                         </div>
                       </div>
                     </div>
-                    <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                       <div className="table-responsive dynamic-table">
                       <table className="table table-striped">
                         <thead style={{ textAlign: 'center', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#fff' }}>
                           <tr>
                             <th>Sl.No</th>
                             <th>Task Type</th>
-                            <th>Email ID</th>
+                            <th>Customer Email</th>
                             <th>Technician Name</th>
                             <th>Technician ID</th>
                             <th>Device ID</th>
@@ -409,7 +417,23 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                                 </td>
                                 <td  style={{ padding: '4px 2px', maxWidth: '200px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{item.task_created_by_user_email || '-'}</td>
                                 <td style={{ padding: '4px 2px', maxWidth: '70px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{resolveTechnicianName(item)}</td>
-                                <td>{resolveTechnicianId(item)}</td>
+                                <td>
+                                  {resolveTechnicianId(item) !== '-' ? (
+                                    <span
+                                      style={{
+                                        color: '#007bff',
+                                        cursor: 'pointer',
+                                      
+                                      }}
+                                      title="View technician details"
+                                      onClick={() => handleViewTechnician(resolveTechnicianId(item))}
+                                    >
+                                      {resolveTechnicianId(item)}
+                                    </span>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </td>
                                 <td>{item.device_id || item.wp_device_id || '-'}</td>
                                 <td>{resolveAssignedDate(item)}</td>
                                 <td>

@@ -65,9 +65,9 @@ const ViewManageRequests = ({ userInfo, handleLogout }) => {
   const assignedDateValue =
     request?.assigned_date || request?.task_assigned_date || request?.assignedDate;
   const createdDateValue =
-    request?.created_at || request?.task_created_at || request?.createdAt;
+    request?.created_at || request?.task_created_at || request?.createdAt || request?.created_date || request?.taskCreatedAt;
   const completionDateValue =
-    request?.completion_date || request?.task_completion_date || request?.completionDate;
+    request?.completed_date || request?.completion_date || request?.task_completion_date || request?.completionDate;
   const addressDetails =
     request && typeof (request.address || request.deliveryAddress) === 'object'
       ? request.address || request.deliveryAddress
@@ -125,10 +125,7 @@ const ViewManageRequests = ({ userInfo, handleLogout }) => {
                               <span className="detail-label">Status</span>
                               <span className="detail-value">{request.task_status || '-'}</span>
                             </div>
-                            <div className="detail-item">
-                              <span className="detail-label">Preferred Schedule</span>
-                              <span className="detail-value">{request.preferred_schedule || '-'}</span>
-                            </div>
+
                             <div className="detail-item">
                               <span className="detail-label">Request Source</span>
                               <span className="detail-value">{request.request_source || '-'}</span>
@@ -153,19 +150,20 @@ const ViewManageRequests = ({ userInfo, handleLogout }) => {
                           <div className="detail-grid">
                             <div className="detail-item">
                               <span className="detail-label">Name</span>
-                              <span className="detail-value">{request.customer_name || '-'}</span>
+                              <span className="detail-value">{request.customer_name
+                                || addressDetails?.name || request.task_created_by_user_name    ||  '-'}</span>
                             </div>
                             <div className="detail-item">
                               <span className="detail-label">Email</span>
-                              <span className="detail-value">{request.task_created_by_user_email || '-'}</span>
+                              <span className="detail-value">{request.customer_email || request.task_created_by_user_email || '-'}</span>
                             </div>
                             <div className="detail-item">
                               <span className="detail-label">Phone</span>
-                              <span className="detail-value">{request.customer_phone || '-'}</span>
+                              <span className="detail-value">{request.customer_phone || addressDetails?.phone || '-'}</span>
                             </div>
                             <div className="detail-item">
-                              <span className="detail-label">Address</span>
-                              <span className="detail-value">{renderAddress(addressDetails)}</span>
+                              <span className="detail-label">Street</span>
+                              <span className="detail-value">{addressDetails?.street || '-'}</span>
                             </div>
                             <div className="detail-item">
                               <span className="detail-label">City</span>
@@ -178,10 +176,6 @@ const ViewManageRequests = ({ userInfo, handleLogout }) => {
                             <div className="detail-item">
                               <span className="detail-label">State</span>
                               <span className="detail-value">{addressDetails?.state || '-'}</span>
-                            </div>
-                            <div className="detail-item">
-                              <span className="detail-label">Country</span>
-                              <span className="detail-value">{addressDetails?.country || '-'}</span>
                             </div>
                             <div className="detail-item">
                               <span className="detail-label">Pincode</span>
@@ -228,7 +222,7 @@ const ViewManageRequests = ({ userInfo, handleLogout }) => {
                           </div>
                         </div>
 
-                        <div className="detail-section">
+                        {/* <div className="detail-section">
                           <div className="detail-section-title" style={{ color: '#007bff' }}>Assignment History</div>
                           <div className="detail-table">
                             <table>
@@ -247,7 +241,7 @@ const ViewManageRequests = ({ userInfo, handleLogout }) => {
                               </tbody>
                             </table>
                           </div>
-                        </div>
+                        </div> */}
                       </div>
                     ) : (
                       <div className="alert alert-warning" role="alert">

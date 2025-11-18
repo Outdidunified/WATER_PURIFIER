@@ -153,6 +153,12 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
       return;
     }
 
+    // Check if trying to create renewal request for smart model
+    if (createForm.requestType === 'renewal' && device.model_type?.toLowerCase() === 'smart') {
+      showErrorAlert('Renewal requests are not allowed for smart model devices');
+      return;
+    }
+
     const technician = technicians.find((tech) => tech.technician_id === createForm.technicianId);
     if (!technician) {
       showErrorAlert('Selected technician not found');
@@ -182,7 +188,7 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
         <div className="main-panel">
           <div className="content-wrapper">
             <div className="row">
-              <div className="col-md-12 grid-margin">
+              <div className="col-md-12 grid-margin" style={{ marginBottom: '10px' }}>
                 <div className="row">
                   <div className="col-12 col-xl-8 mb-4 mb-xl-0">
                     <h3 className="font-weight-bold">Manage Requests</h3>
@@ -361,7 +367,7 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                       </div>
                     </div>
 
-                    <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                       <div className="table-responsive dynamic-table">
                       <table className="table table-striped">
                         <thead style={{ textAlign: 'center', position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#fff' }}>
                           <tr>
@@ -610,29 +616,13 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                 </label>
                 {!createForm.deviceId ? (
                   <div 
-                    style={{
-                      padding: '12px',
-                      backgroundColor: '#f8f9fa',
-                      border: '1px solid #dee2e6',
-                      borderRadius: '4px',
-                      textAlign: 'center',
-                      color: '#6c7293',
-                      fontWeight: '500'
-                    }}
+                  className="form-control"  style={{padding:'12px'}}      
                   >
                     Select a device first
                   </div>
                 ) : filteredDistrictTechnicians.length === 0 ? (
                   <div 
-                    style={{
-                      padding: '12px',
-                      backgroundColor: '#f8f9fa',
-                      border: '1px solid #dee2e6',
-                      borderRadius: '4px',
-                      textAlign: 'center',
-                      color: '#dc3545',
-                      fontWeight: '500'
-                    }}
+                   className="form-control"
                   >
                     No technician found for this district
                   </div>
@@ -667,7 +657,9 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                 >
                   <option value="">Select Request</option>
                   <option value="return">Return</option>
-                  <option value="renewal">Renewal</option>
+                  {devices.find((d) => d.wp_device_id === createForm.deviceId)?.model_type?.toLowerCase() !== 'smart' && (
+                    <option value="renewal">Renewal</option>
+                  )}
                 </select>
               </div>
 

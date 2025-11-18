@@ -731,7 +731,7 @@ const getChartData = () => {
                                         }}>
                                             <span style={{ fontSize: '16px', fontWeight: '600', color: '#424242', marginRight: '10px' }}>
                                                 <i className="fas fa-chart-line" style={{ marginRight: '8px', color: '#667eea' }}></i>
-                                                View Analytics
+                                                View
                                             </span>
                                             
                                             <span style={{ fontSize: '14px', fontWeight: '500', color: '#757575' }}></span>

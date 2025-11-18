@@ -4,7 +4,6 @@ const { connectToDatabase } = require('../../../config/db');
 const { ObjectId } = require('mongodb');
 const { autoAssignService } = require('../../admin/services/autoAssignmentService');
 
-
 exports.fetchUserDetails = async (req, res) => { 
   const { user_id, email, role_id } = req.body;
 
