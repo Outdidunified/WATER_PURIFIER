@@ -4520,6 +4520,27 @@ const AssignManualRequest = async (req, res) => {
         </div>
     `;
 
+    // Log to assignment history
+    await logToAssignmentHistory(db, {
+        task_id: numericTaskId,
+        task_type: 3, // Manual request
+        assignment_type: 'Manual Request',
+        action: 'assign',
+        assignment_mode: 'manual',
+        technician_id: technician_id,
+        technician_name: technician.name,
+        previous_technician_id: null,
+        device_id: null, // Manual requests don't have device_id
+        customer_email: customerEmail,
+        location: {
+            city: taskDistrict ? null : null, // Manual requests may not have structured address
+            district: taskDistrict,
+            state: null
+        },
+        assigned_by: assignedBy,
+        reason: null
+    });
+
     await sendEmailToMultiple(allNotificationEmails, 'Manual Request Assigned - IonHive', '', notificationHtml);
 
     return res.status(200).json({ status: 'Success', message: 'Manual request assigned successfully' });
@@ -5956,6 +5977,39 @@ const UnAssignTask = async (req, res) => {
   }
 };
 
+const getAssignmentHistory = async (req, res) => {
+  try {
+    const { task_id } = req.params;
+
+    if (!task_id) {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'task_id parameter is required'
+      });
+    }
+
+    const db = await database.connectToDatabase();
+    const assignmentHistoryCollection = db.collection('assignment_history');
+
+    const history = await assignmentHistoryCollection
+      .find({ task_id: parseInt(task_id) })
+      .sort({ created_at: -1 })
+      .toArray();
+
+    return res.status(200).json({
+      status: 'Success',
+      message: 'Assignment history fetched successfully',
+      data: history
+    });
+
+  } catch (error) {
+    console.error('Error in getAssignmentHistory:', error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error',
+    });
+  }
+};
 
 // Export controllers
 module.exports = {
@@ -5965,7 +6019,7 @@ module.exports = {
     FetchSelectServiceTask, AssignService, ReAssignService, FetchInstalledDevicesForRequests, CreateManualRequest, FetchManualRequests, AssignManualRequest, ReAssignManualRequest, assignPermissions, fetchPermissionsByRole,
     GetUsersByDistrict, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
     AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchEndUserDevices, FetchOrdersByUserId, FetchTechnicianTasksByUserId, GetAnalytics,
-    GetAnalyticsByDistrict,GetDistrictsWithSellers,ConfirmCodPayment, UnAssignTask
+    GetAnalyticsByDistrict,GetDistrictsWithSellers,ConfirmCodPayment, UnAssignTask, getAssignmentHistory
     // UpdateOrdersStatus,
 
 };

@@ -188,14 +188,17 @@ async function getDistrictSellers(db, district) {
 }
 
 async function logToAssignmentHistory(db, historyData) {
+    console.log('Attempting to log to assignment_history:', historyData);
     try {
         const assignmentHistory = db.collection('assignment_history');
-        await assignmentHistory.insertOne({
+        const result = await assignmentHistory.insertOne({
             ...historyData,
             created_at: new Date()
         });
+        console.log('Successfully logged to assignment_history:', result.insertedId);
     } catch (err) {
         console.error('Error logging to assignment history:', err);
+        throw err; // Re-throw to see if it affects the assignment
     }
 }
 
@@ -603,7 +606,7 @@ async function autoAssignInstallation(order) {
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border-radius: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
                     <h2 style="color: #333;">Installation Task Auto-assigned</h2>
                     <ul style="font-size: 16px; color: #555;">
-                        <li><strong>Task ID:</strong> ${nextTaskId}</li>
+                        <li><strong>Task ID:</strong> ${taskId}</li>
                         <li><strong>Device ID:</strong> ${order.wp_device_id}</li>
                         <li><strong>Technician:</strong> ${technician.name || 'N/A'}</li>
                         <li><strong>Customer Email:</strong> ${orderUser.email}</li>
@@ -619,7 +622,7 @@ async function autoAssignInstallation(order) {
 
             // Log to assignment history
             await logToAssignmentHistory(db, {
-                task_id: nextTaskId,
+                task_id: taskId,
                 task_type: 1,
                 assignment_type: 'Installation',
                 action: 'assign',
@@ -1044,6 +1047,27 @@ async function autoAssignPendingTasks() {
                 });
                 await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
 
+                // Log to assignment history
+                await logToAssignmentHistory(db, {
+                    task_id: task.task_id,
+                    task_type: 1,
+                    assignment_type: 'Installation',
+                    action: 'assign',
+                    assignment_mode: 'auto',
+                    technician_id: technician.technician_id,
+                    technician_name: technician.name,
+                    previous_technician_id: null,
+                    device_id: task.wp_device_id,
+                    customer_email: user?.email,
+                    location: {
+                        city: normalizedAddress.city,
+                        district: normalizedAddress.district,
+                        state: normalizedAddress.state
+                    },
+                    assigned_by: 'system',
+                    reason: null
+                });
+
             } else if (task.task_type === 2) {
                 const serviceUpdateSet = {
                     task_status: "Pending",
@@ -1099,6 +1123,27 @@ async function autoAssignPendingTasks() {
                     normalizedAddress
                 });
                 await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
+
+                // Log to assignment history
+                await logToAssignmentHistory(db, {
+                    task_id: task.task_id,
+                    task_type: 2,
+                    assignment_type: 'Service',
+                    action: 'assign',
+                    assignment_mode: 'auto',
+                    technician_id: technician.technician_id,
+                    technician_name: technician.name,
+                    previous_technician_id: null,
+                    device_id: task.wp_device_id || task.device_id,
+                    customer_email: task.task_created_by_user_email,
+                    location: {
+                        city: normalizedAddress.city,
+                        district: normalizedAddress.district,
+                        state: normalizedAddress.state
+                    },
+                    assigned_by: 'system',
+                    reason: null
+                });
             }
 
             console.log(`Auto-assigned pending task ${task.task_id} to technician ${technician.technician_id}`);
@@ -1388,6 +1433,27 @@ async function autoReassignOverdueTasks() {
             });
             await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
 
+            // Log to assignment history
+            await logToAssignmentHistory(db, {
+                task_id: task.task_id,
+                task_type: task.task_type,
+                assignment_type: task.task_type === 1 ? 'Installation' : 'Service',
+                action: 'reassign',
+                assignment_mode: 'auto',
+                technician_id: technician.technician_id,
+                technician_name: technician.name,
+                previous_technician_id: currentTechnicianId,
+                device_id: task.wp_device_id || task.device_id,
+                customer_email: task.task_created_by_user_email,
+                location: {
+                    city: normalizedAddress.city,
+                    district: normalizedAddress.district,
+                    state: normalizedAddress.state
+                },
+                assigned_by: 'system',
+                reason: unassignedReason
+            });
+
             await logOverdueEvent(`Overdue ${taskTypeLabel} task ${task.task_id} reassigned to technician ${technician.technician_id} at ${locationSummary}`);
         }
 
@@ -1581,6 +1647,27 @@ async function autoReassignRejectedTasks() {
                     normalizedAddress
                 });
                 await delayForEmailRateLimit(500); // 500ms delay after technician email
+
+                // Log to assignment history
+                await logToAssignmentHistory(db, {
+                    task_id: task.task_id,
+                    task_type: task.task_type,
+                    assignment_type: task.task_type === 1 ? 'Installation' : 'Service',
+                    action: 'reassign',
+                    assignment_mode: 'auto',
+                    technician_id: technician.technician_id,
+                    technician_name: technician.name,
+                    previous_technician_id: task.assigned_technician_id,
+                    device_id: task.wp_device_id || task.device_id,
+                    customer_email: task.task_created_by_user_email,
+                    location: {
+                        city: normalizedAddress.city,
+                        district: normalizedAddress.district,
+                        state: normalizedAddress.state
+                    },
+                    assigned_by: 'system',
+                    reason: 'Rejected by previous technician'
+                });
 
                 console.log(`✅ Rejected task ${task.task_id} reassigned to technician ${technician.technician_id}`);
 
@@ -1991,6 +2078,27 @@ async function autoReassignRejectedTasksImmediate() {
                     isReassignment: true
                 });
                 await delayForEmailRateLimit(500);
+
+                // Log to assignment history
+                await logToAssignmentHistory(db, {
+                    task_id: task.task_id,
+                    task_type: task.task_type,
+                    assignment_type: task.task_type === 1 ? 'Installation' : 'Service',
+                    action: 'reassign',
+                    assignment_mode: 'auto',
+                    technician_id: technician.technician_id,
+                    technician_name: technician.name,
+                    previous_technician_id: currentTechnicianId,
+                    device_id: task.wp_device_id || task.device_id,
+                    customer_email: task.task_created_by_user_email,
+                    location: {
+                        city: normalizedAddress.city,
+                        district: normalizedAddress.district,
+                        state: normalizedAddress.state
+                    },
+                    assigned_by: 'system',
+                    reason: reassignmentReason
+                });
 
                 await logEvent(`[REJECTED] Task ${task.task_id} reassigned to ${technician.technician_id} | Reason: ${reassignmentReason}`);
 
