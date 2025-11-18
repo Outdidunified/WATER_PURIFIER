@@ -83,7 +83,7 @@ class Order extends Subscription {
       deliveryAcceptanceTimestamp: json['delivery_acceptance_timestamp'] != null ? _parseString(json['delivery_acceptance_timestamp']) : null,
       deliveryCompletionTimestamp: json['delivery_completion_timestamp'] != null ? _parseString(json['delivery_completion_timestamp']) : null,
       deliveryCurrentStatus: json['delivery_current_status'] != null ? _parseString(json['delivery_current_status']) : null,
-      deliveryHistory: (json['delivery_history'] as List<dynamic>?)?.map((history) => DeliveryHistory.fromJson(history as Map<String, dynamic>)).toList() ?? [],
+      deliveryHistory: (json['deliveryHistory'] as List<dynamic>?)?.map((history) => DeliveryHistory.fromJson(history as Map<String, dynamic>)).toList() ?? [],
       deliveryCompletionStatus: json['delivery_completion_status'] as bool?,
     );
   }

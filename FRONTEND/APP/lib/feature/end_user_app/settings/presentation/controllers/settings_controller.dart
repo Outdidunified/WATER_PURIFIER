@@ -106,10 +106,11 @@ class SettingsController extends GetxController {
   final SettingsRepository _settingsRepository;
   final AIService _aiService;
 
-  /// Get only subscriptions with task_type 1 and task_status Completed
+  /// Get only smart model subscriptions with task_type 1 and task_status Completed
   List<home_models.Order> get completedSubscriptions {
     return activeSubscriptions
         .where((subscription) =>
+            subscription.modelType?.toLowerCase() == 'smart' &&
             subscription.tasks.any((task) =>
                 task.taskType == 1 &&
                 task.taskStatus.trim().toLowerCase() == 'completed'))

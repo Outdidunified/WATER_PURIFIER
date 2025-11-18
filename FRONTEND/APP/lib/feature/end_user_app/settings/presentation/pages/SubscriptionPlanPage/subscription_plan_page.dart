@@ -440,10 +440,10 @@ class SubscriptionPlanPage extends StatelessWidget {
 
                                     Color circleColor;
                                     IconData iconData;
-                                    if (statusLower.contains('completed')) {
+                                    if (statusLower.contains('completed') || statusLower.contains('accepted')) {
                                       circleColor = Colors.green.shade500;
                                       iconData = Icons.check_circle;
-                                    } else if (statusLower.contains('intransit') || statusLower.contains('outfordelivery')) {
+                                    } else if (statusLower.contains('intransit') || statusLower.contains('outfordelivery') || statusLower.contains('packed')) {
                                       circleColor = Colors.blue.shade500;
                                       iconData = Icons.local_shipping;
                                     } else {

@@ -1367,7 +1367,9 @@ class _PlanDetailsState extends State<PlanDetails> {
         ? "₹ ${widget.subscription!.selectedPlan.price}"
         : "₹ 425";
     final planStart = widget.subscription != null
-        ? _formatDate(widget.subscription!.createdAt)
+        ? (widget.subscription!.planConfig?.startDate != null
+            ? _formatDate(widget.subscription!.planConfig!.startDate!)
+            : "N/A")
         : "25/08/2022";
 
     // ---------------- Image URLs ----------------

@@ -173,7 +173,11 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
           return false;
         }
         if (task.taskType == TaskTypeConstants.installation) {
-          return task.taskStatus == 'In Progress';
+          if (task.taskStatus == 'In Progress') {
+            final paymentStatus = task.paymentSnapshot?.paymentStatus ?? task.orderPaymentStatus;
+            return paymentStatus == 'Completed';
+          }
+          return false;
         }
         if (task.taskType == 3) {
           if (task.taskStatus == 'In Progress' || task.taskStatus == 'RechargedOpened') {
