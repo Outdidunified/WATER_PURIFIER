@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { showErrorAlert } from '../../../../utils/alert';
 import axiosInstance from '../../../../utils/utils';
 
-const ManageLeaveHooks = () => {
+const ManageLeaveHooks = (userInfo) => {
     const [leaveRequests, setLeaveRequests] = useState([]);
     const [filteredLeaves, setFilteredLeaves] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -42,7 +42,16 @@ const ManageLeaveHooks = () => {
             const response = await axiosInstance.get('/api/admin/leave-requests');
 
             if (response.data.success) {
-                const leaves = response.data.data;
+                let leaves = response.data.data;
+
+                // If user is a seller (role_id = 4), filter leaves by district
+                if (userInfo?.role_id === 4 && userInfo?.district) {
+                    // Filter leaves to only include technicians from the same district as the seller
+                    leaves = leaves.filter(leave => {
+                        return leave.technician_district === userInfo.district;
+                    });
+                }
+
                 setLeaveRequests(leaves);
                 setFilteredLeaves(leaves);
                 setSummary(calculateLeaveSummary(leaves));

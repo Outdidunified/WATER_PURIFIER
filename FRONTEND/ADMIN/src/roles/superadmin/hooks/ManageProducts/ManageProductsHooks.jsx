@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axiosInstance from '../../../../utils/utils';
 
-const useManageProducts = () => {
+const useManageProducts = (userInfo) => {
   const [data, setData] = useState([]);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,9 +14,15 @@ const useManageProducts = () => {
   // Fetch product model data
   useEffect(() => {
     if (!fetchDataCalled.current) {
+      const isSeller = userInfo && Number(userInfo?.role_id) === 4;
+      const url = isSeller ? 'api/admin/FetchProductModels/by-district' : 'api/admin/FetchProductModels';
+      const config = isSeller ? { params: { district: userInfo?.district } } : {};
+      
+      const fetchMethod = isSeller ? 'get' : 'Post';
       axiosInstance({
-        method: 'Post',
-        url: 'api/admin/FetchProductModels'
+        method: fetchMethod,
+        url: url,
+        ...(isSeller && { params: config.params })
       })
         .then((res) => {
           const responseData = Array.isArray(res.data.data) ? [...res.data.data].reverse() : [];
@@ -31,7 +37,7 @@ const useManageProducts = () => {
         });
       fetchDataCalled.current = true;
     }
-  }, []);
+  }, [userInfo]);
 
   // Update posts if data, search term, or selected model changes
   useEffect(() => {

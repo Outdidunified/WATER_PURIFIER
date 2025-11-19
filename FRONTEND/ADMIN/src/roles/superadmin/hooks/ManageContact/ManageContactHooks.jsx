@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axiosInstance from '../../../../utils/utils';
 
-const useManageContact = () => {
+const useManageContact = (userInfo) => {
   const [contacts, setContacts] = useState([]);
   const [filteredContacts, setFilteredContacts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -12,7 +12,12 @@ const useManageContact = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axiosInstance.post('/api/admin/FetchContact');
+      const isSeller = userInfo && Number(userInfo?.role_id) === 4;
+      const url = isSeller ? '/api/admin/FetchContact/by-district' : '/api/admin/FetchContact';
+      const config = isSeller ? { params: { district: userInfo?.district } } : {};
+      const response = isSeller
+        ? await axiosInstance.get(url, config)
+        : await axiosInstance.post(url);
       if (response.status === 200 && response.data.status === 'Success') {
         const data = response.data.data || [];
         setContacts(data);
@@ -25,7 +30,7 @@ const useManageContact = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userInfo]);
 
   useEffect(() => {
     fetchContacts();

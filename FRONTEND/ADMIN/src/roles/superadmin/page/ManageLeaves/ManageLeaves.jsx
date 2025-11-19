@@ -28,7 +28,7 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
     getStatusBadgeClass,
     fetchLeaveRequests,
     handleFilterSelect,
-  } = ManageLeaveHooks();
+  } = ManageLeaveHooks(userInfo);
 
   const adminName = sessionStorage.getItem('superAdminName') || 'Admin';
 

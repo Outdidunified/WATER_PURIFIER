@@ -111,14 +111,14 @@ const ViewManageDevice = ({ userInfo, handleLogout }) => {
                         <span className="view-data-label">MAC ID</span> <span className="view-data-value">{device.mac_id || device.enter_mac_id || '-'}</span>
                       </div>
                       <div className="col-md-4 view-data-item">
-                        <span className="view-data-label">Plan Start Date</span> <span className="view-data-value">{device.plan_config?.startDate || '-'}</span>
+                        <span className="view-data-label">Plan Start Date</span> <span className="view-data-value">{device.plan_config?.startDate ? formatTimestamp(device.plan_config.startDate) : '-'}</span>
                       </div>
                     </div>
 
                     <div className="row viewDataCss" style={{ marginTop: '10px' }}>
                      
                       <div className="col-md-4 view-data-item">
-                        <span className="view-data-label">Plan End Date</span> <span className="view-data-value">{device.plan_config?.endDate || '-'}</span>
+                        <span className="view-data-label">Plan End Date</span> <span className="view-data-value">{device.plan_config?.endDate ? formatTimestamp(device.plan_config.endDate) : '-'}</span>
                       </div>
                     </div>
 

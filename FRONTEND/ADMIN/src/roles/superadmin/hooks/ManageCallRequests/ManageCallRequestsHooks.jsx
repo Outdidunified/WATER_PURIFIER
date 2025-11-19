@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axiosInstance from '../../../../utils/utils';
 
-const useManageCallRequests = () => {
+const useManageCallRequests = (userInfo) => {
   const [posts, setPosts] = useState([]);
   const [filteredPosts, setFilteredPosts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -13,7 +13,12 @@ const useManageCallRequests = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axiosInstance.post('/api/admin/FetchCallRequest');
+      const isSeller = userInfo && Number(userInfo?.role_id) === 4;
+      const url = isSeller ? '/api/admin/FetchCallRequest/by-district' : '/api/admin/FetchCallRequest';
+      const config = isSeller ? { params: { district: userInfo?.district } } : {};
+      const response = isSeller
+        ? await axiosInstance.get(url, config)
+        : await axiosInstance.post(url);
       if (response.status === 200 && response.data.status === 'Success') {
         const data = response.data.data || [];
         setPosts(data);
@@ -26,7 +31,7 @@ const useManageCallRequests = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userInfo]);
 
   useEffect(() => {
     fetchCallRequests();

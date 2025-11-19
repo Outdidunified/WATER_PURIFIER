@@ -36,12 +36,35 @@ async function getAllLeaveRequests(filters = {}) {
             };
         }
 
+        // Get leave requests
         const leaveRequests = await leaveRequestsCollection
             .find(query)
             .sort({ requested_date: -1 })
             .toArray();
 
-        return leaveRequests;
+        // Get unique technician IDs
+        const technicianIds = [...new Set(leaveRequests.map(leave => leave.technician_id))];
+
+        // Fetch technician details
+        const usersCollection = db.collection('users');
+        const technicians = await usersCollection
+            .find({ technician_id: { $in: technicianIds } })
+            .project({ technician_id: 1, district: 1 })
+            .toArray();
+
+        // Create a map of technician_id to district
+        const technicianDistrictMap = {};
+        technicians.forEach(tech => {
+            technicianDistrictMap[tech.technician_id] = tech.district;
+        });
+
+        // Add technician_district to each leave request
+        const leaveRequestsWithDistrict = leaveRequests.map(leave => ({
+            ...leave,
+            technician_district: technicianDistrictMap[leave.technician_id] || null
+        }));
+
+        return leaveRequestsWithDistrict;
     } catch (error) {
         throw new Error(`Failed to fetch leave requests: ${error.message}`);
     }

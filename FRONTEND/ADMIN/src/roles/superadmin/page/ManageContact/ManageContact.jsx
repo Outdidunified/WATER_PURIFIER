@@ -10,7 +10,7 @@ const ManageContact = ({ userInfo, handleLogout }) => {
     loading,
     error,
     handleSearchInputChange,
-  } = useManageContact();
+  } = useManageContact(userInfo);
 
   const formatDateTime = (timestamp) => {
     const date = new Date(timestamp);
