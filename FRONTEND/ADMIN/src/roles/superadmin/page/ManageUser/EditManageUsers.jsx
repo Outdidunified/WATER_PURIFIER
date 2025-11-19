@@ -44,149 +44,117 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
     backManageUser,
   } = useEditManageUsers(userInfo);
 
-  // Dropdown data lists
+  // Dropdown states
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
   const [cities, setCities] = useState([]);
   const [districts, setDistricts] = useState([]);
 
-  // Selected options
+  // Selected dropdown values
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [selectedState, setSelectedState] = useState(null);
-  const [selectedCity, setSelectedCity] = useState(null);
   const [selectedDistrict, setSelectedDistrict] = useState(null);
+  const [selectedCity, setSelectedCity] = useState(null);
 
   const normalizeValue = (value) => (value ?? '').toString().trim().toLowerCase();
 
-  // 🧩 Load all countries on mount
+  // ---------------------------
+  // 1️⃣ LOAD ALL COUNTRIES
+  // ---------------------------
   useEffect(() => {
     const countryOptions = GeoService.getCountriesForSelect();
     setCountries(countryOptions);
   }, []);
 
-  // 🧩 Preload existing values when country/state/city/district already exist (from DB)
+  // ---------------------------
+  // 2️⃣ PRELOAD COUNTRY + STATE
+  // ---------------------------
   useEffect(() => {
     if (!country || !countries.length) return;
 
-    const existingCountry = countries.find((c) =>
-      normalizeValue(c.value) === normalizeValue(country) ||
-      normalizeValue(c.label) === normalizeValue(country)
+    // match country
+    const existingCountry = countries.find(
+      (c) =>
+        normalizeValue(c.value) === normalizeValue(country) ||
+        normalizeValue(c.label) === normalizeValue(country)
     );
-
-    if (!existingCountry) {
-      setSelectedCountry(null);
-      return;
-    }
+    if (!existingCountry) return;
 
     setSelectedCountry(existingCountry);
 
-    let stateOptions = GeoService.getStatesForSelect(existingCountry.isoCode);
-    const normalizedState = normalizeValue(state);
-    let stateMatch = stateOptions.find((s) =>
-      normalizeValue(s.value) === normalizedState ||
-      normalizeValue(s.label) === normalizedState
-    );
-
-    if (!stateMatch && state) {
-      const fallbackState = { value: state, label: state, isoCode: state };
-      stateOptions = [...stateOptions, fallbackState];
-      stateMatch = fallbackState;
-    }
-
+    // load states
+    const stateOptions = GeoService.getStatesForSelect(existingCountry.isoCode);
     setStates(stateOptions);
+
+    // match state
+    const stateMatch = stateOptions.find(
+      (s) =>
+        normalizeValue(s.value) === normalizeValue(state) ||
+        normalizeValue(s.label) === normalizeValue(state)
+    );
     setSelectedState(stateMatch || null);
+  }, [country, countries]);
 
-    if (!stateMatch) {
-      setCities([]);
-      setDistricts([]);
-      setSelectedCity(null);
-      setSelectedDistrict(null);
-      return;
-    }
-
-    const cityOptions = GeoService.getCitiesForSelect(
-      existingCountry.isoCode,
-      stateMatch.value
-    );
-    const normalizedCity = normalizeValue(city);
-    let cityMatch = cityOptions.find((c) =>
-      normalizeValue(c.value) === normalizedCity ||
-      normalizeValue(c.label) === normalizedCity
-    );
-
-    let finalCityOptions = cityOptions;
-    if (!cityMatch && city) {
-      const fallbackCity = { value: city, label: city };
-      finalCityOptions = [...cityOptions, fallbackCity];
-      cityMatch = fallbackCity;
-    }
-
-    setCities(finalCityOptions);
-    setSelectedCity(cityMatch || null);
-
-    const districtOptions = GeoService.getDistrictsForSelect(
-      existingCountry.isoCode,
-      stateMatch.value
-    );
-    const normalizedDistrict = normalizeValue(district);
-    let districtMatch = districtOptions.find((d) =>
-      normalizeValue(d.value) === normalizedDistrict ||
-      normalizeValue(d.label) === normalizedDistrict
-    );
-
-    let finalDistrictOptions = districtOptions;
-    if (!districtMatch && district) {
-      const fallbackDistrict = { value: district, label: district };
-      finalDistrictOptions = [...districtOptions, fallbackDistrict];
-      districtMatch = fallbackDistrict;
-    }
-
-    setDistricts(finalDistrictOptions);
-    setSelectedDistrict(districtMatch || null);
-  }, [country, state, city, district, countries]);
-
-  // 🧩 When user selects a country → load states
-  useEffect(() => {
-    if (!selectedCountry) return;
-
-    const stateOptions = GeoService.getStatesForSelect(selectedCountry.isoCode);
-    setStates(stateOptions);
-  }, [selectedCountry]);
-
-  // 🧩 When user selects a state → load cities & districts
+  // ---------------------------
+  // 3️⃣ PRELOAD DISTRICT + CITY AFTER STATE LOADS
+  // ---------------------------
   useEffect(() => {
     if (!selectedCountry || !selectedState) return;
 
-    const cityOptions = GeoService.getCitiesForSelect(
-      selectedCountry.isoCode,
-      selectedState.value
-    );
+    // Load districts
     const districtOptions = GeoService.getDistrictsForSelect(
       selectedCountry.isoCode,
       selectedState.value
     );
-
-    setCities(cityOptions);
     setDistricts(districtOptions);
+
+    const districtMatch = districtOptions.find(
+      (d) =>
+        normalizeValue(d.value) === normalizeValue(district) ||
+        normalizeValue(d.label) === normalizeValue(district)
+    );
+    setSelectedDistrict(districtMatch || null);
+
+    // Load cities
+    const cityOptions = GeoService.getCitiesForSelect(
+      selectedCountry.isoCode,
+      selectedState.value
+    );
+    setCities(cityOptions);
+
+    const cityMatch = cityOptions.find(
+      (c) =>
+        normalizeValue(c.value) === normalizeValue(city) ||
+        normalizeValue(c.label) === normalizeValue(city)
+    );
+    setSelectedCity(cityMatch || null);
   }, [selectedState]);
 
-  // 🧩 When user selects a district → refresh cities (reset city selection)
+  // ---------------------------
+  // 4️⃣ DISTRICT → CITY REFRESH
+  // ---------------------------
   useEffect(() => {
-    if (!selectedCountry || !selectedState) return;
+  if (!selectedCountry || !selectedState || !selectedDistrict) return;
 
-    // Since district-based city filtering is not available,
-    // we reload all cities for the state and reset city selection
-    const cityOptions = GeoService.getCitiesForSelect(
-      selectedCountry.isoCode,
-      selectedState.value
-    );
+  const cityOptions = GeoService.getCitiesForSelect(
+    selectedCountry.isoCode,
+    selectedState.value,
+    selectedDistrict.value
+  );
 
-    setCities(cityOptions);
-    // Reset city selection when district changes
-    setSelectedCity(null);
-    setCity('');
-  }, [selectedDistrict, selectedCountry, selectedState]);
+  setCities(cityOptions);
 
+  const cityMatch = cityOptions.find(
+    (c) => normalizeValue(c.value) === normalizeValue(city)
+  );
+
+  setSelectedCity(cityMatch || null);
+}, [selectedDistrict]);
+
+
+  // ---------------------------
+  // FORM STYLES
+  // ---------------------------
   const formFieldStyle = { marginBottom: '15px', display: 'flex', flexDirection: 'column' };
   const labelStyle = { marginBottom: '5px', fontWeight: '500', fontSize: '14px', color: '#495057' };
   const inputStyle = { height: '38px', borderRadius: '8px' };
@@ -211,22 +179,22 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
 
             <form className="card p-4" onSubmit={editManageUser} style={{ borderRadius: '10px' }}>
               <div className="d-flex gap-4 flex-wrap">
-                {/* LEFT COLUMN */}
+
+                {/* LEFT */}
                 <div style={{ flex: 1, minWidth: '300px' }}>
                   <div style={formFieldStyle}>
                     <label style={labelStyle}>Name</label>
-                    <InputField value={name} readOnly maxLength={50} style={inputStyle} />
+                    <InputField value={name} readOnly style={inputStyle} />
                   </div>
                   <div style={formFieldStyle}>
                     <label style={labelStyle}>Email</label>
-                    <InputField type="email" value={email} readOnly maxLength={50} style={inputStyle} />
+                    <InputField value={email} readOnly style={inputStyle} />
                   </div>
                   <div style={formFieldStyle}>
                     <label style={labelStyle}>Phone Number</label>
                     <InputField
                       value={phone}
                       maxLength={10}
-                      pattern="[1-9][0-9]{9}"
                       onChange={(e) => {
                         let v = e.target.value.replace(/[^0-9]/g, '');
                         if (v.length === 1 && v === '0') return;
@@ -239,10 +207,8 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                   <div style={formFieldStyle}>
                     <label style={labelStyle}>Password (4-digit)</label>
                     <InputField
-                      type="text"
                       value={password}
                       maxLength={4}
-                      pattern="\d{4}"
                       onChange={(e) => setPassword(e.target.value.replace(/[^0-9]/g, ''))}
                       required
                       style={inputStyle}
@@ -252,7 +218,6 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                     <label style={labelStyle}>Address Line 1</label>
                     <InputField
                       value={addressline1}
-                      maxLength={100}
                       onChange={(e) => setAddressLine1(e.target.value)}
                       required
                       style={inputStyle}
@@ -262,14 +227,13 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                     <label style={labelStyle}>Address Line 2</label>
                     <InputField
                       value={addressline2}
-                      maxLength={100}
                       onChange={(e) => setAddressLine2(e.target.value)}
                       style={inputStyle}
                     />
                   </div>
                 </div>
 
-                {/* RIGHT COLUMN */}
+                {/* RIGHT */}
                 <div style={{ flex: 1, minWidth: '300px' }}>
                   <div style={formFieldStyle}>
                     <label style={labelStyle}>Country</label>
@@ -278,21 +242,22 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                       onChange={(option) => {
                         setSelectedCountry(option);
                         setCountry(option?.value || '');
-                        setSelectedState(null);
-                        setSelectedCity(null);
-                        setSelectedDistrict(null);
-                        setState('');
-                        setCity('');
-                        setDistrict('');
                         setStates([]);
                         setCities([]);
                         setDistricts([]);
+                        setSelectedState(null);
+                        setSelectedDistrict(null);
+                        setSelectedCity(null);
+                        setState('');
+                        setDistrict('');
+                        setCity('');
                       }}
                       options={countries}
                       placeholder="Select Country"
                       required
                     />
                   </div>
+
                   <div style={formFieldStyle}>
                     <label style={labelStyle}>State</label>
                     <SelectField
@@ -300,12 +265,12 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                       onChange={(option) => {
                         setSelectedState(option);
                         setState(option?.value || '');
-                        setSelectedCity(null);
-                        setSelectedDistrict(null);
-                        setCity('');
-                        setDistrict('');
                         setCities([]);
                         setDistricts([]);
+                        setSelectedCity(null);
+                        setSelectedDistrict(null);
+                        setDistrict('');
+                        setCity('');
                       }}
                       options={states}
                       placeholder="Select State"
@@ -313,15 +278,15 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                       required
                     />
                   </div>
-                   <div style={formFieldStyle}>
+
+                  <div style={formFieldStyle}>
                     <label style={labelStyle}>District</label>
                     <SelectField
                       value={selectedDistrict}
                       onChange={(option) => {
                         setSelectedDistrict(option);
                         setDistrict(option?.value || '');
-                        // Reset city when district changes
-                        setSelectedCity(null);
+                         setSelectedCity(null);
                         setCity('');
                       }}
                       options={districts}
@@ -330,6 +295,7 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                       required
                     />
                   </div>
+
                   <div style={formFieldStyle}>
                     <label style={labelStyle}>City</label>
                     <SelectField
@@ -344,13 +310,12 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                       required
                     />
                   </div>
-                 
+
                   <div style={formFieldStyle}>
                     <label style={labelStyle}>Pincode</label>
                     <InputField
                       value={pincode}
                       maxLength={6}
-                      pattern="^\d{6}$"
                       onChange={(e) =>
                         setPincode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))
                       }
@@ -358,6 +323,7 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                       style={inputStyle}
                     />
                   </div>
+
                   <div style={formFieldStyle}>
                     <label style={labelStyle}>Status</label>
                     <select
@@ -372,9 +338,12 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
                     </select>
                   </div>
                 </div>
+
               </div>
 
-              {errorMessage && <div className="text-danger mb-2">{errorMessage}</div>}
+              {errorMessage && (
+                <div className="text-danger mb-2">{errorMessage}</div>
+              )}
 
               <div className="d-flex justify-content-end mt-3">
                 <ReusableButton type="submit" disabled={loading || !isModified} loading={loading}>
@@ -383,6 +352,7 @@ const EditManageUsers = ({ userInfo, handleLogout }) => {
               </div>
             </form>
           </div>
+
           <Footer />
         </div>
       </div>

@@ -45,6 +45,7 @@ const useEditProducts = (userInfo) => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [productData, setProductData] = useState(null);
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     if (fetchDataCalled.current) return;
@@ -130,6 +131,34 @@ const useEditProducts = (userInfo) => {
 
     fetchDataCalled.current = true;
   }, [location]);
+
+  useEffect(() => {
+    if (!originalDataRef.current) {
+      setHasChanges(false);
+      return;
+    }
+
+    const compareValues = (a, b) => {
+      if (Array.isArray(a) && Array.isArray(b)) {
+        return JSON.stringify(a) === JSON.stringify(b);
+      }
+      return a === b;
+    };
+
+    const changed =
+      !compareValues(modelName, originalDataRef.current.modelName) ||
+      !compareValues(modelType, originalDataRef.current.modelType) ||
+      !compareValues(productDetails, originalDataRef.current.productDetails) ||
+      !compareValues(wpDeviceQuantity, originalDataRef.current.wpDeviceQuantity) ||
+      !compareValues(connectivity, originalDataRef.current.connectivity) ||
+      !compareValues(status, originalDataRef.current.status) ||
+      !compareValues(durations, originalDataRef.current.durations) ||
+      mainImage !== originalDataRef.current.mainImage ||
+      productSpecifications !== originalDataRef.current.productSpecifications ||
+      !compareValues(subImages, originalDataRef.current.subImages);
+
+    setHasChanges(changed);
+  }, [modelName, modelType, productDetails, wpDeviceQuantity, connectivity, status, durations, mainImage, productSpecifications, subImages]);
 
   const backToManagePage = () => navigate('/superadmin/ManageProducts');
 
