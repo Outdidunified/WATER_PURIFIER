@@ -9,52 +9,55 @@ const useManageProducts = (userInfo) => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalRecords, setTotalRecords] = useState(0);
   const fetchDataCalled = useRef(false);
 
-  // Fetch product model data
+  const fetchProductModels = (pageNum = 1, pageLimit = 10) => {
+    const isSeller = userInfo && Number(userInfo?.role_id) === 4;
+    const url = isSeller ? '/api/admin/FetchProductModels/by-district' : '/api/admin/FetchProductModels';
+    
+    setLoading(true);
+    const fetchMethod = isSeller ? 'get' : 'post';
+    axiosInstance({
+      method: fetchMethod,
+      url: url,
+      ...(isSeller ? { params: { district: userInfo?.district, page: pageNum, limit: pageLimit } } : { data: { page: pageNum, limit: pageLimit } })
+    })
+      .then((res) => {
+        const responseData = Array.isArray(res.data.data) ? [...res.data.data]: [];
+        setData(responseData);
+        setPosts(responseData);
+        
+        if (res.data.pagination) {
+          setCurrentPage(res.data.pagination.currentPage);
+          setPageSize(res.data.pagination.pageSize);
+          setTotalRecords(res.data.pagination.totalRecords);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error fetching product models:', err);
+        setError('Error fetching product models. Please try again.');
+        setLoading(false);
+      });
+  };
+
   useEffect(() => {
     if (!fetchDataCalled.current) {
-      const isSeller = userInfo && Number(userInfo?.role_id) === 4;
-      const url = isSeller ? 'api/admin/FetchProductModels/by-district' : 'api/admin/FetchProductModels';
-      const config = isSeller ? { params: { district: userInfo?.district } } : {};
-      
-      const fetchMethod = isSeller ? 'get' : 'Post';
-      axiosInstance({
-        method: fetchMethod,
-        url: url,
-        ...(isSeller && { params: config.params })
-      })
-        .then((res) => {
-          const responseData = Array.isArray(res.data.data) ? [...res.data.data].reverse() : [];
-          setData(responseData);
-          setPosts(responseData);
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error('Error fetching product models:', err);
-          setError('Error fetching product models. Please try again.');
-          setLoading(false);
-        });
+      fetchProductModels();
       fetchDataCalled.current = true;
     }
   }, [userInfo]);
 
-  // Update posts if data, search term, or selected model changes
   useEffect(() => {
     if (Array.isArray(data)) {
-      const normalizedSearch = searchTerm.trim().toUpperCase();
-      const filtered = data.filter((item) => {
-        const name = (item.model_name || '').trim().toUpperCase();
-        const type = (item.model_type || '').trim().toUpperCase();
-        const matchesSearch = normalizedSearch.length === 0 || name.includes(normalizedSearch) || type.includes(normalizedSearch);
-        const matchesModel = !selectedModel || name === selectedModel.trim().toUpperCase();
-        return matchesSearch && matchesModel;
-      });
-      setPosts(filtered);
+      setPosts(data);
     } else {
       setPosts([]);
     }
-  }, [data, searchTerm, selectedModel]);
+  }, [data]);
 
   const handleSearchInputChange = (e) => {
     setSearchTerm(e.target.value);
@@ -71,7 +74,7 @@ const useManageProducts = (userInfo) => {
   const totalModels = Array.isArray(data) ? data.length : 0;
 
   const modelOptions = Array.isArray(data)
-    ? Array.from(new Set(data.map((item) => item.model_name?.trim()).filter((name) => name))).sort((a, b) => a.localeCompare(b))
+    ? Array.from(new Set(data.map((item) => item.model_name?.trim()).filter((name) => name)))
     : [];
 
   const selectedModelInfo = (() => {
@@ -82,6 +85,26 @@ const useManageProducts = (userInfo) => {
     const totalQuantity = matchingItems.reduce((sum, item) => sum + (Number(item.wp_device_quantity) || 0), 0);
     return { quantity: totalQuantity, entries: matchingItems.length };
   })();
+
+  const getPaginatedData = () => {
+    return posts;
+  };
+
+  const getTotalPages = () => {
+    return Math.ceil(totalRecords / pageSize) || 1;
+  };
+
+  const handlePageChange = (newPage) => {
+    const maxPages = Math.ceil(totalRecords / pageSize) || 1;
+    if (newPage >= 1 && newPage <= maxPages) {
+      fetchProductModels(newPage, pageSize);
+    }
+  };
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    fetchProductModels(1, newSize);
+  };
 
   return {
     data,
@@ -96,6 +119,13 @@ const useManageProducts = (userInfo) => {
     selectedModelInfo,
     totalModels,
     fetchDataCalled,
+    currentPage,
+    pageSize,
+    totalRecords,
+    getPaginatedData,
+    getTotalPages,
+    handlePageChange,
+    handlePageSizeChange,
   };
 };
 

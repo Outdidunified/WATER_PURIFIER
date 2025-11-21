@@ -7,6 +7,7 @@ const multerImg = require('../middlewares/imgMiddleware');
 const nodemailer = require('nodemailer');
 const MODULES = require('./modules.config');
 const { normalizeDeliveryAddress } = require('../../../modules/website/models/DeliveryAddress');
+const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
 
 const resolvePlanDuration = (planConfig) => {
     if (!planConfig || typeof planConfig !== 'object') {
@@ -819,12 +820,15 @@ const AddProductModels = async (req, res) => {
 // FetchProductModels
 const FetchProductModels = async (req, res) => {
     try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
         const db = await database.connectToDatabase();
         const collection = db.collection("product_models");
 
-        const plans = await collection.find().toArray();
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const total = await collection.countDocuments();
+        const plans = await collection.find().sort({ _id: -1 }).skip(skip).limit(limit).toArray();
 
-        return res.status(200).json({ status: 'Success', data: plans });
+        return res.status(200).json(formatPaginatedResponse(plans, total, page, limit));
 
     } catch (error) {
         console.error("Error in productModels:", error);
@@ -1243,12 +1247,14 @@ const AddDeviceDetails = async (req, res) => {
 // FetchDeviceDetails
 const FetchDeviceDetails = async (req, res) => {
     try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
         const db = await database.connectToDatabase();
         const collection = db.collection("device_details");
 
-        const deviceDetails = await collection.find().toArray();
-
-        return res.status(200).json({ status: 'Success', data: deviceDetails });
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const total = await collection.countDocuments();
+        const deviceDetails = await collection.find().sort({ _id: -1 }).skip(skip).limit(limit).toArray();
+        return res.status(200).json(formatPaginatedResponse(deviceDetails, total, page, limit));
 
     } catch (error) {
         console.error("Error in FetchDeviceDetails:", error);
@@ -1323,12 +1329,15 @@ const UpdateDeviceDetails = async (req, res) => {
 // FetchCallRequest
 const FetchCallRequest = async (req, res) => {
     try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
         const db = await database.connectToDatabase();
         const collection = db.collection("callRequests");
 
-        const CallRequest = await collection.find().toArray();
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const total = await collection.countDocuments();
+        const CallRequest = await collection.find().sort({ created_date: -1 }).skip(skip).limit(limit).toArray();
 
-        return res.status(200).json({ status: 'Success', data: CallRequest });
+        return res.status(200).json(formatPaginatedResponse(CallRequest, total, page, limit));
 
     } catch (error) {
         console.error("Error in FetchCallRequest:", error);
@@ -1341,12 +1350,15 @@ const FetchCallRequest = async (req, res) => {
 // FetchContact
 const FetchContact = async (req, res) => {
     try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
         const db = await database.connectToDatabase();
         const collection = db.collection("contactUs");
 
-        const contact = await collection.find().toArray();
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const total = await collection.countDocuments();
+        const contact = await collection.find().sort({ created_date: -1 }).skip(skip).limit(limit).toArray();
 
-        return res.status(200).json({ status: 'Success', data: contact });
+        return res.status(200).json(formatPaginatedResponse(contact, total, page, limit));
 
     } catch (error) {
         console.error("Error in FetchContact:", error);
@@ -1359,12 +1371,18 @@ const FetchContact = async (req, res) => {
 // FetchOrders
 const FetchOrders = async (req, res) => {
     try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
         const db = await database.connectToDatabase();
         const ordersCollection = db.collection("orders");
         const usersCollection = db.collection("users");
 
-        // Get all orders
-        const orders = await ordersCollection.find().toArray();
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        
+        // Get total count first
+        const total = await ordersCollection.countDocuments();
+        
+        // Get paginated orders
+        const orders = await ordersCollection.find().sort({ _id: -1 }).skip(skip).limit(limit).toArray();
 
         // Extract unique numeric user_ids from orders
         const userIds = [...new Set(orders.map(order => order.user_id))];
@@ -1384,7 +1402,7 @@ const FetchOrders = async (req, res) => {
             email: userMap[order.user_id] || null,
         }));
 
-        return res.status(200).json({ status: 'Success', data: ordersWithEmails });
+        return res.status(200).json(formatPaginatedResponse(ordersWithEmails, total, page, limit));
 
     } catch (error) {
         console.error("Error in FetchOrders:", error);
@@ -1632,9 +1650,11 @@ const FetchUserRoles = async (req, res) => {
         const db = await database.connectToDatabase();
         const collection = db.collection("user_roles");
 
-        const userRoles = await collection.find().toArray();
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const total = await collection.countDocuments({});
+        const userRoles = await collection.find({}).sort({ created_date: -1 }).skip(skip).limit(limit).toArray();
 
-        return res.status(200).json({ status: 'Success', data: userRoles });
+        return res.status(200).json(formatPaginatedResponse(userRoles, total, page, limit));
 
     } catch (error) {
         console.error("Error in FetchUserRoles:", error);
@@ -2028,12 +2048,15 @@ const AddUsers = async (req, res) => {
 // FetchUsers
 const FetchUsers = async (req, res) => {
     try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
         const db = await database.connectToDatabase();
         const collection = db.collection("users");
 
-        const users = await collection.find().toArray();
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const total = await collection.countDocuments();
+        const users = await collection.find().sort({ _id: -1 }).skip(skip).limit(limit).toArray();
 
-        return res.status(200).json({ status: 'Success', data: users });
+        return res.status(200).json(formatPaginatedResponse(users, total, page, limit));
 
     } catch (error) {
         console.error("Error in FetchUsers:", error);
@@ -2168,19 +2191,65 @@ const UpdateUsers = async (req, res) => {
 // FetchInstallationService
 const FetchInstallationService = async (req, res) => {
     try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
         const db = await database.connectToDatabase();
         const ordersCollection = db.collection("orders");
 
+        // Pagination params - ensure 10 per page
+        const { page, limit, skip } = getPaginationParams(req, 10);
+
+        // Extract query parameters for filtering and sorting
+        const {
+            district,
+            date_from,
+            date_to,
+            payment_type,
+            sort_by = 'createdAt',
+            sort_order = 'desc'
+        } = req.query;
+
+        // Build match stage with filters
+        const matchStage = {
+            orderStatus: "Confirmed",
+            $or: [
+                { paymentType: "COD" },
+                { $and: [{ paymentType: "Online" }, { paymentStatus: "Completed" }] }
+            ]
+        };
+
+        // Add district filter
+        if (district && String(district).trim() !== '') {
+            matchStage['deliveryAddress.district'] = new RegExp(`^${String(district).trim()}$`, 'i');
+        }
+
+        // Add date range filter
+        if (date_from || date_to) {
+            matchStage.createdAt = {};
+            if (date_from) {
+                matchStage.createdAt.$gte = new Date(date_from);
+            }
+            if (date_to) {
+                matchStage.createdAt.$lte = new Date(date_to);
+            }
+        }
+
+        // Add payment type filter
+        if (payment_type && String(payment_type).trim() !== '') {
+            matchStage.paymentType = String(payment_type).trim();
+        }
+
+        const total = await ordersCollection.countDocuments(matchStage);
+
+        // Build sort stage
+        const sortStage = {};
+        const validSortFields = ['createdAt', 'customOrderId', 'grandTotal', '_id'];
+        const sortField = validSortFields.includes(sort_by) ? sort_by : 'createdAt';
+        const sortDirection = sort_order === 'asc' ? 1 : -1;
+        sortStage[sortField] = sortDirection;
+
         const installations = await ordersCollection.aggregate([
-            {
-                $match: {
-                    orderStatus: "Confirmed",
-                    $or: [
-                        { paymentType: "COD" },
-                        { $and: [{ paymentType: "Online" }, { paymentStatus: "Completed" }] }
-                    ]
-                }
-            },
+            { $match: matchStage },
+
             {
                 $lookup: {
                     from: "service_records",
@@ -2191,26 +2260,24 @@ const FetchInstallationService = async (req, res) => {
                                 $expr: {
                                     $and: [
                                         { $eq: ["$wp_device_id", "$$deviceId"] },
-                                        { $eq: ["$task_type", 1] } // installation task only
+                                        { $eq: ["$task_type", 1] }
                                     ]
                                 }
                             }
-                        }
+                        },
+                        { $sort: { task_id: -1 } },
+                        { $limit: 1 }
                     ],
                     as: "service_records"
                 }
             },
+
             {
                 $addFields: {
-                    service_records: {
-                        $cond: [
-                            { $gt: [{ $size: "$service_records" }, 0] },
-                            "$service_records",
-                            null
-                        ]
-                    }
+                    service_record: { $arrayElemAt: ["$service_records", 0] }
                 }
             },
+
             {
                 $lookup: {
                     from: "users",
@@ -2219,30 +2286,32 @@ const FetchInstallationService = async (req, res) => {
                     as: "user"
                 }
             },
+
             {
                 $addFields: {
-                    email: {
-                        $cond: [
-                            { $gt: [{ $size: "$user" }, 0] },
-                            { $arrayElemAt: ["$user.email", 0] },
-                            null
-                        ]
-                    }
+                    email: { $arrayElemAt: ["$user.email", 0] }
                 }
             },
-            {
-                $project: { user: 0 }
-            },
-            {
-                $sort: { createdAt: -1 }
-            }
+
+            { $project: { user: 0, service_records: 0 } },
+
+            { $sort: sortStage },
+
+            { $skip: skip },
+            { $limit: limit }
+
         ]).toArray();
 
-        return res.status(200).json({
-            status: "Success",
-            message: "Installations fetched successfully",
-            data: installations
-        });
+        // Add serial numbering starting from 1
+        const startSerial = (page - 1) * limit + 1;
+        const installationsWithSerial = installations.map((item, index) => ({
+            ...item,
+            serial_no: startSerial + index
+        }));
+
+        return res.status(200).json(
+            formatPaginatedResponse(installationsWithSerial, total, page, limit)
+        );
 
     } catch (error) {
         console.error("Error in FetchInstallationService:", error);
@@ -2254,37 +2323,45 @@ const FetchInstallationService = async (req, res) => {
 };
 
 
+
+
 // FetchSelectUserOrders
 const FetchSelectUserOrders = async (req, res) => {
     try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
         const db = await database.connectToDatabase();
         const ordersCollection = db.collection("orders");
 
-        // Get pending orders with service_records
-        const enrichedOrders = await ordersCollection.aggregate([
-            {
-                $match: {
-                    $expr: {
-                        $and: [
-                            { $eq: ["$orderStatus", "Confirmed"] },
+        const { page, limit, skip } = getPaginationParams(req, 10);
+
+        const matchStage = {
+            $expr: {
+                $and: [
+                    { $eq: ["$orderStatus", "Confirmed"] },
+                    {
+                        $or: [
                             {
-                                $or: [
+                                $eq: [
                                     {
-                                        $eq: [
-                                            {
-                                                $toUpper: {
-                                                    $ifNull: ["$paymentType", ""]
-                                                }
-                                            },
-                                            "COD"
-                                        ]
+                                        $toUpper: {
+                                            $ifNull: ["$paymentType", ""]
+                                        }
                                     },
-                                    { $eq: ["$paymentStatus", "Completed"] }
+                                    "COD"
                                 ]
-                            }
+                            },
+                            { $eq: ["$paymentStatus", "Completed"] }
                         ]
                     }
-                }
+                ]
+            }
+        };
+
+        const total = await ordersCollection.countDocuments(matchStage);
+
+        const enrichedOrders = await ordersCollection.aggregate([
+            {
+                $match: matchStage
             },
             {
                 $lookup: {
@@ -2337,14 +2414,16 @@ const FetchSelectUserOrders = async (req, res) => {
             },
             {
                 $project: { user: 0 }
+            },
+            {
+                $skip: skip
+            },
+            {
+                $limit: limit
             }
         ]).toArray();
 
-        return res.status(200).json({
-            status: 'Success',
-            message: 'Pending installation orders fetched successfully',
-            data: enrichedOrders
-        });
+        return res.status(200).json(formatPaginatedResponse(enrichedOrders, total, page, limit));
 
     } catch (error) {
         console.error("Error in FetchSelectUserOrders:", error);
@@ -2790,30 +2869,70 @@ if (
 // FetchSelectInstallationTask
 const FetchSelectInstallationTask = async (req, res) => {
     try {
+        const { page, limit, skip } = getPaginationParams(req);
         const db = await database.connectToDatabase();
         const ordersCollection = db.collection("orders");
 
-        const installations = await ordersCollection.aggregate([
+        const matchStage = {
+            orderStatus: "Confirmed",
+            $or: [
+                { paymentStatus: "Completed" },
+                {
+                    $expr: {
+                        $eq: [
+                            {
+                                $toUpper: {
+                                    $ifNull: ["$paymentType", ""]
+                                }
+                            },
+                            "COD"
+                        ]
+                    }
+                }
+            ]
+        };
+
+        // Count total records
+        const totalCountPipeline = [
+            { $match: matchStage },
             {
-                $match: {
-                    orderStatus: "Confirmed",
-                    $or: [
-                        { paymentStatus: "Completed" },
+                $lookup: {
+                    from: "service_records",
+                    let: { deviceId: "$wp_device_id" },
+                    pipeline: [
                         {
-                            $expr: {
-                                $eq: [
-                                    {
-                                        $toUpper: {
-                                            $ifNull: ["$paymentType", ""]
-                                        }
-                                    },
-                                    "COD"
-                                ]
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$wp_device_id", "$$deviceId"] },
+                                        { $eq: ["$task_type", 1] }
+                                    ]
+                                }
                             }
                         }
-                    ]
+                    ],
+                    as: "service_records"
                 }
             },
+            {
+                $addFields: {
+                    service_records: {
+                        $cond: [
+                            { $gt: [{ $size: "$service_records" }, 0] },
+                            "$service_records",
+                            null
+                        ]
+                    }
+                }
+            },
+            { $count: "total" }
+        ];
+
+        const countResult = await ordersCollection.aggregate(totalCountPipeline).toArray();
+        const total = countResult.length > 0 ? countResult[0].total : 0;
+
+        const installations = await ordersCollection.aggregate([
+            { $match: matchStage },
             {
                 $lookup: {
                     from: "service_records",
@@ -2865,14 +2984,15 @@ const FetchSelectInstallationTask = async (req, res) => {
             },
             {
                 $project: { user: 0 }
-            }
+            },
+            {
+                $sort: { createdAt: -1 }
+            },
+            { $skip: skip },
+            { $limit: limit }
         ]).toArray();
 
-        return res.status(200).json({
-            status: "Success",
-            message: "Installations fetched successfully",
-            data: installations
-        });
+        return res.status(200).json(formatPaginatedResponse(installations, total, page, limit));
 
     } catch (error) {
         console.error("Error in FetchSelectInstallationTask:", error);
@@ -2887,8 +3007,27 @@ const FetchSelectInstallationTask = async (req, res) => {
 // FetchSelectServiceTask
 const FetchSelectServiceTask = async (req, res) => {
     try {
+        const { page, limit, skip } = getPaginationParams(req);
         const db = await database.connectToDatabase();
         const collection = db.collection("service_records");
+
+        const countPipeline = [
+            { $match: { task_type: 2 } },
+            {
+                $lookup: {
+                    from: "orders",
+                    localField: "device_id",
+                    foreignField: "wp_device_id",
+                    as: "order"
+                }
+            },
+            { $addFields: { order: { $arrayElemAt: ["$order", 0] } } },
+            { $match: { "order.paymentStatus": "Completed" } },
+            { $count: "total" }
+        ];
+
+        const countResult = await collection.aggregate(countPipeline).toArray();
+        const total = countResult.length > 0 ? countResult[0].total : 0;
 
         const allServices = await collection.aggregate([
             { $match: { task_type: 2 } },
@@ -2985,18 +3124,19 @@ const FetchSelectServiceTask = async (req, res) => {
                     orderDelivery: 0,
                     normalizedAddress: 0
                 }
-            }
+            },
+            {
+                $sort: { createdAt: -1 }
+            },
+            { $skip: skip },
+            { $limit: limit }
         ]).toArray();
 
-        return res.status(200).json({
-            status: 'Success',
-            message: 'All service records fetched successfully',
-            data: allServices
-        });
+        return res.status(200).json(formatPaginatedResponse(allServices, total, page, limit));
 
     } catch (error) {
         console.error("Error in FetchSelectServiceTask:", error);
-        logger?.error?.(error); // Optional logger
+        logger?.error?.(error);
         return res.status(500).json({
             status: 'Failed',
             message: 'Internal Server Error'
@@ -3447,17 +3587,21 @@ const ReAssignService = async (req, res) => {
 // 1) Fetch sellers (role_id = 4). Optional district filter.
 const FetchSellers = async (req, res) => {
     try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
         const { district } = req.body || {};
         const db = await database.connectToDatabase();
         const usersCollection = db.collection('users');
+
+        const { page, limit, skip } = getPaginationParams(req, 10);
 
         const query = { role_id: 4 };
         if (district && String(district).trim() !== '') {
             query.district = new RegExp(`^${String(district).trim()}$`, 'i');
         }
 
-        const sellers = await usersCollection.find(query).toArray();
-        return res.status(200).json({ status: 'Success', data: sellers });
+        const total = await usersCollection.countDocuments(query);
+        const sellers = await usersCollection.find(query).skip(skip).limit(limit).toArray();
+        return res.status(200).json(formatPaginatedResponse(sellers, total, page, limit));
     } catch (error) {
         console.error('Error in FetchSellers:', error);
         logger?.error?.(error);
@@ -3509,7 +3653,11 @@ const FetchTechniciansByDistrict = async (req, res) => {
 
         const technicians = await usersCollection.find(query).toArray();
 
-        return res.status(200).json({ status: 'Success', data: technicians });
+        return res.status(200).json({
+            status: 'Success',
+            data: technicians,
+            total: technicians.length
+        });
     } catch (error) {
         console.error('Error in FetchTechniciansByDistrict:', error);
         logger?.error?.(error);
@@ -3577,8 +3725,12 @@ const GetUsersByDistrict = async (req, res) => {
             district: new RegExp(`^${String(district).trim()}$`, 'i'),
             role_id: { $in: [2, 3] }
         };
-        const users = await usersCollection.find(query).toArray();
-        return res.status(200).json({ status: 'Success', data: users });
+
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const total = await usersCollection.countDocuments(query);
+        const users = await usersCollection.find(query).sort({ _id: -1 }).skip(skip).limit(limit).toArray();
+
+        return res.status(200).json(formatPaginatedResponse(users, total, page, limit));
     } catch (error) {
         console.error('Error in GetUsersByDistrict:', error);
         logger?.error?.(error);
@@ -3586,7 +3738,6 @@ const GetUsersByDistrict = async (req, res) => {
     }
 };
 
-// 5) GET: Orders by district (deliveryAddress.district)
 const GetOrdersByDistrict = async (req, res) => {
     try {
         const { district } = req.query || {};
@@ -3597,13 +3748,19 @@ const GetOrdersByDistrict = async (req, res) => {
         const ordersCollection = db.collection('orders');
         const usersCollection = db.collection('users');
         const districtRegex = new RegExp(`^${String(district).trim()}$`, 'i');
-        const orders = await ordersCollection.find({ 'deliveryAddress.district': districtRegex }).toArray();
+        const query = { 'deliveryAddress.district': districtRegex };
+
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const total = await ordersCollection.countDocuments(query);
+        const orders = await ordersCollection.find(query).sort({ _id: -1 }).skip(skip).limit(limit).toArray();
+
         const userIds = [...new Set(orders.map(o => o.user_id))];
         const users = await usersCollection.find({ user_id: { $in: userIds } }).toArray();
         const userMap = {};
         users.forEach(u => { userMap[u.user_id] = u.email; });
         const ordersWithEmail = orders.map(o => ({ ...o, email: userMap[o.user_id] || null }));
-        return res.status(200).json({ status: 'Success', data: ordersWithEmail });
+
+        return res.status(200).json(formatPaginatedResponse(ordersWithEmail, total, page, limit));
     } catch (error) {
         console.error('Error in GetOrdersByDistrict:', error);
         logger?.error?.(error);
@@ -3614,6 +3771,7 @@ const GetOrdersByDistrict = async (req, res) => {
 const GetInstallationsByDistrict = async (req, res) => {
   try {
     const { district } = req.query || {};
+    const { page, limit, skip } = getPaginationParams(req);
 
     const db = await database.connectToDatabase();
     const ordersCollection = db.collection("orders");
@@ -3630,6 +3788,45 @@ const GetInstallationsByDistrict = async (req, res) => {
       // Case-insensitive regex
       matchStage["deliveryAddress.district"] = new RegExp(`^${String(district).trim()}$`, "i");
     }
+
+    // Count total records
+    const totalCountPipeline = [
+      { $match: matchStage },
+      {
+        $lookup: {
+          from: "service_records",
+          let: { deviceId: "$wp_device_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$wp_device_id", "$$deviceId"] },
+                    { $eq: ["$task_type", 1] }
+                  ]
+                }
+              }
+            }
+          ],
+          as: "service_records"
+        }
+      },
+      {
+        $addFields: {
+          service_records: {
+            $cond: [
+              { $gt: [{ $size: "$service_records" }, 0] },
+              "$service_records",
+              null
+            ]
+          }
+        }
+      },
+      { $count: "total" }
+    ];
+
+    const countResult = await ordersCollection.aggregate(totalCountPipeline).toArray();
+    const total = countResult.length > 0 ? countResult[0].total : 0;
 
     const installations = await ordersCollection.aggregate([
       { $match: matchStage },
@@ -3685,14 +3882,15 @@ const GetInstallationsByDistrict = async (req, res) => {
       // Only include orders that have installation records
       {
         $project: { user: 0 }
-      }
+      },
+      {
+        $sort: { createdAt: -1 }
+      },
+      { $skip: skip },
+      { $limit: limit }
     ]).toArray();
 
-    return res.status(200).json({
-      status: "Success",
-      message: "Installations fetched successfully",
-      data: installations
-    });
+    return res.status(200).json(formatPaginatedResponse(installations, total, page, limit));
 
   } catch (error) {
     console.error("Error in GetInstallationsByDistrict:", error);
@@ -3711,14 +3909,16 @@ const GetInstallationsByDistrict = async (req, res) => {
 const GetServicesByDistrict = async (req, res) => {
   try {
     const { district } = req.query || {};
+    const { page, limit, skip } = getPaginationParams(req);
     const db = await database.connectToDatabase();
     const serviceRecordsCollection = db.collection("service_records");
 
-    const pipeline = [
-      // Filter service_records for task_type = 2 (Services)
-      { $match: { task_type: 2 } },
+    const baseMatchStage = {
+      task_type: 2
+    };
 
-      // Resolve device id reference
+    const countPipeline = [
+      { $match: baseMatchStage },
       {
         $addFields: {
           resolvedDeviceId: {
@@ -3726,8 +3926,6 @@ const GetServicesByDistrict = async (req, res) => {
           }
         }
       },
-
-      // Lookup order to get delivery address and payment info
       {
         $lookup: {
           from: "orders",
@@ -3736,22 +3934,16 @@ const GetServicesByDistrict = async (req, res) => {
           as: "order"
         }
       },
-
-      // Flatten order array
       {
         $addFields: {
           order: { $arrayElemAt: ["$order", 0] }
         }
       },
-
-      // Extract delivery address for convenience
       {
         $addFields: {
           orderDelivery: "$order.deliveryAddress"
         }
       },
-
-      // Filter by district if provided
       ...(district && String(district).trim() !== ''
         ? [
             {
@@ -3766,11 +3958,55 @@ const GetServicesByDistrict = async (req, res) => {
             }
           ]
         : []),
-
-      // Only include paid orders
       { $match: { "order.paymentStatus": "Completed" } },
+      { $count: "total" }
+    ];
 
-      // Normalize address fields combining service record address and order delivery address
+    const countResult = await serviceRecordsCollection.aggregate(countPipeline).toArray();
+    const total = countResult.length > 0 ? countResult[0].total : 0;
+
+    const pipeline = [
+      { $match: baseMatchStage },
+      {
+        $addFields: {
+          resolvedDeviceId: {
+            $ifNull: ["$wp_device_id", "$device_id"]
+          }
+        }
+      },
+      {
+        $lookup: {
+          from: "orders",
+          localField: "resolvedDeviceId",
+          foreignField: "wp_device_id",
+          as: "order"
+        }
+      },
+      {
+        $addFields: {
+          order: { $arrayElemAt: ["$order", 0] }
+        }
+      },
+      {
+        $addFields: {
+          orderDelivery: "$order.deliveryAddress"
+        }
+      },
+      ...(district && String(district).trim() !== ''
+        ? [
+            {
+              $match: {
+                $expr: {
+                  $regexMatch: {
+                    input: { $ifNull: ["$orderDelivery.district", ""] },
+                    regex: new RegExp(String(district).trim(), "i")
+                  }
+                }
+              }
+            }
+          ]
+        : []),
+      { $match: { "order.paymentStatus": "Completed" } },
       {
         $addFields: {
           addressObject: {
@@ -3813,15 +4049,11 @@ const GetServicesByDistrict = async (req, res) => {
           }
         }
       },
-
-      // Ensure wp_device_id field always present
       {
         $addFields: {
           wp_device_id: { $ifNull: ["$wp_device_id", "$resolvedDeviceId"] }
         }
       },
-
-      // Clean up helper fields
       {
         $project: {
           device_id: 0,
@@ -3830,12 +4062,17 @@ const GetServicesByDistrict = async (req, res) => {
           addressObject: 0,
           resolvedDeviceId: 0
         }
-      }
+      },
+      {
+        $sort: { createdAt: -1 }
+      },
+      { $skip: skip },
+      { $limit: limit }
     ];
 
     const services = await serviceRecordsCollection.aggregate(pipeline).toArray();
 
-    return res.status(200).json({ status: 'Success', data: services });
+    return res.status(200).json(formatPaginatedResponse(services, total, page, limit));
 
   } catch (error) {
     console.error('Error in GetServicesByDistrict:', error);
@@ -4317,11 +4554,21 @@ const FetchManualRequests = async (req, res) => {
     const usersCollection = db.collection("users");
     const deviceDetailsCollection = db.collection("device_details");
 
-    const tasks = await serviceRecordsCollection.find({ task_type: 3 }).sort({ created_date: -1 }).toArray();
+    const { page, limit, skip } = getPaginationParams(req, 10);
 
-    if (!tasks.length) {
-      return res.status(200).json({ status: 'Success', data: [] });
+    const baseFilter = { task_type: 3 };
+    const total = await serviceRecordsCollection.countDocuments(baseFilter);
+
+    if (!total) {
+      return res.status(200).json(formatPaginatedResponse([], 0, page, limit));
     }
+
+    const tasks = await serviceRecordsCollection
+      .find(baseFilter)
+      .sort({ created_date: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
 
     const deviceIds = tasks
       .map(task => task.wp_device_id || task.device_id)
@@ -4470,9 +4717,210 @@ const FetchManualRequests = async (req, res) => {
         return task.district && task.district.toLowerCase() === requestDistrict;
       });
 
-    return res.status(200).json({ status: 'Success', data: response });
+    return res.status(200).json(formatPaginatedResponse(response, total, page, limit));
   } catch (error) {
     console.error('Error in FetchManualRequests:', error);
+    logger?.error?.(error);
+    return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+  }
+};
+
+const FetchManualRequestsBySellerDistrict = async (req, res) => {
+  try {
+    let sellerDistrict = '';
+
+    if (req.user?.role_id === 4) {
+      const db = await database.connectToDatabase();
+      const usersCollection = db.collection("users");
+
+      let requester = null;
+      if (req.user?.userId) {
+        try {
+          requester = await usersCollection.findOne({ _id: new ObjectId(req.user.userId) });
+        } catch (err) {
+          requester = null;
+        }
+      }
+
+      sellerDistrict = String(requester?.assigned_district || requester?.district || '').trim().toLowerCase();
+      if (!sellerDistrict) {
+        return res.status(400).json(formatPaginatedResponse([], 0, 1, 10));
+      }
+    }
+
+    const db = await database.connectToDatabase();
+    const serviceRecordsCollection = db.collection("service_records");
+    const ordersCollection = db.collection("orders");
+    const usersCollection = db.collection("users");
+    const deviceDetailsCollection = db.collection("device_details");
+
+    const { page, limit, skip } = getPaginationParams(req, 10);
+
+    const baseFilter = { task_type: 3 };
+    let total = await serviceRecordsCollection.countDocuments(baseFilter);
+
+    if (!total) {
+      return res.status(200).json(formatPaginatedResponse([], 0, page, limit));
+    }
+
+    const tasks = await serviceRecordsCollection
+      .find(baseFilter)
+      .sort({ created_date: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    const deviceIds = tasks
+      .map(task => task.wp_device_id || task.device_id)
+      .filter(Boolean);
+
+    const orders = deviceIds.length
+      ? await ordersCollection.find({ wp_device_id: { $in: deviceIds } }).toArray()
+      : [];
+
+    const deviceDetails = deviceIds.length
+      ? await deviceDetailsCollection.find({ wp_device_id: { $in: deviceIds } }).toArray()
+      : [];
+
+    const orderMap = new Map();
+    orders.forEach(order => {
+      if (order?.wp_device_id) {
+        orderMap.set(order.wp_device_id, order);
+      }
+    });
+
+    const deviceDetailMap = new Map();
+    deviceDetails.forEach(detail => {
+      if (detail?.wp_device_id) {
+        deviceDetailMap.set(detail.wp_device_id, detail);
+      }
+    });
+
+    const technicianIds = tasks
+      .map(task => task.assigned_technician_id)
+      .filter(Boolean);
+
+    const technicians = technicianIds.length
+      ? await usersCollection.find({ technician_id: { $in: technicianIds } }).toArray()
+      : [];
+
+    const technicianMap = new Map();
+    technicians.forEach(tech => {
+      if (tech?.technician_id) {
+        technicianMap.set(tech.technician_id, tech);
+      }
+    });
+
+    const response = tasks
+      .map(task => {
+        const deviceId = task.wp_device_id || task.device_id || '';
+        const order = orderMap.get(deviceId) || null;
+        const detail = deviceDetailMap.get(deviceId) || null;
+        const addressSource = task.deliveryAddress || task.address || order?.deliveryAddress || {};
+        const normalizedAddress = normalizeDeliveryAddress(addressSource || {});
+        const technician = task.assigned_technician_id ? technicianMap.get(task.assigned_technician_id) || null : null;
+        const planConfig = detail?.plan_config || {};
+        const currentPlan =
+          task.current_plan ||
+          planConfig?.name ||
+          planConfig?.planName ||
+          planConfig?.plan ||
+          planConfig?.totalWaterLimit ||
+          null;
+        const currentPlanEndDate = task.current_plan_end_date || planConfig?.endDate || null;
+        const currentDuration = task.current_duration || resolvePlanDuration(planConfig);
+        const macId = task.mac_id || detail?.mac_id || detail?.enter_mac_id || null;
+        const modelName = task.model_name || detail?.model_name || order?.modelName || null;
+        const modelType = task.model_type || detail?.model_type || order?.modelType || null;
+        const modelId = task.model_id || detail?.model_id || order?.model_id || null;
+        const detailId = task.device_detail_id || (detail?._id ? detail._id.toString() : null);
+
+        const sanitizedTask = { ...task };
+        delete sanitizedTask.address;
+        delete sanitizedTask.task_description;
+        delete sanitizedTask.metadata;
+        delete sanitizedTask.modelName;
+        delete sanitizedTask.modelType;
+        delete sanitizedTask.currentPlan;
+        delete sanitizedTask.currentPlanEndDate;
+        delete sanitizedTask.currentDuration;
+        delete sanitizedTask.macId;
+        delete sanitizedTask.deviceDetailId;
+        delete sanitizedTask.product;
+
+        const productSnapshot = buildProductSnapshot({
+          deviceId,
+          modelName,
+          planSources: [
+            task.product?.selectedPlan,
+            task.selectedPlan,
+            order?.selectedPlan,
+            detail?.selectedPlan,
+            detail?.plan_config?.selectedPlan,
+            detail?.plan_config?.plan,
+            detail?.plan_config?.plans,
+            detail?.plan_config
+          ],
+          durationSources: [
+            task.product?.selectedDuration,
+            task.selectedDuration,
+            order?.selectedDuration,
+            detail?.selectedDuration,
+            detail?.plan_config?.selectedDuration,
+            detail?.plan_config?.duration,
+            detail?.plan_config?.duration_details,
+            detail?.plan_config?.durationDetails,
+            task.current_duration ? { duration_time_limit: task.current_duration } : null
+          ]
+        });
+
+        return {
+          ...sanitizedTask,
+          deliveryAddress: addressSource || {},
+          order_snapshot: order
+            ? {
+                ...order,
+                _id: order._id ? order._id.toString() : null
+              }
+            : null,
+          district: normalizedAddress.district || task.district || '',
+          state: normalizedAddress.state || task.state || '',
+          city: normalizedAddress.city || task.city || '',
+          model_id: modelId,
+          model_name: modelName,
+          model_type: modelType,
+          current_plan: currentPlan,
+          current_plan_end_date: currentPlanEndDate,
+          current_duration: currentDuration,
+          mac_id: macId,
+          device_detail_id: detailId,
+          product: productSnapshot || null,
+          assignedTechnician: technician
+            ? {
+                technician_id: technician.technician_id,
+                name: technician.name,
+                email: technician.email,
+                phone: technician.phone || technician.mobile || null,
+                user_id: technician.user_id || null,
+                role_id: technician.role_id || null,
+                district: technician.district || technician.assigned_district || null
+              }
+            : null
+        };
+      })
+      .filter(task => {
+        if (!sellerDistrict) {
+          return true;
+        }
+        return task.district && task.district.toLowerCase() === sellerDistrict;
+      });
+
+    const filteredTotal = response.length;
+    const paginatedResponse = response.slice(0, limit);
+
+    return res.status(200).json(formatPaginatedResponse(paginatedResponse, filteredTotal, page, limit));
+  } catch (error) {
+    console.error('Error in FetchManualRequestsBySellerDistrict:', error);
     logger?.error?.(error);
     return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
   }
@@ -5365,25 +5813,21 @@ const GetAnalytics = async (req, res) => {
         const usersCollection = db.collection("users");
 
         const now = new Date();
+
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        
-        // Current week (Monday to Sunday)
-        const currentDayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-        const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1; // If Sunday, go back 6 days
+        const currentDayOfWeek = now.getDay();
+        const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
         const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday);
         startOfWeek.setHours(0, 0, 0, 0);
-        
-        // Current calendar month (from 1st to today)
+
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        
-        // Last 365 days (keep original behavior for year)
         const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
-        // ---------------- Helpers ----------------
+        // -------- Helpers ----------
         const countDocuments = (collection, filter) => collection.countDocuments(filter);
 
         const groupTimeline = async (collection, filter, groupId, labelField) => {
-            const result = await collection.aggregate([
+            return collection.aggregate([
                 { $match: filter },
                 {
                     $group: {
@@ -5394,10 +5838,16 @@ const GetAnalytics = async (req, res) => {
                         }
                     }
                 },
-                { $project: { [labelField]: "$_id", total: 1, successful: 1, _id: 0 } },
+                {
+                    $project: {
+                        [labelField]: "$_id",
+                        total: 1,
+                        successful: 1,
+                        _id: 0
+                    }
+                },
                 { $sort: { [labelField]: 1 } }
             ]).toArray();
-            return result;
         };
 
         const buildFixedBuckets = (range, results, labelKey = "label") => {
@@ -5414,14 +5864,13 @@ const GetAnalytics = async (req, res) => {
         };
 
         const groupRevenueTimeline = async (collection, filter, groupId, labelField) => {
-            const result = await collection.aggregate([
+            return collection.aggregate([
                 { $match: { ...filter, paymentStatus: "Completed" } },
-                { $addFields: { amount: { $ifNull: ["$totalPrice", "$grandTotal"] } } },
+                { $addFields: { amount: "$grandTotal" } },
                 { $group: { _id: groupId, revenue: { $sum: "$amount" } } },
                 { $project: { [labelField]: "$_id", revenue: 1, _id: 0 } },
                 { $sort: { [labelField]: 1 } }
             ]).toArray();
-            return result;
         };
 
         const buildRevenueBuckets = (range, results, labelKey = "label") => {
@@ -5436,9 +5885,8 @@ const GetAnalytics = async (req, res) => {
             return buckets;
         };
 
-        // ---------------- New Helper for Top Items per Timeframe ----------------
-        const getTopItems = async (collection, filter, groupByField, labelField = 'name', limit = 5) => {
-            const result = await collection.aggregate([
+        const getTopItems = async (collection, filter, groupByField, labelField = "name") => {
+            return collection.aggregate([
                 { $match: { ...filter, paymentStatus: "Completed" } },
                 {
                     $group: {
@@ -5446,9 +5894,8 @@ const GetAnalytics = async (req, res) => {
                         devicesSold: { $sum: { $ifNull: ["$quantity", 1] } }
                     }
                 },
-                { $match: { _id: { $ne: null, $ne: "Unknown", $exists: true } } }, // Exclude null, "Unknown", or missing names
+                { $match: { _id: { $ne: null, $exists: true } } },
                 { $sort: { devicesSold: -1 } },
-                { $limit: limit },
                 {
                     $project: {
                         [labelField]: "$_id",
@@ -5457,91 +5904,124 @@ const GetAnalytics = async (req, res) => {
                     }
                 }
             ]).toArray();
-            return result;
         };
 
-        // ---------------- Payments / Orders / Revenue Summary ----------------
+        // -------- Summary Counts --------
         const [
             paymentsTotal, paymentsSuccess, paymentsPending,
             ordersTotal, ordersSuccess, ordersPending,
             usersTotal, adminsCount, techniciansCount, endUsersCount, sellersCount
         ] = await Promise.all([
             countDocuments(paymentsCollection, {}),
-            countDocuments(paymentsCollection, { paymentStatus: 'Completed' }),
-            countDocuments(paymentsCollection, { paymentStatus: 'Pending' }),
+            countDocuments(paymentsCollection, { paymentStatus: "Completed" }),
+            countDocuments(paymentsCollection, { paymentStatus: "Pending" }),
             countDocuments(ordersCollection, {}),
-            countDocuments(ordersCollection, { paymentStatus: 'Completed' }),
-            countDocuments(ordersCollection, { paymentStatus: 'Pending' }),
+            countDocuments(ordersCollection, { paymentStatus: "Completed" }),
+            countDocuments(ordersCollection, { paymentStatus: "Pending" }),
             countDocuments(usersCollection, { role_id: { $in: [2, 3, 4] } }),
-            countDocuments(usersCollection, { role_id: 1 }), // Admin
-            countDocuments(usersCollection, { role_id: 2 }), // Technician
-            countDocuments(usersCollection, { role_id: 3 }), // End User
-            countDocuments(usersCollection, { role_id: 4 }) // Seller
+            countDocuments(usersCollection, { role_id: 1 }),
+            countDocuments(usersCollection, { role_id: 2 }),
+            countDocuments(usersCollection, { role_id: 3 }),
+            countDocuments(usersCollection, { role_id: 4 })
         ]);
 
-        // ---------------- Timelines ----------------
-        // Payments timelines
-        const paymentsTodayRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: startOfToday } }, { $hour: "$createdAt" }, "hour");
-        const paymentsWeekRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: startOfWeek } }, { $dayOfWeek: "$createdAt" }, "day");
-        const paymentsMonthRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: startOfMonth } }, { $dayOfMonth: "$createdAt" }, "day");
-        const paymentsYearRaw = await groupTimeline(paymentsCollection, { createdAt: { $gte: oneYearAgo } }, { $month: "$createdAt" }, "month");
-
+        // -------- Timelines --------
         const paymentsTimeline = {
-            today: buildFixedBuckets({ start: 0, end: 23 }, paymentsTodayRaw, "hour"),
-            week: buildFixedBuckets({ start: 1, end: 7 }, paymentsWeekRaw, "day"),
-            month: buildFixedBuckets({ start: 1, end: 31 }, paymentsMonthRaw, "day"),
-            year: buildFixedBuckets({ start: 1, end: 12 }, paymentsYearRaw, "month")
+            today: buildFixedBuckets(
+                { start: 0, end: 23 },
+                await groupTimeline(paymentsCollection, { createdAt: { $gte: startOfToday } }, { $hour: "$createdAt" }, "hour"),
+                "hour"
+            ),
+            week: buildFixedBuckets(
+                { start: 1, end: 7 },
+                await groupTimeline(paymentsCollection, { createdAt: { $gte: startOfWeek } }, { $dayOfWeek: "$createdAt" }, "day"),
+                "day"
+            ),
+            month: buildFixedBuckets(
+                { start: 1, end: 31 },
+                await groupTimeline(paymentsCollection, { createdAt: { $gte: startOfMonth } }, { $dayOfMonth: "$createdAt" }, "day"),
+                "day"
+            ),
+            year: buildFixedBuckets(
+                { start: 1, end: 12 },
+                await groupTimeline(paymentsCollection, { createdAt: { $gte: oneYearAgo } }, { $month: "$createdAt" }, "month"),
+                "month"
+            )
         };
-
-        // Orders timelines
-        const ordersTodayRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: startOfToday } }, { $hour: "$createdAt" }, "hour");
-        const ordersWeekRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: startOfWeek } }, { $dayOfWeek: "$createdAt" }, "day");
-        const ordersMonthRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: startOfMonth } }, { $dayOfMonth: "$createdAt" }, "day");
-        const ordersYearRaw = await groupTimeline(ordersCollection, { createdAt: { $gte: oneYearAgo } }, { $month: "$createdAt" }, "month");
 
         const ordersTimeline = {
-            today: buildFixedBuckets({ start: 0, end: 23 }, ordersTodayRaw, "hour"),
-            week: buildFixedBuckets({ start: 1, end: 7 }, ordersWeekRaw, "day"),
-            month: buildFixedBuckets({ start: 1, end: 31 }, ordersMonthRaw, "day"),
-            year: buildFixedBuckets({ start: 1, end: 12 }, ordersYearRaw, "month")
+            today: buildFixedBuckets(
+                { start: 0, end: 23 },
+                await groupTimeline(ordersCollection, { createdAt: { $gte: startOfToday } }, { $hour: "$createdAt" }, "hour"),
+                "hour"
+            ),
+            week: buildFixedBuckets(
+                { start: 1, end: 7 },
+                await groupTimeline(ordersCollection, { createdAt: { $gte: startOfWeek } }, { $dayOfWeek: "$createdAt" }, "day"),
+                "day"
+            ),
+            month: buildFixedBuckets(
+                { start: 1, end: 31 },
+                await groupTimeline(ordersCollection, { createdAt: { $gte: startOfMonth } }, { $dayOfMonth: "$createdAt" }, "day"),
+                "day"
+            ),
+            year: buildFixedBuckets(
+                { start: 1, end: 12 },
+                await groupTimeline(ordersCollection, { createdAt: { $gte: oneYearAgo } }, { $month: "$createdAt" }, "month"),
+                "month"
+            )
         };
 
-        // Revenue timelines (using orders collection)
-        const revenueTodayRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: startOfToday } }, { $hour: "$createdAt" }, "hour");
-        const revenueWeekRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: startOfWeek } }, { $dayOfWeek: "$createdAt" }, "day");
-        const revenueMonthRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: startOfMonth } }, { $dayOfMonth: "$createdAt" }, "day");
-        const revenueYearRaw = await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: oneYearAgo } }, { $month: "$createdAt" }, "month");
-
+        // Revenue timelines
         const revenueTimeline = {
-            today: buildRevenueBuckets({ start: 0, end: 23 }, revenueTodayRaw, "hour"),
-            week: buildRevenueBuckets({ start: 1, end: 7 }, revenueWeekRaw, "day"),
-            month: buildRevenueBuckets({ start: 1, end: 31 }, revenueMonthRaw, "day"),
-            year: buildRevenueBuckets({ start: 1, end: 12 }, revenueYearRaw, "month")
+            today: buildRevenueBuckets(
+                { start: 0, end: 23 },
+                await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: startOfToday } }, { $hour: "$createdAt" }, "hour"),
+                "hour"
+            ),
+            week: buildRevenueBuckets(
+                { start: 1, end: 7 },
+                await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: startOfWeek } }, { $dayOfWeek: "$createdAt" }, "day"),
+                "day"
+            ),
+            month: buildRevenueBuckets(
+                { start: 1, end: 31 },
+                await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: startOfMonth } }, { $dayOfMonth: "$createdAt" }, "day"),
+                "day"
+            ),
+            year: buildRevenueBuckets(
+                { start: 1, end: 12 },
+                await groupRevenueTimeline(ordersCollection, { createdAt: { $gte: oneYearAgo } }, { $month: "$createdAt" }, "month"),
+                "month"
+            )
         };
 
-        // ---------------- Revenue totals ----------------
         const totalRevenueResult = await ordersCollection.aggregate([
             { $match: { paymentStatus: "Completed" } },
-            { $addFields: { amount: { $ifNull: ["$totalPrice", "$grandTotal"] } } },
+            { $addFields: { amount: "$grandTotal" } },
             { $group: { _id: null, total: { $sum: "$amount" } } }
         ]).toArray();
-        const totalRevenue = totalRevenueResult.length > 0 ? totalRevenueResult[0].total : 0;
 
-        // ---------------- Top Districts per Timeframe ----------------
-        const topDistrictsOverall = await getTopItems(ordersCollection, {}, "deliveryAddress.district", "districtName");
-        const topDistrictsToday = await getTopItems(ordersCollection, { createdAt: { $gte: startOfToday } }, "deliveryAddress.district", "districtName");
-        const topDistrictsWeek = await getTopItems(ordersCollection, { createdAt: { $gte: startOfWeek } }, "deliveryAddress.district", "districtName");
-        const topDistrictsMonth = await getTopItems(ordersCollection, { createdAt: { $gte: startOfMonth } }, "deliveryAddress.district", "districtName");
-        const topDistrictsYear = await getTopItems(ordersCollection, { createdAt: { $gte: oneYearAgo } }, "deliveryAddress.district", "districtName");
+        const totalRevenue = totalRevenueResult[0]?.total || 0;
 
-        // ---------------- Top Models per Timeframe ----------------
-        const topModelsOverall = await getTopItems(ordersCollection, {}, "modelName", "modelName");
-        const topModelsToday = await getTopItems(ordersCollection, { createdAt: { $gte: startOfToday } }, "modelName", "modelName");
-        const topModelsWeek = await getTopItems(ordersCollection, { createdAt: { $gte: startOfWeek } }, "modelName", "modelName");
-        const topModelsMonth = await getTopItems(ordersCollection, { createdAt: { $gte: startOfMonth } }, "modelName", "modelName");
-        const topModelsYear = await getTopItems(ordersCollection, { createdAt: { $gte: oneYearAgo } }, "modelName", "modelName");
+        // -------- Top items --------
+        const topDistricts = {
+            overall: await getTopItems(ordersCollection, {}, "deliveryAddress.district", "districtName"),
+            today: await getTopItems(ordersCollection, { createdAt: { $gte: startOfToday } }, "deliveryAddress.district", "districtName"),
+            week: await getTopItems(ordersCollection, { createdAt: { $gte: startOfWeek } }, "deliveryAddress.district", "districtName"),
+            month: await getTopItems(ordersCollection, { createdAt: { $gte: startOfMonth } }, "deliveryAddress.district", "districtName"),
+            year: await getTopItems(ordersCollection, { createdAt: { $gte: oneYearAgo } }, "deliveryAddress.district", "districtName")
+        };
 
-        // ---------------- Payload ----------------
+        const topModels = {
+            overall: await getTopItems(ordersCollection, {}, "modelName", "modelName"),
+            today: await getTopItems(ordersCollection, { createdAt: { $gte: startOfToday } }, "modelName", "modelName"),
+            week: await getTopItems(ordersCollection, { createdAt: { $gte: startOfWeek } }, "modelName", "modelName"),
+            month: await getTopItems(ordersCollection, { createdAt: { $gte: startOfMonth } }, "modelName", "modelName"),
+            year: await getTopItems(ordersCollection, { createdAt: { $gte: oneYearAgo } }, "modelName", "modelName")
+        };
+
+        // --------- FINAL PAYLOAD (Same As Old) ---------
         const payload = {
             payments: { total: paymentsTotal, successful: paymentsSuccess, pending: paymentsPending, timeline: paymentsTimeline },
             orders: { total: ordersTotal, successful: ordersSuccess, pending: ordersPending, timeline: ordersTimeline },
@@ -5553,22 +6033,9 @@ const GetAnalytics = async (req, res) => {
                 end_user: endUsersCount,
                 seller: sellersCount
             },
-            topDistricts: {
-                overall: topDistrictsOverall,
-                today: topDistrictsToday,
-                week: topDistrictsWeek,
-                month: topDistrictsMonth,
-                year: topDistrictsYear
-            },
-            topModels: {
-                overall: topModelsOverall,
-                today: topModelsToday,
-                week: topModelsWeek,
-                month: topModelsMonth,
-                year: topModelsYear
-            }
+            topDistricts,
+            topModels
         };
-
 
         return res.status(200).json({ status: "Success", data: payload });
 
@@ -5577,6 +6044,7 @@ const GetAnalytics = async (req, res) => {
         return res.status(500).json({ status: "Failed", message: "Internal Server Error" });
     }
 };
+
 // Get Analytics by District
 const GetAnalyticsByDistrict = async (req, res) => {
   try {
@@ -5646,7 +6114,7 @@ const GetAnalyticsByDistrict = async (req, res) => {
     const groupRevenueTimeline = async (collection, filter, groupId, labelField) => {
       const result = await collection.aggregate([
         { $match: { ...filter, paymentStatus: 'Completed' } },
-        { $addFields: { amount: { $ifNull: ['$totalPrice', '$grandTotal'] } } },
+        { $addFields: { amount: '$grandTotal' } },
         { $group: { _id: groupId, revenue: { $sum: '$amount' } } },
         { $project: { [labelField]: '$_id', revenue: 1, _id: 0 } },
         { $sort: { [labelField]: 1 } }
@@ -5663,8 +6131,8 @@ const GetAnalyticsByDistrict = async (req, res) => {
       return buckets;
     };
 
-    const getTopItems = async (collection, filter, groupByField, labelField = 'name', limit = 5) => {
-      const result = await collection.aggregate([
+    const getTopItems = async (collection, filter, groupByField, labelField = 'name', limit = null) => {
+      const pipeline = [
         { $match: { ...filter, paymentStatus: 'Completed', 'deliveryAddress.district': districtRegex } },
         {
           $group: {
@@ -5673,16 +6141,22 @@ const GetAnalyticsByDistrict = async (req, res) => {
           }
         },
         { $match: { _id: { $ne: null, $ne: 'Unknown', $exists: true } } },
-        { $sort: { devicesSold: -1 } },
-        { $limit: limit },
-        {
-          $project: {
-            [labelField]: '$_id',
-            devicesSold: 1,
-            _id: 0
-          }
+        { $sort: { devicesSold: -1 } }
+      ];
+      
+      if (limit) {
+        pipeline.push({ $limit: limit });
+      }
+      
+      pipeline.push({
+        $project: {
+          [labelField]: '$_id',
+          devicesSold: 1,
+          _id: 0
         }
-      ]).toArray();
+      });
+
+      const result = await collection.aggregate(pipeline).toArray();
       return result;
     };
 
@@ -5746,7 +6220,7 @@ const GetAnalyticsByDistrict = async (req, res) => {
 
     const totalRevenueResult = await ordersCollection.aggregate([
       { $match: { ...orderFilterBase, paymentStatus: 'Completed' } },
-      { $addFields: { amount: { $ifNull: ['$totalPrice', '$grandTotal'] } } },
+      { $addFields: { amount: '$grandTotal' } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]).toArray();
     const totalRevenue = totalRevenueResult[0]?.total || 0;
@@ -5763,7 +6237,6 @@ const GetAnalyticsByDistrict = async (req, res) => {
         },
         { $match: { _id: { $ne: null, $ne: 'Unknown', $exists: true } } },
         { $sort: { devicesSold: -1 } },
-        { $limit: 1 }, // Only the requested district
         {
           $project: {
             districtName: '$_id',
@@ -6136,7 +6609,7 @@ module.exports = {
     getModules, authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
     UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders, AddUserRoles, FetchUserRoles, UpdateUserRoles,
     AddUsers, FetchUsers, FetchSellers, FetchOrdersByDistrict, FetchTechniciansByDistrict, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
-    FetchSelectServiceTask, AssignService, ReAssignService, FetchInstalledDevicesForRequests, CreateManualRequest, FetchManualRequests, AssignManualRequest, ReAssignManualRequest, assignPermissions, fetchPermissionsByRole,
+    FetchSelectServiceTask, AssignService, ReAssignService, FetchInstalledDevicesForRequests, CreateManualRequest, FetchManualRequests, FetchManualRequestsBySellerDistrict, AssignManualRequest, ReAssignManualRequest, assignPermissions, fetchPermissionsByRole,
     GetUsersByDistrict, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
     AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchEndUserDevices, FetchOrdersByUserId, FetchTechnicianTasksByUserId, GetAnalytics,
     GetAnalyticsByDistrict,GetDistrictsWithSellers,ConfirmCodPayment, UnAssignTask, getAssignmentHistory

@@ -8,6 +8,7 @@ import InputField from '../../../../utils/InputField';
 import { formatTimestamp } from '../../../../utils/formatTimestamp';
 import useManageOrders from '../../hooks/ManageOrders/ManageOrdersHooks';
 import { useNavigate } from 'react-router-dom';
+import Pagination from '../../components/Pagination/Pagination';
 
 const ManageOrders = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
@@ -33,6 +34,13 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
     calculateOrderSummary,
     selectedFilter,
     handleFilterSelect,
+    currentPage,
+    pageSize,
+    totalRecords,
+    getPaginatedData,
+    getTotalPages,
+    handlePageChange,
+    handlePageSizeChange,
   } = useManageOrders(userInfo);
 
   const orderSummary = calculateOrderSummary(orders);
@@ -409,10 +417,10 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                           ) : error ? (
                             <tr style={{ height: '36px' }}><td colSpan="13">Error: {error}</td></tr>
                           ) : (
-                            (filteredOrders || []).length > 0 ? (
-                              filteredOrders.map((order, index) => (
+                            (getPaginatedData() || []).length > 0 ? (
+                              getPaginatedData().map((order, index) => (
                                 <tr key={order._id} style={{ height: '36px' }}>
-                                  <td style={{ padding: '4px 2px' }}>{index + 1}</td>
+                                  <td style={{ padding: '4px 2px' }}>{(currentPage - 1) * pageSize + index + 1}</td>
                                   <td style={{ padding: '4px 2px' }}>{order.customOrderId}</td>
                                   <td style={{ padding: '4px 4px', maxWidth: '200px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.modelName}</td>
                                   <td style={{ padding: '4px 2px', maxWidth: '60px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.selectedPlan?.label}</td>
@@ -469,6 +477,17 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                         </tbody>
                       </table>
                     </div>
+
+                    {totalRecords > 0 && (
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={getTotalPages()}
+                        pageSize={pageSize}
+                        onPageChange={handlePageChange}
+                        onPageSizeChange={handlePageSizeChange}
+                        totalRecords={totalRecords}
+                      />
+                    )}
                   </div>
                 </div>
               </div>

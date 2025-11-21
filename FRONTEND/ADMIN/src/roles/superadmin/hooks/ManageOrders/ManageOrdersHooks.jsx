@@ -17,17 +17,22 @@ const useManageOrders = (userInfo) => {
     const [codConfirmationLoading, setCodConfirmationLoading] = useState(false);
     const [selectedFilter, setSelectedFilter] = useState('');
     const [searchText, setSearchText] = useState('');
+    
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [totalRecords, setTotalRecords] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
 
     const fetchOrdersCalled = useRef(false);
 
-    const fetchOrders = async () => {
+    const fetchOrders = async (pageNum = 1, pageLimit = 10) => {
         try {
             setLoading(true);
             const isSeller = Number(userInfo?.role_id) === 4;
             const url = isSeller ? '/api/admin/orders/by-district' : 'api/admin/FetchOrders';
             const res = isSeller
-              ? await axiosInstance.get(url, { params: { district: userInfo?.district } })
-              : await axiosInstance.post(url);
+              ? await axiosInstance.get(url, { params: { district: userInfo?.district, page: pageNum, limit: pageLimit } })
+              : await axiosInstance.post(url, { page: pageNum, limit: pageLimit });
             if (res.data.status === 'Success') {
                 const sortedOrders = [...res.data.data].sort((a, b) => {
                     const toTimestamp = (order) => {
@@ -48,6 +53,13 @@ const useManageOrders = (userInfo) => {
 
                 setOrders(sortedOrders);
                 setFilteredOrders(sortedOrders);
+                
+                if (res.data.pagination) {
+                    setCurrentPage(res.data.pagination.currentPage);
+                    setPageSize(res.data.pagination.pageSize);
+                    setTotalRecords(res.data.pagination.totalRecords);
+                    setTotalPages(res.data.pagination.totalPages);
+                }
             } else {
                 showErrorAlert('Error', 'Failed to fetch orders');
             }
@@ -177,7 +189,6 @@ const useManageOrders = (userInfo) => {
   const handleSearchInputChange = (e) => {
     const inputValue = e.target.value.toUpperCase();
     setSearchText(inputValue);
-    applyFilters(selectedFilter, inputValue);
   };
 
   const applyFilters = (filterType, searchQuery) => {
@@ -228,11 +239,28 @@ const useManageOrders = (userInfo) => {
   const handleFilterSelect = (filterType) => {
     if (selectedFilter === filterType) {
       setSelectedFilter('');
-      setFilteredOrders(orders);
     } else {
       setSelectedFilter(filterType);
-      applyFilters(filterType, searchText);
     }
+    fetchOrders(1, pageSize);
+  };
+
+  const getPaginatedData = () => {
+    return orders;
+  };
+
+  const getTotalPages = () => {
+    return totalPages;
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      fetchOrders(newPage, pageSize);
+    }
+  };
+
+  const handlePageSizeChange = (newSize) => {
+    fetchOrders(1, newSize);
   };
 
 
@@ -298,6 +326,14 @@ const useManageOrders = (userInfo) => {
         calculateOrderSummary,
         selectedFilter,
         handleFilterSelect,
+        currentPage,
+        pageSize,
+        totalRecords,
+        totalPages,
+        getPaginatedData,
+        getTotalPages,
+        handlePageChange,
+        handlePageSizeChange,
     };
 };
 

@@ -4,6 +4,7 @@ import Sidebar from '../../components/Sidebar';
 import Footer from '../../components/Footer';
 import InputField from '../../../../utils/InputField';
 import useManageCallRequests from '../../hooks/ManageCallRequests/ManageCallRequestsHooks';
+import Pagination from '../../components/Pagination/Pagination';
 
 const ManageCallRequests = ({ userInfo, handleLogout }) => {
   const {
@@ -11,6 +12,12 @@ const ManageCallRequests = ({ userInfo, handleLogout }) => {
     loading,
     error,
     handleSearchInputChange,
+    currentPage,
+    pageSize,
+    totalRecords,
+    totalPages,
+    handlePageChange,
+    handlePageSizeChange,
   } = useManageCallRequests(userInfo);
 
   const formatDateTime = (timestamp) => {
@@ -108,6 +115,14 @@ const ManageCallRequests = ({ userInfo, handleLogout }) => {
                         </tbody>
                       </table>
                     </div>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      pageSize={pageSize}
+                      onPageChange={handlePageChange}
+                      onPageSizeChange={handlePageSizeChange}
+                      totalRecords={totalRecords}
+                    />
                   </div>
                 </div>
               </div>

@@ -554,6 +554,7 @@ async function autoAssignInstallation(order) {
             console.log(`Found technician ${technician.technician_id} for installation but district mismatch, leaving task unassigned`);
         } else {
             const otp = Math.floor(100000 + Math.random() * 900000);
+            const estimatedEnd = new Date(now.getTime() + 3 * 60 * 60 * 1000); // 3 hours from assignment
 
             // Assign the task
             await serviceRecords.updateOne(
@@ -563,6 +564,7 @@ async function autoAssignInstallation(order) {
                         task_status: "Pending",
                         assigned_technician_id: technician.technician_id,
                         assigned_date: now,
+                        estimated_end: estimatedEnd,
                         otp: otp,
                         assigned_by: 'system',
                         pending_reason: null

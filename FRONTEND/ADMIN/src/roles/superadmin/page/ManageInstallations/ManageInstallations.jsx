@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import InputField from '../../../../utils/InputField';
 import { showErrorAlert } from '../../../../utils/alert';
 import useManageInstallation from '../../hooks/ManageInstallations/ManageInstallationsHooks'; // singular
+import Pagination from '../../components/Pagination/Pagination';
 
 const ManageInstallations = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
@@ -22,6 +23,12 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
     summary,
     selectedFilter,
     handleFilterSelect,
+    pageNum,
+    pageSize,
+    totalRecords,
+    totalPages,
+    handlePageChange,
+    handlePageSizeChange,
   } = useManageInstallation(userInfo);
   // Modal state
   const [assignModalOpen, setAssignModalOpen] = useState(false);
@@ -467,6 +474,17 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
 
                       </table>
                     </div>
+
+                    {totalRecords > 0 && (
+                      <Pagination
+                        currentPage={pageNum}
+                        totalPages={totalPages}
+                        pageSize={pageSize}
+                        onPageChange={handlePageChange}
+                        onPageSizeChange={handlePageSizeChange}
+                        totalRecords={totalRecords}
+                      />
+                    )}
                   </div>
                 </div>
               </div>

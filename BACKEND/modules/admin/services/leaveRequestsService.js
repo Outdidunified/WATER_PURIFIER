@@ -280,6 +280,61 @@ async function sendRejectionEmail(leaveRequest, rejectionReason) {
     }
 }
 
+/**
+ * Get leave requests by seller's district
+ */
+async function getLeaveRequestsByDistrict(sellerDistrict) {
+    try {
+        const db = await connectToDatabase();
+        const leaveRequestsCollection = db.collection('leave_requests');
+        const usersCollection = db.collection('users');
+
+        // Get all leave requests
+        const leaveRequests = await leaveRequestsCollection
+            .find({})
+            .sort({ requested_date: -1 })
+            .toArray();
+
+        // Get unique technician IDs
+        const technicianIds = [...new Set(leaveRequests.map(leave => leave.technician_id))];
+
+        // Fetch technician details including district
+        const technicians = await usersCollection
+            .find({ technician_id: { $in: technicianIds } })
+            .project({ technician_id: 1, district: 1, assigned_district: 1, name: 1, email: 1 })
+            .toArray();
+
+        // Create a map of technician_id to district
+        const technicianMap = {};
+        technicians.forEach(tech => {
+            technicianMap[tech.technician_id] = {
+                district: tech.district || tech.assigned_district,
+                name: tech.name,
+                email: tech.email
+            };
+        });
+
+        // Filter leave requests by seller's district
+        const filteredLeaveRequests = leaveRequests.filter(leave => {
+            const techInfo = technicianMap[leave.technician_id];
+            return techInfo && techInfo.district && 
+                   techInfo.district.toLowerCase() === sellerDistrict.toLowerCase();
+        });
+
+        // Add technician info to each leave request
+        const leaveRequestsWithTechInfo = filteredLeaveRequests.map(leave => ({
+            ...leave,
+            technician_district: technicianMap[leave.technician_id]?.district || null,
+            technician_name: technicianMap[leave.technician_id]?.name || leave.technician_name || null,
+            technician_email: technicianMap[leave.technician_id]?.email || leave.technician_email || null
+        }));
+
+        return leaveRequestsWithTechInfo;
+    } catch (error) {
+        throw new Error(`Failed to fetch leave requests by district: ${error.message}`);
+    }
+}
+
 module.exports = {
     getAllLeaveRequests,
     getLeaveRequestById,
@@ -288,4 +343,5 @@ module.exports = {
     rejectLeaveRequest,
     sendApprovalEmail,
     sendRejectionEmail,
+    getLeaveRequestsByDistrict,
 };

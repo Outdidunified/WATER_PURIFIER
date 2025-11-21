@@ -10,6 +10,12 @@ const Controller = require('../controllers/leaveRequestsController');
 router.get('/leave-requests', verifyToken, Controller.FetchLeaveRequests);
 
 /**
+ * GET: Fetch leave requests by seller's district
+ * Query params: page, limit (optional, default 10)
+ */
+router.get('/leave-requests-by-district', verifyToken, Controller.FetchLeaveRequestsBySellerDistrict);
+
+/**
  * GET: Fetch single leave request with technician's pending tasks
  */
 router.get('/leave-requests/:leaveRequestId', verifyToken, Controller.GetLeaveRequestDetails);

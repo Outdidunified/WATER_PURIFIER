@@ -146,6 +146,7 @@ router.post('/UnAssignTask', verifyToken, Controller.UnAssignTask);
 router.post('/FetchInstalledDevicesForRequests', verifyToken, Controller.FetchInstalledDevicesForRequests);
 router.post('/CreateManualRequest', verifyToken, Controller.CreateManualRequest);
 router.post('/FetchManualRequests', verifyToken, Controller.FetchManualRequests);
+router.post('/FetchManualRequestsBySellerDistrict', verifyToken, Controller.FetchManualRequestsBySellerDistrict);
 router.post('/AssignManualRequest', verifyToken, Controller.AssignManualRequest);
 router.post('/ReAssignManualRequest', verifyToken, Controller.ReAssignManualRequest);
 

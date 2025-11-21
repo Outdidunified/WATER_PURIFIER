@@ -18,8 +18,10 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
     navigate('/superadmin/EditProducts', { state: { dataItem: product } });
   };
 
-  const renderPlansForDuration = (duration) => {
-    if (!duration.plans?.length) {
+  const renderPlansForDuration = (duration, allPlans) => {
+    const plansToDisplay = duration.plans && duration.plans.length > 0 ? duration.plans : allPlans;
+    
+    if (!plansToDisplay?.length) {
       return <p className="text-muted mb-0">No plans configured.</p>;
     }
 
@@ -34,7 +36,7 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
             </tr>
           </thead>
           <tbody>
-            {duration.plans.map(plan => (
+            {plansToDisplay.map(plan => (
               <tr key={plan.plans_id}>
                 <td>{plan.label || '-'}</td>
                 <td>{plan.label === 'unlimited' ? 'Unlimited' : (plan.capacity || '-')}</td>
@@ -173,7 +175,7 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
                           </div>
                         </div>
 
-                        {renderPlansForDuration(duration)}
+                        {renderPlansForDuration(duration, product.plans)}
                       </div>
                     </div>
                   ))

@@ -8,6 +8,7 @@ import {
 } from '../../../../utils/alert';
 
 const generateUniqueId = () => Date.now() + Math.floor(Math.random() * 1000);
+const allowedDurations = ['28 days', '60 days', '90 days', '180 days', '360 days'];
 
 const createEmptyPlan = () => ({
   plans_id: generateUniqueId(),
@@ -46,6 +47,9 @@ const useEditProducts = (userInfo) => {
   const [errorMessage, setErrorMessage] = useState('');
   const [productData, setProductData] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [durationChanged, setDurationChanged] = useState(false);
+  const [allDurationsUsed, setAllDurationsUsed] = useState(false);
 
   useEffect(() => {
     if (fetchDataCalled.current) return;
@@ -82,11 +86,15 @@ const useEditProducts = (userInfo) => {
       );
       setConnectivity(connectivityArray);
 
-      const statusValue =
-        data.status === 1 || data.status === '1' || data.status === true
-          ? 'true'
-          : 'false';
+      let statusValue = 'false';
+      if (data.status === 'finished' || data.status === 'Finished') {
+        statusValue = 'finished';
+      } else if (data.status === 1 || data.status === '1' || data.status === true) {
+        statusValue = 'true';
+      }
       setStatus(statusValue);
+
+      const productLevelPlans = Array.isArray(data.plans) ? data.plans : [];
 
       const parsedDurations = data.duration?.length > 0
         ? data.duration.map((d) => ({
@@ -95,7 +103,7 @@ const useEditProducts = (userInfo) => {
             gst: d.gst?.toString() || '',
             discount: d.discount?.toString() || '',
             security_deposit: d.security_deposit?.toString() || '',
-            plans: (d.plans || []).map(p => ({
+            plans: (d.plans && d.plans.length > 0 ? d.plans : productLevelPlans).map(p => ({
               plans_id: p.plans_id ?? generateUniqueId(),
               label: p.label?.toLowerCase() || '',
               capacity: p.capacity?.toString() || '',
@@ -127,6 +135,8 @@ const useEditProducts = (userInfo) => {
         durations: parsedDurations,
         status: statusValue
       };
+
+      setIsEditMode(true);
     }
 
     fetchDataCalled.current = true;
@@ -159,6 +169,23 @@ const useEditProducts = (userInfo) => {
 
     setHasChanges(changed);
   }, [modelName, modelType, productDetails, wpDeviceQuantity, connectivity, status, durations, mainImage, productSpecifications, subImages]);
+
+  useEffect(() => {
+    if (isEditMode && originalDataRef.current) {
+      const durationChanged = JSON.stringify(durations) !== JSON.stringify(originalDataRef.current.durations);
+      setDurationChanged(durationChanged);
+    }
+  }, [durations, isEditMode]);
+
+  useEffect(() => {
+    const usedDurations = durations
+      .map(d => d.duration_time_limit?.toLowerCase().trim())
+      .filter(d => d);
+    const allUsed = allowedDurations.every(allowed => 
+      usedDurations.includes(allowed.toLowerCase().trim())
+    );
+    setAllDurationsUsed(allUsed);
+  }, [durations]);
 
   const backToManagePage = () => navigate('/superadmin/ManageProducts');
 
@@ -443,7 +470,7 @@ const useEditProducts = (userInfo) => {
     formData.append('main_img', mainImage);
     formData.append('createdby', userInfo.email);
     formData.append('modifiedby', userInfo.email);
-    formData.append('status', status === 'true');
+    formData.append('status', status === 'finished' ? 'finished' : (status === 'true'));
 
     subImages.forEach((img, i) => {
       if (img) formData.append(`sub_img_${i + 1}`, img);
@@ -516,6 +543,9 @@ const useEditProducts = (userInfo) => {
     setStatus,
     modelType,
     setModelType,
+    isEditMode,
+    durationChanged,
+    allDurationsUsed,
   };
 };
 

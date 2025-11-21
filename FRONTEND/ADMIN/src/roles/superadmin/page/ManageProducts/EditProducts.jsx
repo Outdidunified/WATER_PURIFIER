@@ -43,6 +43,9 @@ const EditProducts = ({ userInfo, handleLogout }) => {
     removeSubImage,
     modelType,
     setModelType,
+    isEditMode,
+    durationChanged,
+    allDurationsUsed,
   } = useEditProducts(userInfo);
 
   const backManageDevice = () => navigate('/superadmin/ManageProducts');
@@ -214,6 +217,7 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                       >
                         <option value="true">Active</option>
                         <option value="false">Inactive</option>
+                        <option value="finished">Finished</option>
                       </select>
                     </div>
                   </div>
@@ -434,7 +438,12 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                         </div>
                       );
                     })}
-                    <button type="button" className="btn btn-outline-primary btn-sm" onClick={addDuration}>
+                    <button 
+                      type="button" 
+                      className="btn btn-outline-primary btn-sm" 
+                      onClick={addDuration}
+                      disabled={status === 'finished' || allDurationsUsed}
+                    >
                       Add Duration
                     </button>
                   </div>

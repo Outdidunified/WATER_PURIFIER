@@ -19,8 +19,12 @@ const useManageRequests = (userInfo) => {
     inProgress: 0,
     rejected: 0,
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
-  const calculateRequestSummary = (reqs) => {
+  const calculateRequestSummary = useCallback((reqs) => {
     const counts = {
       total: reqs.length,
       pending: 0,
@@ -38,7 +42,7 @@ const useManageRequests = (userInfo) => {
     });
 
     return counts;
-  };
+  }, []);
 
   const isSeller = Number(userInfo?.role_id) === 4;
   const sellerDistrict = userInfo?.district || '';
@@ -48,11 +52,12 @@ const useManageRequests = (userInfo) => {
     return res.data?.data || [];
   }, []);
 
-  const fetchRequests = useCallback(async () => {
-    const payload = isSeller ? { district: sellerDistrict } : {};
-    const res = await axiosInstance.post('/api/admin/FetchManualRequests', payload);
-    return res.data?.data || [];
-  }, [isSeller, sellerDistrict]);
+  const fetchRequests = useCallback(async (pageNum = 1, pageLimit = 10) => {
+    const endpoint = isSeller ? '/api/admin/FetchManualRequestsBySellerDistrict' : '/api/admin/FetchManualRequests';
+    const payload = { page: pageNum, limit: pageLimit };
+    const res = await axiosInstance.post(endpoint, payload);
+    return { data: res.data?.data || [], pagination: res.data?.pagination || {} };
+  }, [isSeller]);
 
   const fetchDevices = useCallback(async () => {
     const payload = isSeller ? { district: sellerDistrict } : {};
@@ -97,92 +102,116 @@ const useManageRequests = (userInfo) => {
     });
   }, []);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (pageNum = 1, pageLimit = 10) => {
     setIsLoading(true);
     try {
-      const [techs, reqs, devs] = await Promise.all([
-        fetchTechnicians(),
-        fetchRequests(),
-        fetchDevices(),
-      ]);
+      const reqsResult = await fetchRequests(pageNum, pageLimit);
+      const reqs = reqsResult?.data || [];
+      const pagination = reqsResult?.pagination || {};
 
-      const filteredTechnicians = isSeller && sellerDistrict
-        ? techs.filter((tech) => {
-            const district = (tech?.district || tech?.assigned_district || '').trim().toLowerCase();
-            return district ? district === sellerDistrict.trim().toLowerCase() : false;
-          })
-        : techs;
-
-      const normalizeDeviceKey = (value) => (value ? String(value).trim().toLowerCase() : '');
-
-      const normalizedDevices = (devs || []).map((device) => {
-        const modelName = device?.model_name || device?.modelName || null;
-        const modelType = device?.model_type || device?.modelType || null;
-        const currentPlan = device?.current_plan || device?.currentPlan || null;
-        const currentPlanEndDate = device?.current_plan_end_date || device?.currentPlanEndDate || null;
-        const macId = device?.mac_id || device?.macId || null;
-        const detailId = device?.device_detail_id || device?.deviceDetailId || null;
-
-        return {
-          ...device,
-          model_name: device?.model_name ?? device?.modelName ?? null,
-          modelName,
-          model_type: device?.model_type ?? device?.modelType ?? null,
-          modelType,
-          current_plan: device?.current_plan ?? device?.currentPlan ?? null,
-          currentPlan,
-          current_plan_end_date: device?.current_plan_end_date ?? device?.currentPlanEndDate ?? null,
-          currentPlanEndDate,
-          mac_id: device?.mac_id ?? device?.macId ?? null,
-          macId,
-          device_detail_id: detailId,
-          deviceDetailId: detailId,
-        };
+      const filtered = reqs.filter((request) => request.task_id && String(request.task_id).trim() !== '' && request.task_id !== '-');
+      const sorted = filtered.sort((a, b) => {
+        const aTime = new Date(a?.created_date || a?.createdAt || 0).getTime();
+        const bTime = new Date(b?.created_date || b?.createdAt || 0).getTime();
+        return bTime - aTime;
       });
 
-      const enriched = enrichRequests(reqs, filteredTechnicians)
-        .filter((request) => request.task_id && String(request.task_id).trim() !== '' && request.task_id !== '-')  // Only include requests with valid task_id
-        .sort((a, b) => {
-          const aTime = new Date(a?.created_date || a?.createdAt || 0).getTime();
-          const bTime = new Date(b?.created_date || b?.createdAt || 0).getTime();
-          return bTime - aTime;
+      setRequests(sorted);
+      setDisplayRequests(sorted);
+      setSummary(calculateRequestSummary(sorted));
+      setCurrentPage(pagination.currentPage || pageNum);
+      setPageSize(pagination.pageSize || pageLimit);
+      setTotalRecords(pagination.totalRecords || 0);
+      setTotalPages(pagination.totalPages || 0);
+      setError('');
+      setIsLoading(false);
+
+      Promise.all([
+        fetchTechnicians(),
+        fetchDevices(),
+      ]).then(([techs, devs]) => {
+        const filteredTechnicians = isSeller && sellerDistrict
+          ? techs.filter((tech) => {
+              const district = (tech?.district || tech?.assigned_district || '').trim().toLowerCase();
+              return district ? district === sellerDistrict.trim().toLowerCase() : false;
+            })
+          : techs;
+
+        const normalizeDeviceKey = (value) => (value ? String(value).trim().toLowerCase() : '');
+
+        const normalizedDevices = (devs || []).map((device) => {
+          const modelName = device?.model_name || device?.modelName || null;
+          const modelType = device?.model_type || device?.modelType || null;
+          const currentPlan = device?.current_plan || device?.currentPlan || null;
+          const currentPlanEndDate = device?.current_plan_end_date || device?.currentPlanEndDate || null;
+          const macId = device?.mac_id || device?.macId || null;
+          const detailId = device?.device_detail_id || device?.deviceDetailId || null;
+
+          return {
+            ...device,
+            model_name: device?.model_name ?? device?.modelName ?? null,
+            modelName,
+            model_type: device?.model_type ?? device?.modelType ?? null,
+            modelType,
+            current_plan: device?.current_plan ?? device?.currentPlan ?? null,
+            currentPlan,
+            current_plan_end_date: device?.current_plan_end_date ?? device?.currentPlanEndDate ?? null,
+            currentPlanEndDate,
+            mac_id: device?.mac_id ?? device?.macId ?? null,
+            macId,
+            device_detail_id: detailId,
+            deviceDetailId: detailId,
+          };
         });
 
-      const blockedDeviceIds = new Set(
-        enriched
-          .filter((request) => {
-            const status = String(request?.task_status || '').trim().toLowerCase();
-            return status !== 'completed';
-          })
-          .map((request) => normalizeDeviceKey(request?.wp_device_id || request?.device_id))
-          .filter(Boolean)
-      );
+        const enriched = enrichRequests(sorted, filteredTechnicians);
 
-      const availableDevices = normalizedDevices.filter((device) => {
-        const key = normalizeDeviceKey(device?.wp_device_id || device?.device_id);
-        if (!key) {
-          return true;
-        }
-        return !blockedDeviceIds.has(key);
+        const blockedDeviceIds = new Set(
+          enriched
+            .filter((request) => {
+              const status = String(request?.task_status || '').trim().toLowerCase();
+              return status !== 'completed';
+            })
+            .map((request) => normalizeDeviceKey(request?.wp_device_id || request?.device_id))
+            .filter(Boolean)
+        );
+
+        const availableDevices = normalizedDevices.filter((device) => {
+          const key = normalizeDeviceKey(device?.wp_device_id || device?.device_id);
+          if (!key) {
+            return true;
+          }
+          return !blockedDeviceIds.has(key);
+        });
+
+        setTechnicians(filteredTechnicians);
+        setDevices(availableDevices);
+        setRequests(enriched);
+        setDisplayRequests(enriched);
+      }).catch((err) => {
+        console.error('Error loading technicians and devices:', err);
       });
-
-      setTechnicians(filteredTechnicians);
-      setDevices(availableDevices);
-      setRequests(enriched);
-      setDisplayRequests(enriched);
-      setSummary(calculateRequestSummary(enriched));
-      setError('');
     } catch (err) {
       setError('Failed to fetch manual requests');
       showErrorAlert('Failed to fetch manual requests');
-    } finally {
       setIsLoading(false);
     }
-  }, [enrichRequests, fetchDevices, fetchRequests, fetchTechnicians, isSeller, sellerDistrict]);
+  }, [enrichRequests, fetchDevices, fetchRequests, fetchTechnicians, isSeller, sellerDistrict, calculateRequestSummary]);
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+    fetchData(newPage, pageSize);
+  };
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    fetchData(1, newSize);
+  };
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchData(currentPage, pageSize);
+  }, [currentPage, pageSize, fetchData]);
 
   const applyFilters = (filterType, search) => {
     let filtered = requests;
@@ -297,6 +326,12 @@ const useManageRequests = (userInfo) => {
     summary,
     selectedFilter,
     handleFilterSelect,
+    currentPage,
+    pageSize,
+    totalRecords,
+    totalPages,
+    handlePageChange,
+    handlePageSizeChange,
   };
 };
 

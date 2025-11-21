@@ -13,6 +13,10 @@ const useManageRoles = (userInfo) => {
   const [tableError, setTableError] = useState(null);
   const [searchText, setSearchText] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [roleName, setRoleName] = useState('');
@@ -30,17 +34,22 @@ const useManageRoles = (userInfo) => {
     setFormError(null);
   };
 
-  const fetchRoles = useCallback(async () => {
+  const fetchRoles = useCallback(async (pageNum = 1, pageLimit = 10) => {
     try {
       setIsLoading(true);
       setTableError(null);
 
-      const response = await axiosInstance.post('api/admin/FetchUserRoles');
+      const response = await axiosInstance.post('api/admin/FetchUserRoles', { page: pageNum, limit: pageLimit });
 
       if (response.status === 200 && response.data.status === 'Success') {
         const data = response.data.data || [];
+        const pagination = response.data.pagination || {};
         setRoles(data);
         setFilteredRoles(data);
+        setCurrentPage(pagination.currentPage || pageNum);
+        setPageSize(pagination.pageSize || pageLimit);
+        setTotalRecords(pagination.totalRecords || 0);
+        setTotalPages(pagination.totalPages || 0);
       } else {
         setTableError('Failed to fetch roles');
         setRoles([]);
@@ -56,12 +65,23 @@ const useManageRoles = (userInfo) => {
     }
   }, []);
 
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+    fetchRoles(newPage, pageSize);
+  };
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    fetchRoles(1, newSize);
+  };
+
   useEffect(() => {
     if (!fetchCalled.current) {
-      fetchRoles();
+      fetchRoles(currentPage, pageSize);
       fetchCalled.current = true;
     }
-  }, [fetchRoles]);
+  }, [fetchRoles, currentPage, pageSize]);
 
   useEffect(() => {
     const normalizedSearch = searchText.trim().toLowerCase();
@@ -172,6 +192,12 @@ const useManageRoles = (userInfo) => {
     selectedRole,
     totalRoles,
     isDuplicateRole,
+    currentPage,
+    pageSize,
+    totalRecords,
+    totalPages,
+    handlePageChange,
+    handlePageSizeChange,
   };
 };
 

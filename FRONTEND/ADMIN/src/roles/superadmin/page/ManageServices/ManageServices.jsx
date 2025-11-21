@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import InputField from '../../../../utils/InputField';
 import { showErrorAlert } from '../../../../utils/alert';
 import useManageServices from '../../hooks/ManageServices/ManageServicesHooks';
+import Pagination from '../../components/Pagination/Pagination';
 const ManageServices = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
 
@@ -21,6 +22,13 @@ const ManageServices = ({ userInfo, handleLogout }) => {
     summary,
     selectedFilter,
     handleFilterSelect,
+    currentPage,
+    pageSize,
+    totalRecords,
+    getPaginatedData,
+    totalPages,
+    handlePageChange,
+    handlePageSizeChange,
   } = useManageServices(userInfo);
 
   const resolveTechnicianName = (task) => {
@@ -405,9 +413,9 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                               <td colSpan="11">Error: {error}</td>
                             </tr>
                           ) : serviceTasks.length > 0 ? (
-                            serviceTasks.map((item, index) => (
+                            getPaginatedData().map((item, index) => (
                               <tr key={item._id || index} style={{ height: '36px' }}>
-                                <td>{index + 1}</td>
+                                <td>{(currentPage - 1) * pageSize + index + 1}</td>
                                 <td>
                                   {{
                                     1: 'Installation',
@@ -483,6 +491,16 @@ const ManageServices = ({ userInfo, handleLogout }) => {
                       </table>
                     </div>
 
+                    {totalRecords > 0 && (
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        pageSize={pageSize}
+                        onPageChange={handlePageChange}
+                        onPageSizeChange={handlePageSizeChange}
+                        totalRecords={totalRecords}
+                      />
+                    )}
                   </div>
                 </div>
               </div>

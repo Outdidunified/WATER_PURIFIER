@@ -12,6 +12,10 @@ const useManageServices = (userInfo) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('');
   const [searchText, setSearchText] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [summary, setSummary] = useState({
     total: 0,
     pending: 0,
@@ -50,22 +54,29 @@ const fetchTechnicians = async () => {
 };
 
 
-  const fetchServiceTasks = async () => {
+  const fetchServiceTasks = async (pageNum = 1, pageLimit = 10) => {
     const isSeller = Number(userInfo?.role_id) === 4;
     const url = isSeller ? '/api/admin/services/by-district' : '/api/admin/FetchSelectServiceTask';
     const res = isSeller
-      ? await axiosInstance.get(url, { params: { district: userInfo?.district } })
-      : await axiosInstance.post(url);
-    return res.data?.data || [];
+      ? await axiosInstance.get(url, { params: { district: userInfo?.district, page: pageNum, limit: pageLimit } })
+      : await axiosInstance.post(url, { page: pageNum, limit: pageLimit });
+    
+    return {
+      data: res.data?.data || [],
+      pagination: res.data?.pagination || null
+    };
   };
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (pageNum = 1, pageLimit = 10) => {
     setIsLoading(true);
     try {
-      const [techs, tasks] = await Promise.all([
+      const [techs, tasksResponse] = await Promise.all([
         fetchTechnicians(),
-        fetchServiceTasks(),
+        fetchServiceTasks(pageNum, pageLimit),
       ]);
+      
+      const tasks = tasksResponse.data;
+      const pagination = tasksResponse.pagination;
 
       const isSeller = Number(userInfo?.role_id) === 4;
       const sellerDistrict = userInfo?.district?.trim().toLowerCase();
@@ -158,13 +169,23 @@ const fetchTechnicians = async () => {
       });
 
       const enriched = enrichedWithTimestamp
-        .sort((a, b) => (b._timestamp || 0) - (a._timestamp || 0))
         .map(({ _timestamp, ...rest }) => rest);
 
       setTechnicians(filteredTechnicians);
       setServiceTasks(enriched);
       setDisplayTasks(enriched);
-      setSummary(calculateServiceSummary(enriched));
+      
+      if (pagination && pagination.totalPages) {
+        setCurrentPage(pagination.currentPage);
+        setPageSize(pagination.pageSize);
+        setTotalRecords(pagination.totalRecords);
+        setTotalPages(pagination.totalPages);
+      } else {
+        setCurrentPage(pageNum);
+        setPageSize(pageLimit);
+        setTotalRecords(enriched.length);
+        setTotalPages(Math.ceil(enriched.length / pageLimit) || 1);
+      }
     } catch (err) {
       console.error('Fetch error:', err);
       setError('Failed to fetch service task data');
@@ -172,11 +193,18 @@ const fetchTechnicians = async () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [userInfo?.role_id, userInfo?.district]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchData(currentPage, pageSize);
+  }, [currentPage, pageSize, fetchData]);
+
+  useEffect(() => {
+    const pageStart = (currentPage - 1) * pageSize;
+    const pageEnd = pageStart + pageSize;
+    const currentPageData = displayTasks.slice(pageStart, pageEnd);
+    setSummary(calculateServiceSummary(currentPageData));
+  }, [displayTasks, currentPage, pageSize]);
 
   const applyFilters = (filterType, search) => {
     let filtered = serviceTasks;
@@ -216,6 +244,16 @@ const fetchTechnicians = async () => {
     }
 
     setDisplayTasks(filtered);
+    setCurrentPage(1);
+    
+    const calculatedTotalPages = Math.ceil(filtered.length / pageSize) || 1;
+    setTotalPages(calculatedTotalPages);
+    setTotalRecords(filtered.length);
+    
+    const pageStart = 0;
+    const pageEnd = pageSize;
+    const currentPageData = filtered.slice(pageStart, pageEnd);
+    setSummary(calculateServiceSummary(currentPageData));
   };
 
   const handleFilterSelect = (filterType) => {
@@ -228,6 +266,20 @@ const fetchTechnicians = async () => {
     const value = e.target.value.toLowerCase();
     setSearchText(value);
     applyFilters(selectedFilter, value);
+  };
+
+  const getPaginatedData = () => {
+    return displayTasks;
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      fetchData(newPage, pageSize);
+    }
+  };
+
+  const handlePageSizeChange = (newSize) => {
+    fetchData(1, newSize);
   };
 
   const assignServiceTask = async ({
@@ -289,6 +341,13 @@ const fetchTechnicians = async () => {
     summary,
     selectedFilter,
     handleFilterSelect,
+    currentPage,
+    pageSize,
+    totalRecords,
+    totalPages,
+    getPaginatedData,
+    handlePageChange,
+    handlePageSizeChange,
   };
 };
 

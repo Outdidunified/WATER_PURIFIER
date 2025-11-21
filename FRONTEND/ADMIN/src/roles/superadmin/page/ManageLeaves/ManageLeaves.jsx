@@ -8,6 +8,7 @@ import InputField from '../../../../utils/InputField';
 import ManageLeaveHooks from '../../hooks/ManageLeaves/ManageLeaveHooks';
 import { showErrorAlert, showSuccessAlert } from '../../../../utils/alert';
 import axiosInstance from '../../../../utils/utils';
+import Pagination from '../../components/Pagination/Pagination';
 
 const ManageLeaves = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
@@ -28,6 +29,12 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
     getStatusBadgeClass,
     fetchLeaveRequests,
     handleFilterSelect,
+    currentPage,
+    pageSize,
+    totalRecords,
+    totalPages,
+    handlePageChange,
+    handlePageSizeChange,
   } = ManageLeaveHooks(userInfo);
 
   const adminName = sessionStorage.getItem('superAdminName') || 'Admin';
@@ -405,7 +412,14 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
                         </tbody>
                       </table>
                     </div>
-
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      pageSize={pageSize}
+                      onPageChange={handlePageChange}
+                      onPageSizeChange={handlePageSizeChange}
+                      totalRecords={totalRecords}
+                    />
 
                   </div>
                 </div>

@@ -19,6 +19,11 @@ const useManageUsers = (userInfo) => {
   const [searchText, setSearchText] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [roleSummaries, setRoleSummaries] = useState([]);
+  const [allRoleSummaries, setAllRoleSummaries] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   // Add User modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -58,207 +63,157 @@ const useManageUsers = (userInfo) => {
   const [assignStatus, setAssignStatus] = useState(false);
   const [assignLoading, setAssignLoading] = useState(false);
 
+  // ----------------------------
+  // FETCH ROLES
+  // ----------------------------
   const fetchRoles = useCallback(async () => {
     try {
       const response = await axiosInstance.post('/api/admin/FetchUserRoles');
       if (response.status === 200 && response.data.status === 'Success') {
-        const activeRoles = (response.data.data || []).filter(r => r.status === true);
+        const activeRoles = (response.data.data || []).filter((r) => r.status === true);
         setRoles(activeRoles);
-      } else {
-        showErrorAlert('Error', 'Failed to fetch roles');
       }
     } catch (error) {
       console.error('Error fetching roles:', error);
-      showErrorAlert('Error', 'Failed to fetch roles');
     }
   }, []);
 
-  const fetchUsers = useCallback(async () => {
+  // ----------------------------
+  // FETCH ROLE SUMMARIES (NO SORTING)
+  // ----------------------------
+  const fetchRoleSummaries = useCallback(async () => {
     try {
-      setTableLoading(true);
-      setTableError(null);
-
       const isSeller = Number(userInfo?.role_id) === 4;
-      const url = isSeller ? '/api/admin/users/by-district' : 'api/admin/FetchUsers';
+      const url = isSeller ? '/api/admin/users/by-district/summaries' : '/api/admin/FetchUsersSummaries';
+
       const response = isSeller
         ? await axiosInstance.get(url, { params: { district: userInfo?.district } })
         : await axiosInstance.post(url);
 
       if (response.status === 200 && response.data.status === 'Success') {
-        const fetchedData = response.data.data || [];
-        const parseSortableValue = (value) => {
-          if (!value && value !== 0) {
-            return 0;
-          }
-          if (value instanceof Date) {
-            return value.getTime();
-          }
-          if (typeof value === 'number') {
-            return value;
-          }
-          const numericValue = Number(value);
-          if (!Number.isNaN(numericValue)) {
-            return numericValue;
-          }
-          const parsedDate = new Date(value);
-          const time = parsedDate.getTime();
-          return Number.isNaN(time) ? 0 : time;
-        };
-
-        const sortedData = [...fetchedData].sort((a, b) => {
-          const getPrimaryTime = (item) =>
-            parseSortableValue(
-              item?.created_at ||
-                item?.createdAt ||
-                item?.created_date ||
-                item?.createdDate ||
-                item?.updated_at ||
-                item?.updatedAt ||
-                item?.modified_at ||
-                item?.modifiedAt
-            );
-
-          const aTime = getPrimaryTime(a);
-          const bTime = getPrimaryTime(b);
-          if (aTime !== bTime) {
-            return bTime - aTime;
-          }
-
-          const fallbackA = parseSortableValue(a?.user_id || a?.id || a?._id);
-          const fallbackB = parseSortableValue(b?.user_id || b?.id || b?._id);
-          return fallbackB - fallbackA;
-        });
-
-        setData(sortedData);
-        setPosts(sortedData);
-      } else {
-        setTableError('Failed to fetch users');
-        setData([]);
-        setPosts([]);
+        setAllRoleSummaries(response.data.data || []);
       }
     } catch (err) {
-      console.error('Error fetching users:', err);
-      setTableError('Error fetching users. Please try again.');
-      setData([]);
-      setPosts([]);
-    } finally {
-      setTableLoading(false);
+      console.error('Error fetching role summaries:', err);
     }
   }, [userInfo?.role_id]);
 
+  // ----------------------------
+  // FETCH USERS (REMOVED SORTING)
+  // ----------------------------
+  const fetchUsers = useCallback(
+    async (pageNum = 1, pageLimit = 10) => {
+      try {
+        setTableLoading(true);
+
+        const isSeller = Number(userInfo?.role_id) === 4;
+        const url = isSeller ? '/api/admin/users/by-district' : '/api/admin/FetchUsers';
+
+        const response = isSeller
+          ? await axiosInstance.get(url, { params: { district: userInfo?.district, page: pageNum, limit: pageLimit } })
+          : await axiosInstance.post(url, { page: pageNum, limit: pageLimit });
+
+        if (response.status === 200 && response.data.status === 'Success') {
+          const fetchedData = response.data.data || [];
+
+          // **NO SORTING — KEEP BACKEND ORDER**
+          setData(fetchedData);
+          setPosts(fetchedData);
+
+          if (response.data.pagination) {
+            setCurrentPage(response.data.pagination.currentPage);
+            setPageSize(response.data.pagination.pageSize);
+            setTotalRecords(response.data.pagination.totalRecords);
+            setTotalPages(response.data.pagination.totalPages);
+          }
+
+          if (response.data.roleSummaries) {
+            setAllRoleSummaries(response.data.roleSummaries);
+          }
+        } else {
+          setData([]);
+          setPosts([]);
+        }
+      } catch (err) {
+        console.error('Error fetching users:', err);
+        setData([]);
+        setPosts([]);
+      } finally {
+        setTableLoading(false);
+      }
+    },
+    [userInfo?.role_id]
+  );
+
+  // ----------------------------
+  // INITIAL FETCH
+  // ----------------------------
   useEffect(() => {
     if (!fetchUsersCalled.current) {
       fetchUsers();
-      fetchRoles(); // fetch roles once
+      fetchRoles();
+      fetchRoleSummaries();
       fetchUsersCalled.current = true;
     }
-  }, [fetchUsers, fetchRoles]);
+  }, [fetchUsers, fetchRoles, fetchRoleSummaries]);
 
+  // ----------------------------
+  // ROLE SUMMARIES (REMOVED ALL SORTING)
+  // ----------------------------
   useEffect(() => {
     if (!Array.isArray(roles) || roles.length === 0) {
       setRoleSummaries([]);
       return;
     }
 
-    const counts = data.reduce((acc, item) => {
-      const key = String(item.role_id || '').trim();
-      if (!key) {
+    let summaries;
+
+    if (allRoleSummaries?.length > 0) {
+      summaries = allRoleSummaries.map((item) => ({
+        roleId: item.role_id,
+        roleName: item.role_name,
+        count: item.count || 0
+      }));
+    } else {
+      const counts = data.reduce((acc, item) => {
+        const key = String(item.role_id || '').trim();
+        acc.set(key, (acc.get(key) || 0) + 1);
         return acc;
-      }
-      const currentCount = acc.get(key) || 0;
-      acc.set(key, currentCount + 1);
-      return acc;
-    }, new Map());
+      }, new Map());
 
-    const summaries = roles
-      .map((roleItem) => {
-        const key = String(roleItem.role_id || '').trim();
-        const count = counts.get(key) || 0;
-        return {
-          roleId: roleItem.role_id,
-          roleName: roleItem.role_name,
-          count,
-        };
-      })
-      .filter((item) => item.count > 0)
-      .sort((a, b) => {
-        const nameA = (a.roleName || '').toLowerCase();
-        const nameB = (b.roleName || '').toLowerCase();
-        return nameA.localeCompare(nameB);
-      });
-
-    setRoleSummaries((prev) => {
-      if (
-        prev.length === summaries.length &&
-        prev.every((item, index) =>
-          item.roleId === summaries[index].roleId &&
-          item.count === summaries[index].count &&
-          item.roleName === summaries[index].roleName
-        )
-      ) {
-        return prev;
-      }
-      return summaries;
-    });
-  }, [roles, data]);
-
-  useEffect(() => {
-    if (!selectedRole) {
-      return;
+      summaries = roles.map((r) => ({
+        roleId: r.role_id,
+        roleName: r.role_name,
+        count: counts.get(String(r.role_id)) || 0
+      }));
     }
-    const stillExists = roleSummaries.some((item) => String(item.roleId) === String(selectedRole));
-    if (!stillExists) {
-      setSelectedRole('');
-    }
-  }, [roleSummaries, selectedRole]);
 
-  // Common modal container style to match other modals
-  const modalAddStyle = {
-    display: 'block',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    pointerEvents: 'auto',
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    height: '100vh',
-    width: '100vw',
-    zIndex: 1050,
-  };
+    setRoleSummaries(summaries);
+  }, [roles, data, allRoleSummaries]);
 
-  const handleSearchInputChange = (e) => {
-    setSearchText(e.target.value);
-  };
-
+  // ----------------------------
+  // SEARCH + FILTER
+  // ----------------------------
   useEffect(() => {
     if (!Array.isArray(data)) {
       setPosts([]);
       return;
     }
 
-    const normalizedSearch = searchText.trim().toUpperCase();
-    const normalizedRole = String(selectedRole || '').trim();
+    const search = searchText.trim().toUpperCase();
+    const selected = String(selectedRole || '').trim();
 
     const filtered = data.filter((item) => {
-      const name = (item.name || '').toUpperCase();
-      const email = (item.email || '').toUpperCase();
-      const phoneValue = String(item.phone || '');
-      const districtValue = (item.district || '').toUpperCase();
-      const cityValue = (item.city || '').toUpperCase();
-      const countryValue = (item.country || '').toUpperCase();
-      const roleValue = String(item.role_id || '').trim();
-
       const matchesSearch =
-        normalizedSearch.length === 0 ||
-        name.includes(normalizedSearch) ||
-        email.includes(normalizedSearch) ||
-        phoneValue.includes(normalizedSearch) ||
-        districtValue.includes(normalizedSearch) ||
-        cityValue.includes(normalizedSearch) ||
-        countryValue.includes(normalizedSearch);
+        !search ||
+        (item.name || '').toUpperCase().includes(search) ||
+        (item.email || '').toUpperCase().includes(search) ||
+        String(item.phone || '').includes(search) ||
+        (item.city || '').toUpperCase().includes(search) ||
+        (item.district || '').toUpperCase().includes(search) ||
+        (item.country || '').toUpperCase().includes(search);
 
-      const matchesRole =
-        normalizedRole.length === 0 ||
-        roleValue === normalizedRole;
+      const matchesRole = !selected || String(item.role_id) === selected;
 
       return matchesSearch && matchesRole;
     });
@@ -266,67 +221,29 @@ const useManageUsers = (userInfo) => {
     setPosts(filtered);
   }, [data, searchText, selectedRole]);
 
-  const handleRoleSelect = (roleId) => {
-    setSelectedRole(String(roleId || '').trim());
-  };
+  // ----------------------------
+  // PAGINATION
+  // ----------------------------
+  const getPaginatedData = () => posts;
+  const getTotalPages = () => totalPages;
 
-  const resetRoleFilter = () => {
-    setSelectedRole('');
-  };
-
-  const handleViewUser = (dataItem) => {
-    navigate('/superadmin/ViewManageUser', { state: { dataItem } });
-  };
-
-  const handleEditUser = (dataItem) => {
-    navigate('/superadmin/EditManageUsers', { state: { dataItem } });
-  };
-
-  const handleAddUserSubmit = async (e) => {
-    e.preventDefault();
-
-    try {
-      setFormLoading(true);
-      setFormError(null);
-
-      const payload = {
-        role_id: role,
-        name,
-        email,
-        password,
-        phone,
-        createdby: userInfo.email,
-        address,
-        addressline1,
-        addressline2,
-        city,
-        district,
-        state: stateField,
-        pincode,
-        country
-      };
-
-      const response = await axiosInstance.post('api/admin/AddUsers', payload);
-
-      if (response.status === 200 && response.data.status === 'Success') {
-        await fetchUsers();
-        closeAddModal();
-        resetForm();
-        showSuccessAlert('Success', 'User added successfully');
-        return { success: true };
-      } else {
-        const msg = response.data.message || 'Failed to add user';
-        setFormError(msg);
-        showErrorAlert('Error', msg);
-      }
-    } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'Error adding user. Please try again.';
-      setFormError(msg);
-      showErrorAlert('Error', msg);
-    } finally {
-      setFormLoading(false);
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      fetchUsers(newPage, pageSize);
     }
   };
+
+  const handlePageSizeChange = (newSize) => {
+    fetchUsers(1, newSize);
+  };
+
+  // ----------------------------
+  // USER ACTIONS
+  // ----------------------------
+  const handleViewUser = (item) => navigate('/superadmin/ViewManageUser', { state: { dataItem: item } });
+  const handleEditUser = (item) => navigate('/superadmin/EditManageUsers', { state: { dataItem: item } });
+
+
 
   // Open assignment modal for sellers (role_id === 4)
   const openAssignSellerModal = (user, mode = 'assign') => {
@@ -350,45 +267,7 @@ const useManageUsers = (userInfo) => {
     setAssignLoading(false);
   };
 
-  const handleSellerAssignSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedSeller) return;
 
-    // For first-time assignment ensure state/district are present
-    if (assignMode === 'assign') {
-      if (!assignState?.trim() || !assignDistrict?.trim()) {
-        showErrorAlert('Validation', 'State and District are required for assignment');
-        return;
-      }
-    }
-
-    try {
-      setAssignLoading(true);
-      const payload = {
-        seller_id: selectedSeller.user_id,
-        assign_state: String(assignState || '').trim(),
-        assign_district: String(assignDistrict || '').trim(),
-        assign_status: !!assignStatus,
-      };
-
-      const url = assignMode === 'reassign' ? '/api/admin/ReAssignSeller' : '/api/admin/AssignSeller';
-      const resp = await axiosInstance.post(url, payload);
-
-      if (resp.status === 200 && resp.data.status === 'Success') {
-        await fetchUsers();
-        closeAssignSellerModal();
-        showSuccessAlert('Success', assignMode === 'reassign' ? 'Seller reassigned successfully' : 'Seller assigned successfully');
-      } else {
-        const msg = resp.data?.message || 'Assignment failed';
-        showErrorAlert('Error', msg);
-      }
-    } catch (err) {
-      const msg = err?.response?.data?.message || err.message || 'Assignment failed';
-      showErrorAlert('Error', msg);
-    } finally {
-      setAssignLoading(false);
-    }
-  };
 
   const resetForm = () => {
     setName('');
@@ -406,24 +285,35 @@ const useManageUsers = (userInfo) => {
     setCountry('');
   };
 
-  const totalUsers = data.length;
-
   return {
-    // table
     posts,
     isLoading: tableLoading,
     error: tableError,
-    handleSearchInputChange,
+    handleSearchInputChange: (e) => setSearchText(e.target.value),
     searchText,
-    handleRoleSelect,
-    resetRoleFilter,
+    handleRoleSelect: (roleId) => setSelectedRole(String(roleId)),
+    resetRoleFilter: () => setSelectedRole(''),
+
     selectedRole,
+
     roleSummaries,
-    totalUsers,
+    allRoleSummaries,
+
+    totalUsers: totalRecords || data.length,
+
     handleViewUser,
     handleEditUser,
 
-    // add user modal
+    currentPage,
+    pageSize,
+    totalRecords,
+    totalPages,
+    getPaginatedData,
+    getTotalPages,
+    handlePageChange,
+    handlePageSizeChange,
+
+    // Add User modal
     openAddModal,
     closeAddModal,
     isAddModalOpen,
@@ -442,10 +332,10 @@ const useManageUsers = (userInfo) => {
     country, setCountry,
     formLoading,
     formError,
-    handleAddUserSubmit,
+
     roles,
 
-    // seller assignment modal
+    // Seller assignment modal
     assignModalOpen,
     assignMode,
     selectedSeller,
@@ -454,11 +344,7 @@ const useManageUsers = (userInfo) => {
     assignStatus, setAssignStatus,
     assignLoading,
     openAssignSellerModal,
-    closeAssignSellerModal,
-    handleSellerAssignSubmit,
-
-    // styles
-    modalAddStyle,
+    closeAssignSellerModal
   };
 };
 

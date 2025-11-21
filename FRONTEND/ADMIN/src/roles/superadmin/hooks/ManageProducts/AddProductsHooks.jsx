@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axiosInstance from '../../../../utils/utils';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -8,6 +8,7 @@ import {
 } from '../../../../utils/alert';
 
 const generateUniqueId = () => Date.now() + Math.floor(Math.random() * 1000);
+const allowedDurations = ['28 days', '60 days', '90 days', '180 days', '360 days'];
 
 const createEmptyPlan = () => ({
   plans_id: generateUniqueId(),
@@ -41,6 +42,17 @@ const useAddProducts = (userInfo) => {
   const [connectivity, setConnectivity] = useState([]);
   const [durations, setDurations] = useState([createEmptyDuration()]);
   const [errorMessage, setErrorMessage] = useState('');
+  const [allDurationsUsed, setAllDurationsUsed] = useState(false);
+
+  useEffect(() => {
+    const usedDurations = durations
+      .map(d => d.duration_time_limit?.toLowerCase().trim())
+      .filter(d => d);
+    const allUsed = allowedDurations.every(allowed => 
+      usedDurations.includes(allowed.toLowerCase().trim())
+    );
+    setAllDurationsUsed(allUsed);
+  }, [durations]);
 
   const backToManagePage = () => {
     navigate('/superadmin/ManageProducts');
@@ -430,6 +442,7 @@ const useAddProducts = (userInfo) => {
     handleAddProduct,
     modelType,
     setModelType,
+    allDurationsUsed,
   };
 };
 

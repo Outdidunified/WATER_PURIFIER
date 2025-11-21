@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import InputField from '../../../../utils/InputField';
 import useManageProducts from '../../hooks/ManageProducts/ManageProductsHooks';
+import Pagination from '../../components/Pagination/Pagination';
 
 const ManageProducts = ({ userInfo, handleLogout }) => {
     const navigate = useNavigate();
@@ -21,6 +22,13 @@ const ManageProducts = ({ userInfo, handleLogout }) => {
         modelOptions,
         selectedModel,
         totalModels,
+        currentPage,
+        pageSize,
+        totalRecords,
+        getPaginatedData,
+        getTotalPages,
+        handlePageChange,
+        handlePageSizeChange,
     } = useManageProducts(userInfo);
 
     const handleAddProduct = () => {
@@ -266,9 +274,9 @@ const ManageProducts = ({ userInfo, handleLogout }) => {
                                                         </tr>
                                                     ) : (
                                                         Array.isArray(posts) && posts.length > 0 ? (
-                                                            posts.map((dataItem, index) => (
+                                                            getPaginatedData().map((dataItem, index) => (
                                                                 <tr key={dataItem.model_id || dataItem.id || index}>
-                                                                    <td>{index + 1}</td>
+                                                                    <td>{(currentPage - 1) * pageSize + index + 1}</td>
                                                                     <td style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxWidth: '250px' }}>{dataItem.model_name || '-'}</td>
                                                                     <td>{dataItem.model_type || '-'}</td>
                                                                     <td>{dataItem.wp_device_quantity ?? '-'}</td>
@@ -299,6 +307,17 @@ const ManageProducts = ({ userInfo, handleLogout }) => {
                                                 </tbody>
                                             </table>
                                         </div>
+
+                                        {totalRecords > 0 && (
+                                            <Pagination
+                                                currentPage={currentPage}
+                                                totalPages={getTotalPages()}
+                                                pageSize={pageSize}
+                                                onPageChange={handlePageChange}
+                                                onPageSizeChange={handlePageSizeChange}
+                                                totalRecords={totalRecords}
+                                            />
+                                        )}
                                     </div>
                                 </div>
                             </div>

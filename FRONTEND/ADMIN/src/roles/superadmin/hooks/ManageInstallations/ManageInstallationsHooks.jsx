@@ -123,6 +123,10 @@ const useManageInstallation = (userInfo) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('');
   const [searchText, setSearchText] = useState('');
+  const [pageNum, setPageNum] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [summary, setSummary] = useState({
     total: 0,
     pending: 0,
@@ -170,17 +174,38 @@ const useManageInstallation = (userInfo) => {
     return res.data?.data || [];
   };
 
-  const fetchInstallationTasks = async () => {
+  const fetchInstallationTasks = async (pageNum = 1, pageLimit = 10) => {
     const isSeller = Number(userInfo?.role_id) === 4;
-    const url = isSeller ? '/api/admin/installations/by-district' : '/api/admin/FetchSelectInstallationTask';
-    const res = isSeller
-      ? await axiosInstance.get(url, { params: { district: userInfo?.district } })
-      : await axiosInstance.post(url);
-    return res.data?.data || [];
+    try {
+      let res;
+      if (isSeller) {
+        res = await axiosInstance.get('/api/admin/installations/by-district', {
+          params: { district: userInfo?.district, page: pageNum, limit: pageLimit }
+        });
+      } else {
+        res = await axiosInstance.post('/api/admin/FetchSelectInstallationTask', {
+          page: pageNum,
+          limit: pageLimit
+        });
+      }
+      
+      const data = res.data?.data || [];
+      if (res.data?.pagination && res.data.pagination.totalPages) {
+        setTotalRecords(res.data.pagination.totalRecords);
+        setTotalPages(res.data.pagination.totalPages);
+      } else {
+        setTotalRecords(data.length);
+        setTotalPages(Math.ceil(data.length / pageLimit) || 1);
+      }
+      return data;
+    } catch (error) {
+      console.error('Error fetching installation tasks:', error);
+      return [];
+    }
   };
 
   // Main fetchData function
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (page = pageNum, size = pageSize) => {
     setIsLoading(true);
     try {
       const isSeller = Number(userInfo?.role_id) === 4;
@@ -189,7 +214,7 @@ const useManageInstallation = (userInfo) => {
       const [techs, ords, tasks] = await Promise.all([
         fetchTechnicians(),
         fetchOrders(),
-        fetchInstallationTasks(),
+        fetchInstallationTasks(page, size),
       ]);
 
       const filteredTechnicians = sellerDistrict
@@ -398,8 +423,7 @@ const useManageInstallation = (userInfo) => {
       });
 
       const enrichedTasks = enrichedTasksWithTimestamp
-        .sort((a, b) => (b._timestamp || 0) - (a._timestamp || 0))
-        .map(({ _timestamp, ...rest }) => rest);
+        .map(({ _timestamp, ...rest }) => rest);  
 
       const filteredEnrichedTasks = enrichedTasks.filter((task) => task.task_id && String(task.task_id).trim() !== '' && task.task_id !== '-');
 
@@ -407,6 +431,7 @@ const useManageInstallation = (userInfo) => {
 
       setEnrichedTaskList(dedupedEnrichedList);
       setDisplayTasks(dedupedEnrichedList);
+      
       setSummary(calculateInstallationSummary(dedupedEnrichedList));
     } catch (err) {
       showErrorAlert('Failed to fetch installation data');
@@ -417,8 +442,12 @@ const useManageInstallation = (userInfo) => {
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchData(pageNum, pageSize);
+  }, [pageNum, pageSize]);
+
+  useEffect(() => {
+    setSummary(calculateInstallationSummary(displayTasks));
+  }, [displayTasks]);
 
   const applyFilters = (filterType, search) => {
     let filtered = enrichedTaskList;
@@ -476,6 +505,12 @@ const useManageInstallation = (userInfo) => {
     }
 
     setDisplayTasks(filtered);
+    
+    const calculatedTotalPages = Math.ceil(filtered.length / pageSize) || 1;
+    setTotalPages(calculatedTotalPages);
+    setTotalRecords(filtered.length);
+    
+    setSummary(calculateInstallationSummary(filtered));
   };
 
   const handleFilterSelect = (filterType) => {
@@ -511,9 +546,9 @@ const useManageInstallation = (userInfo) => {
         assigned_by,
       };
 
-      await axiosInstance.post('/api/admin/AssignInstallation', payload);
+      await axiosInstance.post('/admin/AssignInstallation', payload);
       showSuccessAlert('Installation successfully assigned');
-      await fetchData();
+      await fetchData(pageNum, pageSize);
     } catch (err) {
       console.log('Error response:', err.response);
       const errorMessage = err?.response?.data?.message || 'Something went wrong during assignment';
@@ -530,14 +565,23 @@ const useManageInstallation = (userInfo) => {
         modified_by: userInfo?.email || '',
       };
 
-      await axiosInstance.post('/api/admin/ReAssignInstallation', payload);
+      await axiosInstance.post('/admin/ReAssignInstallation', payload);
       showSuccessAlert('Installation successfully re-assigned');
-      await fetchData();
+      await fetchData(pageNum, pageSize);
     } catch (err) {
       console.log('Reassign Error:', err.response);
       const errorMessage = err?.response?.data?.message || 'Failed to re-assign installation';
       showErrorAlert(errorMessage);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    setPageNum(newPage);
+  };
+
+  const handlePageSizeChange = (newPageSize) => {
+    setPageSize(newPageSize);
+    setPageNum(1);
   };
 
   return {
@@ -553,6 +597,12 @@ const useManageInstallation = (userInfo) => {
     summary,
     selectedFilter,
     handleFilterSelect,
+    pageNum,
+    pageSize,
+    totalRecords,
+    totalPages,
+    handlePageChange,
+    handlePageSizeChange,
   };
 };
 

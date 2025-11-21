@@ -4,7 +4,11 @@ const {
     getTechnicianPendingTasks,
     approveLeaveRequest,
     rejectLeaveRequest,
+    getLeaveRequestsByDistrict,
 } = require('../services/leaveRequestsService');
+const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
+const { ObjectId } = require('mongodb');
+const database = require('../../../config/db');
 
 /**
  * GET: Fetch all leave requests with optional filters
@@ -21,13 +25,13 @@ async function FetchLeaveRequests(req, res) {
             filters.to_date = to_date;
         }
 
+        const { page, limit, skip } = getPaginationParams(req, 10);
         const leaveRequests = await getAllLeaveRequests(filters);
 
-        return res.status(200).json({
-            success: true,
-            message: 'Leave requests fetched successfully',
-            data: leaveRequests,
-        });
+        const total = leaveRequests.length;
+        const paginatedData = leaveRequests.slice(skip, skip + limit);
+
+        return res.status(200).json(formatPaginatedResponse(paginatedData, total, page, limit));
     } catch (error) {
         console.error('Error fetching leave requests:', error);
         return res.status(500).json({
@@ -157,9 +161,53 @@ async function RejectLeaveRequest(req, res) {
     }
 }
 
+/**
+ * GET: Fetch leave requests filtered by seller's district
+ */
+async function FetchLeaveRequestsBySellerDistrict(req, res) {
+    try {
+        let sellerDistrict = '';
+
+        if (req.user?.role_id === 4) {
+            const db = await database.connectToDatabase();
+            const usersCollection = db.collection("users");
+
+            let requester = null;
+            if (req.user?.userId) {
+                try {
+                    requester = await usersCollection.findOne({ _id: new ObjectId(req.user.userId) });
+                } catch (err) {
+                    requester = null;
+                }
+            }
+
+            sellerDistrict = String(requester?.assigned_district || requester?.district || '').trim().toLowerCase();
+            if (!sellerDistrict) {
+                return res.status(200).json(formatPaginatedResponse([], 0, 1, 10));
+            }
+        }
+
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const leaveRequests = await getLeaveRequestsByDistrict(sellerDistrict);
+
+        const total = leaveRequests.length;
+        const paginatedData = leaveRequests.slice(skip, skip + limit);
+
+        return res.status(200).json(formatPaginatedResponse(paginatedData, total, page, limit));
+    } catch (error) {
+        console.error('Error fetching leave requests by district:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch leave requests',
+            error: error.message,
+        });
+    }
+}
+
 module.exports = {
     FetchLeaveRequests,
     GetLeaveRequestDetails,
     ApproveLeaveRequest,
     RejectLeaveRequest,
+    FetchLeaveRequestsBySellerDistrict,
 };

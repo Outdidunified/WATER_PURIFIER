@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
 import Footer from '../../components/Footer';
@@ -13,8 +13,31 @@ const Dashboard = ({ userInfo, handleLogout }) => {
     const [timeframe, setTimeframe] = useState('daily'); // Default to daily
     const [districts, setDistricts] = useState([]);
     const [selectedDistrict, setSelectedDistrict] = useState('all'); // Default to all
+    const isFetchingRef = useRef(false);
+    const lastFetchedParamsRef = useRef(null);
+    const districtsFetchedRef = useRef(false);
 
-    const isSeller = Number(userInfo?.role_id) === 4;
+    const isSeller = useMemo(() => Number(userInfo?.role_id) === 4, [userInfo?.role_id]);
+
+    // Memoize API parameters to prevent unnecessary re-fetches
+    const apiParams = useMemo(() => {
+        if (isSeller) {
+            return {
+                url: '/api/admin/analytics/by-district',
+                params: { district: userInfo?.district }
+            };
+        } else if (selectedDistrict !== 'all') {
+            return {
+                url: '/api/admin/analytics/by-district',
+                params: { district: selectedDistrict }
+            };
+        } else {
+            return {
+                url: '/api/admin/analytics',
+                params: {}
+            };
+        }
+    }, [isSeller, userInfo?.district, selectedDistrict]);
 
     // Get current date information
     const currentDate = useMemo(() => {
@@ -30,7 +53,8 @@ const Dashboard = ({ userInfo, handleLogout }) => {
 
     // Fetch districts for non-sellers
     useEffect(() => {
-        if (!isSeller) {
+        if (!isSeller && !districtsFetchedRef.current) { // Only fetch once
+            districtsFetchedRef.current = true;
             const fetchDistricts = async () => {
                 try {
                     const res = await axiosInstance.get('/api/admin/GetDistrictsWithSellers');
@@ -39,6 +63,7 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                     }
                 } catch (err) {
                     console.error('Error fetching districts:', err);
+                    districtsFetchedRef.current = false; // Reset on error
                 }
             };
             fetchDistricts();
@@ -47,21 +72,16 @@ const Dashboard = ({ userInfo, handleLogout }) => {
 
     // Fetch analytics data
     useEffect(() => {
+        // Check if we already fetched for these exact params
+        const paramsKey = JSON.stringify(apiParams);
+        if (lastFetchedParamsRef.current === paramsKey || isFetchingRef.current) return;
+
         const loadData = async () => {
+            isFetchingRef.current = true;
+            lastFetchedParamsRef.current = paramsKey;
             try {
                 setLoading(true);
-                let url = '/api/admin/analytics';
-                let params = {};
-
-                if (isSeller) {
-                    url = '/api/admin/analytics/by-district';
-                    params = { district: userInfo?.district };
-                } else if (selectedDistrict !== 'all') {
-                    url = '/api/admin/analytics/by-district';
-                    params = { district: selectedDistrict };
-                }
-
-                const res = await axiosInstance.get(url, { params });
+                const res = await axiosInstance.get(apiParams.url, { params: apiParams.params });
 
                 if (res.data?.status === 'Success') {
                     setAnalyticsData(res.data.data);
@@ -70,12 +90,14 @@ const Dashboard = ({ userInfo, handleLogout }) => {
                 }
             } catch (err) {
                 setError('Error fetching data: ' + err.message);
+                lastFetchedParamsRef.current = null; // Reset on error to allow retry
             } finally {
                 setLoading(false);
+                isFetchingRef.current = false;
             }
         };
         loadData();
-    }, [userInfo, isSeller, selectedDistrict]);
+    }, [apiParams]);
 
     // Stats cards
     const stats = analyticsData

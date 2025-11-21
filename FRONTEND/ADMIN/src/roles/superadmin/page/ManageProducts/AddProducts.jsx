@@ -43,6 +43,7 @@ const AddProducts = ({ userInfo, handleLogout }) => {
     handlePlanChange,
     handleAddProduct,
     removeSubImage,
+    allDurationsUsed,
   } = useAddProducts(userInfo);
 
   const backManageDevice = () => {
@@ -400,7 +401,12 @@ const AddProducts = ({ userInfo, handleLogout }) => {
                       );
                     })}
 
-                    <button type="button" className="btn btn-outline-primary btn-sm" onClick={addDuration}>
+                    <button 
+                      type="button" 
+                      className="btn btn-outline-primary btn-sm" 
+                      onClick={addDuration}
+                      disabled={allDurationsUsed}
+                    >
                       Add Duration
                     </button>
                   </div>

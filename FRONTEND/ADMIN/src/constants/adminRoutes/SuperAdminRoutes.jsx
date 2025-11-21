@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Route, Routes, Navigate, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 // Pages
@@ -41,11 +41,13 @@ const SuperAdminApp = () => {
   const [permissions, setPermissions] = useState(storedPermissions);
   const [permissionsLoaded, setPermissionsLoaded] = useState(storedPermissions.length > 0);
   const navigate = useNavigate();
+  const permissionsFetchedRef = useRef(new Set());
 
   useEffect(() => {
     if (!loggedIn) {
       setPermissions([]);
       setPermissionsLoaded(true);
+      permissionsFetchedRef.current.clear();
       return;
     }
 
@@ -54,6 +56,9 @@ const SuperAdminApp = () => {
       return;
     }
 
+    if (permissionsFetchedRef.current.has(userInfo.role_id)) return; // Already fetched for this role
+
+    permissionsFetchedRef.current.add(userInfo.role_id);
     setPermissionsLoaded(false);
     axiosInstance
       .get(`/api/admin/by-role?ids=${userInfo.role_id}`)
@@ -63,7 +68,10 @@ const SuperAdminApp = () => {
           sessionStorage.setItem('superAdminPermissions', JSON.stringify(res.data.data));
         }
       })
-      .catch((err) => console.error(err))
+      .catch((err) => {
+        console.error(err);
+        permissionsFetchedRef.current.delete(userInfo.role_id); // Allow retry on error
+      })
       .finally(() => setPermissionsLoaded(true));
   }, [loggedIn, userInfo.role_id]);
 
@@ -82,6 +90,7 @@ const SuperAdminApp = () => {
     setLoggedIn(false);
     setUserInfo({});
     setPermissions([]);
+    permissionsFetchedRef.current.clear();
     sessionStorage.removeItem('superAdminUser');
     sessionStorage.removeItem('superAdminToken');
     sessionStorage.removeItem('superAdminPermissions');

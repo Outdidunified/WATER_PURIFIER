@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { showErrorAlert } from '../../../../utils/alert';
 import axiosInstance from '../../../../utils/utils';
 
@@ -15,6 +15,10 @@ const ManageLeaveHooks = (userInfo) => {
         approved: 0,
         rejected: 0,
     });
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [totalRecords, setTotalRecords] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
 
     const calculateLeaveSummary = (leaves) => {
         const counts = {
@@ -34,27 +38,26 @@ const ManageLeaveHooks = (userInfo) => {
         return counts;
     };
 
-    const fetchLeaveRequests = async () => {
+    const fetchLeaveRequests = useCallback(async (pageNum = 1, pageLimit = 10) => {
         try {
             setLoading(true);
             setError(null);
 
-            const response = await axiosInstance.get('/api/admin/leave-requests');
+            const isSeller = Number(userInfo?.role_id) === 4;
+            const endpoint = isSeller ? '/api/admin/leave-requests-by-district' : '/api/admin/leave-requests';
+            const response = await axiosInstance.get(endpoint, { params: { page: pageNum, limit: pageLimit } });
 
-            if (response.data.success) {
-                let leaves = response.data.data;
-
-                // If user is a seller (role_id = 4), filter leaves by district
-                if (userInfo?.role_id === 4 && userInfo?.district) {
-                    // Filter leaves to only include technicians from the same district as the seller
-                    leaves = leaves.filter(leave => {
-                        return leave.technician_district === userInfo.district;
-                    });
-                }
+            if (response.data.status === 'Success' || response.data.success !== false) {
+                const leaves = response.data.data || [];
+                const pagination = response.data.pagination || {};
 
                 setLeaveRequests(leaves);
                 setFilteredLeaves(leaves);
                 setSummary(calculateLeaveSummary(leaves));
+                setCurrentPage(pagination.currentPage || pageNum);
+                setPageSize(pagination.pageSize || pageLimit);
+                setTotalRecords(pagination.totalRecords || 0);
+                setTotalPages(pagination.totalPages || 0);
             } else {
                 showErrorAlert('Error', response.data.message || 'Failed to fetch leave requests');
             }
@@ -66,12 +69,22 @@ const ManageLeaveHooks = (userInfo) => {
         } finally {
             setLoading(false);
         }
+    }, [userInfo]);
+
+    const handlePageChange = (newPage) => {
+        setCurrentPage(newPage);
+        fetchLeaveRequests(newPage, pageSize);
     };
 
-    // Fetch all leave requests
+    const handlePageSizeChange = (newSize) => {
+        setPageSize(newSize);
+        setCurrentPage(1);
+        fetchLeaveRequests(1, newSize);
+    };
+
     useEffect(() => {
-        fetchLeaveRequests();
-    }, []);
+        fetchLeaveRequests(currentPage, pageSize);
+    }, [fetchLeaveRequests, currentPage, pageSize]);
 
     const applyFilters = (filterType, search) => {
         let filtered = leaveRequests;
@@ -102,7 +115,6 @@ const ManageLeaveHooks = (userInfo) => {
         setFilteredLeaves(filtered);
     };
 
-    // Filter leaves by search term and status
     useEffect(() => {
         applyFilters(selectedFilter, searchTerm);
     }, [searchTerm, leaveRequests, selectedFilter]);
@@ -130,7 +142,6 @@ const ManageLeaveHooks = (userInfo) => {
         }
     };
 
-    // Bootstrap badge classes for consistency with other manage pages
     const getStatusBadgeClass = (status) => {
         const normalizedStatus = status?.toLowerCase();
         if (normalizedStatus === 'requested') return 'badge-warning';
@@ -152,6 +163,12 @@ const ManageLeaveHooks = (userInfo) => {
         handleFilterSelect,
         getStatusBadgeColor,
         getStatusBadgeClass,
+        currentPage,
+        pageSize,
+        totalRecords,
+        totalPages,
+        handlePageChange,
+        handlePageSizeChange,
     };
 };
 

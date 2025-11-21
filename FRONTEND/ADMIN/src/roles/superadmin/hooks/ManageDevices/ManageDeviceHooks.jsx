@@ -17,6 +17,10 @@ const useManageDevice = (userInfo) => {
   const [loading, setLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -35,20 +39,29 @@ const useManageDevice = (userInfo) => {
   };
 
   // Fetch list of stations/devices
-  const fetchDevices = async () => {
+  const fetchDevices = async (pageNum = 1, pageLimit = 10) => {
     setIsLoading(true);
     try {
       const isSeller = Number(userInfo?.role_id) === 4;
-      const url = isSeller ? 'api/admin/FetchDeviceDetails/by-district' : 'api/admin/FetchDeviceDetails';
-      const config = isSeller ? { params: { district: userInfo?.district } } : {};
+      const url = isSeller ? '/api/admin/FetchDeviceDetails/by-district' : '/api/admin/FetchDeviceDetails';
       const res = isSeller 
-        ? await axiosInstance.get(url, config)
-        : await axiosInstance.post(url);
+        ? await axiosInstance.get(url, { params: { district: userInfo?.district, page: pageNum, limit: pageLimit } })
+        : await axiosInstance.post(url, { page: pageNum, limit: pageLimit });
       if (res.data.status === 'Success') {
-        const devices = Array.isArray(res.data.data) ? [...res.data.data].reverse() : [];
+        const devices = Array.isArray(res.data.data) ? [...res.data.data]: [];
         setStations(devices);
         setFilteredStations(devices);
         setError('');
+        setCurrentPage(pageNum);
+        setPageSize(pageLimit);
+        
+        if (res.data.pagination) {
+          setTotalRecords(res.data.pagination.totalRecords);
+          setTotalPages(res.data.pagination.totalPages);
+        } else {
+          setTotalRecords(devices.length);
+          setTotalPages(Math.ceil(devices.length / pageLimit));
+        }
       } else {
         setError(res.data.message || 'Failed to fetch stations');
       }
@@ -163,16 +176,40 @@ const useManageDevice = (userInfo) => {
   }, [stations, searchText, selectedModel]);
 
   useEffect(() => {
+    setCurrentPage(1);
+  }, [searchText, selectedModel]);
+
+  useEffect(() => {
     fetchModels();
     fetchDevices();
   }, []);
 
   const handleModelSelect = (value) => {
     setSelectedModel(value);
+    setCurrentPage(1);
   };
 
   const resetModelFilter = () => {
     setSelectedModel('');
+    setCurrentPage(1);
+  };
+
+  const getPaginatedData = () => {
+    return filteredStations;
+  };
+
+  const getTotalPages = () => {
+    return totalPages;
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      fetchDevices(newPage, pageSize);
+    }
+  };
+
+  const handlePageSizeChange = (newSize) => {
+    fetchDevices(1, newSize);
   };
 
   const modelOptions = Array.from(
@@ -206,6 +243,14 @@ const useManageDevice = (userInfo) => {
     modelOptions,
     selectedModel,
     totalDevices,
+    currentPage,
+    pageSize,
+    totalRecords,
+    totalPages,
+    getPaginatedData,
+    getTotalPages,
+    handlePageChange,
+    handlePageSizeChange,
   };
 };
 

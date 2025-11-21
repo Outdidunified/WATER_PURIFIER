@@ -7,6 +7,7 @@ import Footer from '../../components/Footer';
 import ReusableButton from '../../../../utils/ReusableButton';
 import InputField from '../../../../utils/InputField';
 import useManageUsers from '../../hooks/ManageUser/ManageUsersHooks';
+import Pagination from '../../components/Pagination/Pagination';
 
 import { Country, State, City } from 'country-state-city';
 import { getDistricts } from 'india-state-district';
@@ -189,6 +190,14 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
     openAssignSellerModal,
     closeAssignSellerModal,
     handleSellerAssignSubmit,
+    // pagination
+    currentPage,
+    pageSize,
+    totalRecords,
+    getPaginatedData,
+    getTotalPages,
+    handlePageChange,
+    handlePageSizeChange,
     // styles
     modalAddStyle,
   } = useManageUsers(userInfo);
@@ -631,9 +640,9 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                           ) : error ? (
                             <tr><td colSpan={userInfo?.role_id === 4 ? 6 : 7}>Error: {error}</td></tr>
                           ) : posts.length > 0 ? (
-                            posts.map((dataItem, index) => (
+                            getPaginatedData().map((dataItem, index) => (
                               <tr key={index}>
-                                <td>{index + 1}</td>
+                                <td>{(currentPage - 1) * pageSize + index + 1}</td>
                                 <td>{dataItem.role_name || '-'}</td>
                                 <td>{dataItem.name || '-'}</td>
                                 <td>{dataItem.technician_id || '-'}</td>
@@ -684,6 +693,16 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                       </table>
                     </div>
 
+                    {totalRecords > 0 && (
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={getTotalPages()}
+                        pageSize={pageSize}
+                        onPageChange={handlePageChange}
+                        onPageSizeChange={handlePageSizeChange}
+                        totalRecords={totalRecords}
+                      />
+                    )}
                   </div>
                 </div>
               </div>

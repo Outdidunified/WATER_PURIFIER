@@ -4,12 +4,20 @@ import Sidebar from '../../components/Sidebar';
 import Footer from '../../components/Footer';
 import InputField from '../../../../utils/InputField';
 import useManageContact from '../../hooks/ManageContact/ManageContactHooks';
+import Pagination from '../../components/Pagination/Pagination';
+
 const ManageContact = ({ userInfo, handleLogout }) => {
   const {
     contacts,
     loading,
     error,
     handleSearchInputChange,
+    currentPage,
+    pageSize,
+    totalRecords,
+    totalPages,
+    handlePageChange,
+    handlePageSizeChange,
   } = useManageContact(userInfo);
 
   const formatDateTime = (timestamp) => {
@@ -121,6 +129,14 @@ const ManageContact = ({ userInfo, handleLogout }) => {
                         </tbody>
                       </table>
                     </div>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      pageSize={pageSize}
+                      onPageChange={handlePageChange}
+                      onPageSizeChange={handlePageSizeChange}
+                      totalRecords={totalRecords}
+                    />
 
                   </div>
                 </div>

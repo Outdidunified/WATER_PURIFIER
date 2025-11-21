@@ -8,6 +8,7 @@ import InputField from '../../../../utils/InputField';
 import useManageRoles from '../../hooks/ManageRoles/ManageRolesHooks';
 import axiosInstance from '../../../../utils/utils';
 import { showSuccessAlert, showErrorAlert } from '../../../../utils/alert';
+import Pagination from '../../components/Pagination/Pagination';
 
 const ManageRoles = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
@@ -30,6 +31,12 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
     isDuplicateRole,
     isAddModalOpen,
     roleName,
+    currentPage,
+    pageSize,
+    totalRecords,
+    totalPages,
+    handlePageChange,
+    handlePageSizeChange,
   } = useManageRoles(userInfo);
 
   const [showRoleFilter, setShowRoleFilter] = useState(false);
@@ -38,7 +45,9 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
   const [grantModalOpen, setGrantModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
   const [permissions, setPermissions] = useState([]);
+  const [originalPermissions, setOriginalPermissions] = useState([]);
   const [permissionsLoading, setPermissionsLoading] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
   const summaryCardStyle = {
     display: 'flex',
@@ -160,6 +169,8 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
         });
 
         setPermissions(merged);
+        setOriginalPermissions(JSON.parse(JSON.stringify(merged)));
+        setHasChanges(false);
       } else {
         showErrorAlert('Error', 'Failed to fetch permissions/modules');
       }
@@ -175,6 +186,9 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
     const updated = [...permissions];
     updated[index][field] = value;
     setPermissions(updated);
+
+    const isChanged = JSON.stringify(updated) !== JSON.stringify(originalPermissions);
+    setHasChanges(isChanged);
   };
 
   const handleSavePermissions = async () => {
@@ -186,6 +200,7 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
       const response = await axiosInstance.post('/api/admin/assign', payload);
       if (response.status === 200 && response.data.status === 'Success') {
         showSuccessAlert('Success', 'Permissions updated successfully');
+        setHasChanges(false);
         setGrantModalOpen(false);
       } else {
         showErrorAlert('Error', response.data.message || 'Failed to update permissions');
@@ -495,6 +510,14 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
                         </tbody>
                       </table>
                     </div>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      pageSize={pageSize}
+                      onPageChange={handlePageChange}
+                      onPageSizeChange={handlePageSizeChange}
+                      totalRecords={totalRecords}
+                    />
                   </div>
                 </div>
               </div>
@@ -530,7 +553,10 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
                   }}
                 >
                   <span
-                    onClick={() => setGrantModalOpen(false)}
+                    onClick={() => {
+                      setGrantModalOpen(false);
+                      setHasChanges(false);
+                    }}
                     style={{
                       float: 'right',
                       cursor: 'pointer',
@@ -601,7 +627,7 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
                   )}
 
                   <div style={{ textAlign: 'center', marginTop: '20px' }}>
-                    <ReusableButton onClick={handleSavePermissions}>Save Permissions</ReusableButton>
+                    <ReusableButton onClick={handleSavePermissions} disabled={!hasChanges}>Save Permissions</ReusableButton>
                   </div>
                 </div>
               </div>

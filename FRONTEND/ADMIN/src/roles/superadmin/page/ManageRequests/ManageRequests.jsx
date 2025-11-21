@@ -6,6 +6,7 @@ import Footer from '../../components/Footer';
 import InputField from '../../../../utils/InputField';
 import { showErrorAlert } from '../../../../utils/alert';
 import useManageRequests from '../../hooks/ManageRequests/ManageRequestsHooks';
+import Pagination from '../../components/Pagination/Pagination';
 
 const ManageRequests = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
@@ -22,6 +23,12 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
     summary,
     selectedFilter,
     handleFilterSelect,
+    currentPage,
+    pageSize,
+    totalRecords,
+    totalPages,
+    handlePageChange,
+    handlePageSizeChange,
   } = useManageRequests(userInfo);
 
   const [assignModalOpen, setAssignModalOpen] = useState(false);
@@ -449,6 +456,14 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                         </tbody>
                       </table>
                     </div>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      pageSize={pageSize}
+                      onPageChange={handlePageChange}
+                      onPageSizeChange={handlePageSizeChange}
+                      totalRecords={totalRecords}
+                    />
                   </div>
                 </div>
               </div>

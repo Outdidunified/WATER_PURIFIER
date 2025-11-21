@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import ReusableButton from '../../../../utils/ReusableButton';
 import InputField from '../../../../utils/InputField';
 import useManageDevice from '../../hooks/ManageDevices/ManageDeviceHooks';
+import Pagination from '../../components/Pagination/Pagination';
 
 const ManageDevice = ({ userInfo, handleLogout }) => {
     const navigate = useNavigate();
@@ -31,6 +32,13 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
         modelOptions,
         selectedModel,
         totalDevices,
+        currentPage,
+        pageSize,
+        totalRecords,
+        getPaginatedData,
+        getTotalPages,
+        handlePageChange,
+        handlePageSizeChange,
     } = useManageDevice(userInfo);
 
     const handleViewStation = (dataItem) => {
@@ -343,9 +351,9 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                                             <td colSpan="7">Loading...</td>
                                                         </tr>
                                                     ) : filteredStations.length > 0 ? (
-                                                        filteredStations.map((station, index) => (
+                                                        getPaginatedData().map((station, index) => (
                                                             <tr key={station._id || index}>
-                                                                <td>{index + 1}</td>
+                                                                <td>{(currentPage - 1) * pageSize + index + 1}</td>
                                                                 <td>{station.wp_device_id || '-'}</td>
                                                                 <td style={{
                                                                     whiteSpace: 'pre-wrap',
@@ -382,6 +390,16 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                             </table>
                                         </div>
 
+                                        {totalRecords > 0 && (
+                                            <Pagination
+                                                currentPage={currentPage}
+                                                totalPages={getTotalPages()}
+                                                pageSize={pageSize}
+                                                onPageChange={handlePageChange}
+                                                onPageSizeChange={handlePageSizeChange}
+                                                totalRecords={totalRecords}
+                                            />
+                                        )}
                                     </div>
                                 </div>
                             </div>
