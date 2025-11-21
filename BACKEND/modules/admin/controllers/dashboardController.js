@@ -4333,7 +4333,7 @@ const GetOrdersByDistrict = async (req, res) => {
 
 const GetInstallationsByDistrict = async (req, res) => {
   try {
-    const { district } = req.query || {};
+    const { district, status, search } = req.query || {};
     const { page, limit, skip } = getPaginationParams(req);
 
     const db = await database.connectToDatabase();
@@ -4348,11 +4348,46 @@ const GetInstallationsByDistrict = async (req, res) => {
     };
 
     if (district && String(district).trim() !== '') {
-      // Case-insensitive regex
       matchStage["deliveryAddress.district"] = new RegExp(`^${String(district).trim()}$`, "i");
     }
 
-    // Count total records
+    const buildStatusFilter = (status) => {
+      if (!status) return null;
+      const statusLower = status.toLowerCase();
+      if (statusLower === 'pending') {
+        return { 'service_records.task_status': 'Pending' };
+      } else if (statusLower === 'inprogress' || statusLower === 'in_progress') {
+        return { 'service_records.task_status': { $in: ['In Progress', 'In_Progress', 'in_progress'] } };
+      } else if (statusLower === 'completed') {
+        return { 'service_records.task_status': 'Completed' };
+      } else if (statusLower === 'rejected') {
+        return { 'service_records.task_status': 'Rejected' };
+      } else if (statusLower === 'unassigned') {
+        return { 'service_records.assigned_technician_id': { $in: [null, '', undefined] } };
+      }
+      return null;
+    };
+
+    const buildSearchFilter = (searchTerm) => {
+      if (!searchTerm || !searchTerm.trim()) return null;
+      const searchRegex = { $regex: searchTerm.trim(), $options: 'i' };
+      return {
+        $or: [
+          { 'service_records.task_id': searchRegex },
+          { 'service_records.assigned_technician_id': searchRegex },
+          { wp_device_id: searchRegex },
+          { customOrderId: searchRegex }
+        ]
+      };
+    };
+
+    const statusFilter = buildStatusFilter(status);
+    const searchFilter = buildSearchFilter(search);
+
+    const filterStage = {};
+    if (statusFilter) Object.assign(filterStage, statusFilter);
+    if (searchFilter) Object.assign(filterStage, searchFilter);
+
     const totalCountPipeline = [
       { $match: matchStage },
       {
@@ -4384,14 +4419,19 @@ const GetInstallationsByDistrict = async (req, res) => {
             ]
           }
         }
-      },
-      { $count: "total" }
+      }
     ];
+
+    if (Object.keys(filterStage).length > 0) {
+      totalCountPipeline.push({ $match: filterStage });
+    }
+
+    totalCountPipeline.push({ $count: "total" });
 
     const countResult = await ordersCollection.aggregate(totalCountPipeline).toArray();
     const total = countResult.length > 0 ? countResult[0].total : 0;
 
-    const installations = await ordersCollection.aggregate([
+    const dataPipeline = [
       { $match: matchStage },
       {
         $lookup: {
@@ -4422,7 +4462,14 @@ const GetInstallationsByDistrict = async (req, res) => {
             ]
           }
         }
-      },
+      }
+    ];
+
+    if (Object.keys(filterStage).length > 0) {
+      dataPipeline.push({ $match: filterStage });
+    }
+
+    dataPipeline.push(
       {
         $lookup: {
           from: "users",
@@ -4442,7 +4489,6 @@ const GetInstallationsByDistrict = async (req, res) => {
           }
         }
       },
-      // Only include orders that have installation records
       {
         $project: { user: 0 }
       },
@@ -4451,7 +4497,9 @@ const GetInstallationsByDistrict = async (req, res) => {
       },
       { $skip: skip },
       { $limit: limit }
-    ]).toArray();
+    );
+
+    const installations = await ordersCollection.aggregate(dataPipeline).toArray();
 
     return res.status(200).json(formatPaginatedResponse(installations, total, page, limit));
 
