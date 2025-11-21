@@ -117,6 +117,198 @@ exports.getAllProductsWithPlans = async (req, res) => {
   }
 };
 
+exports.fetchpaymenthistory = async (req, res) => {
+  try {
+    const { user_id, page = 1, limit = 1000 } = req.body;
+
+    if (!user_id) {
+      return res.status(400).json({
+        success: false,
+        message: "user_id is required in request body",
+      });
+    }
+
+    const db = await connectToDatabase();
+    const paymentsCol = db.collection("payments");
+    const { ObjectId } = require("mongodb");
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    // ---------------------------
+    // ONE FAST AGGREGATION QUERY
+    // ---------------------------
+    const pipeline = [
+      { $match: { user_id } },
+
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limitNum },
+
+      // JOIN ORDERS
+      {
+        $lookup: {
+          from: "orders",
+          localField: "orderId",
+          foreignField: "_id",
+          as: "orders"
+        }
+      },
+
+      // ALWAYS KEEP ARRAY
+      {
+        $addFields: {
+          orders: {
+            $cond: {
+              if: { $isArray: "$orders" },
+              then: "$orders",
+              else: []
+            }
+          }
+        }
+      },
+
+      // UNWIND ORDER TO MERGE SERVICE + PRODUCT MODEL
+      { $unwind: { path: "$orders", preserveNullAndEmptyArrays: true } },
+
+      // PRODUCT MODEL IMAGES
+      {
+        $lookup: {
+          from: "product_models",
+          localField: "orders.productModelId",
+          foreignField: "_id",
+          as: "productModel"
+        }
+      },
+      { $unwind: { path: "$productModel", preserveNullAndEmptyArrays: true } },
+
+      // SERVICE RECORD JOIN
+      {
+        $lookup: {
+          from: "service_records",
+          let: { d: "$orders.wp_device_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: [
+                    { $toLower: "$wp_device_id" },
+                    { $toLower: "$$d" }
+                  ]
+                }
+              }
+            },
+            { $match: { task_type: { $in: [1, 2, 3] } } }
+          ],
+          as: "serviceRecord"
+        }
+      },
+      { $unwind: { path: "$serviceRecord", preserveNullAndEmptyArrays: true } },
+
+      // FORMAT EXACTLY LIKE YOU WANT
+      {
+        $group: {
+          _id: "$_id",
+          payment: { $first: "$$ROOT" },
+          orders: { $push: {
+            _id: "$orders._id",
+            customOrderId: "$orders.customOrderId",
+            user_id: "$orders.user_id",
+            productModelId: "$orders.productModelId",
+            orderType: "$orders.orderType",
+            modelName: "$orders.modelName",
+            modeltype: "$orders.modeltype",
+            main_image: "$orders.main_image",
+            sub_images: "$orders.sub_images",
+            wp_device_id: "$orders.wp_device_id",
+            selectedPlan: "$orders.selectedPlan",
+            selectedDuration: "$orders.selectedDuration",
+            grandTotal: "$orders.grandTotal",
+            deliveryAddress: "$orders.deliveryAddress",
+            paymentType: "$orders.paymentType",
+            paymentStatus: "$orders.paymentStatus",
+            orderStatus: "$orders.orderStatus",
+            razorpayOrderId: "$orders.razorpayOrderId",
+            totalLitre: "$orders.totalLitre",
+            price: "$orders.price",
+            subtotal: "$orders.subtotal",
+            codFee: "$orders.codFee",
+            deliveryAcceptanceStatus: "$orders.deliveryAcceptanceStatus",
+            deliveryAcceptanceTimestamp: "$orders.deliveryAcceptanceTimestamp",
+            deliveryCompletionTimestamp: "$orders.deliveryCompletionTimestamp",
+            createdAt: "$orders.createdAt",
+            updatedAt: "$orders.updatedAt",
+            deliveryCurrentStatus: "$orders.deliveryCurrentStatus",
+            deliveryHistory: "$orders.deliveryHistory",
+            deliveryCompletionStatus: "$orders.deliveryCompletionStatus",
+
+            // Final service details
+            task_status: {
+              $ifNull: ["$serviceRecord.task_status", "N/A"]
+            },
+            task_type: "$serviceRecord.task_type",
+
+            // Final product model images
+            product_model_images: {
+              _id: "$productModel._id",
+              main_img: "$productModel.main_img",
+              sub_img_1: "$productModel.sub_img_1",
+              sub_img_2: "$productModel.sub_img_2",
+              sub_img_3: "$productModel.sub_img_3",
+              sub_img_4: "$productModel.sub_img_4"
+            }
+          }}
+        }
+      },
+
+      // MERGE PAYMENT + ORDER ARRAY CLEANLY
+      {
+        $project: {
+          _id: 1,
+          user_id: "$payment.user_id",
+          orderId: "$payment.orderId",
+          razorpayOrderId: "$payment.razorpayOrderId",
+          discountedPrice: "$payment.discountedPrice",
+          discountAmount: "$payment.discountAmount",
+          priceWithGST: "$payment.priceWithGST",
+          gstAmount: "$payment.gstAmount",
+          securityDeposit: "$payment.securityDeposit",
+          totalPrice: "$payment.totalPrice",
+          totalLitre: "$payment.totalLitre",
+          paymentStatus: "$payment.paymentStatus",
+          paymentType: "$payment.paymentType",
+          price: "$payment.price",
+          subtotal: "$payment.subtotal",
+          codFee: "$payment.codFee",
+          createdAt: "$payment.createdAt",
+          updatedAt: "$payment.updatedAt",
+          razorpayPaymentId: "$payment.razorpayPaymentId",
+          orders: "$orders"
+        }
+      }
+    ];
+
+    const data = await paymentsCol.aggregate(pipeline).toArray();
+
+    const totalRecords = await paymentsCol.countDocuments({ user_id });
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment history fetched successfully",
+      page: pageNum,
+      limit: limitNum,
+      totalRecords,
+      totalPages: Math.ceil(totalRecords / limitNum),
+      data
+    });
+
+  } catch (error) {
+    console.error("❌ ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 
 
 
