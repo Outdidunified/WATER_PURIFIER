@@ -152,6 +152,24 @@ class TaskApiService extends BaseApiService {
     );
   }
 
+  Future<Map<String, dynamic>> getRejectionHistory() async {
+    final userId = _sessionController.userId.value;
+    final email = _sessionController.emailId.value;
+    final assignedTechnicianId = _sessionController.technicianId.value;
+
+    return makeRequest<Map<String, dynamic>>(
+      url: '${Core.baseUrl}/api/app/technicianhome/getRejectionHistory',
+      method: 'POST',
+      body: {
+        'user_id': userId,
+        'email': email,
+        'role_id': 2,
+        'assigned_technician_id': assignedTechnicianId,
+      },
+      responseParser: (data) => data as Map<String, dynamic>,
+    );
+  }
+
   Future<Map<String, dynamic>> updateInProgressTaskLeaveAction({
     required String technicianId,
     required String email,

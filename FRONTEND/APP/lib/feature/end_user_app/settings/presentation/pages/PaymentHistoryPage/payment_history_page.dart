@@ -346,7 +346,11 @@ Widget _buildPaymentEntry({
   required double screenWidth,
 }) {
   final dateFormat = DateFormat('dd MMM yyyy, hh:mm a');
-  final isCompleted = payment.paymentStatus?.toLowerCase() == 'completed';
+  final localCreatedAt = payment.createdAt.toLocal();
+  final paymentStatus = payment.paymentStatus ?? 'Pending';
+  final isCompleted = paymentStatus.toLowerCase() == 'completed';
+  final orderId = payment.orderId ?? 'N/A';
+  final displayOrderId = orderId.length > 8 ? '${orderId.substring(0, 8)}...' : orderId;
 
   return Container(
     padding: EdgeInsets.all(screenWidth * 0.04),
@@ -364,21 +368,19 @@ Widget _buildPaymentEntry({
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Order ID
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Order ID: ${payment.orderId?.substring(0, 8) ?? 'N/A'}...',
+              'Order ID: $displayOrderId',
               style: TextStyle(
                 fontSize: screenWidth * 0.04,
                 fontWeight: FontWeight.w600,
                 color: theme.colorScheme.primary,
               ),
             ),
-            // Amount
             Text(
-              '₹${payment.totalPrice?.toStringAsFixed(2) ?? '0.00'}',
+              '₹${(payment.totalPrice ?? 0.0).toStringAsFixed(2)}',
               style: TextStyle(
                 fontSize: screenWidth * 0.045,
                 fontWeight: FontWeight.bold,
@@ -388,16 +390,14 @@ Widget _buildPaymentEntry({
           ],
         ),
         SizedBox(height: screenWidth * 0.02),
-        // Time
         Text(
-          'Time: ${dateFormat.format(payment.createdAt)}',
+          'Time: ${dateFormat.format(localCreatedAt)}',
           style: TextStyle(
             fontSize: screenWidth * 0.035,
             color: Colors.black54,
           ),
         ),
         SizedBox(height: screenWidth * 0.01),
-        // Status with Icon
         Row(
           children: [
             Icon(
@@ -407,7 +407,7 @@ Widget _buildPaymentEntry({
             ),
             SizedBox(width: screenWidth * 0.02),
             Text(
-              payment.paymentStatus ?? 'Unknown',
+              paymentStatus,
               style: TextStyle(
                 fontSize: screenWidth * 0.035,
                 color: isCompleted ? Colors.green : Colors.orange,

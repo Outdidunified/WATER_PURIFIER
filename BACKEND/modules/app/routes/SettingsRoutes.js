@@ -8,7 +8,7 @@ const authMiddleware=require('../../../middlewares/authMiddleware')
 router.post('/fetchuserdetails', authMiddleware,settings.fetchUserDetails); // Get all settings
 router.post('/updateuserdetails', authMiddleware, settings.updateUserDetails); // Update user details
 router.post('/createServiceRequest',authMiddleware,settings.createServiceRequest);
-router.post('/fetchpaymenthistory',authMiddleware,settings.fetchpaymenthistory);
+router.post('/fetchpaymenthistory',settings.fetchpaymenthistory);
 
 
 module.exports = router;

@@ -55,52 +55,55 @@ exports.getAllProductsWithPlans = async (req, res) => {
   try {
     const db = await connectToDatabase();
 
-    // 1. Get all devices already used in any active or completed order
-    const allUsedOrders = await db.collection('orders').find({
-      $or: [
-        { paymentStatus: 'Completed' },
-        { orderStatus: 'Confirmed' }
-      ],
-      wp_device_id: { $exists: true, $ne: null }
-    }).toArray();
+    const [usedDevices, assignedDevices] = await Promise.all([
+      db.collection('orders').distinct('wp_device_id', {
+        $or: [
+          { paymentStatus: 'Completed' },
+          { orderStatus: 'Confirmed' }
+        ],
+        wp_device_id: { $exists: true, $ne: null }
+      }),
+      db.collection('users').aggregate([
+        { $match: { assigned_device_ids: { $exists: true, $type: 'array' } } },
+        { $unwind: '$assigned_device_ids' },
+        { $group: { _id: null, devices: { $push: '$assigned_device_ids' } } }
+      ]).toArray().then(result => result[0]?.devices || [])
+    ]);
 
-    const usedDeviceIdsFromOrders = new Set(allUsedOrders.map(order => order.wp_device_id));
+    const unavailableIds = [...new Set([...usedDevices, ...assignedDevices])];
 
-    // 2. Get all devices already assigned to users
-    const allUsers = await db.collection('users').find({}).toArray();
-    const assignedDeviceIds = new Set();
-    allUsers.forEach(user => {
-      if (Array.isArray(user.assigned_device_ids)) {
-        user.assigned_device_ids.forEach(id => assignedDeviceIds.add(id));
-      }
-    });
-
-    // Combine all used device IDs
-    const unavailableDeviceIds = new Set([...usedDeviceIdsFromOrders, ...assignedDeviceIds]);
-
-    // 3. Get all active products
-    const allProducts = await db.collection('product_models').find({ status: true }).toArray();
-
-    const availableProducts = [];
-
-    for (const product of allProducts) {
-      // Find an available device for this product
-      const availableDevice = await db.collection('device_details').findOne({
-        model_id: product.model_id,
-        status: true,
-        wp_device_id: { $nin: Array.from(unavailableDeviceIds) }
-      });
-
-      availableProducts.push({
-        ...product,
-        wp_device_id: availableDevice ? availableDevice.wp_device_id : null
-      });
-    }
+    const results = await db.collection('product_models').aggregate([
+      { $match: { status: true } },
+      {
+        $lookup: {
+          from: 'device_details',
+          let: { modelId: '$model_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$model_id', '$$modelId'] },
+                status: true,
+                wp_device_id: { $nin: unavailableIds }
+              }
+            },
+            { $limit: 1 },
+            { $project: { wp_device_id: 1 } }
+          ],
+          as: 'device'
+        }
+      },
+      {
+        $addFields: {
+          wp_device_id: { $arrayElemAt: ['$device.wp_device_id', 0] }
+        }
+      },
+      { $project: { device: 0 } }
+    ]).toArray();
 
     return res.status(200).json({
       status: 'Success',
       error: false,
-      data: availableProducts
+      data: results
     });
 
   } catch (err) {

@@ -28,6 +28,9 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
   void initState() {
     super.initState();
     _setDateRange('Weekly');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      technicianController.loadRejectionHistory();
+    });
   }
 
   void _setDateRange(String filter) {
@@ -68,6 +71,23 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
            taskDate.isBefore(selectedEndDate.value!.add(Duration(days: 1)));
   }
 
+  bool _isRejectedTaskInDateRange(Task task) {
+    final rejectedDate = task.rejectedDate;
+    if (rejectedDate == null) return false;
+    
+    if (customPickedDate.value != null) {
+      return rejectedDate.year == customPickedDate.value!.year &&
+             rejectedDate.month == customPickedDate.value!.month &&
+             rejectedDate.day == customPickedDate.value!.day;
+    }
+    
+    if (dateFilter.value == 'All') return true;
+    if (selectedStartDate.value == null || selectedEndDate.value == null) return true;
+    
+    return rejectedDate.isAfter(selectedStartDate.value!) && 
+           rejectedDate.isBefore(selectedEndDate.value!.add(Duration(days: 1)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -80,8 +100,11 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () {
-              technicianController.loadTasks();
+            onPressed: () async {
+              await Future.wait([
+                technicianController.loadTasks(),
+                technicianController.loadRejectionHistory(),
+              ]);
               selectedFilter.value = 'All';
             },
           ),
@@ -129,17 +152,30 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
         final completedTasks = technicianController.getTaskCount('Completed');
         final inProgressTasks = technicianController.getTaskCount('In Progress');
         final pendingTasks = technicianController.getTaskCount('Pending');
-        final rejectedTasks = technicianController.getTaskCount('Rejected');
+        final rejectedTasks = technicianController.rejectionHistory.length;
 
-        final filteredList = technicianController.allTasks
-            .where((task) {
-              final statusMatch = selectedFilter.value == 'All' ||
-                  task.taskStatus?.toLowerCase() ==
-                      selectedFilter.value.toLowerCase();
-              final dateMatch = _isTaskInDateRange(task);
-              return statusMatch && dateMatch;
-            })
-            .toList();
+        List<Task> filteredList;
+        if (selectedFilter.value.toLowerCase() == 'rejected') {
+          final convertedRejectionData = technicianController.rejectionHistory.map((item) {
+            if (item is Map<String, dynamic>) {
+              return Task.fromJson(item);
+            }
+            return item;
+          }).toList();
+          filteredList = convertedRejectionData.cast<Task>()
+              .where((task) => _isRejectedTaskInDateRange(task))
+              .toList();
+        } else {
+          filteredList = technicianController.allTasks
+              .where((task) {
+                final statusMatch = selectedFilter.value == 'All' ||
+                    task.taskStatus?.toLowerCase() ==
+                        selectedFilter.value.toLowerCase();
+                final dateMatch = _isTaskInDateRange(task);
+                return statusMatch && dateMatch;
+              })
+              .toList();
+        }
 
         // Check if filtered list is empty
         if (filteredList.isEmpty) {
@@ -280,7 +316,6 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
                       crossAxisSpacing: screenWidth * 0.02,
                       mainAxisSpacing: screenHeight * 0.005,
                       children: [
-                        _buildOverviewStat('Total', totalTasks.toString()),
                         _buildOverviewStat('Completed', completedTasks.toString()),
                         _buildOverviewStat('In Progress', inProgressTasks.toString()),
                         _buildOverviewStat('Pending', pendingTasks.toString()),
@@ -368,11 +403,13 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
   Widget _buildFilterChips(double screenWidth) {
     return Obx(() {
       final allTasks = technicianController.allTasks;
-      final statusOptions = ['All', 'Completed', 'In Progress', 'Pending', 'Rejected'];
+      final statusOptions = ['Completed', 'In Progress', 'Pending', 'Rejected'];
 
       // Build only chips with available tasks
       final availableChips = statusOptions.where((status) {
-        if (status == 'All') return true; // Always include "All"
+        if (status == 'Rejected') {
+          return technicianController.rejectionHistory.isNotEmpty;
+        }
         return allTasks.any(
             (task) => task.taskStatus?.toLowerCase() == status.toLowerCase());
       }).toList();
@@ -381,8 +418,8 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
         spacing: 6.0,
         runSpacing: 6.0,
         children: availableChips.map((status) {
-          final count = status == 'All'
-              ? allTasks.length
+          final count = status == 'Rejected'
+              ? technicianController.rejectionHistory.length
               : allTasks
                   .where((task) =>
                       task.taskStatus?.toLowerCase() == status.toLowerCase())

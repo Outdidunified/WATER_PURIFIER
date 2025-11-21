@@ -738,18 +738,33 @@ class SettingsController extends GetxController {
     try {
       final userId = _sessionController.userId.value;
       final userEmail = _sessionController.emailId.value;
-      final deviceId = selectedDeviceId.value ?? DevucData.value?.deviceId ?? '';
+
+      final selectedId = selectedDeviceId.value;
+      var wpDeviceId = '';
+      var modelName = '';
+
+      if (selectedId != null) {
+        final selectedSubscription = completedSubscriptions.firstWhere(
+          (sub) => sub.wpDeviceId == selectedId,
+          orElse: () => null as dynamic,
+        );
+        if (selectedSubscription != null) {
+          wpDeviceId = selectedSubscription.wpDeviceId ?? '';
+          modelName = selectedSubscription.modelName ?? '';
+        }
+      }
 
       String taskDesc = taskDescription.value ?? '';
-      if (deviceId.isNotEmpty) {
-        taskDesc += '\nDevice ID: $deviceId';
+      if (wpDeviceId.isNotEmpty) {
+        taskDesc += '\nDevice ID: $wpDeviceId';
       }
 
       final response = await _settingsRepository.createServiceRequest(
         userId: userId,
         userEmail: userEmail,
         taskDescription: taskDesc,
-        deviceId: deviceId,
+        wpDeviceId: wpDeviceId,
+        modelName: modelName,
       );
 
       if (response.error == false) {

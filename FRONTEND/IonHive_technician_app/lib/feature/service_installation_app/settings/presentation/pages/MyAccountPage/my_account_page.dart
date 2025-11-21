@@ -124,6 +124,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
     required BuildContext context,
     required String label,
     required IconData icon,
+    bool hasError = false,
   }) {
     final theme = Theme.of(context);
     return InputDecoration(
@@ -138,7 +139,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: theme.dividerColor, width: 2.0),
+        borderSide: BorderSide(color: hasError ? theme.colorScheme.error : theme.dividerColor, width: 2.0),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -316,45 +317,79 @@ class _EditAccountPageState extends State<EditAccountPage> {
                         SizedBox(height: screenHeight * 0.02),
 
                         // Name
-                        TextField(
-                          controller: controller.editNameController,
-                          focusNode: usernameFocusNode,
-                          decoration: _styledDecoration(
-                              context: context,
-                              label: 'Name',
-                              icon: Icons.person_outline),
-                          onChanged: (_) => controller.validateForm(),
-                          textInputAction: TextInputAction.next,
-                          onSubmitted: (_) {
-                            FocusScope.of(context).requestFocus(phoneFocusNode);
-                          },
-                        ),
+                        Obx(() => Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextField(
+                              controller: controller.editNameController,
+                              focusNode: usernameFocusNode,
+                              decoration: _styledDecoration(
+                                  context: context,
+                                  label: 'Name',
+                                  icon: Icons.person_outline,
+                                  hasError: controller.nameError.value.isNotEmpty),
+                              onChanged: (_) => controller.validateForm(),
+                              textInputAction: TextInputAction.next,
+                              onSubmitted: (_) {
+                                FocusScope.of(context).requestFocus(phoneFocusNode);
+                              },
+                            ),
+                            if (controller.nameError.value.isNotEmpty)
+                              Padding(
+                                padding: EdgeInsets.only(top: screenHeight * 0.008),
+                                child: Text(
+                                  controller.nameError.value,
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: screenWidth * 0.03,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        )),
                         SizedBox(height: screenHeight * 0.02),
 
                         // Phone
-                        TextField(
-                          controller: controller.editPhoneController,
-                          focusNode: phoneFocusNode,
-                          decoration: _styledDecoration(
-                              context: context,
-                              label: 'Phone',
-                              icon: Icons.phone_outlined),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly
+                        Obx(() => Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextField(
+                              controller: controller.editPhoneController,
+                              focusNode: phoneFocusNode,
+                              decoration: _styledDecoration(
+                                  context: context,
+                                  label: 'Phone',
+                                  icon: Icons.phone_outlined,
+                                  hasError: controller.phoneError.value.isNotEmpty),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly
+                              ],
+                              maxLength: 10,
+                              buildCounter: (context,
+                                  {required int currentLength,
+                                    required bool isFocused,
+                                    required int? maxLength}) =>
+                              null,
+                              onChanged: (_) => controller.validateForm(),
+                              textInputAction: TextInputAction.next,
+                              onSubmitted: (_) {
+                                FocusScope.of(context).requestFocus(cityFocusNode);
+                              },
+                            ),
+                            if (controller.phoneError.value.isNotEmpty)
+                              Padding(
+                                padding: EdgeInsets.only(top: screenHeight * 0.008),
+                                child: Text(
+                                  controller.phoneError.value,
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: screenWidth * 0.03,
+                                  ),
+                                ),
+                              ),
                           ],
-                          maxLength: 10,
-                          buildCounter: (context,
-                              {required int currentLength,
-                                required bool isFocused,
-                                required int? maxLength}) =>
-                          null, // <-- This hides the 10/10 counter
-                          onChanged: (_) => controller.validateForm(),
-                          textInputAction: TextInputAction.next,
-                          onSubmitted: (_) {
-                            FocusScope.of(context).requestFocus(cityFocusNode);
-                          },
-                        ),
+                        )),
 
                         SizedBox(height: screenHeight * 0.02),
 
@@ -393,136 +428,248 @@ class _EditAccountPageState extends State<EditAccountPage> {
       double screenHeight, TechnicianSettingsController controller) {
     return [
       // City
-      TextField(
-        controller: controller.editCityController,
-        focusNode: cityFocusNode,
-        decoration: _styledDecoration(
-            context: context,
-            label: 'City',
-            icon: Icons.location_city_outlined),
-        onChanged: (_) => controller.validateForm(),
-        textInputAction: TextInputAction.next,
-        onSubmitted: (_) {
-          FocusScope.of(context).requestFocus(countryFocusNode);
-        },
-      ),
+      Obx(() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: controller.editCityController,
+            focusNode: cityFocusNode,
+            decoration: _styledDecoration(
+                context: context,
+                label: 'City',
+                icon: Icons.location_city_outlined,
+                hasError: controller.cityError.value.isNotEmpty),
+            onChanged: (_) => controller.validateForm(),
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) {
+              FocusScope.of(context).requestFocus(countryFocusNode);
+            },
+          ),
+          if (controller.cityError.value.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: screenHeight * 0.008),
+              child: Text(
+                controller.cityError.value,
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: screenWidth * 0.03,
+                ),
+              ),
+            ),
+        ],
+      )),
       SizedBox(height: screenHeight * 0.02),
       // Country
-      TextField(
-        controller: controller.editCountryController,
-        focusNode: countryFocusNode,
-        decoration: _styledDecoration(
-            context: context, label: 'Country', icon: Icons.public_outlined),
-        textInputAction: TextInputAction.next,
-        onChanged: (_) => controller.validateForm(),
-        onSubmitted: (_) =>
-            FocusScope.of(context).requestFocus(stateFocusNode),
-      ),
+      Obx(() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: controller.editCountryController,
+            focusNode: countryFocusNode,
+            decoration: _styledDecoration(
+                context: context, 
+                label: 'Country', 
+                icon: Icons.public_outlined,
+                hasError: controller.countryError.value.isNotEmpty),
+            textInputAction: TextInputAction.next,
+            onChanged: (_) => controller.validateForm(),
+            onSubmitted: (_) =>
+                FocusScope.of(context).requestFocus(stateFocusNode),
+          ),
+          if (controller.countryError.value.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: screenHeight * 0.008),
+              child: Text(
+                controller.countryError.value,
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: screenWidth * 0.03,
+                ),
+              ),
+            ),
+        ],
+      )),
       SizedBox(height: screenHeight * 0.02),
       // State Dropdown
-      DropdownButtonFormField<String>(
-        value: selectedState,
-        focusNode: stateFocusNode,
-        decoration: _styledDecoration(
-            context: context, label: 'State', icon: Icons.flag_outlined),
-        hint: Text(stateDistrictData.isEmpty ? 'Loading...' : 'Select State'),
-        isExpanded: true,
-        dropdownColor: Colors.white,
-        style: TextStyle(
-          color: Colors.black87,
-          fontSize: 16,
-        ),
-        items: stateDistrictData.isEmpty
-            ? []
-            : stateDistrictData.keys.map((String state) {
-                return DropdownMenuItem<String>(
-                  value: state,
-                  child: Text(state),
-                );
-              }).toList(),
-        onChanged: stateDistrictData.isEmpty ? null : (String? newValue) {
-          setState(() {
-            selectedState = newValue;
-            selectedDistrict = null; // Reset district when state changes
-            availableDistricts = newValue != null 
-                ? stateDistrictData[newValue]! 
-                : [];
-            
-            // Update controller
-            controller.editStateController.text = newValue ?? '';
-            controller.editDistrictController.text = '';
-            controller.validateForm();
-          });
-        },
-      ),
+      Obx(() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownButtonFormField<String>(
+            value: selectedState,
+            focusNode: stateFocusNode,
+            decoration: _styledDecoration(
+                context: context, 
+                label: 'State', 
+                icon: Icons.flag_outlined,
+                hasError: controller.stateError.value.isNotEmpty),
+            hint: Text(stateDistrictData.isEmpty ? 'Loading...' : 'Select State'),
+            isExpanded: true,
+            dropdownColor: Colors.white,
+            style: TextStyle(
+              color: Colors.black87,
+              fontSize: 16,
+            ),
+            items: stateDistrictData.isEmpty
+                ? []
+                : stateDistrictData.keys.map((String state) {
+                    return DropdownMenuItem<String>(
+                      value: state,
+                      child: Text(state),
+                    );
+                  }).toList(),
+            onChanged: stateDistrictData.isEmpty ? null : (String? newValue) {
+              setState(() {
+                selectedState = newValue;
+                selectedDistrict = null;
+                availableDistricts = newValue != null 
+                    ? stateDistrictData[newValue]! 
+                    : [];
+                
+                controller.editStateController.text = newValue ?? '';
+                controller.editDistrictController.text = '';
+                controller.validateForm();
+              });
+            },
+          ),
+          if (controller.stateError.value.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: screenHeight * 0.008),
+              child: Text(
+                controller.stateError.value,
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: screenWidth * 0.03,
+                ),
+              ),
+            ),
+        ],
+      )),
       SizedBox(height: screenHeight * 0.02),
       // District Dropdown
-      DropdownButtonFormField<String>(
-        value: selectedDistrict,
-        focusNode: districtFocusNode,
-        decoration: _styledDecoration(
-            context: context, label: 'District', icon: Icons.map_outlined),
-        hint: Text(selectedState == null ? 'Select State First' : 'Select District'),
-        isExpanded: true,
-        dropdownColor: Colors.white,
-        style: TextStyle(
-          color: Colors.black87,
-          fontSize: 16,
-        ),
-        items: availableDistricts.isEmpty 
-            ? []
-            : availableDistricts.map((String district) {
-                return DropdownMenuItem<String>(
-                  value: district,
-                  child: Text(district),
-                );
-              }).toList(),
-        onChanged: selectedState == null || availableDistricts.isEmpty ? null : (String? newValue) {
-          setState(() {
-            selectedDistrict = newValue;
-            
-            // Update controller
-            controller.editDistrictController.text = newValue ?? '';
-            controller.validateForm();
-          });
-        },
-      ),
+      Obx(() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownButtonFormField<String>(
+            value: selectedDistrict,
+            focusNode: districtFocusNode,
+            decoration: _styledDecoration(
+                context: context, 
+                label: 'District', 
+                icon: Icons.map_outlined,
+                hasError: controller.districtError.value.isNotEmpty),
+            hint: Text(selectedState == null ? 'Select State First' : 'Select District'),
+            isExpanded: true,
+            dropdownColor: Colors.white,
+            style: TextStyle(
+              color: Colors.black87,
+              fontSize: 16,
+            ),
+            items: availableDistricts.isEmpty 
+                ? []
+                : availableDistricts.map((String district) {
+                    return DropdownMenuItem<String>(
+                      value: district,
+                      child: Text(district),
+                    );
+                  }).toList(),
+            onChanged: selectedState == null || availableDistricts.isEmpty ? null : (String? newValue) {
+              setState(() {
+                selectedDistrict = newValue;
+                
+                controller.editDistrictController.text = newValue ?? '';
+                controller.validateForm();
+              });
+            },
+          ),
+          if (controller.districtError.value.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: screenHeight * 0.008),
+              child: Text(
+                controller.districtError.value,
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: screenWidth * 0.03,
+                ),
+              ),
+            ),
+        ],
+      )),
       SizedBox(height: screenHeight * 0.02),
-      TextField(
-        controller: controller.editAddress1Controller,
-        focusNode: address1FocusNode,
-        decoration: _styledDecoration(
-            context: context, label: 'Address Line 1', icon: Icons.home_outlined),
-        textInputAction: TextInputAction.next,
-        onChanged: (_) => controller.validateForm(),
-        onSubmitted: (_) =>
-            FocusScope.of(context).requestFocus(address2FocusNode),
-      ),
+      Obx(() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: controller.editAddress1Controller,
+            focusNode: address1FocusNode,
+            decoration: _styledDecoration(
+                context: context, 
+                label: 'Address Line 1', 
+                icon: Icons.home_outlined,
+                hasError: controller.address1Error.value.isNotEmpty),
+            textInputAction: TextInputAction.next,
+            onChanged: (_) => controller.validateForm(),
+            onSubmitted: (_) =>
+                FocusScope.of(context).requestFocus(address2FocusNode),
+          ),
+          if (controller.address1Error.value.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: screenHeight * 0.008),
+              child: Text(
+                controller.address1Error.value,
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: screenWidth * 0.03,
+                ),
+              ),
+            ),
+        ],
+      )),
       SizedBox(height: screenHeight * 0.02),
       TextField(
         controller: controller.editAddress2Controller,
         focusNode: address2FocusNode,
         decoration: _styledDecoration(
-            context: context, label: 'Address Line 2', icon: Icons.home_work_outlined),
+            context: context, 
+            label: 'Address Line 2', 
+            icon: Icons.home_work_outlined),
         textInputAction: TextInputAction.next,
         onChanged: (_) => controller.validateForm(),
         onSubmitted: (_) =>
             FocusScope.of(context).requestFocus(pincodeFocusNode),
       ),
       SizedBox(height: screenHeight * 0.02),
-      TextField(
-        controller: controller.editPincodeController,
-        focusNode: pincodeFocusNode,
-        keyboardType: TextInputType.number,
-        textInputAction: TextInputAction.next,
-        decoration: _styledDecoration(
-            context: context, label: 'Pincode', icon: Icons.pin_drop_outlined),
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        maxLength: 6,
-        buildCounter: (context, {required currentLength, required isFocused, required maxLength}) => null,
-        onChanged: (_) => controller.validateForm(),
-        onSubmitted: (_) => FocusScope.of(context).requestFocus(passwordFocusNode),
-      ),
+      Obx(() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: controller.editPincodeController,
+            focusNode: pincodeFocusNode,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.next,
+            decoration: _styledDecoration(
+                context: context, 
+                label: 'Pincode', 
+                icon: Icons.pin_drop_outlined,
+                hasError: controller.pincodeError.value.isNotEmpty),
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            maxLength: 6,
+            buildCounter: (context, {required currentLength, required isFocused, required maxLength}) => null,
+            onChanged: (_) => controller.validateForm(),
+            onSubmitted: (_) => FocusScope.of(context).requestFocus(passwordFocusNode),
+          ),
+          if (controller.pincodeError.value.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: screenHeight * 0.008),
+              child: Text(
+                controller.pincodeError.value,
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: screenWidth * 0.03,
+                ),
+              ),
+            ),
+        ],
+      )),
       SizedBox(height: screenHeight * 0.02),
       Obx(() => Column(
         crossAxisAlignment: CrossAxisAlignment.start,

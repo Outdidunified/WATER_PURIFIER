@@ -12,6 +12,8 @@ async function connectToDatabase() {
         try {
             await client.connect();
             console.log('Connected to the database');
+            
+            const db = client.db(dbName);
 
             // Handle process termination
             process.on("SIGINT", async () => {

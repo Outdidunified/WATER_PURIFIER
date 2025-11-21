@@ -18,28 +18,29 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
     const ordersCollection = db.collection('orders');
     const serviceRecordsCollection = db.collection('service_records');
 
-    // ✅ Verify user exists
-    const user = await usersCollection.findOne({
-      user_id: parseInt(user_id),
-      email: email.trim(),
-    });
+    const userId = parseInt(user_id);
+
+    const [user, codOrder] = await Promise.all([
+      usersCollection.findOne({
+        user_id: userId,
+        email: email.trim(),
+      }),
+      ordersCollection.findOne({
+        user_id: userId,
+        orderStatus: 'Confirmed',
+        paymentType: 'COD'
+      })
+    ]);
 
     if (!user) {
       return res.status(404).json({ error: true, message: 'User not found' });
     }
 
-    // ✅ Fallback check for COD orders (auto-subscribe user if needed)
     if (!user.is_subscribed || !user.active_order_id) {
-      const codOrder = await ordersCollection.findOne({
-        user_id: parseInt(user_id),
-        orderStatus: 'Confirmed',
-        paymentType: 'COD'
-      });
-
       if (codOrder) {
         const now = new Date();
         await usersCollection.updateOne(
-          { user_id: parseInt(user_id) },
+          { user_id: userId },
           {
             $set: {
               is_subscribed: true,
@@ -62,8 +63,7 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
       }
     }
 
-    // ✅ Fetch all orders for user
-    const orders = await ordersCollection.find({ user_id: parseInt(user_id) })
+    const orders = await ordersCollection.find({ user_id: userId })
       .sort({ createdAt: -1 })
       .toArray();
 
@@ -75,70 +75,91 @@ exports.getActiveSubscriptionDetails = async (req, res) => {
       });
     }
 
-    // ✅ Filter out old orders for devices that have been renewed
     const deviceHasRenewal = new Set();
     orders.forEach(order => {
-      if (order.isRenewal === true) {
+      if (order.isRenewal === true || order.orderType === 'Recharge') {
         deviceHasRenewal.add(order.wp_device_id);
       }
     });
 
     const filteredOrders = orders.filter(order => {
       if (deviceHasRenewal.has(order.wp_device_id)) {
-        return order.isRenewal === true;
+        return order.isRenewal === true || order.orderType === 'Recharge';
       }
       return true;
     });
 
-    const ordersWithStatus = await Promise.all(
-      filteredOrders.map(async (order) => {
-        const serviceRecords = await serviceRecordsCollection.find({
-          wp_device_id: order.wp_device_id
-        }).toArray();
+    const deviceIds = [...new Set(filteredOrders.map(o => o.wp_device_id))];
 
-        const tasks = await Promise.all(
-          serviceRecords.map(async (record) => {
-            let technician = null;
-
-            if (record.assigned_technician_id) {
-              technician = await usersCollection.findOne({
-                $or: [
-                  { technician_id: record.assigned_technician_id },
-                  { employee_id: record.assigned_technician_id }
-                ]
-              });
-            }
-
-            return {
-              task_type: record.task_type || null,
-              task_status: record.task_status || null,
-              estimated_end: record.estimated_end || null,
-              assigned_technician_id: record.assigned_technician_id || null,
-              technician: technician
-                ? { name: technician.name || null, phone: technician.phone || null }
-                : null,
-            };
-          })
-        );
-
-        // Ensure deliveryHistory includes 'accepted' if deliveryAcceptanceStatus is true
-        let deliveryHistory = order.deliveryHistory || [];
-        if (order.deliveryAcceptanceStatus && !deliveryHistory.some(h => h.status === 'accepted')) {
-          deliveryHistory.unshift({
-            status: 'accepted',
-            timestamp: order.deliveryAcceptanceTimestamp || order.createdAt,
-            notes: 'Order accepted',
-            updatedBy: 'system'
-          });
+    const serviceRecordsData = await serviceRecordsCollection.aggregate([
+      { $match: { wp_device_id: { $in: deviceIds } } },
+      {
+        $lookup: {
+          from: 'users',
+          let: { techId: '$assigned_technician_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ['$technician_id', '$$techId'] },
+                    { $eq: ['$employee_id', '$$techId'] }
+                  ]
+                }
+              }
+            },
+            { $project: { name: 1, phone: 1 } },
+            { $limit: 1 }
+          ],
+          as: 'technicianData'
         }
-        order.deliveryHistory = deliveryHistory;
+      },
+      {
+        $group: {
+          _id: '$wp_device_id',
+          tasks: {
+            $push: {
+              task_type: '$task_type',
+              task_status: '$task_status',
+              estimated_end: '$estimated_end',
+              assigned_technician_id: '$assigned_technician_id',
+              technician: { $arrayElemAt: ['$technicianData', 0] }
+            }
+          }
+        }
+      }
+    ]).toArray();
 
-        return {
-          ...order,
-          tasks
-        };
-      })
-    );
+    const tasksMap = serviceRecordsData.reduce((acc, record) => {
+      acc[record._id] = record.tasks.map(task => ({
+        task_type: task.task_type || null,
+        task_status: task.task_status || null,
+        estimated_end: task.estimated_end || null,
+        assigned_technician_id: task.assigned_technician_id || null,
+        technician: task.technician
+          ? { name: task.technician.name || null, phone: task.technician.phone || null }
+          : null
+      }));
+      return acc;
+    }, {});
+
+    const ordersWithStatus = filteredOrders.map(order => {
+      let deliveryHistory = order.deliveryHistory || [];
+      if (order.deliveryAcceptanceStatus && !deliveryHistory.some(h => h.status === 'accepted')) {
+        deliveryHistory.unshift({
+          status: 'accepted',
+          timestamp: order.deliveryAcceptanceTimestamp || order.createdAt,
+          notes: 'Order accepted',
+          updatedBy: 'system'
+        });
+      }
+
+      return {
+        ...order,
+        deliveryHistory,
+        tasks: tasksMap[order.wp_device_id] || []
+      };
+    });
 
     return res.status(200).json({
       error: false,

@@ -204,19 +204,21 @@ exports.updateUserDetails = async (req, res) => {
     task_created_by_user_email,
     task_description,
     role_id,
-    device_id  // NEW: Get device_id from request body
+    wp_device_id,
+    modelName
   } = req.body;
 
-  // Basic validation
   if (
     !task_created_by_user_id ||
     !task_created_by_user_email ||
     !task_description ||
-    !role_id
+    !role_id ||
+    !wp_device_id ||
+    !modelName
   ) {
     return res.status(400).json({
       error: true,
-      message: 'task_created_by_user_id, task_created_by_user_email, task_description, role_id, and device_id are required',
+      message: 'task_created_by_user_id, task_created_by_user_email, task_description, role_id, wp_device_id, and modelName are required',
     });
   }
 
@@ -225,7 +227,6 @@ exports.updateUserDetails = async (req, res) => {
     const usersCollection = db.collection('users');
     const serviceRecordsCollection = db.collection('service_records');
 
-    // ✅ Step 1: Check if device_id is assigned to the user
     const user = await usersCollection.findOne({ user_id: task_created_by_user_id });
 
     if (!user) {
@@ -236,7 +237,7 @@ exports.updateUserDetails = async (req, res) => {
     }
 
     const isDeviceAssigned = user.assigned_device_ids;
-    console.log('isDeviceAssigned',isDeviceAssigned)
+    console.log('isDeviceAssigned', isDeviceAssigned)
 
     if (!isDeviceAssigned) {
       return res.status(403).json({
@@ -245,7 +246,6 @@ exports.updateUserDetails = async (req, res) => {
       });
     }
 
-    // ✅ Step 2: Get the latest task_id and increment it
     const lastTask = await serviceRecordsCollection
       .find({})
       .sort({ task_id: -1 })
@@ -254,7 +254,6 @@ exports.updateUserDetails = async (req, res) => {
 
     const newTaskId = lastTask.length > 0 ? lastTask[0].task_id + 1 : 1;
 
-    // ✅ Step 3: Create the new task object
     const newServiceRecord = {
       task_id: newTaskId,
       task_status: "Initiated",
@@ -271,14 +270,13 @@ exports.updateUserDetails = async (req, res) => {
       task_created_by_user_id,
       task_created_by_user_email,
       role_id,
-      device_id, // Include device_id in record
+      wp_device_id,
+      modelName,
       otp: null
     };
 
-    // ✅ Step 4: Insert into collection 
     await serviceRecordsCollection.insertOne(newServiceRecord);
 
-    // Auto assign service
     await autoAssignService(newTaskId);
 
     return res.status(200).json({
@@ -296,128 +294,6 @@ exports.updateUserDetails = async (req, res) => {
   }
 };
 
-//   exports.fetchpaymenthistory = async (req, res) => {
-//   try {
-//     const { user_id } = req.body;
-
-//     if (!user_id) {
-//       return res
-//         .status(400)
-//         .json({ success: false, message: 'user_id is required in request body' });
-//     }
-
-//     const db = await connectToDatabase();
-//     const paymentCollection = db.collection('payments');
-//     const orderCollection = db.collection('orders');
-//     const productModelsCollection = db.collection('product_models');
-//     const serviceRecordsCollection = db.collection('service_records');
-
-//     // 1️⃣ Fetch payments for the user
-//     const payments = await paymentCollection.find({ user_id }).toArray();
-
-//     // 2️⃣ Extract valid order ObjectIds
-//     const validOrderObjectIds = [];
-//     for (const payment of payments) {
-//       if (payment.orderId) {
-//         try {
-//           validOrderObjectIds.push(new ObjectId(payment.orderId));
-//         } catch {
-//           // ignore invalid ObjectIds
-//         }
-//       }
-//     }
-
-//     // 3️⃣ Fetch all matching orders
-//     const orders = await orderCollection
-//       .find({ _id: { $in: validOrderObjectIds } })
-//       .toArray();
-
-//     // 4️⃣ Fetch all service records (only task_type = 1)
-//     const serviceRecords = await serviceRecordsCollection
-//       .find({ task_type: 1 })
-//       .toArray();
-
-//     // 5️⃣ Map wp_device_id → task_status (case-insensitive)
-//     const serviceRecordMap = {};
-//     for (const record of serviceRecords) {
-//       if (record.wp_device_id) {
-//         serviceRecordMap[record.wp_device_id.toLowerCase()] = record.task_status;
-//       }
-//     }
-
-//     // 6️⃣ Build order map for quick lookup
-//     const orderMap = {};
-//     for (const order of orders) {
-//       orderMap[order._id.toString()] = order;
-//     }
-
-//     // 7️⃣ Merge payment + order + task_status logic
-//     const paymentsWithOrders = await Promise.all(
-//       payments.map(async payment => {
-//         const order = orderMap[payment.orderId];
-//         let taskStatus = 'N/A';
-//         let productModel = null;
-
-//         if (
-//           payment.paymentStatus === 'Completed' &&
-//           order?.orderStatus === 'Confirmed'
-//         ) {
-//           const possibleDeviceId =
-//             order.wp_device_id || order.device_id || '';
-//           const normalizedId = possibleDeviceId.toString().toLowerCase();
-
-//           if (serviceRecordMap[normalizedId]) {
-//             taskStatus = serviceRecordMap[normalizedId];
-//           }
-//         }
-
-//         if (order?.productModelId) {
-//           const productData = await productModelsCollection.findOne({
-//             _id: new ObjectId(order.productModelId)
-//           });
-
-//           if (productData) {
-//             productModel = {
-//               _id: productData._id,
-//               main_img: productData.main_img || '',
-//               sub_img_1: productData.sub_img_1 || '',
-//               sub_img_2: productData.sub_img_2 || '',
-//               sub_img_3: productData.sub_img_3 || '',
-//               sub_img_4: productData.sub_img_4 || '',
-//             };
-//           }
-//         }
-
-//         return {
-//           ...payment,
-//           orders: order
-//             ? [
-//                 {
-//                   ...order,
-//                   task_status: taskStatus,
-//                   product_model_images: productModel,
-//                 },
-//               ]
-//             : [],
-//         };
-//       })
-//     );
-
-//     // ✅ Final response
-//     res.status(200).json({
-//       success: true,
-//       message:
-//         'Payment history with orders and conditional task status fetched successfully',
-//       data: paymentsWithOrders,
-//     });
-//   } catch (error) {
-//     console.error('❌ Error fetching payment history:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: 'Server error while fetching payment history',
-//     });
-//   }
-// };
 
 exports.fetchpaymenthistory = async (req, res) => {
   try {
@@ -432,13 +308,17 @@ exports.fetchpaymenthistory = async (req, res) => {
 
     const db = await connectToDatabase();
     const paymentCollection = db.collection("payments");
-    const orderCollection = db.collection("orders");
-    const productModelsCollection = db.collection("product_models");
-    const serviceRecordsCollection = db.collection("service_records");
-    const { ObjectId } = require("mongodb");
 
-    // ✅ 1️⃣ Fetch all payments for this user
-    const payments = await paymentCollection.find({ user_id }).toArray();
+    const payments = await paymentCollection
+      .find({ user_id })
+      .project({
+        orderId: 1,
+        totalPrice: 1,
+        createdAt: 1,
+        paymentStatus: 1
+      })
+      .sort({ createdAt: -1 })
+      .toArray();
 
     if (!payments.length) {
       return res.status(200).json({
@@ -448,101 +328,13 @@ exports.fetchpaymenthistory = async (req, res) => {
       });
     }
 
-    // ✅ 2️⃣ Extract valid order ObjectIds from payments
-    const validOrderObjectIds = payments
-      .filter((p) => ObjectId.isValid(p.orderId))
-      .map((p) => new ObjectId(p.orderId));
-
-    // ✅ 3️⃣ Fetch all related orders
-    const orders = await orderCollection
-      .find({ _id: { $in: validOrderObjectIds } })
-      .toArray();
-
-    // ✅ 4️⃣ Fetch all service records (Installation + Service + Recharge)
-    const serviceRecords = await serviceRecordsCollection
-      .find({ task_type: { $in: [1, 2, 3] } })
-      .toArray();
-
-    // ✅ 5️⃣ Create service record map
-    const serviceRecordMap = {};
-    for (const record of serviceRecords) {
-      if (record.wp_device_id) {
-        serviceRecordMap[record.wp_device_id.toString().toLowerCase()] = {
-          task_status: record.task_status,
-          task_type: record.task_type,
-        };
-      }
-    }
-
-    // ✅ 6️⃣ Create order map
-    const orderMap = {};
-    for (const order of orders) {
-      orderMap[order._id.toString()] = order;
-    }
-
-    // ✅ 7️⃣ Merge everything
-    const paymentsWithOrders = await Promise.all(
-      payments.map(async (payment) => {
-        const order = orderMap[payment.orderId];
-        let taskStatus = "N/A";
-        let taskType = null;
-        let productModel = null;
-
-        if (order) {
-          const deviceId = (order.wp_device_id || order.device_id || "")
-            .toString()
-            .toLowerCase();
-
-          if (serviceRecordMap[deviceId]) {
-            taskStatus = serviceRecordMap[deviceId].task_status;
-            taskType = serviceRecordMap[deviceId].task_type;
-          }
-        }
-
-        // ✅ 8️⃣ Get product model images
-        if (order?.productModelId && ObjectId.isValid(order.productModelId)) {
-          const productData = await productModelsCollection.findOne({
-            _id: new ObjectId(order.productModelId),
-          });
-
-          if (productData) {
-            productModel = {
-              _id: productData._id,
-              main_img: productData.main_img || "",
-              sub_img_1: productData.sub_img_1 || "",
-              sub_img_2: productData.sub_img_2 || "",
-              sub_img_3: productData.sub_img_3 || "",
-              sub_img_4: productData.sub_img_4 || "",
-            };
-          }
-        }
-
-        // ✅ 9️⃣ Combine everything into one object
-        return {
-          ...payment,
-          orders: order
-            ? [
-                {
-                  ...order,
-                  task_status: taskStatus,
-                  task_type: taskType,
-                  product_model_images: productModel,
-                },
-              ]
-            : [],
-        };
-      })
-    );
-
-    // ✅ 10️⃣ Final Response
     res.status(200).json({
       success: true,
-      message:
-        "Payment history with Installation, Service, and Recharge details fetched successfully",
-      data: paymentsWithOrders,
+      message: "Payment history fetched successfully",
+      data: payments,
     });
   } catch (error) {
-    console.error("❌ Error fetching payment history:", error);
+    console.error("Error fetching payment history:", error);
     res.status(500).json({
       success: false,
       message: "Server error while fetching payment history",

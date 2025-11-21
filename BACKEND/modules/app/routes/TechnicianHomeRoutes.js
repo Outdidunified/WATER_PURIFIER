@@ -16,6 +16,7 @@ router.post(
 );
 router.post('/getAllAssignedTaskDetails', techhome.getAllAssignedTaskDetails);
 router.post('/acceptDeclineTask', techhome.acceptDeclineTask);
+router.post('/getRejectionHistory', techhome.getRejectionHistory);
 
 // ============ LEAVE REQUEST ROUTES ============
 router.post('/requestLeave', techhome.requestLeave);

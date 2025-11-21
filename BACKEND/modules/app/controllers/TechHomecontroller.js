@@ -18,7 +18,6 @@ const razorpayInstance = new Razorpay({
 exports.getAssignedTaskDetails = async (req, res) => {
     const { user_id, email, role_id, assigned_technician_id } = req.body;
   
-    // Basic validation
     if (!user_id || !email || !role_id || !assigned_technician_id) {
       return res.status(400).json({ 
         error: true, 
@@ -26,7 +25,6 @@ exports.getAssignedTaskDetails = async (req, res) => {
       });
     }
   
-    // Check if role_id is technician role (2)
     if (parseInt(role_id) !== 2) {
       return res.status(403).json({ error: true, message: 'Access denied: not a technician' });
     }
@@ -35,19 +33,17 @@ exports.getAssignedTaskDetails = async (req, res) => {
       const db = await connectToDatabase();
       const serviceRecordsCollection = db.collection('service_records');
   
-      // Query for tasks assigned to the technician (excluding completed)
-      const tasks = await serviceRecordsCollection.find({
-        assigned_technician_id: assigned_technician_id.trim(),
-        task_status: { $in: ['Assigned', 'Pending'] }
-      }).toArray();
-  
-      if (!tasks || tasks.length === 0) {
-        return res.status(404).json({ error: true, message: 'No active tasks found assigned to this technician' });
-      }
+      const tasks = await serviceRecordsCollection
+        .find({
+          assigned_technician_id: assigned_technician_id.trim(),
+          task_status: { $in: ['Assigned', 'Pending'] }
+        })
+        .sort({ created_date: -1 })
+        .toArray();
   
       return res.status(200).json({
         error: false,
-        message: 'Assigned tasks fetched successfully',
+        message: tasks.length > 0 ? 'Assigned tasks fetched successfully' : 'No active tasks found',
         data: tasks,
       });
   
@@ -56,6 +52,45 @@ exports.getAssignedTaskDetails = async (req, res) => {
       return res.status(500).json({ error: true, message: 'Server error while fetching task details' });
     }
   };
+
+
+exports.getRejectionHistory = async (req, res) => {
+  const { user_id, email, role_id, assigned_technician_id } = req.body;
+
+  if (!user_id || !email || !role_id || !assigned_technician_id) {
+    return res.status(400).json({
+      error: true,
+      message: 'user_id, email, role_id, and assigned_technician_id are required'
+    });
+  }
+
+  if (parseInt(role_id) !== 2) {
+    return res.status(403).json({ error: true, message: 'Access denied: not a technician' });
+  }
+
+  try {
+    const db = await connectToDatabase();
+    const rejectionHistoryCollection = db.collection('rejection_history');
+
+    const rejectionHistory = await rejectionHistoryCollection.find({
+      technician_id: assigned_technician_id.trim()
+    }).sort({ rejected_date: -1 }).toArray();
+
+    if (!rejectionHistory || rejectionHistory.length === 0) {
+      return res.status(404).json({ error: true, message: 'No rejection history found' });
+    }
+
+    return res.status(200).json({
+      error: false,
+      message: 'Rejection history fetched successfully',
+      data: rejectionHistory,
+    });
+
+  } catch (error) {
+    console.error('Error fetching rejection history:', error);
+    return res.status(500).json({ error: true, message: 'Server error while fetching rejection history' });
+  }
+};
 
 
 // ============ LEAVE REQUEST API ============
@@ -279,15 +314,17 @@ exports.updateInProgressTaskLeaveAction = async (req, res) => {
     const leaveRequestsCollection = db.collection('leave_requests');
 
     // Check if technician is currently on approved leave
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+    const tomorrowUTC = new Date(todayUTC);
+    tomorrowUTC.setUTCDate(tomorrowUTC.getUTCDate() + 1);
 
     // First check: Is there any approved leave for this technician that hasn't completed?
     const anyApprovedLeave = await leaveRequestsCollection.findOne({
       technician_id: technician_id.trim(),
       technician_email: email.trim(),
       status: 'Approved',
-      to_date: { $gte: today }, // Leave end date is today or in the future
+      to_date: { $gt: todayUTC },
     });
 
     if (!anyApprovedLeave) {
@@ -302,8 +339,8 @@ exports.updateInProgressTaskLeaveAction = async (req, res) => {
       technician_id: technician_id.trim(),
       technician_email: email.trim(),
       status: 'Approved',
-      from_date: { $lte: today },
-      to_date: { $gte: today },
+      from_date: { $lt: tomorrowUTC },
+      to_date: { $gt: todayUTC },
     });
 
     if (!currentlyOnLeave) {
@@ -1159,6 +1196,39 @@ exports.acceptDeclineTask = async (req, res) => {
         .json({ error: true, message: 'Failed to update task status' });
     }
 
+    if (actionLower === 'decline') {
+      const rejectionHistoryCollection = db.collection('rejection_history');
+      const ordersCollection = db.collection('orders');
+      
+      const order = await ordersCollection.findOne({ wp_device_id: task.wp_device_id });
+      
+      const rejectionRecord = {
+        task_id: parseInt(task_id),
+        wp_device_id: task.wp_device_id,
+        technician_id: technician_id.trim(),
+        task_type: task.task_type,
+        task_status: 'Rejected',
+        task_description: task.task_description || null,
+        decline_reason: decline_reason.trim(),
+        rejected_date: new Date().toISOString(),
+        assigned_date: task.assigned_date,
+        task_created_by_user_email: task.task_created_by_user_email,
+        order_type: order?.orderType || null,
+        model_name: order?.modelName || null,
+        model_type: order?.modeltype || null,
+        plan_details: order?.selectedPlan || null,
+        delivery_address: order?.deliveryAddress || null,
+        customer_info: {
+          user_id: order?.user_id || null,
+          customer_name: order?.deliveryAddress?.name || null,
+          customer_email: order?.deliveryAddress?.email || null,
+          customer_phone: order?.deliveryAddress?.phone || null,
+        },
+        created_at: new Date(),
+      };
+      await rejectionHistoryCollection.insertOne(rejectionRecord);
+    }
+
     // Send email notifications to admins and sellers in the district
     try {
       const ordersCollection = db.collection('orders');
@@ -1263,9 +1333,10 @@ exports.acceptDeclineTask = async (req, res) => {
       const db = await connectToDatabase();
       const serviceRecordsCollection = db.collection('service_records');
   
-      // Fetch all tasks assigned to technician (no status filter)
+      // Fetch all tasks assigned to technician (excluding rejected tasks)
       const tasks = await serviceRecordsCollection.find({
-        assigned_technician_id: assigned_technician_id.trim()
+        assigned_technician_id: assigned_technician_id.trim(),
+        task_status: { $ne: 'Rejected' }
       }).toArray();
   
       if (!tasks || tasks.length === 0) {

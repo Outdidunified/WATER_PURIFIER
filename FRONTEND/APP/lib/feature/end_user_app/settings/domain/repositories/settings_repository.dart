@@ -157,14 +157,16 @@ class SettingsRepository {
     required int userId,
     required String userEmail,
     required String taskDescription,
-    String? deviceId,
+    String? wpDeviceId,
+    String? modelName,
   }) async {
     try {
       final response = await _api.createServiceRequest(
         userId: userId,
         email: userEmail,
         task_description: taskDescription,
-        deviceId: deviceId,
+        wpDeviceId: wpDeviceId,
+        modelName: modelName,
       );
 
       final serviceRequestResponse = ServiceRequestResponse.fromJson(response);

@@ -303,6 +303,7 @@ class Task {
   final String? modifiedBy;
   final DateTime? modifiedDate;
   final DateTime? assignedDate;
+  final DateTime? rejectedDate;
   final int? taskType;
   final String? taskDescription;
   final List<String>? imageBeforeService;
@@ -341,6 +342,7 @@ class Task {
     this.modifiedBy,
     this.modifiedDate,
     this.assignedDate,
+    this.rejectedDate,
     this.taskType,
     this.taskDescription,
     this.imageBeforeService,
@@ -414,7 +416,9 @@ class Task {
           : null,
       pendingReason: json['pending_reason'] != null
           ? safeToString(json['pending_reason'])
-          : null,
+          : json['decline_reason'] != null
+              ? safeToString(json['decline_reason'])
+              : null,
       createdDate: parseDate(json['created_date'] is String
           ? json['created_date'] as String?
           : json['created_date']?.toString()),
@@ -427,6 +431,9 @@ class Task {
       assignedDate: parseDate(json['assigned_date'] is String
           ? json['assigned_date'] as String?
           : json['assigned_date']?.toString()),
+      rejectedDate: parseDate(json['rejected_date'] is String
+          ? json['rejected_date'] as String?
+          : json['rejected_date']?.toString()),
       taskType: json['task_type'] is int
           ? json['task_type'] as int?
           : json['task_type'] != null
@@ -471,7 +478,9 @@ class Task {
               : null,
       modelName: json['model_name'] != null
           ? safeToString(json['model_name'])
-          : null,
+          : json['modelName'] != null
+              ? safeToString(json['modelName'])
+              : null,
       address: json['address'] != null
           ? Address.fromJson(json['address'] as Map<String, dynamic>)
           : json['deliveryAddress'] != null

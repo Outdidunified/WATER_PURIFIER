@@ -54,8 +54,8 @@ class _PlanConfigPageState extends State<PlanConfigPage> with SingleTickerProvid
 
   void _initializeControllers() {
     final totalWaterLimit = _extractTotalWaterLimit();
-    final startDate = DateTime.now().toIso8601String();
-    final endDate = _calculateEndDate();
+    final startDate = _formatDateToISO(DateTime.now());
+    final endDate = _formatDateToISO(_calculateEndDateTime());
 
     _waterLimitController = TextEditingController(text: totalWaterLimit.toString());
     _startDateController = TextEditingController(text: startDate);
@@ -102,11 +102,14 @@ class _PlanConfigPageState extends State<PlanConfigPage> with SingleTickerProvid
     return 28;
   }
 
-  String _calculateEndDate() {
+  DateTime _calculateEndDateTime() {
     final startDate = DateTime.now();
     final durationDays = _extractDurationDays();
-    final endDate = startDate.add(Duration(days: durationDays));
-    return endDate.toIso8601String();
+    return startDate.add(Duration(days: durationDays));
+  }
+
+  String _formatDateToISO(DateTime date) {
+    return date.toIso8601String();
   }
 
   Map<String, dynamic>? _getSelectedPlan() {
@@ -206,7 +209,7 @@ class _PlanConfigPageState extends State<PlanConfigPage> with SingleTickerProvid
           "4g": 0,
           "ethernet": 0
         },
-        "timestamp": DateTime.now().toIso8601String()
+        "timestamp": _formatDateToISO(DateTime.now())
       };
 
       final planConfigJson = jsonEncode(planConfig);
@@ -331,7 +334,7 @@ class _PlanConfigPageState extends State<PlanConfigPage> with SingleTickerProvid
         "wp_device_id": widget.task.wpDeviceId ?? '',
         "mac_id": macId,
         "status": isConfigSuccess ? 1 : 0,
-        "timestamp": DateTime.now().toIso8601String(),
+        "timestamp": _formatDateToISO(DateTime.now()),
         "technician_id": sessionController.technicianId.value,
         "plan_config": planConfig,
       };

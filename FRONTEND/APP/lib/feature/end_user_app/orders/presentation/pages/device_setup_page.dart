@@ -623,33 +623,43 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
     }
 
     try {
-      setState(() => _isScanning = true);
+      if (mounted) {
+        setState(() => _isScanning = true);
+      }
       _bleDevices.clear();
       _classicDevices.clear();
 
       await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
       _bleScanSubscription = FlutterBluePlus.onScanResults.listen((results) {
-        setState(() {
-          _bleDevices = results;
-        });
+        if (mounted) {
+          setState(() {
+            _bleDevices = results;
+          });
+        }
       });
 
       fbs.FlutterBluetoothSerial.instance.startDiscovery().listen((result) {
-        setState(() {
-          if (!_classicDevices.any((d) => d.device.address == result.device.address)) {
-            _classicDevices.add(result);
-          }
-        });
+        if (mounted) {
+          setState(() {
+            if (!_classicDevices.any((d) => d.device.address == result.device.address)) {
+              _classicDevices.add(result);
+            }
+          });
+        }
       });
 
       await Future.delayed(const Duration(seconds: 10));
       await FlutterBluePlus.stopScan();
       _bleScanSubscription?.cancel();
-      setState(() => _isScanning = false);
+      if (mounted) {
+        setState(() => _isScanning = false);
+      }
     } catch (e) {
       debugPrint('Error scanning devices: $e');
       CustomSnackbar.showError(message: 'Error scanning devices');
-      setState(() => _isScanning = false);
+      if (mounted) {
+        setState(() => _isScanning = false);
+      }
     }
   }
 

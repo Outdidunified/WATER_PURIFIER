@@ -453,7 +453,7 @@ class SubscriptionPlanPage extends StatelessWidget {
 
                                     DateTime? parsedTime;
                                     try {
-                                      parsedTime = DateTime.parse(history.timestamp);
+                                      parsedTime = DateTime.parse(history.timestamp).toLocal();
                                     } catch (e) {
                                       debugPrint('Error parsing timestamp: ${history.timestamp}');
                                     }
@@ -849,35 +849,7 @@ class SubscriptionPlanPage extends StatelessWidget {
                             ),
                           ],
                         ),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.03,
-                            vertical: screenWidth * 0.015,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                badgeIcon,
-                                color: statusColor,
-                                size: screenWidth * 0.04,
-                              ),
-                              SizedBox(width: screenWidth * 0.01),
-                              Text(
-                                badgeText,
-                                style: TextStyle(
-                                  fontSize: screenWidth * 0.028,
-                                  color: statusColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+
                       ],
                     ),
                   ),

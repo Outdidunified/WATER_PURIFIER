@@ -461,13 +461,57 @@ class _DeviceSetupPageState extends State<DeviceSetupPage> with TickerProviderSt
 
   Future<void> _requestPermissionsAndScan() async {
     if (Platform.isAndroid) {
-      final status = await Permission.bluetooth.request();
-      if (!status.isGranted) {
-        CustomSnackbar.showError(message: 'Bluetooth permission required');
+      final status = await Permission.bluetooth.status;
+      
+      if (status.isDenied) {
+        final result = await Permission.bluetooth.request();
+        if (!result.isGranted) {
+          _showPermissionDeniedDialog();
+          return;
+        }
+      } else if (status.isPermanentlyDenied) {
+        _showPermissionDeniedDialog();
         return;
       }
     }
     _startScanning();
+  }
+
+  void _showPermissionDeniedDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Bluetooth Permission Required'),
+          content: const Text(
+            'Bluetooth permission is required to scan for devices. You can grant permission in app settings or try scanning manually if you have already enabled Bluetooth on your device.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                openAppSettings();
+              },
+              child: const Text('Open Settings'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _startScanning();
+              },
+              child: const Text('Try Anyway'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _autoConnectToRechargeDevice(String targetMacId) async {

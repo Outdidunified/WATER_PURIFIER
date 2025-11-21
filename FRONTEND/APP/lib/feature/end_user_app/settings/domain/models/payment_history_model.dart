@@ -50,6 +50,11 @@ class PaymentHistory {
   });
 
   factory PaymentHistory.fromJson(Map<String, dynamic> json) {
+    final createdAtStr = json['createdAt'] as String?;
+    final updatedAtStr = json['updatedAt'] as String?;
+    final createdAt = createdAtStr != null ? DateTime.parse(createdAtStr) : DateTime.now();
+    final updatedAt = updatedAtStr != null ? DateTime.parse(updatedAtStr) : createdAt;
+
     return PaymentHistory(
       id: json['_id'] as String?,
       userId: _toInt(json['user_id']) ?? 0,
@@ -66,8 +71,8 @@ class PaymentHistory {
       totalPrice: _toDouble(json['totalPrice']) ?? 0.0,
       totalLitre: _toDouble(json['totalLitre']),
       paymentStatus: json['paymentStatus'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      createdAt: createdAt,
+      updatedAt: updatedAt,
       razorpayPaymentId: json['razorpayPaymentId'] as String?,
       subscribedAt: json['subscribedAt'] != null
           ? DateTime.parse(json['subscribedAt'] as String)

@@ -459,6 +459,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       }
     } catch (e) {
       debugPrint('Error in _handleLeaveAction: $e');
+      if (mounted) {
+        CustomSnackbar.showError(message: 'Failed to update task: ${e.toString()}');
+      }
     } finally {
       setState(() => _isLoading = false);
     }
@@ -1492,6 +1495,16 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     return addressParts.isNotEmpty ? addressParts.join(', ') : 'N/A';
   }
 
+  String _formatPlanEndDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return 'N/A';
+    try {
+      final dateTime = DateTime.parse(dateStr);
+      return DateFormat('MMM dd, yyyy – hh:mm a').format(dateTime.toLocal());
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
   Widget _buildDropdown() {
     List<String> statusOptions;
     String displayValue;
@@ -2281,7 +2294,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                     Expanded(
                       child: _buildSimpleDetail(
                         label: 'Model',
-                        value: task.product?.modelName ?? 'N/A',
+                        value: task.product?.modelName ?? task.modelName ?? 'N/A',
                         compact: true,
                       ),
                     ),
@@ -2312,7 +2325,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                     const SizedBox(height: 10),
                     _buildSimpleDetail(
                       label: 'Plan End Date',
-                      value: task.currentPlanEndDate ?? 'N/A',
+                      value: _formatPlanEndDate(task.currentPlanEndDate),
                       compact: true,
                     ),
                   ],

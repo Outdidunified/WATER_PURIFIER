@@ -25,7 +25,10 @@ class _TechnicianHomePageState extends State<TechnicianHomePage> {
     // Load tasks only if not already loaded to avoid setState during build
     if (controller.allTasks.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        controller.loadTasks();
+        Future.wait([
+          controller.loadTasks(),
+          controller.loadRejectionHistory(),
+        ]);
       });
     }
   }
@@ -65,7 +68,12 @@ class _TechnicianHomePageState extends State<TechnicianHomePage> {
           children: [
             HeaderWidget(
               isSmallScreen: isSmallScreen,
-              onRefresh: controller.loadTasks,
+              onRefresh: () async {
+                await Future.wait([
+                  controller.loadTasks(),
+                  controller.loadRejectionHistory(),
+                ]);
+              },
             ),
             Expanded(
               child: Container(
@@ -100,7 +108,7 @@ class _TechnicianHomePageState extends State<TechnicianHomePage> {
                                   completedCount: controller.allTasks.where((t) => t.taskStatus == 'Completed').length,
                                   inProgressCount: controller.allTasks.where((t) => t.taskStatus == 'In Progress').length,
                                   pendingCount: controller.allTasks.where((t) => t.taskStatus == 'Pending').length,
-                                  rejectedCount: controller.allTasks.where((t) => t.taskStatus == 'Rejected').length,
+                                  rejectedCount: controller.rejectionHistory.length,
                                 );
                               }),
                             ],
@@ -116,7 +124,12 @@ class _TechnicianHomePageState extends State<TechnicianHomePage> {
                     Expanded(
                       flex: isDesktop ? 3 : 4,
                       child: RefreshIndicator(
-                        onRefresh: controller.loadTasks,
+                        onRefresh: () async {
+                await Future.wait([
+                  controller.loadTasks(),
+                  controller.loadRejectionHistory(),
+                ]);
+              },
                         child: SingleChildScrollView(
                           physics: const AlwaysScrollableScrollPhysics(),
                           child: controller.isRefreshing.value
@@ -147,14 +160,24 @@ class _TechnicianHomePageState extends State<TechnicianHomePage> {
           children: [
             HeaderWidget(
               isSmallScreen: isSmallScreen,
-              onRefresh: controller.loadTasks,
+              onRefresh: () async {
+                await Future.wait([
+                  controller.loadTasks(),
+                  controller.loadRejectionHistory(),
+                ]);
+              },
             ),
             Expanded(
               child: Container(
                 color: theme.scaffoldBackgroundColor,
                 padding: EdgeInsets.all(padding),
                 child: RefreshIndicator(
-                  onRefresh: controller.loadTasks,
+                  onRefresh: () async {
+                await Future.wait([
+                  controller.loadTasks(),
+                  controller.loadRejectionHistory(),
+                ]);
+              },
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Column(
@@ -177,7 +200,7 @@ class _TechnicianHomePageState extends State<TechnicianHomePage> {
                             completedCount: controller.allTasks.where((t) => t.taskStatus == 'Completed').length,
                             inProgressCount: controller.allTasks.where((t) => t.taskStatus == 'In Progress').length,
                             pendingCount: controller.allTasks.where((t) => t.taskStatus == 'Pending').length,
-                            rejectedCount: controller.allTasks.where((t) => t.taskStatus == 'Rejected').length,
+                            rejectedCount: controller.rejectionHistory.length,
                           );
                         }),
                         SizedBox(height: padding),

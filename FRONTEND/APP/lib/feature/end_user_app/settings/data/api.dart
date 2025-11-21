@@ -44,7 +44,8 @@ class SettingsApi extends BaseApiService {
     required int userId,
     required String email,
     required String task_description,
-    String? deviceId,
+    String? wpDeviceId,
+    String? modelName,
   }) async {
     return makeRequest<Map<String, dynamic>>(
       url: SettingsUrl.createServiceRequest.url,
@@ -54,7 +55,8 @@ class SettingsApi extends BaseApiService {
         'task_created_by_user_email': email,
         'role_id': 3,
         'task_description': task_description,
-        'device_id': deviceId ?? '',
+        'wp_device_id': wpDeviceId ?? '',
+        'modelName': modelName ?? '',
       },
       responseParser: (data) => data as Map<String, dynamic>,
     );

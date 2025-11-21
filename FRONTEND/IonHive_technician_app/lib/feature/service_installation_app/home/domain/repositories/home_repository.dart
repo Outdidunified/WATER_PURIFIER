@@ -101,6 +101,25 @@ class TaskRepository {
     }
   }
 
+  Future<List<dynamic>> getRejectionHistory() async {
+    try {
+      final response = await _api.getRejectionHistory();
+
+      if (response['error'] == false) {
+        return response['data'] as List<dynamic>;
+      } else {
+        final message = response['message'] ?? '';
+        if (message.contains('No rejection history found')) {
+          return [];
+        } else {
+          throw Exception(response['message'] ?? 'Failed to fetch rejection history');
+        }
+      }
+    } catch (e) {
+      throw Exception('Error fetching rejection history: $e');
+    }
+  }
+
   Future<TaskUpdateResponse> updateInProgressTaskLeaveAction({
     required String technicianId,
     required String email,

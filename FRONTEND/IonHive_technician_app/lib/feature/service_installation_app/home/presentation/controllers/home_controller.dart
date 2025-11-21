@@ -15,6 +15,7 @@ class TechnicianController extends GetxController {
   // Reactive state variables
   final RxList<Task> allTasks = <Task>[].obs;
   final RxList<Task> filteredTasks = <Task>[].obs;
+  final RxList<dynamic> rejectionHistory = <dynamic>[].obs;
   final RxString selectedStatusFilter = 'Pending'.obs;
   final RxInt selectedTaskType = 1.obs; // 1 for Installation, 2 for Service
   final RxBool isRefreshing = false.obs;
@@ -61,6 +62,26 @@ class TechnicianController extends GetxController {
       isRefreshing.value = false;
       allTasks.refresh();
       filteredTasks.refresh();
+    }
+  }
+
+  Future<void> loadRejectionHistory() async {
+    try {
+      isRefreshing.value = true;
+      final rejectionData = await taskRepository.getRejectionHistory();
+      debugPrint('Rejection history data: $rejectionData');
+      rejectionHistory.value = rejectionData;
+      debugPrint('Rejection history fetched: ${rejectionHistory.length}');
+    } catch (e) {
+      final error = e.toString();
+      debugPrint('Error details: $error');
+      if (!error.contains('No rejection history found')) {
+        errorMessageTask.value = 'Failed to load rejection history: $error';
+      }
+      debugPrint('Error loading rejection history: $e');
+    } finally {
+      isRefreshing.value = false;
+      rejectionHistory.refresh();
     }
   }
 
@@ -143,6 +164,9 @@ class TechnicianController extends GetxController {
       if (!response.error) {
         CustomSnackbar.showSuccess(message: response.message);
         await loadTasks();
+        if (action.toLowerCase() == 'decline') {
+          await loadRejectionHistory();
+        }
       } else {
         CustomSnackbar.showError(message: response.message);
       }
@@ -221,11 +245,23 @@ class TechnicianController extends GetxController {
 
   void filterTasks(String? status) {
     selectedStatusFilter.value = status ?? 'Pending';
-    filteredTasks.value = allTasks
-        .where((task) =>
-            status == null ||
-            task.taskStatus?.toLowerCase() == status.toLowerCase())
-        .toList();
+    
+    if (status?.toLowerCase() == 'rejected') {
+      final convertedRejectionData = rejectionHistory.map((item) {
+        if (item is Map<String, dynamic>) {
+          return Task.fromJson(item);
+        }
+        return item;
+      }).toList();
+      filteredTasks.value = convertedRejectionData.cast<Task>();
+    } else {
+      filteredTasks.value = allTasks
+          .where((task) =>
+              status == null ||
+              task.taskStatus?.toLowerCase() == status.toLowerCase())
+          .toList();
+    }
+    
     filteredTasks.refresh();
     debugPrint(
         'Filtered tasks by status: ${selectedStatusFilter.value} - Count: ${filteredTasks.length}');
