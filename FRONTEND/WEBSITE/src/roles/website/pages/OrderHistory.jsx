@@ -10,7 +10,7 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [showStatusModal, setShowStatusModal] = useState(false);
     const [selectedOrderStatus, setSelectedOrderStatus] = useState(null);
-
+    
     // Fetch payment history
     useEffect(() => {
         const fetchPaymentHistory = async () => {
@@ -472,8 +472,7 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                                     <span style={{ color: "#0d6efd", fontWeight: "600" }}>Unlimited</span>
                                                                                 ) : (
                                                                                     <>
-                                                                                        {selectedPlan.capacity}
-                                                                                        <span style={{ color: "#0d6efd", fontWeight: "600" }}>Ltr</span>
+                                                                                        {selectedPlan.capacity}Ltr
                                                                                     </>
                                                                                 )}
                                                                             </td>

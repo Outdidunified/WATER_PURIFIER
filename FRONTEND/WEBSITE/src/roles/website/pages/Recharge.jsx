@@ -345,6 +345,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
 
     const handleModelSelect = (index) => {
         const model = filteredProducts[index];
+        console.log(model)
         const product = filteredProducts.filter(p => p.model_type === "Smart")[index];
         setSelectedModelIndex(index);
         setSelectedPlanIndex(0);
@@ -817,7 +818,6 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                 </div>
 
                                             </div>
-
                                         )}
 
                                         <div ref={durationRef}>
@@ -847,6 +847,47 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                 </button>
                                                             ))}
                                                         </div>
+
+                                                            {/* BUTTON */}
+                                                            {selectedDevice ? (
+                                                                <div className="text-center mb-3">
+
+                                                                    {(() => {
+                                                                        const endDateStr = selectedDevice.deviceDetails?.plan_config?.endDate;
+                                                                        const expiry = parseEndDate(endDateStr);
+                                                                        const now = new Date();
+
+                                                                        if (!expiry) {
+                                                                            return (
+                                                                                <p style={{ color: "#ff8800", fontWeight: 600 }}>
+                                                                                    No active plan — please recharge
+                                                                                </p>
+                                                                            );
+                                                                        }
+
+                                                                        const isExpired = now >= expiry;
+
+                                                                        if (isExpired) {
+                                                                            return (
+                                                                                <p style={{ color: "#ff2600ff", fontWeight: 500 }}>
+                                                                                    Plan expired on {formatDate(expiry)}
+                                                                                </p>
+                                                                            );
+                                                                        }
+
+                                                                        return (
+                                                                            <p style={{ color: "green", fontWeight: 600 }}>
+                                                                                Plan Active (ends on {formatDate(expiry)})
+                                                                            </p>
+                                                                        );
+                                                                    })()}
+
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-center mb-3 text-muted">
+                                                                    <p>Please select a device</p>
+                                                                </div>
+                                                            )}
                                                     </div>
 
                                                     {selectedProductByModelId ? (
@@ -889,6 +930,14 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                     const discountRate = selectedDuration?.discount || 0;
                                                                     const gstRate = selectedDuration?.gst || 0;
                                                                     const securityDeposit = selectedDuration?.security_deposit || 0;
+
+                                                                    const endDateStr = selectedDevice?.deviceDetails?.plan_config?.endDate;
+                                                                    const expiry = parseEndDate(endDateStr);
+                                                                    const now = new Date();
+                                                                    const isExpired = !expiry || now >= expiry;
+
+                                                                    const lastPlanId = selectedDevice?.deviceDetails?.plan_config?.plan_id;
+                                                                    const isLastSelectedPlan = plan.plans_id === lastPlanId;
 
                                                                     return (
                                                                         <div className="col-md-3 mb-4" key={plan.plans_id}>
@@ -950,7 +999,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                                             <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
                                                                                         ) : (
                                                                                             <>
-                                                                                                {plan.capacity}/<span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
+                                                                                                {plan.capacity}<span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
                                                                                             </>
                                                                                         )}
                                                                                     </p>
@@ -1003,70 +1052,17 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                                                 </ul>
                                                                                             </li>
                                                                                         ) : (
-                                                                                            <li className="mb-2 text-danger">❌ No Connectivity</li>
+                                                                                            <li className="mb-2 text-danger">No Connectivity</li>
                                                                                         )}
 
                                                                                         <li className="mb-2"><span className="text-success">✓</span> Model Type: {product.model_type || 'N/A'}</li>
                                                                                         <li className="mb-2"><span className="text-success">✓</span> Discount: {discountRate}%</li>
                                                                                         <li className="mb-2"><span className="text-success">✓</span> GST: {gstRate}%</li>
-                                                                                        <li className="text-warning">
+                                                                                        {/* <li className="text-warning">
                                                                                             <span className="text-warning">✓</span> Includes ₹{securityDeposit} refundable deposit
-                                                                                        </li>
+                                                                                        </li> */}
                                                                                     </ul>
                                                                                 </div>
-
-                                                                                {/* BUTTON */}
-                                                                                {selectedDevice ? (
-                                                                                    <div className="text-center mb-3">
-                                                                                        {/* 1. Show End Date */}
-                                                                                        {/* {selectedDevice.deviceDetails?.plan_config?.endDate ? (
-                                                                                            <p className="mb-1" style={{ fontSize: "0.9rem", color: "#444" }}>
-                                                                                                <strong>Plan ends on:</strong>{" "}
-                                                                                                {formatDate(parseEndDate(selectedDevice.deviceDetails.plan_config.endDate))}
-                                                                                            </p>
-                                                                                        ) : (
-                                                                                            <p className="mb-1" style={{ fontSize: "0.9rem", color: "#d00" }}>
-                                                                                                <strong>No plan assigned</strong>
-                                                                                            </p>
-                                                                                        )} */}
-
-                                                                                        {/* 2. Status Message */}
-                                                                                        {(() => {
-                                                                                            const endDateStr = selectedDevice.deviceDetails?.plan_config?.endDate;
-                                                                                            const expiry = parseEndDate(endDateStr);
-                                                                                            const now = new Date();
-
-                                                                                            if (!expiry) {
-                                                                                                return (
-                                                                                                    <p style={{ color: "#ff8800", fontWeight: 600 }}>
-                                                                                                        No active plan — please recharge
-                                                                                                    </p>
-                                                                                                );
-                                                                                            }
-
-                                                                                            const isExpired = now >= expiry;
-
-                                                                                            if (isExpired) {
-                                                                                                return (
-                                                                                                    <p style={{ color: "#ff2600ff", fontWeight: 500 }}>
-                                                                                                        Plan expired on {formatDate(expiry)}
-                                                                                                    </p>
-                                                                                                );
-                                                                                            }
-
-                                                                                            return (
-                                                                                                <p style={{ color: "green", fontWeight: 600 }}>
-                                                                                                    Plan Active (ends on {formatDate(expiry)})
-                                                                                                </p>
-                                                                                            );
-                                                                                        })()}
-
-                                                                                    </div>
-                                                                                ) : (
-                                                                                    <div className="text-center mb-3 text-muted">
-                                                                                        <p>Please select a device</p>
-                                                                                    </div>
-                                                                                )}
 
                                                                                 {selectedDevice ? (
                                                                                     <div className="card-footer text-center pb-4 border-0 bg-white" style={{ borderRadius: '20px' }}>
@@ -1086,7 +1082,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                                                 handleSubscribeClick();
                                                                                             }}
                                                                                         >
-                                                                                            {isExpired ? "Recharge Now" : "Active"}
+                                                                                            {isExpired ? "Recharge Now" : "Recharge"}
                                                                                         </button>
                                                                                     </div>
                                                                                 ) : null}
@@ -1102,7 +1098,6 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                             <p>Please select a model and device to view plans.</p>
                                                         </div>
                                                     )}
-
                                                 </div>
                                             </div>
                                         </div>
@@ -1252,7 +1247,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                 <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
                                                             ) : (
                                                                 <>
-                                                                    {plan.capacity}/<span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
+                                                                    {plan.capacity}Ltr
                                                                 </>
                                                             )}
                                                         </span>
@@ -1356,18 +1351,18 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                         </div>
                     )}
 
-
                 </section>
                 {/* <!-- /Features Section --> */}
 
                 {/* <!-- Start Product detail Section --> */}
-                {loading ? (
+                {/* {loading ? (
                     <div className="text-center my-5">
-                        {/* <div className="spinner-border text-primary" role="status">
+                        <div className="spinner-border text-primary" role="status">
                             <span className="visually-hidden">Loading...</span>
-                        </div> */}
+                        </div>
                     </div>
-                ) : products.length > 0 ? (
+                )
+                    : products.length > 0 ? (
                     <section id="features" className="features section" style={{ padding: '0px' }}>
                         <div className="container section-title" data-aos="fade-up">
                             <h3 style={{ textAlign: 'left' }}>Product details</h3>
@@ -1388,11 +1383,12 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                             )}
                         </div>
                     </section>
-                ) : (
-                    <div className="container text-center my-5">
-                        <h3>No products available at the moment.</h3>
-                    </div>
-                )}
+                    )
+                    : (
+                        <div className="container text-center my-5">
+                            <h3>No products available at the moment.</h3>
+                        </div>
+                    )} */}
 
                 {/* <!-- Start Product detail Section --> */}
 

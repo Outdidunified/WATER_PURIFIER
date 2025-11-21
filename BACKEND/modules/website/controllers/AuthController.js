@@ -465,13 +465,13 @@ exports.loginWithEmail = async (req, res) => {
     }
 
     // 🔒 Block login if EndUser role is deactivated
-    if (role.role_id === 3 && role.status === false) {
-      return res.status(403).json({
-        error: true,
-        status: 'failed',
-        message: 'EndUser role is deactivated. Login not allowed.'
-      });
-    }
+    // if (role.role_id === 3 && role.status === false) {
+    //   return res.status(403).json({
+    //     error: true,
+    //     status: 'failed',
+    //     message: 'EndUser role is deactivated. Login not allowed.'
+    //   });
+    // }
 
     // 🔍 Find the user by email and role
     const user = await db.collection('users').findOne({ email, role_id: Number(role_id) });

@@ -11,7 +11,7 @@ const ManageCallRequests = ({ userInfo, handleLogout }) => {
     loading,
     error,
     handleSearchInputChange,
-  } = useManageCallRequests();
+  } = useManageCallRequests(userInfo);
 
   const formatDateTime = (timestamp) => {
     const date = new Date(timestamp);

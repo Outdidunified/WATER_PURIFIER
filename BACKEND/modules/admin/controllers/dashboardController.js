@@ -2468,6 +2468,27 @@ const AssignInstallation = async (req, res) => {
             });
         }
 
+        // Check if technician is on leave
+        const leaveRequestsCollection = db.collection('leave_requests');
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
+        const approvedLeaves = await leaveRequestsCollection.find({
+            technician_id: technician_id,
+            status: 'Approved',
+            from_date: { $lte: todayEnd },
+            to_date: { $gte: todayStart }
+        }).toArray();
+
+        if (approvedLeaves.length > 0) {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Technician is on approved leave and cannot be assigned'
+            });
+        }
+
         // Generate task ID and OTP
         const lastTask = await serviceRecords.find().sort({ task_id: -1 }).limit(1).toArray();
         const nextTaskId = lastTask.length > 0 ? lastTask[0].task_id + 1 : 1;
@@ -2664,7 +2685,28 @@ if (
       });
     }
 
-    // 5️⃣ Perform reassignment update
+    // 7️⃣ Check if technician is on leave
+    const leaveRequestsCollection = db.collection('leave_requests');
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const approvedLeaves = await leaveRequestsCollection.find({
+      technician_id: technician_id,
+      status: 'Approved',
+      from_date: { $lte: todayEnd },
+      to_date: { $gte: todayStart }
+    }).toArray();
+
+    if (approvedLeaves.length > 0) {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Technician is on approved leave and cannot be reassigned'
+      });
+    }
+
+    // 8️⃣ Perform reassignment update
     const now = new Date();
     const updateResult = await serviceRecords.updateOne(
       { task_id },
@@ -3121,6 +3163,27 @@ const AssignService = async (req, res) => {
             });
         }
 
+        // Check if technician is on leave
+        const leaveRequestsCollection = db.collection('leave_requests');
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
+        const approvedLeaves = await leaveRequestsCollection.find({
+            technician_id: assigned_technician_id,
+            status: 'Approved',
+            from_date: { $lte: todayEnd },
+            to_date: { $gte: todayStart }
+        }).toArray();
+
+        if (approvedLeaves.length > 0) {
+            return res.status(400).json({
+                status: 'Failed',
+                message: 'Technician is on approved leave and cannot be assigned'
+            });
+        }
+
         // Update the existing task by task_id
         const updateResult = await serviceRecords.updateOne(
             { task_id: task_id },
@@ -3280,7 +3343,28 @@ const ReAssignService = async (req, res) => {
       });
     }
 
-    // 5️⃣ Update task assignment
+    // 7️⃣ Check if technician is on leave
+    const leaveRequestsCollection = db.collection('leave_requests');
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const approvedLeaves = await leaveRequestsCollection.find({
+      technician_id: technician_id,
+      status: 'Approved',
+      from_date: { $lte: todayEnd },
+      to_date: { $gte: todayStart }
+    }).toArray();
+
+    if (approvedLeaves.length > 0) {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'Technician is on approved leave and cannot be reassigned'
+      });
+    }
+
+    // 8️⃣ Update task assignment
     const now = new Date();
     const updateResult = await serviceRecords.updateOne(
       { task_id },
@@ -4446,6 +4530,24 @@ const AssignManualRequest = async (req, res) => {
       return res.status(400).json({ status: 'Failed', message: 'Technician district does not match request district' });
     }
 
+    // Check if technician is on leave
+    const leaveRequestsCollection = db.collection('leave_requests');
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const approvedLeaves = await leaveRequestsCollection.find({
+      technician_id: technician_id,
+      status: 'Approved',
+      from_date: { $lte: todayEnd },
+      to_date: { $gte: todayStart }
+    }).toArray();
+
+    if (approvedLeaves.length > 0) {
+      return res.status(400).json({ status: 'Failed', message: 'Technician is on approved leave and cannot be assigned' });
+    }
+
     const otp = Math.floor(100000 + Math.random() * 900000);
     const assignedBy = requester?.email || 'system';
     const now = new Date();
@@ -4605,6 +4707,24 @@ const ReAssignManualRequest = async (req, res) => {
     const taskDistrict = normalizeDeliveryAddress(task.deliveryAddress || task.address || {}).district;
     if (taskDistrict && technicianDistrict && taskDistrict.toLowerCase() !== technicianDistrict.toLowerCase()) {
       return res.status(400).json({ status: 'Failed', message: 'Technician district does not match request district' });
+    }
+
+    // Check if technician is on leave
+    const leaveRequestsCollection = db.collection('leave_requests');
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const approvedLeaves = await leaveRequestsCollection.find({
+      technician_id: technician_id,
+      status: 'Approved',
+      from_date: { $lte: todayEnd },
+      to_date: { $gte: todayStart }
+    }).toArray();
+
+    if (approvedLeaves.length > 0) {
+      return res.status(400).json({ status: 'Failed', message: 'Technician is on approved leave and cannot be reassigned' });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000);

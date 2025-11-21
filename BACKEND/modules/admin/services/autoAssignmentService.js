@@ -506,7 +506,7 @@ async function autoAssignInstallation(order) {
                 task_description: "Ordered a new device",
                 assigned_technician_id: null,
                 task_created_by_user_id: order.user_id,
-                task_created_by_user_email: orderUser.email,
+                task_created_by_user_email: null,
                 wp_device_id: order.wp_device_id,
                 created_date: now,
                 created_by: 'system',
@@ -531,10 +531,18 @@ async function autoAssignInstallation(order) {
         }
 
         // Fetch user info (needed for emails)
-        const orderUser = await usersCollection.findOne({ user_id: order.user_id });
+        let orderUser = await usersCollection.findOne({ user_id: order.user_id });
         if (!orderUser) {
             console.log('User not found for order');
             return;
+        }
+
+        // Update task with user email if it was just created
+        if (!task?.task_created_by_user_email) {
+            await serviceRecords.updateOne(
+                { task_id: taskId },
+                { $set: { task_created_by_user_email: orderUser.email } }
+            );
         }
 
         // Find best technician

@@ -38,7 +38,12 @@ const useManageDevice = (userInfo) => {
   const fetchDevices = async () => {
     setIsLoading(true);
     try {
-      const res = await axiosInstance.post('api/admin/FetchDeviceDetails');
+      const isSeller = Number(userInfo?.role_id) === 4;
+      const url = isSeller ? 'api/admin/FetchDeviceDetails/by-district' : 'api/admin/FetchDeviceDetails';
+      const config = isSeller ? { params: { district: userInfo?.district } } : {};
+      const res = isSeller 
+        ? await axiosInstance.get(url, config)
+        : await axiosInstance.post(url);
       if (res.data.status === 'Success') {
         const devices = Array.isArray(res.data.data) ? [...res.data.data].reverse() : [];
         setStations(devices);
