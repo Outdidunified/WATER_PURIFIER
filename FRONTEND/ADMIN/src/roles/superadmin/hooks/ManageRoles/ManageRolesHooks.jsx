@@ -3,9 +3,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import axiosInstance from '../../../../utils/utils';
 import { showSuccessAlert, showErrorAlert } from '../../../../utils/alert';
 import axios from "axios";
+import RoleSearchService from '../../../../services/RoleSearchService';
 
 const useManageRoles = (userInfo) => {
   const fetchCalled = useRef(false);
+  const debouncedSearchRef = useRef(null);
 
   const [roles, setRoles] = useState([]);
   const [filteredRoles, setFilteredRoles] = useState([]);
@@ -76,36 +78,42 @@ const useManageRoles = (userInfo) => {
     fetchRoles(1, newSize);
   };
 
+  const performSearch = useCallback(async (term, page = 1, limit = 10) => {
+    try {
+      setIsLoading(true);
+      const result = await RoleSearchService.performSearch(term, page, limit);
+      setRoles(result.data);
+      setFilteredRoles(result.data);
+      setCurrentPage(result.pagination.currentPage);
+      setPageSize(result.pagination.pageSize);
+      setTotalRecords(result.totalCount);
+      setTotalPages(Math.ceil(result.totalCount / limit) || 1);
+      setTableError(null);
+    } catch (err) {
+      console.error('Error performing search:', err);
+      setTableError('Error fetching roles. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!fetchCalled.current) {
-      fetchRoles(currentPage, pageSize);
+      performSearch('', currentPage, pageSize);
       fetchCalled.current = true;
     }
-  }, [fetchRoles, currentPage, pageSize]);
-
-  useEffect(() => {
-    const normalizedSearch = searchText.trim().toLowerCase();
-    const normalizedRole = selectedRole.trim().toLowerCase();
-
-    const filtered = roles.filter((role) => {
-      const name = (role.role_name || '').toLowerCase();
-      const id = (role.role_id?.toString() || '').toLowerCase();
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        name.includes(normalizedSearch) ||
-        id.includes(normalizedSearch);
-      const matchesRole =
-        normalizedRole.length === 0 ||
-        name === normalizedRole;
-
-      return matchesSearch && matchesRole;
-    });
-
-    setFilteredRoles(filtered);
-  }, [roles, searchText, selectedRole]);
+  }, []);
 
   const handleSearchInputChange = (e) => {
-    setSearchText(e.target.value);
+    const value = e.target.value;
+    setSearchText(value);
+    setCurrentPage(1);
+    
+    if (!debouncedSearchRef.current) {
+      debouncedSearchRef.current = RoleSearchService.debounceSearch(performSearch, 300);
+    }
+    
+    debouncedSearchRef.current(value, 1, pageSize);
   };
 
   const handleRoleSelect = (value) => {

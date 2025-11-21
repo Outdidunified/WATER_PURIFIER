@@ -595,18 +595,28 @@ async function autoAssignInstallation(order) {
                 { upsert: true }
             );
 
-            // Send notifications with rate limiting
+            // Send OTP email ONLY if not already sent
+            await serviceRecords.updateOne(
+                { task_id: taskId },
+                {
+                    $set: {
+                        otp_sent: true,
+                        otp_sent_date: now
+                    }
+                }
+            );
+
             await sendAssignInstallationEmail(orderUser.email, otp);
-            await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
+            await delayForEmailRateLimit(500);
             await sendTechnicianAssignmentEmail(technician, {
                 taskId: taskId,
                 otp,
                 taskType: 1,
-                normalizedAddress
+                normalizedAddress,
+                isReassignment: false
             });
-            await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
+            await delayForEmailRateLimit(500);
 
-            // Get district sellers and send notification emails
             const districtSellers = await getDistrictSellers(db, normalizedAddress.district);
             const sellerEmails = districtSellers.map(s => s.email);
             const adminEmails = ['admin@gmail.com'];
@@ -1042,11 +1052,17 @@ async function autoAssignPendingTasks() {
                     { upsert: true }
                 );
 
-                // Send OTP email with rate limiting
+                // Send OTP email ONLY if not already sent
                 const user = await usersCollection.findOne({ user_id: task.task_created_by_user_id });
-                if (user) {
+                if (user && !task.otp_sent) {
                     await sendAssignInstallationEmail(user.email, otp);
-                    await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
+                    await delayForEmailRateLimit(500);
+                    
+                    // Mark OTP as sent to prevent duplicate emails
+                    await serviceRecords.updateOne(
+                        { task_id: task.task_id },
+                        { $set: { otp_sent: true, otp_sent_date: new Date() } }
+                    );
                 }
 
                 await sendTechnicianAssignmentEmail(technician, {
@@ -1123,16 +1139,25 @@ async function autoAssignPendingTasks() {
                     { upsert: true }
                 );
 
-                // Send notifications with rate limiting
-                await sendAssignServiceEmail(task.task_created_by_user_email, otp);
-                await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
+                // Send OTP email ONLY if not already sent
+                if (task.task_created_by_user_email && !task.otp_sent) {
+                    await sendAssignServiceEmail(task.task_created_by_user_email, otp);
+                    await delayForEmailRateLimit(500);
+                    
+                    // Mark OTP as sent to prevent duplicate emails
+                    await serviceRecords.updateOne(
+                        { task_id: task.task_id },
+                        { $set: { otp_sent: true, otp_sent_date: new Date() } }
+                    );
+                }
+                
                 await sendTechnicianAssignmentEmail(technician, {
                     taskId: task.task_id,
                     otp,
                     taskType: 2,
                     normalizedAddress
                 });
-                await delayForEmailRateLimit(500); // Rate limiting to prevent email spam detection
+                await delayForEmailRateLimit(500);
 
                 // Log to assignment history
                 await logToAssignmentHistory(db, {
@@ -1397,6 +1422,10 @@ async function autoReassignOverdueTasks() {
                 reassignmentSet.address = normalizedAddress;
             }
 
+            reassignmentSet.otp_sent = false;
+            reassignmentSet.otp_resent = true;
+            reassignmentSet.otp_resent_date = now;
+
             await serviceRecords.updateOne(
                 { task_id: task.task_id },
                 {
@@ -1427,7 +1456,7 @@ async function autoReassignOverdueTasks() {
                 { upsert: true }
             );
 
-            if (task.task_created_by_user_email) {
+            if (task.task_created_by_user_email && !task.otp_resent) {
                 if (task.task_type === 1) {
                     await sendAssignInstallationEmail(task.task_created_by_user_email, otp);
                 } else if (task.task_type === 2) {
@@ -1641,13 +1670,17 @@ async function autoReassignRejectedTasks() {
                 );
 
                 // Send notifications with rate limiting to prevent email spam detection
-                if (task.task_created_by_user_email) {
+                // Only send if not recently sent (within 5 minutes)
+                const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+                const lastSendTime = task.otp_resent_date ? new Date(task.otp_resent_date) : null;
+                
+                if (task.task_created_by_user_email && (!lastSendTime || lastSendTime < fiveMinutesAgo)) {
                     if (task.task_type === 1) {
                         await sendAssignInstallationEmail(task.task_created_by_user_email, otp);
                     } else if (task.task_type === 2) {
                         await sendAssignServiceEmail(task.task_created_by_user_email, otp);
                     }
-                    await delayForEmailRateLimit(500); // 500ms delay after customer email
+                    await delayForEmailRateLimit(500);
                 }
 
                 await sendTechnicianAssignmentEmail(technician, {
@@ -1803,8 +1836,11 @@ async function autoReassignTimeBasedTasks() {
                     { upsert: true }
                 );
 
-                // Send OTP only to CUSTOMER
-                if (task.task_created_by_user_email) {
+                // Send OTP only to CUSTOMER if not recently sent (within 5 minutes)
+                const fiveMinutesAgoPending = new Date(now.getTime() - 5 * 60 * 1000);
+                const lastSendTimePending = task.otp_resent_date ? new Date(task.otp_resent_date) : null;
+                
+                if (task.task_created_by_user_email && (!lastSendTimePending || lastSendTimePending < fiveMinutesAgoPending)) {
                     if (task.task_type === 1) {
                         await sendAssignInstallationEmail(task.task_created_by_user_email, otp);
                     } else if (task.task_type === 2) {
@@ -1930,8 +1966,11 @@ async function autoReassignTimeBasedTasks() {
                     { upsert: true }
                 );
 
-                // Send OTP only to CUSTOMER
-                if (task.task_created_by_user_email) {
+                // Send OTP only to CUSTOMER if not recently sent (within 5 minutes)
+                const fiveMinutesAgoInProgress = new Date(now.getTime() - 5 * 60 * 1000);
+                const lastSendTimeInProgress = task.otp_resent_date ? new Date(task.otp_resent_date) : null;
+                
+                if (task.task_created_by_user_email && (!lastSendTimeInProgress || lastSendTimeInProgress < fiveMinutesAgoInProgress)) {
                     if (task.task_type === 1) {
                         await sendAssignInstallationEmail(task.task_created_by_user_email, otp);
                     } else if (task.task_type === 2) {

@@ -5,18 +5,36 @@ const { connectToDatabase } = require('../../../config/db');
 const { ObjectId } = require('mongodb');
 const { sendSubscriptionConfirmationEmail, sendEmail } = require('../controllers/Email');
 
-// Function to send order success email to seller and admin
+// Function to send order success email to seller, admin, customer, and technical team
 async function sendOrderSuccessEmailToSellerAndAdmin(order, user) {
   try {
     const db = await connectToDatabase();
 
-    // Get all sellers and admins
-    const sellersAndAdmins = await db.collection('users').find({
-      role_id: { $in: [1, 4] } // 1 = Admin, 4 = Seller
+    // Get all sellers, admins, and technical team - deduplicate by email
+    const staffUsers = await db.collection('users').find({
+      role_id: { $in: [1, 4, 5] } // 1 = Admin, 4 = Seller, 5 = Technical
     }).toArray();
 
-    if (!sellersAndAdmins.length) {
-      console.warn('No sellers or admins found to send order success email');
+    // Collect unique emails to avoid sending duplicates
+    const uniqueEmails = new Set();
+    const emailRecipients = [];
+
+    // Add staff (admin, seller, technical)
+    staffUsers.forEach(u => {
+      if (u.email && !uniqueEmails.has(u.email)) {
+        uniqueEmails.add(u.email);
+        emailRecipients.push({ email: u.email, type: 'staff' });
+      }
+    });
+
+    // Add customer/user if not already in the list
+    if (user.email && !uniqueEmails.has(user.email)) {
+      uniqueEmails.add(user.email);
+      emailRecipients.push({ email: user.email, type: 'customer' });
+    }
+
+    if (!emailRecipients.length) {
+      console.warn('No recipients found to send order success email');
       return false;
     }
 
@@ -65,15 +83,15 @@ IonHive System
       </div>
     `;
 
-    // Send email to all sellers and admins
-    const emailPromises = sellersAndAdmins.map(recipient => {
+    // Send email to all unique recipients
+    const emailPromises = emailRecipients.map(recipient => {
       return sendEmail(recipient.email, subject, text, html);
     });
 
     const results = await Promise.allSettled(emailPromises);
     const successCount = results.filter(result => result.status === 'fulfilled' && result.value).length;
 
-    console.log(`Order success email sent to ${successCount}/${sellersAndAdmins.length} recipients`);
+    console.log(`Order success email sent to ${successCount}/${emailRecipients.length} unique recipients`);
     return successCount > 0;
 
   } catch (error) {

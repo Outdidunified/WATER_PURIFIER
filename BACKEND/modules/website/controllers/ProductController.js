@@ -119,7 +119,7 @@ exports.getAllProductsWithPlans = async (req, res) => {
 
 exports.fetchpaymenthistory = async (req, res) => {
   try {
-    const { user_id, page = 1, limit = 1000 } = req.body;
+    const { user_id, page = 1, limit = 3 } = req.body;
 
     if (!user_id) {
       return res.status(400).json({
@@ -130,7 +130,6 @@ exports.fetchpaymenthistory = async (req, res) => {
 
     const db = await connectToDatabase();
     const paymentsCol = db.collection("payments");
-    const { ObjectId } = require("mongodb");
 
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -142,6 +141,7 @@ exports.fetchpaymenthistory = async (req, res) => {
     const pipeline = [
       { $match: { user_id } },
 
+      // SORT FIRST PAGE (initial sort)
       { $sort: { createdAt: -1 } },
       { $skip: skip },
       { $limit: limitNum },
@@ -169,7 +169,7 @@ exports.fetchpaymenthistory = async (req, res) => {
         }
       },
 
-      // UNWIND ORDER TO MERGE SERVICE + PRODUCT MODEL
+      // UNWIND ORDER
       { $unwind: { path: "$orders", preserveNullAndEmptyArrays: true } },
 
       // PRODUCT MODEL IMAGES
@@ -206,63 +206,70 @@ exports.fetchpaymenthistory = async (req, res) => {
       },
       { $unwind: { path: "$serviceRecord", preserveNullAndEmptyArrays: true } },
 
-      // FORMAT EXACTLY LIKE YOU WANT
+      // GROUP BACK (this breaks sorting)
       {
         $group: {
           _id: "$_id",
           payment: { $first: "$$ROOT" },
-          orders: { $push: {
-            _id: "$orders._id",
-            customOrderId: "$orders.customOrderId",
-            user_id: "$orders.user_id",
-            productModelId: "$orders.productModelId",
-            orderType: "$orders.orderType",
-            modelName: "$orders.modelName",
-            modeltype: "$orders.modeltype",
-            main_image: "$orders.main_image",
-            sub_images: "$orders.sub_images",
-            wp_device_id: "$orders.wp_device_id",
-            selectedPlan: "$orders.selectedPlan",
-            selectedDuration: "$orders.selectedDuration",
-            grandTotal: "$orders.grandTotal",
-            deliveryAddress: "$orders.deliveryAddress",
-            paymentType: "$orders.paymentType",
-            paymentStatus: "$orders.paymentStatus",
-            orderStatus: "$orders.orderStatus",
-            razorpayOrderId: "$orders.razorpayOrderId",
-            totalLitre: "$orders.totalLitre",
-            price: "$orders.price",
-            subtotal: "$orders.subtotal",
-            codFee: "$orders.codFee",
-            deliveryAcceptanceStatus: "$orders.deliveryAcceptanceStatus",
-            deliveryAcceptanceTimestamp: "$orders.deliveryAcceptanceTimestamp",
-            deliveryCompletionTimestamp: "$orders.deliveryCompletionTimestamp",
-            createdAt: "$orders.createdAt",
-            updatedAt: "$orders.updatedAt",
-            deliveryCurrentStatus: "$orders.deliveryCurrentStatus",
-            deliveryHistory: "$orders.deliveryHistory",
-            deliveryCompletionStatus: "$orders.deliveryCompletionStatus",
+          orders: {
+            $push: {
+              _id: "$orders._id",
+              customOrderId: "$orders.customOrderId",
+              user_id: "$orders.user_id",
+              productModelId: "$orders.productModelId",
+              orderType: "$orders.orderType",
+              modelName: "$orders.modelName",
+              modeltype: "$orders.modeltype",
+              main_image: "$orders.main_image",
+              sub_images: "$orders.sub_images",
+              wp_device_id: "$orders.wp_device_id",
+              selectedPlan: "$orders.selectedPlan",
+              selectedDuration: "$orders.selectedDuration",
+              grandTotal: "$orders.grandTotal",
+              deliveryAddress: "$orders.deliveryAddress",
+              paymentType: "$orders.paymentType",
+              paymentStatus: "$orders.paymentStatus",
+              orderStatus: "$orders.orderStatus",
+              razorpayOrderId: "$orders.razorpayOrderId",
+              totalLitre: "$orders.totalLitre",
+              price: "$orders.price",
+              subtotal: "$orders.subtotal",
+              codFee: "$orders.codFee",
+              deliveryAcceptanceStatus: "$orders.deliveryAcceptanceStatus",
+              deliveryAcceptanceTimestamp: "$orders.deliveryAcceptanceTimestamp",
+              deliveryCompletionTimestamp: "$orders.deliveryCompletionTimestamp",
+              createdAt: "$orders.createdAt",
+              updatedAt: "$orders.updatedAt",
+              deliveryCurrentStatus: "$orders.deliveryCurrentStatus",
+              deliveryHistory: "$orders.deliveryHistory",
+              deliveryCompletionStatus: "$orders.deliveryCompletionStatus",
 
-            // Final service details
-            task_status: {
-              $ifNull: ["$serviceRecord.task_status", "N/A"]
-            },
-            task_type: "$serviceRecord.task_type",
+              // Final service details
+              task_status: { $ifNull: ["$serviceRecord.task_status", "N/A"] },
+              task_type: "$serviceRecord.task_type",
 
-            // Final product model images
-            product_model_images: {
-              _id: "$productModel._id",
-              main_img: "$productModel.main_img",
-              sub_img_1: "$productModel.sub_img_1",
-              sub_img_2: "$productModel.sub_img_2",
-              sub_img_3: "$productModel.sub_img_3",
-              sub_img_4: "$productModel.sub_img_4"
+              // Final product model images
+              product_model_images: {
+                _id: "$productModel._id",
+                main_img: "$productModel.main_img",
+                sub_img_1: "$productModel.sub_img_1",
+                sub_img_2: "$productModel.sub_img_2",
+                sub_img_3: "$productModel.sub_img_3",
+                sub_img_4: "$productModel.sub_img_4"
+              }
             }
-          }}
+          }
         }
       },
 
-      // MERGE PAYMENT + ORDER ARRAY CLEANLY
+      // 🔥 THE FIX — SORT AGAIN AFTER GROUPING
+      {
+        $sort: {
+          "payment.createdAt": -1
+        }
+      },
+
+      // PROJECT CLEAN OUTPUT
       {
         $project: {
           _id: 1,
@@ -290,7 +297,6 @@ exports.fetchpaymenthistory = async (req, res) => {
     ];
 
     const data = await paymentsCol.aggregate(pipeline).toArray();
-
     const totalRecords = await paymentsCol.countDocuments({ user_id });
 
     return res.status(200).json({

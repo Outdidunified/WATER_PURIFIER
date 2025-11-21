@@ -129,7 +129,7 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
             { key: "accepted", label: "Order Accepted" },
             { key: "packed", label: "Order Packed" },
             { key: "intransit", label: "Shipped" },
-            { key: "outfordelivery", label: "Out For Delivery" },
+            { key: "outfordelivery", label: "Out for Delivery" },
             { key: "completed", label: "Delivered" },
         ];
 
@@ -273,7 +273,7 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                                 accepted: "Order Accepted",
                                                                                 packed: "Order Packed",
                                                                                 intransit: "Shipped",
-                                                                                outfordelivery: "Out For Delivery",
+                                                                                outfordelivery: "Out for Delivery",
                                                                                 completed: "Delivered",
                                                                                 cancelled: "Order Cancelled",
                                                                                 returned: "Returned",
@@ -293,7 +293,7 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                                 accepted: "Order Accepted",
                                                                                 packed: "Order Packed",
                                                                                 intransit: "Shipped",
-                                                                                outfordelivery: "Out For Delivery",
+                                                                                outfordelivery: "Out for Delivery",
                                                                                 completed: "Delivered",
                                                                                 cancelled: "Order Cancelled",
                                                                                 returned: "Returned",

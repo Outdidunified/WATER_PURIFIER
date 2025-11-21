@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { showErrorAlert, showSuccessAlert } from '../../../../utils/alert';
 import axiosInstance from '../../../../utils/utils';
+import OrderSearchService from '../../../../services/OrderSearchService';
 
 const useManageOrders = (userInfo) => {
     const [orders, setOrders] = useState([]);
@@ -24,6 +25,7 @@ const useManageOrders = (userInfo) => {
     const [totalPages, setTotalPages] = useState(0);
 
     const fetchOrdersCalled = useRef(false);
+    const debouncedSearchRef = useRef(null);
 
     const fetchOrders = async (pageNum = 1, pageLimit = 10) => {
         try {
@@ -186,9 +188,33 @@ const useManageOrders = (userInfo) => {
         }
     }, []);
 
+  const performSearch = async (term, page = 1, limit = 10) => {
+    try {
+      setLoading(true);
+      const result = await OrderSearchService.performSearch(term, page, limit);
+      setOrders(result.data);
+      setFilteredOrders(result.data);
+      setCurrentPage(result.pagination.currentPage);
+      setPageSize(result.pagination.pageSize);
+      setTotalRecords(result.totalCount);
+      setTotalPages(Math.ceil(result.totalCount / limit) || 1);
+    } catch (err) {
+      console.error('Error performing search:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSearchInputChange = (e) => {
-    const inputValue = e.target.value.toUpperCase();
-    setSearchText(inputValue);
+    const value = e.target.value;
+    setSearchText(value);
+    setCurrentPage(1);
+    
+    if (!debouncedSearchRef.current) {
+      debouncedSearchRef.current = OrderSearchService.debounceSearch(performSearch, 300);
+    }
+    
+    debouncedSearchRef.current(value, 1, pageSize);
   };
 
   const applyFilters = (filterType, searchQuery) => {

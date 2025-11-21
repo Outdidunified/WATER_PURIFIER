@@ -1,6 +1,6 @@
 //ManageProduct
 import { useState, useEffect, useRef } from 'react';
-import axiosInstance from '../../../../utils/utils';
+import ProductSearchService from '../../../../services/ProductSearchService';
 
 const useManageProducts = (userInfo) => {
   const [data, setData] = useState([]);
@@ -13,40 +13,29 @@ const useManageProducts = (userInfo) => {
   const [pageSize, setPageSize] = useState(10);
   const [totalRecords, setTotalRecords] = useState(0);
   const fetchDataCalled = useRef(false);
+  const debouncedSearchRef = useRef(null);
 
-  const fetchProductModels = (pageNum = 1, pageLimit = 10) => {
-    const isSeller = userInfo && Number(userInfo?.role_id) === 4;
-    const url = isSeller ? '/api/admin/FetchProductModels/by-district' : '/api/admin/FetchProductModels';
-    
+  const performSearch = async (term, page = 1, limit = 10) => {
     setLoading(true);
-    const fetchMethod = isSeller ? 'get' : 'post';
-    axiosInstance({
-      method: fetchMethod,
-      url: url,
-      ...(isSeller ? { params: { district: userInfo?.district, page: pageNum, limit: pageLimit } } : { data: { page: pageNum, limit: pageLimit } })
-    })
-      .then((res) => {
-        const responseData = Array.isArray(res.data.data) ? [...res.data.data]: [];
-        setData(responseData);
-        setPosts(responseData);
-        
-        if (res.data.pagination) {
-          setCurrentPage(res.data.pagination.currentPage);
-          setPageSize(res.data.pagination.pageSize);
-          setTotalRecords(res.data.pagination.totalRecords);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Error fetching product models:', err);
-        setError('Error fetching product models. Please try again.');
-        setLoading(false);
-      });
+    try {
+      const result = await ProductSearchService.performSearch(term, page, limit);
+      setData(result.data);
+      setPosts(result.data);
+      setCurrentPage(result.pagination.currentPage);
+      setPageSize(result.pagination.pageSize);
+      setTotalRecords(result.totalCount);
+      setError(null);
+    } catch (err) {
+      console.error('Error performing search:', err);
+      setError('Error fetching data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     if (!fetchDataCalled.current) {
-      fetchProductModels();
+      performSearch('', 1, 10);
       fetchDataCalled.current = true;
     }
   }, [userInfo]);
@@ -60,7 +49,15 @@ const useManageProducts = (userInfo) => {
   }, [data]);
 
   const handleSearchInputChange = (e) => {
-    setSearchTerm(e.target.value);
+    const value = e.target.value;
+    setSearchTerm(value);
+    setCurrentPage(1);
+    
+    if (!debouncedSearchRef.current) {
+      debouncedSearchRef.current = ProductSearchService.debounceSearch(performSearch, 300);
+    }
+    
+    debouncedSearchRef.current(value, 1, pageSize);
   };
 
   const handleModelSelect = (value) => {
@@ -97,13 +94,13 @@ const useManageProducts = (userInfo) => {
   const handlePageChange = (newPage) => {
     const maxPages = Math.ceil(totalRecords / pageSize) || 1;
     if (newPage >= 1 && newPage <= maxPages) {
-      fetchProductModels(newPage, pageSize);
+      performSearch(searchTerm, newPage, pageSize);
     }
   };
 
   const handlePageSizeChange = (newSize) => {
     setPageSize(newSize);
-    fetchProductModels(1, newSize);
+    performSearch(searchTerm, 1, newSize);
   };
 
   return {

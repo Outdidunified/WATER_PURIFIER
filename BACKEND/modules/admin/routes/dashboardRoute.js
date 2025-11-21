@@ -38,6 +38,10 @@ router.post('/AddProductModels', verifyToken,
 
 // Route to FetchProductModels
 router.post('/FetchProductModels', verifyToken, Controller.FetchProductModels);
+// Route to GetSearchProductsCount
+router.get('/GetSearchProductsCount', verifyToken, Controller.GetSearchProductsCount);
+// Route to SearchProducts
+router.get('/SearchProducts', verifyToken, Controller.SearchProducts);
 
 // Route to UpdateProductModels
 // router.post('/UpdateProductModels', verifyToken, Controller.UpdateProductModels);
@@ -59,6 +63,10 @@ router.post('/AddDeviceDetails', verifyToken, Controller.AddDeviceDetails);
 
 // Route to FetchDeviceDetails
 router.post('/FetchDeviceDetails', verifyToken, Controller.FetchDeviceDetails);
+// Route to GetSearchDevicesCount
+router.get('/GetSearchDevicesCount', verifyToken, Controller.GetSearchDevicesCount);
+// Route to SearchDevices
+router.get('/SearchDevices', verifyToken, Controller.SearchDevices);
 
 // Route to UpdateDeviceDetails
 router.post('/UpdateDeviceDetails', verifyToken, Controller.UpdateDeviceDetails);
@@ -66,14 +74,26 @@ router.post('/UpdateDeviceDetails', verifyToken, Controller.UpdateDeviceDetails)
 // 5.Call Request
 // Route to FetchCallRequest
 router.post('/FetchCallRequest', verifyToken, Controller.FetchCallRequest);
+// Route to GetSearchCallRequestsCount
+router.get('/GetSearchCallRequestsCount', verifyToken, Controller.GetSearchCallRequestsCount);
+// Route to SearchCallRequests
+router.get('/SearchCallRequests', verifyToken, Controller.SearchCallRequests);
 
 // 6.Contact
 // Route to FetchContact
 router.post('/FetchContact', verifyToken, Controller.FetchContact);
+// Route to GetSearchContactCount
+router.get('/GetSearchContactCount', verifyToken, Controller.GetSearchContactCount);
+// Route to SearchContact
+router.get('/SearchContact', verifyToken, Controller.SearchContact);
 
 // 7.Manage orders
 // Route to FetchOrders
 router.post('/FetchOrders', verifyToken, Controller.FetchOrders);
+// Route to GetSearchOrdersCount
+router.get('/GetSearchOrdersCount', verifyToken, Controller.GetSearchOrdersCount);
+// Route to SearchOrders
+router.get('/SearchOrders', verifyToken, Controller.SearchOrders);
 // Route to FetchOrdersByDistrict
 router.post('/FetchOrdersByDistrict', verifyToken, Controller.FetchOrdersByDistrict);
 // Route to FetchOrdersByUserId
@@ -94,8 +114,12 @@ router.post('/AddUserRoles', verifyToken, Controller.AddUserRoles);
 
 // Route to FetchUserRoles
 router.post('/FetchUserRoles', verifyToken, Controller.FetchUserRoles);
+// Route to GetSearchRolesCount
+router.get('/GetSearchRolesCount', verifyToken, Controller.GetSearchRolesCount);
+// Route to SearchRoles
+router.get('/SearchRoles', verifyToken, Controller.SearchRoles);
 
-// Route to FetchOrders
+// Route to UpdateUserRoles
 router.post('/UpdateUserRoles', verifyToken, Controller.UpdateUserRoles);
 
 // 9.Manage User
@@ -104,6 +128,10 @@ router.post('/AddUsers', verifyToken, Controller.AddUsers);
 
 // Route to FetchUsers
 router.post('/FetchUsers', verifyToken, Controller.FetchUsers);
+// Route to GetSearchUsersCount
+router.get('/GetSearchUsersCount', verifyToken, Controller.GetSearchUsersCount);
+// Route to SearchUsers
+router.get('/SearchUsers', verifyToken, Controller.SearchUsers);
 // Route to FetchSellers (role 4)
 router.post('/FetchSellers', verifyToken, Controller.FetchSellers);
 // Route to FetchTechniciansByDistrict (role 2)
@@ -158,6 +186,8 @@ router.post('/DeactivateSellerAssignment', verifyToken, Controller.DeactivateSel
 // New GET APIs by district
 // Users by district (optional role_id)
 router.get('/users/by-district', verifyToken, Controller.GetUsersByDistrict);
+// Users by district count
+router.get('/users/by-district/count', verifyToken, Controller.GetUsersByDistrictCount);
 // Orders by district
 router.get('/orders/by-district', verifyToken, Controller.GetOrdersByDistrict);
 // Installations by district
@@ -172,6 +202,14 @@ router.get('/analytics/by-district',  Controller.GetAnalyticsByDistrict);
 
 // Assignment History API
 router.get('/assignment-history/:task_id', Controller.getAssignmentHistory);
+
+// User Counts API
+// Get user counts by all roles (admin, technician, endUser, seller, totalUsers)
+router.get('/users/counts/by-role', verifyToken, Controller.GetUserCountsByRole);
+// Get user count by specific type
+router.get('/users/counts/by-type', verifyToken, Controller.GetUserCountByType);
+// Get user counts grouped by district
+router.get('/users/counts/by-district', verifyToken, Controller.GetUserCountByDistrict);
 
 // 11. Leave Requests Management
 router.use('/', leaveRequestsRoute);

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../../../utils/utils';
+import UserSearchService from '../../../../services/UserSearchService';
 import {
   showConfirmationAlert,
   showErrorAlert,
@@ -84,65 +85,119 @@ const useManageUsers = (userInfo) => {
   const fetchRoleSummaries = useCallback(async () => {
     try {
       const isSeller = Number(userInfo?.role_id) === 4;
-      const url = isSeller ? '/api/admin/users/by-district/summaries' : '/api/admin/FetchUsersSummaries';
 
-      const response = isSeller
-        ? await axiosInstance.get(url, { params: { district: userInfo?.district } })
-        : await axiosInstance.post(url);
-
-      if (response.status === 200 && response.data.status === 'Success') {
-        setAllRoleSummaries(response.data.data || []);
+      if (isSeller) {
+        const response = await axiosInstance.get('/api/admin/users/counts/by-district', { 
+          params: { district: userInfo?.district } 
+        });
+        if (response.status === 200 && response.data.status === 'Success') {
+          const data = response.data.data;
+          if (Array.isArray(data) && data.length > 0) {
+            const districtData = data[0];
+            const summaries = [
+              { role_id: 1, role_name: 'Admin', count: districtData.admin || 0 },
+              { role_id: 2, role_name: 'Technician', count: districtData.technician || 0 },
+              { role_id: 3, role_name: 'End User', count: districtData.endUser || 0 },
+              { role_id: 4, role_name: 'Seller', count: districtData.seller || 0 }
+            ];
+            setAllRoleSummaries(summaries);
+          }
+        }
+      } else {
+        const response = await axiosInstance.get('/api/admin/users/counts/by-role');
+        if (response.status === 200 && response.data.status === 'Success') {
+          const counts = response.data.data;
+          const summaries = [
+            { role_id: 1, role_name: 'Admin', count: counts.admin || 0 },
+            { role_id: 2, role_name: 'Technician', count: counts.technician || 0 },
+            { role_id: 3, role_name: 'End User', count: counts.endUser || 0 },
+            { role_id: 4, role_name: 'Seller', count: counts.seller || 0 }
+          ];
+          setAllRoleSummaries(summaries);
+        }
       }
     } catch (err) {
       console.error('Error fetching role summaries:', err);
     }
-  }, [userInfo?.role_id]);
+  }, [userInfo?.role_id, userInfo?.district]);
 
   // ----------------------------
-  // FETCH USERS (REMOVED SORTING)
+  // FETCH USERS WITH SEARCH SUPPORT
   // ----------------------------
   const fetchUsers = useCallback(
-    async (pageNum = 1, pageLimit = 10) => {
+    async (pageNum = 1, pageLimit = 10, searchTerm = '') => {
       try {
         setTableLoading(true);
 
         const isSeller = Number(userInfo?.role_id) === 4;
-        const url = isSeller ? '/api/admin/users/by-district' : '/api/admin/FetchUsers';
 
-        const response = isSeller
-          ? await axiosInstance.get(url, { params: { district: userInfo?.district, page: pageNum, limit: pageLimit } })
-          : await axiosInstance.post(url, { page: pageNum, limit: pageLimit });
-
-        if (response.status === 200 && response.data.status === 'Success') {
-          const fetchedData = response.data.data || [];
-
-          // **NO SORTING — KEEP BACKEND ORDER**
-          setData(fetchedData);
-          setPosts(fetchedData);
-
-          if (response.data.pagination) {
-            setCurrentPage(response.data.pagination.currentPage);
-            setPageSize(response.data.pagination.pageSize);
-            setTotalRecords(response.data.pagination.totalRecords);
-            setTotalPages(response.data.pagination.totalPages);
-          }
-
-          if (response.data.roleSummaries) {
-            setAllRoleSummaries(response.data.roleSummaries);
-          }
+        // Use UserSearchService for search operations, fallback to regular fetch for empty search
+        let result;
+        if (searchTerm && searchTerm.trim()) {
+          result = await UserSearchService.performSearch(
+            searchTerm.trim(),
+            pageNum,
+            pageLimit,
+            isSeller,
+            userInfo?.district
+          );
         } else {
-          setData([]);
-          setPosts([]);
+          // Regular fetch without search
+          const url = isSeller ? '/api/admin/users/by-district' : '/api/admin/FetchUsers';
+
+          const response = isSeller
+            ? await axiosInstance.get(url, { params: { district: userInfo?.district, page: pageNum, limit: pageLimit } })
+            : await axiosInstance.post(url, { page: pageNum, limit: pageLimit });
+
+          if (response.status === 200 && response.data.status === 'Success') {
+            result = {
+              data: response.data.data || [],
+              pagination: response.data.pagination || {
+                currentPage: pageNum,
+                pageSize: pageLimit,
+                totalRecords: 0,
+                totalPages: 0
+              },
+              totalCount: response.data.pagination?.totalRecords || 0
+            };
+          } else {
+            result = {
+              data: [],
+              pagination: {
+                currentPage: pageNum,
+                pageSize: pageLimit,
+                totalRecords: 0,
+                totalPages: 0
+              },
+              totalCount: 0
+            };
+          }
         }
+
+        // Update state with results
+        setData(result.data);
+        setPosts(result.data);
+        setCurrentPage(result.pagination.currentPage);
+        setPageSize(result.pagination.pageSize);
+        setTotalRecords(result.pagination.totalRecords);
+        setTotalPages(result.pagination.totalPages);
+
+        // Fetch role summaries if available
+        if (result.roleSummaries) {
+          setAllRoleSummaries(result.roleSummaries);
+        }
+
       } catch (err) {
         console.error('Error fetching users:', err);
         setData([]);
         setPosts([]);
+        setTotalRecords(0);
+        setTotalPages(0);
       } finally {
         setTableLoading(false);
       }
     },
-    [userInfo?.role_id]
+    [userInfo?.role_id, userInfo?.district]
   );
 
   // ----------------------------
@@ -150,7 +205,7 @@ const useManageUsers = (userInfo) => {
   // ----------------------------
   useEffect(() => {
     if (!fetchUsersCalled.current) {
-      fetchUsers();
+      fetchUsers(1, 10, ''); // Initial fetch with no search
       fetchRoles();
       fetchRoleSummaries();
       fetchUsersCalled.current = true;
@@ -192,34 +247,21 @@ const useManageUsers = (userInfo) => {
   }, [roles, data, allRoleSummaries]);
 
   // ----------------------------
-  // SEARCH + FILTER
+  // SERVER-SIDE SEARCH WITH DEBOUNCING
   // ----------------------------
+  const debouncedSearch = useCallback(
+    UserSearchService.debounceSearch(async (searchTerm) => {
+      await fetchUsers(1, pageSize, searchTerm);
+    }, 300),
+    [fetchUsers, pageSize]
+  );
+
   useEffect(() => {
-    if (!Array.isArray(data)) {
-      setPosts([]);
-      return;
+    // Trigger search when searchText changes
+    if (searchText !== undefined) {
+      debouncedSearch(searchText);
     }
-
-    const search = searchText.trim().toUpperCase();
-    const selected = String(selectedRole || '').trim();
-
-    const filtered = data.filter((item) => {
-      const matchesSearch =
-        !search ||
-        (item.name || '').toUpperCase().includes(search) ||
-        (item.email || '').toUpperCase().includes(search) ||
-        String(item.phone || '').includes(search) ||
-        (item.city || '').toUpperCase().includes(search) ||
-        (item.district || '').toUpperCase().includes(search) ||
-        (item.country || '').toUpperCase().includes(search);
-
-      const matchesRole = !selected || String(item.role_id) === selected;
-
-      return matchesSearch && matchesRole;
-    });
-
-    setPosts(filtered);
-  }, [data, searchText, selectedRole]);
+  }, [searchText, debouncedSearch]);
 
   // ----------------------------
   // PAGINATION
@@ -229,12 +271,12 @@ const useManageUsers = (userInfo) => {
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
-      fetchUsers(newPage, pageSize);
+      fetchUsers(newPage, pageSize, searchText);
     }
   };
 
   const handlePageSizeChange = (newSize) => {
-    fetchUsers(1, newSize);
+    fetchUsers(1, newSize, searchText);
   };
 
   // ----------------------------
@@ -267,7 +309,61 @@ const useManageUsers = (userInfo) => {
     setAssignLoading(false);
   };
 
+  // ----------------------------
+  // HANDLE ADD USER SUBMIT
+  // ----------------------------
+  const handleAddUserSubmit = async (e) => {
+    e.preventDefault();
+    setFormError(null);
+    setFormLoading(true);
 
+    try {
+      if (!name || !email || !password || !phone || !role) {
+        setFormError('Please fill all required fields');
+        setFormLoading(false);
+        return;
+      }
+
+      if (!addressline1 || !city || !district || !stateField || !country || !pincode) {
+        setFormError('Please fill all address fields (Address Line1, City, District, State, Country, Pincode)');
+        setFormLoading(false);
+        return;
+      }
+
+      const userData = {
+        name,
+        email: email.toLowerCase(),
+        password,
+        phone,
+        role_id: role,
+        addressline1,
+        addressline2,
+        city,
+        district,
+        state: stateField,
+        country,
+        pincode,
+        createdby: userInfo?.name || userInfo?.email || 'admin'
+      };
+
+      const response = await axiosInstance.post('/api/admin/AddUsers', userData);
+
+      if (response.status === 200 && response.data.status === 'Success') {
+        showSuccessAlert('User created successfully!');
+        resetForm();
+        closeAddModal();
+        fetchUsers(1, pageSize, '');
+      } else {
+        setFormError(response.data.message || 'Failed to create user');
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      setFormError(error.response?.data?.message || error.message || 'Failed to create user');
+      showErrorAlert(error.response?.data?.message || 'Failed to create user');
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
   const resetForm = () => {
     setName('');
@@ -317,6 +413,7 @@ const useManageUsers = (userInfo) => {
     openAddModal,
     closeAddModal,
     isAddModalOpen,
+    handleAddUserSubmit,
     name, setName,
     email, setEmail,
     password, setPassword,

@@ -83,6 +83,7 @@ async function sendSubscriptionConfirmationEmail(user, order, userNewExpiry) {
 
 
 module.exports = {
+  sendEmail,
   sendOtpEmail,
   sendSubscriptionConfirmationEmail,
 };

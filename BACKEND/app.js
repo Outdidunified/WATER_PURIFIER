@@ -114,8 +114,8 @@ connectToDatabase()
         console.log('Running initial auto-assign pending installations on startup...');
         await autoAssignPendingInstallations();
 
-        // Schedule auto-assignment of pending tasks every 30 seconds
-        cron.schedule('*/30 * * * * *', async () => {
+        // Schedule auto-assignment of pending tasks every 5 minutes
+        cron.schedule('0 */5 * * * *', async () => {
             console.log('Running auto-assignment cycle...');
 
             try {

@@ -2048,6 +2048,14 @@ const AddUsers = async (req, res) => {
 // FetchUsers
 const FetchUsers = async (req, res) => {
     try {
+        const { search } = req.query;
+
+        // If search parameter is provided, delegate to SearchUsers
+        if (search && search.trim()) {
+            return SearchUsers(req, res);
+        }
+
+        // Regular fetch without search
         const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
         const db = await database.connectToDatabase();
         const collection = db.collection("users");
@@ -2060,6 +2068,502 @@ const FetchUsers = async (req, res) => {
 
     } catch (error) {
         console.error("Error in FetchUsers:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// GetSearchUsersCount - API to get total count for search (called before pagination)
+const GetSearchUsersCount = async (req, res) => {
+    try {
+        const db = await database.connectToDatabase();
+        const collection = db.collection("users");
+        const { search } = req.query;
+
+        let query = {};
+
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                $or: [
+                    { name: searchRegex },
+                    { email: searchRegex },
+                    { phone: searchRegex },
+                    { city: searchRegex },
+                    { district: searchRegex },
+                    { state: searchRegex }
+                ]
+            };
+        }
+
+        const total = await collection.countDocuments(query);
+
+        return res.status(200).json({
+            status: 'Success',
+            totalRecords: total
+        });
+
+    } catch (error) {
+        console.error("Error in GetSearchUsersCount:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// SearchUsers - Separate API for search functionality with pagination
+const SearchUsers = async (req, res) => {
+    try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
+        const db = await database.connectToDatabase();
+        const collection = db.collection("users");
+
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const { search } = req.query;
+
+        let query = {};
+
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                $or: [
+                    { name: searchRegex },
+                    { email: searchRegex },
+                    { phone: searchRegex },
+                    { city: searchRegex },
+                    { district: searchRegex },
+                    { state: searchRegex }
+                ]
+            };
+        }
+
+        // Get paginated results (total count is calculated on client side using GetSearchUsersCount)
+        const users = await collection.find(query).sort({ _id: -1 }).skip(skip).limit(limit).toArray();
+
+        // For backward compatibility, still calculate total here
+        const total = await collection.countDocuments(query);
+
+        return res.status(200).json(formatPaginatedResponse(users, total, page, limit));
+
+    } catch (error) {
+        console.error("Error in SearchUsers:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// GetSearchProductsCount - API to get total count for product search (called before pagination)
+const GetSearchProductsCount = async (req, res) => {
+    try {
+        const db = await database.connectToDatabase();
+        const collection = db.collection("product_models");
+        const { search } = req.query;
+
+        let query = {};
+
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                $or: [
+                    { model_name: searchRegex },
+                    { connectivity: searchRegex },
+                    { model_type: searchRegex },
+                    { product_details: searchRegex }
+                ]
+            };
+        }
+
+        const total = await collection.countDocuments(query);
+
+        return res.status(200).json({
+            status: 'Success',
+            totalRecords: total
+        });
+
+    } catch (error) {
+        console.error("Error in GetSearchProductsCount:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// SearchProducts - Separate API for search functionality with pagination
+const SearchProducts = async (req, res) => {
+    try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
+        const db = await database.connectToDatabase();
+        const collection = db.collection("product_models");
+
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const { search } = req.query;
+
+        let query = {};
+
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                $or: [
+                    { model_name: searchRegex },
+                    { connectivity: searchRegex },
+                    { model_type: searchRegex },
+                    { product_details: searchRegex }
+                ]
+            };
+        }
+
+        const products = await collection.find(query).sort({ _id: -1 }).skip(skip).limit(limit).toArray();
+        const total = await collection.countDocuments(query);
+
+        return res.status(200).json(formatPaginatedResponse(products, total, page, limit));
+
+    } catch (error) {
+        console.error("Error in SearchProducts:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// GetSearchDevicesCount - API to get total count for device search
+const GetSearchDevicesCount = async (req, res) => {
+    try {
+        const db = await database.connectToDatabase();
+        const collection = db.collection("device_details");
+        const { search } = req.query;
+
+        let query = {};
+
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                $or: [
+                    { wp_device_id: searchRegex },
+                    { model_name: searchRegex },
+                    { connectivity: searchRegex }
+                ]
+            };
+        }
+
+        const total = await collection.countDocuments(query);
+
+        return res.status(200).json({
+            status: 'Success',
+            totalRecords: total
+        });
+
+    } catch (error) {
+        console.error("Error in GetSearchDevicesCount:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// SearchDevices - Separate API for search functionality with pagination
+const SearchDevices = async (req, res) => {
+    try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
+        const db = await database.connectToDatabase();
+        const collection = db.collection("device_details");
+
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const { search } = req.query;
+
+        let query = {};
+
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                $or: [
+                    { wp_device_id: searchRegex },
+                    { model_name: searchRegex },
+                    { connectivity: searchRegex }
+                ]
+            };
+        }
+
+        const devices = await collection.find(query).sort({ _id: -1 }).skip(skip).limit(limit).toArray();
+        const total = await collection.countDocuments(query);
+
+        return res.status(200).json(formatPaginatedResponse(devices, total, page, limit));
+
+    } catch (error) {
+        console.error("Error in SearchDevices:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// GetSearchOrdersCount - API to get total count for order search
+const GetSearchOrdersCount = async (req, res) => {
+    try {
+        const db = await database.connectToDatabase();
+        const collection = db.collection("orders");
+        const { search } = req.query;
+
+        let query = {};
+
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                $or: [
+                    { orderId: searchRegex },
+                    { orderStatus: searchRegex },
+                    { 'deliveryAddress.name': searchRegex },
+                    { 'deliveryAddress.phone': searchRegex }
+                ]
+            };
+        }
+
+        const total = await collection.countDocuments(query);
+
+        return res.status(200).json({
+            status: 'Success',
+            totalRecords: total
+        });
+
+    } catch (error) {
+        console.error("Error in GetSearchOrdersCount:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// SearchOrders - Separate API for search functionality with pagination
+const SearchOrders = async (req, res) => {
+    try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
+        const db = await database.connectToDatabase();
+        const collection = db.collection("orders");
+
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const { search } = req.query;
+
+        let query = {};
+
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                $or: [
+                    { orderId: searchRegex },
+                    { orderStatus: searchRegex },
+                    { 'deliveryAddress.name': searchRegex },
+                    { 'deliveryAddress.phone': searchRegex }
+                ]
+            };
+        }
+
+        const orders = await collection.find(query).sort({ _id: -1 }).skip(skip).limit(limit).toArray();
+        const total = await collection.countDocuments(query);
+
+        return res.status(200).json(formatPaginatedResponse(orders, total, page, limit));
+
+    } catch (error) {
+        console.error("Error in SearchOrders:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// GetSearchRolesCount - API to get total count for role search
+const GetSearchRolesCount = async (req, res) => {
+    try {
+        const db = await database.connectToDatabase();
+        const collection = db.collection("user_roles");
+        const { search } = req.query;
+
+        let query = {};
+
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                $or: [
+                    { role_name: searchRegex },
+                    { description: searchRegex }
+                ]
+            };
+        }
+
+        const total = await collection.countDocuments(query);
+
+        return res.status(200).json({
+            status: 'Success',
+            totalRecords: total
+        });
+
+    } catch (error) {
+        console.error("Error in GetSearchRolesCount:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// SearchRoles - Separate API for search functionality with pagination
+const SearchRoles = async (req, res) => {
+    try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
+        const db = await database.connectToDatabase();
+        const collection = db.collection("user_roles");
+
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const { search } = req.query;
+
+        let query = {};
+
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                $or: [
+                    { role_name: searchRegex },
+                    { description: searchRegex }
+                ]
+            };
+        }
+
+        const roles = await collection.find(query).sort({ _id: -1 }).skip(skip).limit(limit).toArray();
+        const total = await collection.countDocuments(query);
+
+        return res.status(200).json(formatPaginatedResponse(roles, total, page, limit));
+
+    } catch (error) {
+        console.error("Error in SearchRoles:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// GetSearchCallRequestsCount - API to get total count for call request search
+const GetSearchCallRequestsCount = async (req, res) => {
+    try {
+        const db = await database.connectToDatabase();
+        const collection = db.collection("call_requests");
+        const { search } = req.query;
+
+        let query = {};
+
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                $or: [
+                    { phone: searchRegex },
+                    { email: searchRegex },
+                    { issue: searchRegex }
+                ]
+            };
+        }
+
+        const total = await collection.countDocuments(query);
+
+        return res.status(200).json({
+            status: 'Success',
+            totalRecords: total
+        });
+
+    } catch (error) {
+        console.error("Error in GetSearchCallRequestsCount:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// SearchCallRequests - Separate API for search functionality with pagination
+const SearchCallRequests = async (req, res) => {
+    try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
+        const db = await database.connectToDatabase();
+        const collection = db.collection("call_requests");
+
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const { search } = req.query;
+
+        let query = {};
+
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                $or: [
+                    { phone: searchRegex },
+                    { email: searchRegex },
+                    { issue: searchRegex }
+                ]
+            };
+        }
+
+        const callRequests = await collection.find(query).sort({ _id: -1 }).skip(skip).limit(limit).toArray();
+        const total = await collection.countDocuments(query);
+
+        return res.status(200).json(formatPaginatedResponse(callRequests, total, page, limit));
+
+    } catch (error) {
+        console.error("Error in SearchCallRequests:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// GetSearchContactCount - API to get total count for contact search
+const GetSearchContactCount = async (req, res) => {
+    try {
+        const db = await database.connectToDatabase();
+        const collection = db.collection("contacts");
+        const { search } = req.query;
+
+        let query = {};
+
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                $or: [
+                    { name: searchRegex },
+                    { email: searchRegex },
+                    { phone: searchRegex },
+                    { message: searchRegex }
+                ]
+            };
+        }
+
+        const total = await collection.countDocuments(query);
+
+        return res.status(200).json({
+            status: 'Success',
+            totalRecords: total
+        });
+
+    } catch (error) {
+        console.error("Error in GetSearchContactCount:", error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// SearchContact - Separate API for search functionality with pagination
+const SearchContact = async (req, res) => {
+    try {
+        const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
+        const db = await database.connectToDatabase();
+        const collection = db.collection("contacts");
+
+        const { page, limit, skip } = getPaginationParams(req, 10);
+        const { search } = req.query;
+
+        let query = {};
+
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                $or: [
+                    { name: searchRegex },
+                    { email: searchRegex },
+                    { phone: searchRegex },
+                    { message: searchRegex }
+                ]
+            };
+        }
+
+        const contacts = await collection.find(query).sort({ _id: -1 }).skip(skip).limit(limit).toArray();
+        const total = await collection.countDocuments(query);
+
+        return res.status(200).json(formatPaginatedResponse(contacts, total, page, limit));
+
+    } catch (error) {
+        console.error("Error in SearchContact:", error);
         logger?.error?.(error);
         return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
     }
@@ -3715,16 +4219,32 @@ const GetDistrictsWithSellers = async (req, res) => {
 // 4) GET: Users by district (only role_id 2 and 3)
 const GetUsersByDistrict = async (req, res) => {
     try {
-        const { district } = req.query || {};
+        const { district, search } = req.query || {};
         if (!district || String(district).trim() === '') {
             return res.status(400).json({ status: 'Failed', message: 'district is required' });
         }
         const db = await database.connectToDatabase();
         const usersCollection = db.collection('users');
-        const query = {
+
+        let query = {
             district: new RegExp(`^${String(district).trim()}$`, 'i'),
             role_id: { $in: [2, 3] }
         };
+
+        // Add search functionality
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                ...query,
+                $or: [
+                    { name: searchRegex },
+                    { email: searchRegex },
+                    { phone: searchRegex },
+                    { city: searchRegex },
+                    { state: searchRegex }
+                ]
+            };
+        }
 
         const { page, limit, skip } = getPaginationParams(req, 10);
         const total = await usersCollection.countDocuments(query);
@@ -3733,6 +4253,49 @@ const GetUsersByDistrict = async (req, res) => {
         return res.status(200).json(formatPaginatedResponse(users, total, page, limit));
     } catch (error) {
         console.error('Error in GetUsersByDistrict:', error);
+        logger?.error?.(error);
+        return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    }
+};
+
+// GetUsersByDistrictCount - API to get total count for district users with search
+const GetUsersByDistrictCount = async (req, res) => {
+    try {
+        const { district, search } = req.query || {};
+        if (!district || String(district).trim() === '') {
+            return res.status(400).json({ status: 'Failed', message: 'district is required' });
+        }
+        const db = await database.connectToDatabase();
+        const usersCollection = db.collection('users');
+
+        let query = {
+            district: new RegExp(`^${String(district).trim()}$`, 'i'),
+            role_id: { $in: [2, 3] }
+        };
+
+        // Add search functionality
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query = {
+                ...query,
+                $or: [
+                    { name: searchRegex },
+                    { email: searchRegex },
+                    { phone: searchRegex },
+                    { city: searchRegex },
+                    { state: searchRegex }
+                ]
+            };
+        }
+
+        const total = await usersCollection.countDocuments(query);
+
+        return res.status(200).json({
+            status: 'Success',
+            totalRecords: total
+        });
+    } catch (error) {
+        console.error('Error in GetUsersByDistrictCount:', error);
         logger?.error?.(error);
         return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
     }
@@ -5813,8 +6376,8 @@ const GetAnalytics = async (req, res) => {
         const usersCollection = db.collection("users");
 
         const now = new Date();
-
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
         const currentDayOfWeek = now.getDay();
         const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
         const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday);
@@ -5823,7 +6386,7 @@ const GetAnalytics = async (req, res) => {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
-        // -------- Helpers ----------
+        // ---------------- Helpers ----------------
         const countDocuments = (collection, filter) => collection.countDocuments(filter);
 
         const groupTimeline = async (collection, filter, groupId, labelField) => {
@@ -5838,14 +6401,7 @@ const GetAnalytics = async (req, res) => {
                         }
                     }
                 },
-                {
-                    $project: {
-                        [labelField]: "$_id",
-                        total: 1,
-                        successful: 1,
-                        _id: 0
-                    }
-                },
+                { $project: { [labelField]: "$_id", total: 1, successful: 1, _id: 0 } },
                 { $sort: { [labelField]: 1 } }
             ]).toArray();
         };
@@ -5853,7 +6409,7 @@ const GetAnalytics = async (req, res) => {
         const buildFixedBuckets = (range, results, labelKey = "label") => {
             const buckets = [];
             for (let i = range.start; i <= range.end; i++) {
-                const match = results.find(r => r[labelKey] === i);
+                const match = results.find((r) => r[labelKey] === i);
                 buckets.push({
                     [labelKey]: i,
                     total: match ? match.total : 0,
@@ -5866,7 +6422,15 @@ const GetAnalytics = async (req, res) => {
         const groupRevenueTimeline = async (collection, filter, groupId, labelField) => {
             return collection.aggregate([
                 { $match: { ...filter, paymentStatus: "Completed" } },
-                { $addFields: { amount: "$grandTotal" } },
+                {
+                    $addFields: {
+                        amount: {
+                            $toDouble: {
+                                $ifNull: ["$totalPrice", "$grandTotal"]
+                            }
+                        }
+                    }
+                },
                 { $group: { _id: groupId, revenue: { $sum: "$amount" } } },
                 { $project: { [labelField]: "$_id", revenue: 1, _id: 0 } },
                 { $sort: { [labelField]: 1 } }
@@ -5876,7 +6440,7 @@ const GetAnalytics = async (req, res) => {
         const buildRevenueBuckets = (range, results, labelKey = "label") => {
             const buckets = [];
             for (let i = range.start; i <= range.end; i++) {
-                const match = results.find(r => r[labelKey] === i);
+                const match = results.find((r) => r[labelKey] === i);
                 buckets.push({
                     [labelKey]: i,
                     revenue: match ? match.revenue : 0
@@ -5896,6 +6460,7 @@ const GetAnalytics = async (req, res) => {
                 },
                 { $match: { _id: { $ne: null, $exists: true } } },
                 { $sort: { devicesSold: -1 } },
+                { $limit: 5 }, 
                 {
                     $project: {
                         [labelField]: "$_id",
@@ -5906,11 +6471,19 @@ const GetAnalytics = async (req, res) => {
             ]).toArray();
         };
 
-        // -------- Summary Counts --------
+        // ---------------- Summary Counts ----------------
         const [
-            paymentsTotal, paymentsSuccess, paymentsPending,
-            ordersTotal, ordersSuccess, ordersPending,
-            usersTotal, adminsCount, techniciansCount, endUsersCount, sellersCount
+            paymentsTotal,
+            paymentsSuccess,
+            paymentsPending,
+            ordersTotal,
+            ordersSuccess,
+            ordersPending,
+            usersTotal,
+            adminsCount,
+            techniciansCount,
+            endUsersCount,
+            sellersCount
         ] = await Promise.all([
             countDocuments(paymentsCollection, {}),
             countDocuments(paymentsCollection, { paymentStatus: "Completed" }),
@@ -5925,7 +6498,7 @@ const GetAnalytics = async (req, res) => {
             countDocuments(usersCollection, { role_id: 4 })
         ]);
 
-        // -------- Timelines --------
+        // ---------------- Timelines ----------------
         const paymentsTimeline = {
             today: buildFixedBuckets(
                 { start: 0, end: 23 },
@@ -5972,7 +6545,6 @@ const GetAnalytics = async (req, res) => {
             )
         };
 
-        // Revenue timelines
         const revenueTimeline = {
             today: buildRevenueBuckets(
                 { start: 0, end: 23 },
@@ -5996,15 +6568,24 @@ const GetAnalytics = async (req, res) => {
             )
         };
 
+        // ---------------- Correct Revenue Sum ----------------
         const totalRevenueResult = await ordersCollection.aggregate([
             { $match: { paymentStatus: "Completed" } },
-            { $addFields: { amount: "$grandTotal" } },
+            {
+                $addFields: {
+                    amount: {
+                        $toDouble: {
+                            $ifNull: ["$totalPrice", "$grandTotal"]
+                        }
+                    }
+                }
+            },
             { $group: { _id: null, total: { $sum: "$amount" } } }
         ]).toArray();
 
         const totalRevenue = totalRevenueResult[0]?.total || 0;
 
-        // -------- Top items --------
+        // ---------------- Top Items ----------------
         const topDistricts = {
             overall: await getTopItems(ordersCollection, {}, "deliveryAddress.district", "districtName"),
             today: await getTopItems(ordersCollection, { createdAt: { $gte: startOfToday } }, "deliveryAddress.district", "districtName"),
@@ -6021,7 +6602,7 @@ const GetAnalytics = async (req, res) => {
             year: await getTopItems(ordersCollection, { createdAt: { $gte: oneYearAgo } }, "modelName", "modelName")
         };
 
-        // --------- FINAL PAYLOAD (Same As Old) ---------
+        // ---------------- Final Payload ----------------
         const payload = {
             payments: { total: paymentsTotal, successful: paymentsSuccess, pending: paymentsPending, timeline: paymentsTimeline },
             orders: { total: ordersTotal, successful: ordersSuccess, pending: ordersPending, timeline: ordersTimeline },
@@ -6045,6 +6626,7 @@ const GetAnalytics = async (req, res) => {
     }
 };
 
+
 // Get Analytics by District
 const GetAnalyticsByDistrict = async (req, res) => {
   try {
@@ -6064,6 +6646,7 @@ const GetAnalyticsByDistrict = async (req, res) => {
     const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
     const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday);
     startOfWeek.setHours(0, 0, 0, 0);
+
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
@@ -6081,45 +6664,66 @@ const GetAnalyticsByDistrict = async (req, res) => {
     };
 
     const groupPaymentsTimelineByDistrict = async (dateFilter, groupId, labelField) => {
-      const result = await paymentsCollection.aggregate([
+      return paymentsCollection.aggregate([
         { $lookup: { from: 'orders', localField: 'orderId', foreignField: '_id', as: 'order' } },
         { $addFields: { order: { $arrayElemAt: ['$order', 0] } } },
         { $match: { 'order.deliveryAddress.district': districtRegex, createdAt: dateFilter } },
-        { $group: { _id: groupId, total: { $sum: 1 }, successful: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'Completed'] }, 1, 0] } } } },
+        {
+          $group: {
+            _id: groupId,
+            total: { $sum: 1 },
+            successful: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'Completed'] }, 1, 0] } }
+          }
+        },
         { $project: { [labelField]: '$_id', total: 1, successful: 1, _id: 0 } },
         { $sort: { [labelField]: 1 } }
       ]).toArray();
-      return result;
     };
 
     const groupTimeline = async (collection, filter, groupId, labelField) => {
-      const result = await collection.aggregate([
+      return collection.aggregate([
         { $match: filter },
-        { $group: { _id: groupId, total: { $sum: 1 }, successful: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'Completed'] }, 1, 0] } } } },
+        {
+          $group: {
+            _id: groupId,
+            total: { $sum: 1 },
+            successful: { $sum: { $cond: [{ $eq: ['$paymentStatus', 'Completed'] }, 1, 0] } }
+          }
+        },
         { $project: { [labelField]: '$_id', total: 1, successful: 1, _id: 0 } },
         { $sort: { [labelField]: 1 } }
       ]).toArray();
-      return result;
     };
 
     const buildFixedBuckets = (range, results, labelKey = 'label') => {
       const buckets = [];
       for (let i = range.start; i <= range.end; i++) {
         const match = results.find(r => r[labelKey] === i);
-        buckets.push({ [labelKey]: i, total: match ? match.total : 0, successful: match ? match.successful : 0 });
+        buckets.push({
+          [labelKey]: i,
+          total: match ? match.total : 0,
+          successful: match ? match.successful : 0
+        });
       }
       return buckets;
     };
 
     const groupRevenueTimeline = async (collection, filter, groupId, labelField) => {
-      const result = await collection.aggregate([
+      return collection.aggregate([
         { $match: { ...filter, paymentStatus: 'Completed' } },
-        { $addFields: { amount: '$grandTotal' } },
+        {
+          $addFields: {
+            amount: {
+              $toDouble: {
+                $ifNull: ['$totalPrice', '$grandTotal']
+              }
+            }
+          }
+        },
         { $group: { _id: groupId, revenue: { $sum: '$amount' } } },
         { $project: { [labelField]: '$_id', revenue: 1, _id: 0 } },
         { $sort: { [labelField]: 1 } }
       ]).toArray();
-      return result;
     };
 
     const buildRevenueBuckets = (range, results, labelKey = 'label') => {
@@ -6131,8 +6735,9 @@ const GetAnalyticsByDistrict = async (req, res) => {
       return buckets;
     };
 
-    const getTopItems = async (collection, filter, groupByField, labelField = 'name', limit = null) => {
-      const pipeline = [
+    // ⭐⭐⭐ TOP MODELS & TOP DISTRICTS (TOP 5 ONLY) ⭐⭐⭐
+    const getTopItems = async (collection, filter, groupByField, labelField = 'name') => {
+      return collection.aggregate([
         { $match: { ...filter, paymentStatus: 'Completed', 'deliveryAddress.district': districtRegex } },
         {
           $group: {
@@ -6140,24 +6745,39 @@ const GetAnalyticsByDistrict = async (req, res) => {
             devicesSold: { $sum: { $ifNull: ['$quantity', 1] } }
           }
         },
-        { $match: { _id: { $ne: null, $ne: 'Unknown', $exists: true } } },
-        { $sort: { devicesSold: -1 } }
-      ];
-      
-      if (limit) {
-        pipeline.push({ $limit: limit });
-      }
-      
-      pipeline.push({
-        $project: {
-          [labelField]: '$_id',
-          devicesSold: 1,
-          _id: 0
+        { $match: { _id: { $ne: null, $exists: true } } },
+        { $sort: { devicesSold: -1 } },
+        { $limit: 5 },   // ⭐ TOP 5 MODELS
+        {
+          $project: {
+            [labelField]: '$_id',
+            devicesSold: 1,
+            _id: 0
+          }
         }
-      });
+      ]).toArray();
+    };
 
-      const result = await collection.aggregate(pipeline).toArray();
-      return result;
+    const getTopDistricts = async (filter) => {
+      return ordersCollection.aggregate([
+        { $match: { ...filter, paymentStatus: 'Completed', 'deliveryAddress.district': districtRegex } },
+        {
+          $group: {
+            _id: '$deliveryAddress.district',
+            devicesSold: { $sum: { $ifNull: ['$quantity', 1] } }
+          }
+        },
+        { $match: { _id: { $ne: null, $exists: true } } },
+        { $sort: { devicesSold: -1 } },
+        { $limit: 5 },  // ⭐ TOP 5 DISTRICTS
+        {
+          $project: {
+            districtName: '$_id',
+            devicesSold: 1,
+            _id: 0
+          }
+        }
+      ]).toArray();
     };
 
     // ---------------- Summary counts ----------------
@@ -6220,41 +6840,27 @@ const GetAnalyticsByDistrict = async (req, res) => {
 
     const totalRevenueResult = await ordersCollection.aggregate([
       { $match: { ...orderFilterBase, paymentStatus: 'Completed' } },
-      { $addFields: { amount: '$grandTotal' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]).toArray();
-    const totalRevenue = totalRevenueResult[0]?.total || 0;
-
-    // ---------------- Top Districts per Timeframe ----------------
-    const getTopDistricts = async (filter) => {
-      const result = await ordersCollection.aggregate([
-        { $match: { ...filter, paymentStatus: 'Completed', 'deliveryAddress.district': districtRegex } },
-        {
-          $group: {
-            _id: '$deliveryAddress.district',
-            devicesSold: { $sum: { $ifNull: ['$quantity', 1] } }
-          }
-        },
-        { $match: { _id: { $ne: null, $ne: 'Unknown', $exists: true } } },
-        { $sort: { devicesSold: -1 } },
-        {
-          $project: {
-            districtName: '$_id',
-            devicesSold: 1,
-            _id: 0
+      {
+        $addFields: {
+          amount: {
+            $toDouble: {
+              $ifNull: ['$totalPrice', '$grandTotal']
+            }
           }
         }
-      ]).toArray();
-      return result;
-    };
+      },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]).toArray();
 
+    const totalRevenue = totalRevenueResult[0]?.total || 0;
+
+    // ---------------- TOP 5 DISTRICTS & MODELS ----------------
     const topDistrictsOverall = await getTopDistricts({});
     const topDistrictsToday = await getTopDistricts({ createdAt: { $gte: startOfToday } });
     const topDistrictsWeek = await getTopDistricts({ createdAt: { $gte: startOfWeek } });
     const topDistrictsMonth = await getTopDistricts({ createdAt: { $gte: startOfMonth } });
     const topDistrictsYear = await getTopDistricts({ createdAt: { $gte: oneYearAgo } });
 
-    // ---------------- Top Models per Timeframe ----------------
     const topModelsOverall = await getTopItems(ordersCollection, {}, 'modelName', 'modelName');
     const topModelsToday = await getTopItems(ordersCollection, { createdAt: { $gte: startOfToday } }, 'modelName', 'modelName');
     const topModelsWeek = await getTopItems(ordersCollection, { createdAt: { $gte: startOfWeek } }, 'modelName', 'modelName');
@@ -6295,6 +6901,7 @@ const GetAnalyticsByDistrict = async (req, res) => {
     return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
   }
 };
+
 const FetchTechnicianTasksByUserId = async (req, res) => {
   const { user_id, technician_id, email } = req.body;
 
@@ -6604,15 +7211,152 @@ const getAssignmentHistory = async (req, res) => {
   }
 };
 
+const GetUserCountsByRole = async (req, res) => {
+  try {
+    const db = await database.connectToDatabase();
+    const collection = db.collection('users');
+
+    const allUsersCount = await collection.countDocuments();
+    const adminCount = await collection.countDocuments({ role_id: 1 });
+    const technicianCount = await collection.countDocuments({ role_id: 2 });
+    const endUserCount = await collection.countDocuments({ role_id: 3 });
+    const sellerCount = await collection.countDocuments({ role_id: 4 });
+
+    return res.status(200).json({
+      status: 'Success',
+      message: 'User counts by role fetched successfully',
+      data: {
+        totalUsers: allUsersCount,
+        admin: adminCount,
+        technician: technicianCount,
+        endUser: endUserCount,
+        seller: sellerCount
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in GetUserCountsByRole:', error);
+    logger?.error?.(error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error'
+    });
+  }
+};
+
+const GetUserCountByType = async (req, res) => {
+  try {
+    const { type } = req.query;
+
+    if (!type) {
+      return res.status(400).json({
+        status: 'Failed',
+        message: 'User type is required (admin, technician, endUser, seller, all)'
+      });
+    }
+
+    const db = await database.connectToDatabase();
+    const collection = db.collection('users');
+
+    let roleId = null;
+    const typeMap = {
+      'admin': 1,
+      'technician': 2,
+      'endUser': 3,
+      'seller': 4,
+      'all': null
+    };
+
+    roleId = typeMap[type.toLowerCase()];
+
+    let count;
+    if (roleId === null) {
+      count = await collection.countDocuments();
+    } else {
+      count = await collection.countDocuments({ role_id: roleId });
+    }
+
+    return res.status(200).json({
+      status: 'Success',
+      message: `${type} count fetched successfully`,
+      data: {
+        type: type,
+        count: count
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in GetUserCountByType:', error);
+    logger?.error?.(error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error'
+    });
+  }
+};
+
+const GetUserCountByDistrict = async (req, res) => {
+  try {
+    const { district } = req.query;
+    const db = await database.connectToDatabase();
+    const collection = db.collection('users');
+
+    let query = {};
+    if (district) {
+      query = { district: { $regex: new RegExp(district, 'i') } };
+    }
+
+    const counts = await collection.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$district',
+          total: { $sum: 1 },
+          admin: {
+            $sum: { $cond: [{ $eq: ['$role_id', 1] }, 1, 0] }
+          },
+          technician: {
+            $sum: { $cond: [{ $eq: ['$role_id', 2] }, 1, 0] }
+          },
+          endUser: {
+            $sum: { $cond: [{ $eq: ['$role_id', 3] }, 1, 0] }
+          },
+          seller: {
+            $sum: { $cond: [{ $eq: ['$role_id', 4] }, 1, 0] }
+          }
+        }
+      },
+      { $sort: { total: -1 } }
+    ]).toArray();
+
+    return res.status(200).json({
+      status: 'Success',
+      message: 'User counts by district fetched successfully',
+      data: counts
+    });
+
+  } catch (error) {
+    console.error('Error in GetUserCountByDistrict:', error);
+    logger?.error?.(error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error'
+    });
+  }
+};
+
 // Export controllers
 module.exports = {
     getModules, authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
     UpdateDeviceDetails, FetchCallRequest, FetchContact, FetchOrders, AddUserRoles, FetchUserRoles, UpdateUserRoles,
-    AddUsers, FetchUsers, FetchSellers, FetchOrdersByDistrict, FetchTechniciansByDistrict, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
+    AddUsers, FetchUsers, GetSearchUsersCount, SearchUsers, FetchSellers, FetchOrdersByDistrict, FetchTechniciansByDistrict, UpdateUsers, FetchInstallationService, FetchSelectUserOrders, AssignInstallation, ReAssignInstallation, FetchSelectInstallationTask,
     FetchSelectServiceTask, AssignService, ReAssignService, FetchInstalledDevicesForRequests, CreateManualRequest, FetchManualRequests, FetchManualRequestsBySellerDistrict, AssignManualRequest, ReAssignManualRequest, assignPermissions, fetchPermissionsByRole,
-    GetUsersByDistrict, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
+    GetUsersByDistrict, GetUsersByDistrictCount, GetOrdersByDistrict, GetInstallationsByDistrict, GetServicesByDistrict,
     AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchEndUserDevices, FetchOrdersByUserId, FetchTechnicianTasksByUserId, GetAnalytics,
-    GetAnalyticsByDistrict,GetDistrictsWithSellers,ConfirmCodPayment, UnAssignTask, getAssignmentHistory
+    GetAnalyticsByDistrict,GetDistrictsWithSellers,ConfirmCodPayment, UnAssignTask, getAssignmentHistory,
+    GetSearchProductsCount, SearchProducts, GetSearchDevicesCount, SearchDevices, GetSearchOrdersCount, SearchOrders,
+    GetSearchRolesCount, SearchRoles, GetSearchCallRequestsCount, SearchCallRequests, GetSearchContactCount, SearchContact,
+    GetUserCountsByRole, GetUserCountByType, GetUserCountByDistrict
     // UpdateOrdersStatus,
 
 };

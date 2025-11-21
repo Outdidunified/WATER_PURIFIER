@@ -1,7 +1,8 @@
 //ManageDevice
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { showErrorAlert, showSuccessAlert } from '../../../../utils/alert';
 import axiosInstance from '../../../../utils/utils';
+import DeviceSearchService from '../../../../services/DeviceSearchService';
 
 const useManageDevice = (userInfo) => {
   const [stationData, setStationData] = useState({
@@ -21,8 +22,8 @@ const useManageDevice = (userInfo) => {
   const [pageSize, setPageSize] = useState(10);
   const [totalRecords, setTotalRecords] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-
   const [showAddModal, setShowAddModal] = useState(false);
+  const debouncedSearchRef = useRef(null);
 
   // Fetch available models
   const fetchModels = async () => {
@@ -35,6 +36,25 @@ const useManageDevice = (userInfo) => {
       }
     } catch (err) {
       showErrorAlert('Error', err?.message || 'Error fetching models');
+    }
+  };
+
+  // Perform server-side search
+  const performSearch = async (term, page = 1, limit = 10) => {
+    setIsLoading(true);
+    try {
+      const result = await DeviceSearchService.performSearch(term, page, limit);
+      setStations(result.data);
+      setFilteredStations(result.data);
+      setError('');
+      setCurrentPage(result.pagination.currentPage);
+      setPageSize(result.pagination.pageSize);
+      setTotalRecords(result.totalCount);
+      setTotalPages(Math.ceil(result.totalCount / limit) || 1);
+    } catch (err) {
+      setError(err.message || 'Unexpected error occurred');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -145,39 +165,16 @@ const useManageDevice = (userInfo) => {
   };
 
   const handleSearchInputChange = (e) => {
-    setSearchText(e.target.value);
-  };
-
-  useEffect(() => {
-    const normalizedSearch = searchText.trim().toLowerCase();
-    const normalizedModel = selectedModel.trim().toLowerCase();
-
-    const filtered = stations.filter((station) => {
-      const deviceId = (station.wp_device_id || '').toLowerCase();
-      const modelName = (station.model_name || '').toLowerCase();
-      const createdBy = (station.createdby || '').toLowerCase();
-      const email = (station.email || '').toLowerCase();
-
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        deviceId.includes(normalizedSearch) ||
-        modelName.includes(normalizedSearch) ||
-        createdBy.includes(normalizedSearch) ||
-        email.includes(normalizedSearch);
-
-      const matchesModel =
-        normalizedModel.length === 0 ||
-        modelName === normalizedModel;
-
-      return matchesSearch && matchesModel;
-    });
-
-    setFilteredStations(filtered);
-  }, [stations, searchText, selectedModel]);
-
-  useEffect(() => {
+    const value = e.target.value;
+    setSearchText(value);
     setCurrentPage(1);
-  }, [searchText, selectedModel]);
+    
+    if (!debouncedSearchRef.current) {
+      debouncedSearchRef.current = DeviceSearchService.debounceSearch(performSearch, 300);
+    }
+    
+    debouncedSearchRef.current(value, 1, pageSize);
+  };
 
   useEffect(() => {
     fetchModels();
