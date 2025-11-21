@@ -40,6 +40,12 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
 
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            handleEmailLogin();
+        }
+    };
+
     return (
         <div>
             <Header userInfo={userInfo} handleLogout={handleLogout} />
@@ -53,11 +59,11 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                 <img alt="img" src="assets/img/login.png" style={{ width: '100%', height: '250px', objectFit: 'cover', borderRadius: '10px', marginBottom: '0.5rem', }} />
                                 <h2 style={{ textAlign: 'center' }}>Login</h2>
 
-                                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                                {/* <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
                                     <button onClick={() => setLoginType("email")} style={{ marginRight: '10px', padding: '8px 16px', background: loginType === "email" ? '#007bff' : '#ccc', color: '#fff', border: 'none', borderRadius: '5px' }}>
                                         Email Login
                                     </button>
-                                </div>
+                                </div> */}
 
                                 {/* Phone Login */}
                                 {loginType === "phone" && (
@@ -88,26 +94,43 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
 
                                 {/* Email Login */}
                                 {loginType === "email" && (
-                                    <>
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            alignItems: "center",    
+                                            justifyContent: "center", 
+                                            width: "100%",
+                                        }}
+                                    >
+                                        {/* Email Input — 60% width */}
                                         <input
                                             type="email"
                                             placeholder="Enter Email"
-                                            style={commonInputStyle}
+                                            style={{
+                                                ...commonInputStyle,
+                                                width: "60%",
+                                            }}
                                             value={emailID}
                                             onChange={(e) => setEmailID(sanitizeEmail(e.target.value))}
                                             required
                                         />
 
-                                        <div style={{ position: 'relative', width: '100%' }}>
+                                        {/* Password + Eye — 60% width */}
+                                        <div style={{
+                                            position: 'relative',
+                                            width: "60%"           
+                                        }}>
                                             <input
-                                                type={isPasswordVisible ? "text" : "password"} // Toggle between text and password
+                                                type={isPasswordVisible ? "text" : "password"}
                                                 placeholder="4 Digit Password"
                                                 style={{
                                                     ...commonInputStyle,
-                                                    paddingRight: '40px', // Ensure there's space on the right for the icon
-                                                    width: '100%',
+                                                    paddingRight: '40px',
+                                                    width: "100%",
                                                 }}
                                                 value={password}
+                                                onKeyDown={handleKeyPress}
                                                 minLength={4}
                                                 maxLength={4}
                                                 onChange={(e) => {
@@ -118,7 +141,6 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                                 required
                                             />
 
-                                            {/* Eye icon to toggle password visibility */}
                                             <button
                                                 type="button"
                                                 onClick={() => setIsPasswordVisible(!isPasswordVisible)}
@@ -140,14 +162,22 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                             </button>
                                         </div>
 
+                                        {/* Login Button — 30% width */}
                                         <button
                                             onClick={handleEmailLogin}
                                             disabled={loading}
-                                            style={{ ...commonInputStyle, background: '#007bff', color: '#fff', opacity: loading ? 0.7 : 1 }}
+                                            style={{
+                                                ...commonInputStyle,
+                                                width: "30%",
+                                                background: '#007bff',
+                                                color: '#fff',
+                                                opacity: loading ? 0.7 : 1,
+                                                textAlign: "center",
+                                            }}
                                         >
                                             {loading ? "Logging in..." : "Login"}
                                         </button>
-                                    </>
+                                    </div>
                                 )}
 
                                 <p style={{ textAlign: 'center' }}>

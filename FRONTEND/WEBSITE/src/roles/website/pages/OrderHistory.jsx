@@ -10,19 +10,41 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
     const [hoveredIndex, setHoveredIndex] = useState(null);
     const [showStatusModal, setShowStatusModal] = useState(false);
     const [selectedOrderStatus, setSelectedOrderStatus] = useState(null);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
 
     // Fetch payment history
     useEffect(() => {
         const fetchPaymentHistory = async () => {
+            if (!hasMore) return; // stop when no more pages
+
             setLoading(true);
+
             try {
                 const response = await axios.post(
                     "/api/app/settings/fetchpaymenthistory",
-                    { user_id: userInfo.user_id },
-                    { headers: { Authorization: `Bearer ${token}` } }
+                    {
+                        user_id: userInfo.user_id,
+                        page,
+                        limit: 10
+                    },
+                    {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }
                 );
+
                 if (response.data.success) {
-                    setPaymentHistory(response.data.data);
+                    const newData = response.data.data;
+
+                    // Append to existing list
+                    setPaymentHistory(prev => [...prev, ...newData]);
+
+                    // If no more pages, stop loading
+                    if (page >= response.data.totalPages) {
+                        setHasMore(false);
+                    } else {
+                        setPage(prev => prev + 1);
+                    }
                 }
             } catch (error) {
                 console.error("Error fetching payment history:", error);
@@ -472,8 +494,7 @@ const OrderHistory = ({ userInfo, token, handleLogout }) => {
                                                                                     <span style={{ color: "#0d6efd", fontWeight: "600" }}>Unlimited</span>
                                                                                 ) : (
                                                                                     <>
-                                                                                        {selectedPlan.capacity}
-                                                                                        <span style={{ color: "#0d6efd", fontWeight: "600" }}>Ltr</span>
+                                                                                        {selectedPlan.capacity}Ltr
                                                                                     </>
                                                                                 )}
                                                                             </td>

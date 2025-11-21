@@ -123,7 +123,13 @@ const useLogin = (handleLogin) => {
             const data = await res.json();
 
             if (res.status === 200 && data.status.toLowerCase() === "success") {
-                Swal.fire("Success", data.message, "success");
+                Swal.fire({
+                    title: "Success",
+                    text: data.message,
+                    icon: "success",
+                    timer: 1000,              // Auto close after 7 seconds
+                    timerProgressBar: true,   // Optional progress bar
+                });
                 handleLogin(data);
                 resetFields();
             } else {
@@ -211,7 +217,14 @@ const useLogin = (handleLogin) => {
             });
             const data = await res.json();
             if (res.ok && !data.error) {
-                Swal.fire('Success', data.message || 'Registered successfully', 'success');
+                Swal.fire({
+                    title: "Success",
+                    text: data.message || 'Registered successfully',
+                    icon: "success",
+                    timer: 1000,              
+                    timerProgressBar: true,  
+                });
+               // Swal.fire('Success', data.message || 'Registered successfully', 'success');
                 setStep("login");   // go back to login screen
                 // setStep("otp");
                 resetFields();

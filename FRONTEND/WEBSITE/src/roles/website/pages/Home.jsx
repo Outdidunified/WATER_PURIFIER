@@ -700,7 +700,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                             <div className="col-lg-6">
                                 <div className="hero-image" data-aos="zoom-out" data-aos-delay="300">
-                                    <img src="assets/img/water-purifier3.png" alt="Hero Image" className="img-fluid main-image rounded-4" style={{ width: '100%', animation: 'float-badge 3s ease-in-out infinite' }} />
+                                    <img src="assets/img/water-purifier2.webp" alt="Hero Image" className="img-fluid main-image rounded-4" style={{ width: '100%', animation: 'float-badge 3s ease-in-out infinite' }} />
                                 </div>
                             </div>
                         </div>
@@ -1562,8 +1562,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                 <span style={{ color: "rgb(13, 110, 253)" }}>Unlimited</span>
                                                             ) : (
                                                                 <>
-                                                                    {plan.capacity}
-                                                                    <span style={{ color: "rgb(13, 110, 253)" }}>Ltr</span>
+                                                                    {plan.capacity}Ltr
                                                                 </>
                                                             )}
                                                         </span>
