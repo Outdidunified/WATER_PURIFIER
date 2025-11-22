@@ -475,6 +475,10 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
         }
     }, [filteredProducts, devicesByModel]);
 
+    const isSetup = selectedDevice?.deviceDetails?.isSetup;
+    const canRecharge = isExpired && isSetup;
+
+
     return (
         <div>
 
@@ -886,11 +890,11 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                         {/* BUTTON */}
                                                         {selectedDevice ? (
                                                             <div className="text-center mb-3">
-
                                                                 {(() => {
                                                                     const endDateStr = selectedDevice.deviceDetails?.plan_config?.endDate;
                                                                     const expiry = parseEndDate(endDateStr);
                                                                     const now = new Date();
+                                                                    const isSetup = selectedDevice.deviceDetails?.isSetup === true;
 
                                                                     if (!expiry) {
                                                                         return (
@@ -902,6 +906,17 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
 
                                                                     const isExpired = now >= expiry;
 
+                                                                    // EXPIRED + NOT SETUP → SHOW ONLY CONFIG MESSAGE
+                                                                    if (isExpired && !isSetup) {
+                                                                        return (
+                                                                            <p style={{ color: "#0d6efd", fontWeight: 600 }}>
+                                                                                Please connect your device via Bluetooth using the Mobile App
+                                                                                to complete configuration.
+                                                                            </p>
+                                                                        );
+                                                                    }
+
+                                                                    // EXPIRED + SETUP DONE
                                                                     if (isExpired) {
                                                                         return (
                                                                             <p style={{ color: "#ff2600ff", fontWeight: 500 }}>
@@ -910,13 +925,13 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                         );
                                                                     }
 
+                                                                    // ACTIVE PLAN
                                                                     return (
                                                                         <p style={{ color: "green", fontWeight: 600 }}>
                                                                             Plan Active (ends on {formatDate(expiry)})
                                                                         </p>
                                                                     );
                                                                 })()}
-
                                                             </div>
                                                         ) : (
                                                             <div className="text-center mb-3 text-muted">
@@ -1104,20 +1119,24 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                                         <button
                                                                                             className="btn px-4 py-2 rounded-pill"
                                                                                             style={{
-                                                                                                background: isExpired ? "#0d6efd" : "#6c757d",
+                                                                                                background: canRecharge ? "#0d6efd" : "#6c757d",
                                                                                                 border: "none",
                                                                                                 color: "#fff",
-                                                                                                cursor: isExpired ? "pointer" : "not-allowed",
-                                                                                                opacity: isExpired ? 1 : 0.6,
+                                                                                                cursor: canRecharge ? "pointer" : "not-allowed",
+                                                                                                opacity: canRecharge ? 1 : 0.6,
                                                                                             }}
-                                                                                            disabled={!isExpired}
+                                                                                            disabled={!canRecharge}
                                                                                             onClick={() => {
-                                                                                                if (!isExpired) return;
+                                                                                                if (!canRecharge) return;
                                                                                                 setSelectedPlanIndex(planIndex);
                                                                                                 handleSubscribeClick();
                                                                                             }}
                                                                                         >
-                                                                                            {isExpired ? "Recharge Now" : "Recharge"}
+                                                                                            {isExpired
+                                                                                                ? isSetup
+                                                                                                    ? "Recharge Now"
+                                                                                                    : "Recharged Success"
+                                                                                                : "Recharge"}
                                                                                         </button>
                                                                                     </div>
                                                                                 ) : null}
