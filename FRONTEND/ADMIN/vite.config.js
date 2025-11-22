@@ -11,7 +11,14 @@ export default defineConfig({
       '/api': {
         target: process.env.VITE_API_URL || 'http://localhost:5001',
         changeOrigin: true,
-        rewrite: path => path.replace(/^\/api/, ''),
+
+        
+      },
+      '/upload': {
+        target: process.env.VITE_API_URL || 'http://localhost:5001',
+        changeOrigin: true,
+
+       
       },
     },
   },
@@ -36,6 +43,14 @@ export default defineConfig({
     },
     // Increase chunk size warning limit
     chunkSizeWarningLimit: 1000,
+    // Enable minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
   },
   // Optimize dependencies
   optimizeDeps: {
