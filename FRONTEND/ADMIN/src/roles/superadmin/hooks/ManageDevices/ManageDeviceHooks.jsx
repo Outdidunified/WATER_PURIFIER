@@ -28,7 +28,7 @@ const useManageDevice = (userInfo) => {
   // Fetch available models
   const fetchModels = async () => {
     try {
-      const res = await axiosInstance.post('api/admin/FetchProductModels');
+      const res = await axiosInstance.post('/api/admin/FetchProductModels');
       if (res.data.status === 'Success') {
         setModels(res.data.data);
       } else {
@@ -113,7 +113,7 @@ const useManageDevice = (userInfo) => {
 
     try {
       setLoading(true);
-      const response = await axiosInstance.post('api/admin/AddDeviceDetails', payload);
+      const response = await axiosInstance.post('/api/admin/AddDeviceDetails', payload);
       if (response.data.status === 'Success') {
         showSuccessAlert('Success', 'Device added successfully');
         setStationData({

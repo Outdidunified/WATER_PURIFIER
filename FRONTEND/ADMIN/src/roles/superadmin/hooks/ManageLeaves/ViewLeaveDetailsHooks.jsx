@@ -209,7 +209,7 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
             setError(null);
 
             const token = sessionStorage.getItem('superAdminToken');
-            const response = await fetch(`/api/api/admin/leave-requests/${leaveRequestId}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/leave-requests/${leaveRequestId}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -311,7 +311,7 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
             setActionError(null);
 
             const token = sessionStorage.getItem('superAdminToken');
-            const response = await fetch(`/api/api/admin/leave-requests/${leaveRequestId}/approve`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/leave-requests/${leaveRequestId}/approve`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -387,7 +387,7 @@ const ViewLeaveDetailsHooks = (leaveRequestId, leaveFromState) => {
             setActionError(null);
 
             const token = sessionStorage.getItem('superAdminToken');
-            const response = await fetch(`/api/api/admin/leave-requests/${leaveRequestId}/reject`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/leave-requests/${leaveRequestId}/reject`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

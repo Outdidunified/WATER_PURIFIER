@@ -493,7 +493,7 @@ const useEditProducts = (userInfo) => {
     formData.append('duration', JSON.stringify(normalizedDurations));
 
     try {
-      const response = await axiosInstance.post('api/admin/UpdateProductModels', formData, {
+      const response = await axiosInstance.post('/api/admin/UpdateProductModels', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 

@@ -66,7 +66,7 @@ const useEditDevice = (userInfo) => {
     };
 
     try {
-      const response = await axiosInstance.post('api/admin/UpdateDeviceDetails', payload);
+      const response = await axiosInstance.post('/api/admin/UpdateDeviceDetails', payload);
       if (response.data.status === 'Success') {
         showSuccessAlert('Device updated successfully');
         goBackToManageDevices();

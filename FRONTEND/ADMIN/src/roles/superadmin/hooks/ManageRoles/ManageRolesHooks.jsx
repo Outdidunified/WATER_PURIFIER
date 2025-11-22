@@ -41,7 +41,7 @@ const useManageRoles = (userInfo) => {
       setIsLoading(true);
       setTableError(null);
 
-      const response = await axiosInstance.post('api/admin/FetchUserRoles', { page: pageNum, limit: pageLimit });
+      const response = await axiosInstance.post('/api/admin/FetchUserRoles', { page: pageNum, limit: pageLimit });
 
       if (response.status === 200 && response.data.status === 'Success') {
         const data = response.data.data || [];

@@ -31,7 +31,7 @@ const useManageOrders = (userInfo) => {
         try {
             setLoading(true);
             const isSeller = Number(userInfo?.role_id) === 4;
-            const url = isSeller ? '/api/admin/orders/by-district' : 'api/admin/FetchOrders';
+            const url = isSeller ? '/api/admin/orders/by-district' : '/api/admin/FetchOrders';
             const res = isSeller
               ? await axiosInstance.get(url, { params: { district: userInfo?.district, page: pageNum, limit: pageLimit } })
               : await axiosInstance.post(url, { page: pageNum, limit: pageLimit });
@@ -85,11 +85,7 @@ const useManageOrders = (userInfo) => {
 
         try {
             setCodConfirmationLoading(true);
-            console.log('📝 baseURL:', axiosInstance.defaults.baseURL);
-            const fullUrl = `${axiosInstance.defaults.baseURL}/admin/ConfirmCodPayment`;
-            console.log('🚀 Sending POST request to:', fullUrl, 'with:', { wp_device_id, order_id });
-
-            const response = await axiosInstance.post(`${axiosInstance.defaults.baseURL}/admin/ConfirmCodPayment`, {
+            const response = await axiosInstance.post('/api/admin/ConfirmCodPayment', {
                 wp_device_id,
                 order_id,
             });
@@ -334,7 +330,7 @@ const useManageOrders = (userInfo) => {
         e.preventDefault();
         setEditLoading(true);
         try {
-            const response = await axiosInstance.post('api/admin/UpdateOrdersStatus', {
+            const response = await axiosInstance.post('/api/admin/UpdateOrdersStatus', {
                 order_id: selectedOrder._id,
                 orderStatus: editOrderStatus,
                 modified_by: userInfo.email,

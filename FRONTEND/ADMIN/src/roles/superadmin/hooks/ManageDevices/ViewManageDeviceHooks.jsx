@@ -53,7 +53,7 @@ const useViewDevice = () => {
     const fetchDeviceDetails = async (wpDeviceId) => {
       if (!wpDeviceId) return;
       try {
-        const response = await axiosInstance.post('api/admin/FetchDeviceDetails');
+        const response = await axiosInstance.post('/api/admin/FetchDeviceDetails');
         if (response.status === 200 && response.data.status === 'Success') {
           const deviceList = response.data.data || [];
           const matchedDevice = deviceList.find(

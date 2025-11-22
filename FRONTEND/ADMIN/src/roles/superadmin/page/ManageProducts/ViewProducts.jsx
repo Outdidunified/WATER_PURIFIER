@@ -105,7 +105,13 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
                           }}
                         >
                           <img
-                            src={`/upload/img/${product[imgItem.key]}`}
+                            src={
+                              product[imgItem.key].startsWith('http') || product[imgItem.key].startsWith('https')
+                                ? product[imgItem.key]
+                                : product[imgItem.key].startsWith('/')
+                                  ? `${import.meta.env.VITE_API_URL}${product[imgItem.key]}`
+                                  : `${import.meta.env.VITE_API_URL}/upload/img/${product[imgItem.key]}`
+                            }
                             alt={imgItem.key}
                             style={{
                               width: '100%',
@@ -139,7 +145,13 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
                 <div className="mb-4 text-start">
                   <strong>Specifications:</strong>{' '}
                   {product.product_specifications ? (
-                    <a href={`/upload/pdf/${product.product_specifications}`} target="_blank" rel="noopener noreferrer">
+                    <a href={
+                      product.product_specifications.startsWith('http') || product.product_specifications.startsWith('https')
+                        ? product.product_specifications
+                        : product.product_specifications.startsWith('/')
+                          ? `${import.meta.env.VITE_API_URL}${product.product_specifications}`
+                          : `${import.meta.env.VITE_API_URL}/upload/pdf/${product.product_specifications}`
+                    } target="_blank" rel="noopener noreferrer">
                       View PDF
                     </a>
                   ) : '-'}

@@ -346,7 +346,7 @@ const useManageInstallation = (userInfo) => {
         assigned_by,
       };
 
-      await axiosInstance.post('/admin/AssignInstallation', payload);
+      await axiosInstance.post('/api/admin/AssignInstallation', payload);
       showSuccessAlert('Installation successfully assigned');
       await fetchData(pageNum, pageSize);
     } catch (err) {
@@ -365,7 +365,7 @@ const useManageInstallation = (userInfo) => {
         modified_by: userInfo?.email || '',
       };
 
-      await axiosInstance.post('/admin/ReAssignInstallation', payload);
+      await axiosInstance.post('/api/admin/ReAssignInstallation', payload);
       showSuccessAlert('Installation successfully re-assigned');
       await fetchData(pageNum, pageSize);
     } catch (err) {

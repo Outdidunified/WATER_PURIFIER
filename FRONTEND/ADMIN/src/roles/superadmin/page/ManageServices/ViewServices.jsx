@@ -184,7 +184,7 @@ const ViewServices = ({ userInfo, handleLogout }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/assignment-history/${taskId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/assignment-history/${taskId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

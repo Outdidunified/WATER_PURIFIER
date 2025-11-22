@@ -394,7 +394,7 @@ const useAddProducts = (userInfo) => {
     formData.append('connectivity', sanitizedConnectivity.join(', '));
 
     try {
-      const response = await axiosInstance.post('api/admin/AddProductModels', formData, {
+      const response = await axiosInstance.post('/api/admin/AddProductModels', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
