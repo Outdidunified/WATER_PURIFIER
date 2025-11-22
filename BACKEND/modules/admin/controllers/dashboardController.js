@@ -2715,6 +2715,7 @@ const FetchInstallationService = async (req, res) => {
         // Build match stage with filters
         const matchStage = {
             orderStatus: "Confirmed",
+            isRecharge: { $ne: true },
             $or: [
                 { paymentType: "COD" },
                 { $and: [{ paymentType: "Online" }, { paymentStatus: "Completed" }] }
@@ -2742,7 +2743,13 @@ const FetchInstallationService = async (req, res) => {
             matchStage.paymentType = String(payment_type).trim();
         }
 
-        const total = await ordersCollection.countDocuments(matchStage);
+        const totalResult = await ordersCollection.aggregate([
+            { $match: matchStage },
+            { $group: { _id: "$wp_device_id" } },
+            { $count: "total" }
+        ]).toArray();
+        
+        const total = totalResult.length > 0 ? totalResult[0].total : 0;
 
         // Build sort stage
         const sortStage = {};
@@ -2781,6 +2788,17 @@ const FetchInstallationService = async (req, res) => {
                 $addFields: {
                     service_record: { $arrayElemAt: ["$service_records", 0] }
                 }
+            },
+
+            {
+                $group: {
+                    _id: "$wp_device_id",
+                    order: { $first: "$$ROOT" }
+                }
+            },
+
+            {
+                $replaceRoot: { newRoot: "$order" }
             },
 
             {
@@ -2866,6 +2884,7 @@ const FetchSelectUserOrders = async (req, res) => {
             $expr: {
                 $and: [
                     { $eq: ["$orderStatus", "Confirmed"] },
+                    { $ne: ["$isRecharge", true] },
                     {
                         $or: [
                             {
@@ -3404,6 +3423,7 @@ const FetchSelectInstallationTask = async (req, res) => {
 
         const matchStage = {
             orderStatus: "Confirmed",
+            isRecharge: { $ne: true },
             $or: [
                 { paymentStatus: "Completed" },
                 {
@@ -4494,6 +4514,7 @@ const GetInstallationsByDistrict = async (req, res) => {
 
     const matchStage = {
       orderStatus: "Confirmed",
+      isRecharge: { $ne: true },
       $or: [
         { paymentStatus: "Completed" },
         { paymentType: { $regex: /^cod$/i } }
@@ -7725,7 +7746,8 @@ const GetInstallationsCounts = async (req, res) => {
     if (filterDistrict) {
       const ordersCollection = db.collection('orders');
       const deviceIds = await ordersCollection.find({
-        'deliveryAddress.district': { $regex: new RegExp(filterDistrict, 'i') }
+        'deliveryAddress.district': { $regex: new RegExp(filterDistrict, 'i') },
+        isRecharge: { $ne: true }
       }).project({ wp_device_id: 1 }).toArray();
 
       const deviceIdList = deviceIds.map(d => d.wp_device_id);
@@ -8047,7 +8069,8 @@ const GetInstallationsCountsByDistrict = async (req, res) => {
     for (const districtDoc of districts) {
       const district = districtDoc._id;
       const deviceIds = await ordersCollection.find({
-        'deliveryAddress.district': { $regex: new RegExp(district, 'i') }
+        'deliveryAddress.district': { $regex: new RegExp(district, 'i') },
+        isRecharge: { $ne: true }
       }).project({ wp_device_id: 1 }).toArray();
 
       const deviceIdList = deviceIds.map(d => d.wp_device_id);
@@ -8285,7 +8308,8 @@ const GetSearchInstallationsCount = async (req, res) => {
       if (filterDistrict) {
         const ordersCollection = db.collection('orders');
         const deviceIds = await ordersCollection.find({
-          'deliveryAddress.district': { $regex: new RegExp(filterDistrict, 'i') }
+          'deliveryAddress.district': { $regex: new RegExp(filterDistrict, 'i') },
+          isRecharge: { $ne: true }
         }).project({ wp_device_id: 1 }).toArray();
         const deviceIdList = deviceIds.map(d => d.wp_device_id);
         matchStage.wp_device_id = { $in: deviceIdList };
@@ -8337,7 +8361,8 @@ const SearchInstallations = async (req, res) => {
       if (filterDistrict) {
         const ordersCollection = db.collection('orders');
         const deviceIds = await ordersCollection.find({
-          'deliveryAddress.district': { $regex: new RegExp(filterDistrict, 'i') }
+          'deliveryAddress.district': { $regex: new RegExp(filterDistrict, 'i') },
+          isRecharge: { $ne: true }
         }).project({ wp_device_id: 1 }).toArray();
         const deviceIdList = deviceIds.map(d => d.wp_device_id);
         matchStage.wp_device_id = { $in: deviceIdList };

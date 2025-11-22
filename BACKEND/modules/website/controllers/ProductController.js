@@ -74,6 +74,8 @@ exports.getAllProductsWithPlans = async (req, res) => {
 
     const results = await db.collection('product_models').aggregate([
       { $match: { status: true } },
+
+      // 🔥 FETCH FULL device_details DOCUMENT
       {
         $lookup: {
           from: 'device_details',
@@ -86,18 +88,24 @@ exports.getAllProductsWithPlans = async (req, res) => {
                 wp_device_id: { $nin: unavailableIds }
               }
             },
-            { $limit: 1 },
-            { $project: { wp_device_id: 1 } }
+            { $limit: 1 },   // only first available device
+            // ⭐ keep entire device document!
+            { $project: { _id: 0 } }
           ],
           as: 'device'
         }
       },
+
+      // ❗ flatten device array to object
       {
         $addFields: {
-          wp_device_id: { $arrayElemAt: ['$device.wp_device_id', 0] }
+          device: { $arrayElemAt: ['$device', 0] },
+
+          // add shortcut fields for UI convenience
+          wp_device_id: { $arrayElemAt: ['$device.wp_device_id', 0] },
+          isSetup: { $arrayElemAt: ['$device.isSetup', 0] }
         }
-      },
-      { $project: { device: 0 } }
+      }
     ]).toArray();
 
     return res.status(200).json({
@@ -116,6 +124,7 @@ exports.getAllProductsWithPlans = async (req, res) => {
     });
   }
 };
+
 
 exports.fetchpaymenthistory = async (req, res) => {
   try {
