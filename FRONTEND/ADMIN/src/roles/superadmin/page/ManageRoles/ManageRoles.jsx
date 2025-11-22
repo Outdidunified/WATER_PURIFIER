@@ -14,11 +14,6 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
   const navigate = useNavigate();
   const {
     handleSearchInputChange,
-    handleRoleSelect,
-    resetRoleFilter,
-    roleOptions,
-    selectedRole: selectedRoleFilter,
-    totalRoles,
     roles,
     tableError,
     formError,
@@ -38,8 +33,6 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
     handlePageChange,
     handlePageSizeChange,
   } = useManageRoles(userInfo);
-
-  const [showRoleFilter, setShowRoleFilter] = useState(false);
 
   // State for Grant Access Modal
   const [grantModalOpen, setGrantModalOpen] = useState(false);
@@ -115,23 +108,6 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
 
   const tableCellStyle = {
     verticalAlign: 'middle',
-  };
-
-  const handleSummaryCardClick = () => {
-    setShowRoleFilter((prev) => !prev);
-  };
-
-  const handleRoleFilterChange = (event) => {
-    const { value } = event.target;
-    if (value === '') {
-      resetRoleFilter();
-    } else {
-      handleRoleSelect(value);
-    }
-  };
-
-  const handleClearSelection = () => {
-    resetRoleFilter();
   };
 
   // Fetch permissions + all modules
@@ -229,74 +205,17 @@ const ManageRoles = ({ userInfo, handleLogout }) => {
                     <h3 className="font-weight-bold mb-0" style={{ fontSize: '22px' }}>Manage Roles</h3>
                   </div>
                   <div className="col-auto">
-                    <button
-                      type="button"
+                    <div
                       style={summaryCardStyle}
-                      onClick={handleSummaryCardClick}
                     >
                       <div style={summaryCardContentStyle}>
                         <div style={summaryTextStyle}>
                           <span style={summaryLabelStyle}>Total Roles</span>
-                          <span style={summaryValueStyle}>{totalRoles}</span>
+                          <span style={summaryValueStyle}>{totalRecords}</span>
                         </div>
                       </div>
-                      <i className={`mdi ${showRoleFilter ? 'mdi-chevron-up' : 'mdi-chevron-down'}`} style={summaryCaretStyle}></i>
-                    </button>
-                  </div>
-                  {showRoleFilter && (
-                    <div className="col-auto">
-                      <div
-                        style={{
-                          backgroundColor: '#ffffff',
-                          borderRadius: '18px',
-                          boxShadow: '0 10px 24px rgba(23,36,184,0.12)',
-                          padding: '10px 14px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '16px',
-                          height: '48px',
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            color: '#1b2559',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          Filter by role
-                        </span>
-                        <select
-                          className="form-select"
-                          value={selectedRoleFilter}
-                          onChange={handleRoleFilterChange}
-                          style={{
-                            borderRadius: '12px',
-                            padding: '6px 12px',
-                            borderColor: '#d5dbff',
-                            width: '180px',
-                          }}
-                        >
-                          <option value="">All Roles</option>
-                          {roleOptions.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                        {selectedRoleFilter && (
-                          <button
-                            type="button"
-                            className="btn btn-outline-secondary btn-sm"
-                            onClick={handleClearSelection}
-                          >
-                            Clear
-                          </button>
-                        )}
-                      </div>
                     </div>
-                  )}
+                  </div>
                   <div className="col ms-auto d-flex justify-content-end">
                     {/* <button type="button" className="btn btn-success" onClick={openAddModal}>
                       Add Role

@@ -1,7 +1,8 @@
 //ManageServices
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axiosInstance from '../../../../utils/utils';
 import { showErrorAlert, showSuccessAlert } from '../../../../utils/alert';
+import ServiceSearchService from '../../../../services/ServiceSearchService';
 
 const useManageServices = (userInfo) => {
   const [serviceTasks, setServiceTasks] = useState([]);
@@ -16,6 +17,13 @@ const useManageServices = (userInfo) => {
   const [pageSize, setPageSize] = useState(10);
   const [totalRecords, setTotalRecords] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [serviceCounts, setServiceCounts] = useState({
+    totalServices: 0,
+    pending: 0,
+    assigned: 0,
+    completed: 0,
+    onHold: 0
+  });
   const [summary, setSummary] = useState({
     total: 0,
     pending: 0,
@@ -24,6 +32,8 @@ const useManageServices = (userInfo) => {
     unassigned: 0,
     rejected: 0,
   });
+
+  const debouncedSearchRef = useRef(null);
 
   const calculateServiceSummary = (tasks) => {
     const counts = {
@@ -65,6 +75,19 @@ const fetchTechnicians = async () => {
       data: res.data?.data || [],
       pagination: res.data?.pagination || null
     };
+  };
+
+  const fetchServiceCounts = async () => {
+    try {
+      const isSeller = Number(userInfo?.role_id) === 4;
+      const params = isSeller ? { district: userInfo?.district } : {};
+      const res = await axiosInstance.get('/api/admin/services/counts', { params });
+      if (res.data.status === 'Success') {
+        setServiceCounts(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching service counts:', err);
+    }
   };
 
   const fetchData = useCallback(async (pageNum = 1, pageLimit = 10) => {
@@ -186,6 +209,8 @@ const fetchTechnicians = async () => {
         setTotalRecords(enriched.length);
         setTotalPages(Math.ceil(enriched.length / pageLimit) || 1);
       }
+      
+      await fetchServiceCounts();
     } catch (err) {
       console.error('Fetch error:', err);
       setError('Failed to fetch service task data');
@@ -262,10 +287,32 @@ const fetchTechnicians = async () => {
     applyFilters(newFilter, searchText);
   };
 
+  const performSearch = async (term, page = 1, limit = 10) => {
+    try {
+      setIsLoading(true);
+      const result = await ServiceSearchService.performSearch(term, page, limit);
+      setServiceTasks(result.data);
+      setCurrentPage(result.pagination.currentPage);
+      setPageSize(result.pagination.pageSize);
+      setTotalRecords(result.totalCount);
+      setTotalPages(Math.ceil(result.totalCount / limit) || 1);
+    } catch (err) {
+      console.error('Error performing search:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSearchChange = (e) => {
-    const value = e.target.value.toLowerCase();
+    const value = e.target.value;
     setSearchText(value);
-    applyFilters(selectedFilter, value);
+    setCurrentPage(1);
+    
+    if (!debouncedSearchRef.current) {
+      debouncedSearchRef.current = ServiceSearchService.debounceSearch(performSearch, 300);
+    }
+    
+    debouncedSearchRef.current(value, 1, pageSize);
   };
 
   const getPaginatedData = () => {
@@ -338,6 +385,7 @@ const fetchTechnicians = async () => {
     assignServiceTask,
     reassignServiceTask,
     refetch: fetchData,
+    serviceCounts,
     summary,
     selectedFilter,
     handleFilterSelect,

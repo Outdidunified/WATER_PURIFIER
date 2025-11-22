@@ -104,6 +104,7 @@ const useManageOrders = (userInfo) => {
                     onSuccess();
                 }
                 await fetchOrders();
+                await fetchOrderCounts();
                 return true;
             } else {
                 const errorMsg = response?.data?.message || 'Failed to confirm COD payment';
@@ -127,6 +128,29 @@ const useManageOrders = (userInfo) => {
     };
 
     const resolveDeviceId = (order = {}) => order.wp_device_id || order?.order_snapshot?.wp_device_id || null;
+
+    const [orderCounts, setOrderCounts] = useState({
+        totalOrders: 0,
+        pending: 0,
+        confirmed: 0,
+        completed: 0,
+        pendingPayment: 0,
+        cod: 0,
+        online: 0
+    });
+
+    const fetchOrderCounts = async () => {
+        try {
+            const isSeller = Number(userInfo?.role_id) === 4;
+            const params = isSeller ? { district: userInfo?.district } : {};
+            const res = await axiosInstance.get('/api/admin/orders/counts', { params });
+            if (res.data.status === 'Success') {
+                setOrderCounts(res.data.data);
+            }
+        } catch (err) {
+            console.error('Error fetching order counts:', err);
+        }
+    };
 
     const calculateOrderSummary = (ordersList) => {
         const summary = {
@@ -184,6 +208,7 @@ const useManageOrders = (userInfo) => {
     useEffect(() => {
         if (!fetchOrdersCalled.current) {
             fetchOrders();
+            fetchOrderCounts();
             fetchOrdersCalled.current = true;
         }
     }, []);
@@ -318,6 +343,7 @@ const useManageOrders = (userInfo) => {
             if (response.data.status === 'Success') {
                 showSuccessAlert('Order status updated successfully');
                 fetchOrders();
+                fetchOrderCounts();
                 closeEditModal();
             } else {
                 showErrorAlert('Error', response.data.message || 'Failed to update order status');
@@ -350,6 +376,8 @@ const useManageOrders = (userInfo) => {
         resolveDeviceId,
         confirmCodPayment,
         calculateOrderSummary,
+        orderCounts,
+        fetchOrderCounts,
         selectedFilter,
         handleFilterSelect,
         currentPage,

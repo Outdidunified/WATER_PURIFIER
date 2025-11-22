@@ -9,6 +9,12 @@ const ManageLeaveHooks = (userInfo) => {
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('');
+    const [leaveCounts, setLeaveCounts] = useState({
+        totalLeaves: 0,
+        pending: 0,
+        approved: 0,
+        rejected: 0
+    });
     const [summary, setSummary] = useState({
         total: 0,
         requested: 0,
@@ -38,6 +44,19 @@ const ManageLeaveHooks = (userInfo) => {
         return counts;
     };
 
+    const fetchLeaveCounts = useCallback(async () => {
+        try {
+            const isSeller = Number(userInfo?.role_id) === 4;
+            const params = isSeller ? { district: userInfo?.district } : {};
+            const res = await axiosInstance.get('/api/admin/leave-requests/counts', { params });
+            if (res.data.status === 'Success') {
+                setLeaveCounts(res.data.data);
+            }
+        } catch (err) {
+            console.error('Error fetching leave counts:', err);
+        }
+    }, [userInfo]);
+
     const fetchLeaveRequests = useCallback(async (pageNum = 1, pageLimit = 10) => {
         try {
             setLoading(true);
@@ -58,6 +77,7 @@ const ManageLeaveHooks = (userInfo) => {
                 setPageSize(pagination.pageSize || pageLimit);
                 setTotalRecords(pagination.totalRecords || 0);
                 setTotalPages(pagination.totalPages || 0);
+                await fetchLeaveCounts();
             } else {
                 showErrorAlert('Error', response.data.message || 'Failed to fetch leave requests');
             }
@@ -69,7 +89,7 @@ const ManageLeaveHooks = (userInfo) => {
         } finally {
             setLoading(false);
         }
-    }, [userInfo]);
+    }, [userInfo, fetchLeaveCounts]);
 
     const handlePageChange = (newPage) => {
         setCurrentPage(newPage);
@@ -158,6 +178,7 @@ const ManageLeaveHooks = (userInfo) => {
         searchTerm,
         setSearchTerm,
         selectedFilter,
+        leaveCounts,
         summary,
         fetchLeaveRequests,
         handleFilterSelect,

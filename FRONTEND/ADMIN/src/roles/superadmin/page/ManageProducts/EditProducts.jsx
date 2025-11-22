@@ -46,6 +46,7 @@ const EditProducts = ({ userInfo, handleLogout }) => {
     isEditMode,
     durationChanged,
     allDurationsUsed,
+    hasChanges,
   } = useEditProducts(userInfo);
 
   const backManageDevice = () => navigate('/superadmin/ManageProducts');
@@ -451,7 +452,11 @@ const EditProducts = ({ userInfo, handleLogout }) => {
                   {errorMessage && <div className="text-danger mt-3">{errorMessage}</div>}
 
                   <div className="mt-4">
-                    <ReusableButton type="submit" loading={loading}>
+                    <ReusableButton
+                      type="submit"
+                      loading={loading}
+                      disabled={!hasChanges}
+                    >
                       Update
                     </ReusableButton>
                   </div>

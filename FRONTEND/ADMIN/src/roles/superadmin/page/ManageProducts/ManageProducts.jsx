@@ -10,18 +10,12 @@ import Pagination from '../../components/Pagination/Pagination';
 
 const ManageProducts = ({ userInfo, handleLogout }) => {
     const navigate = useNavigate();
-    const [showModelFilter, setShowModelFilter] = useState(false);
 
     const {
         posts,
         loading,
         error,
         handleSearchInputChange,
-        handleModelSelect,
-        resetModelFilter,
-        modelOptions,
-        selectedModel,
-        totalModels,
         currentPage,
         pageSize,
         totalRecords,
@@ -87,23 +81,6 @@ const ManageProducts = ({ userInfo, handleLogout }) => {
         opacity: 0.85,
     };
 
-    const handleSummaryCardClick = () => {
-        setShowModelFilter((prev) => !prev);
-    };
-
-    const handleModelChange = (event) => {
-        const { value } = event.target;
-        if (value === '') {
-            resetModelFilter();
-        } else {
-            handleModelSelect(value);
-        }
-    };
-
-    const handleClearSelection = () => {
-        resetModelFilter();
-    };
-
     return (
         <div className='container-scroller'>
             <Header userInfo={userInfo} handleLogout={handleLogout} />
@@ -120,84 +97,17 @@ const ManageProducts = ({ userInfo, handleLogout }) => {
                                         </h3>
                                     </div>
                                     <div className="col-auto">
-                                        <button
-                                            type="button"
+                                        <div
                                             style={summaryCardStyle}
-                                            onClick={handleSummaryCardClick}
                                         >
                                             <div style={summaryCardContentStyle}>
                                                 <div style={summaryTextStyle}>
                                                     <span style={summaryLabelStyle}>Total Models</span>
-                                                    <span style={summaryValueStyle}>{totalModels}</span>
+                                                    <span style={summaryValueStyle}>{totalRecords}</span>
                                                 </div>
                                             </div>
-                                            <i
-                                                className={`mdi ${showModelFilter ? 'mdi-chevron-up' : 'mdi-chevron-down'}`}
-                                                style={summaryCaretStyle}
-                                            ></i>
-                                        </button>
+                                        </div>
                                     </div>
-{showModelFilter && (
-    <div className="col-auto">
-        <div 
-            style={{
-                backgroundColor: "#fff",
-                borderRadius: "18px",
-                boxShadow: "0 10px 24px rgba(23,36,184,0.12)",
-                padding: "10px 14px",
-                display: "flex",
-                alignItems: "center",
-                gap: "14px",
-                height: "48px"
-            }}
-        >
-
-            {/* LEFT TEXT */}
-            <span 
-                style={{
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    color: "#1b2559",
-                    whiteSpace: "nowrap"
-                }}
-            >
-                Filter by model
-            </span>
-
-            {/* DROPDOWN */}
-            <select
-                className="form-select"
-                value={selectedModel}
-                onChange={handleModelChange}
-                style={{
-                    borderRadius: "12px",
-                    padding: "6px 12px",
-                    borderColor: "#d5dbff",
-                    width: "160px"
-                }}
-            >
-                <option value="">All Models</option>
-                {modelOptions.map((option) => (
-                    <option key={option} value={option}>
-                        {option}
-                    </option>
-                ))}
-            </select>
-
-            {/* CLEAR BUTTON */}
-            {selectedModel && (
-                <button
-                    type="button"
-                    className="btn btn-outline-secondary btn-sm"
-                    onClick={handleClearSelection}
-                    style={{ whiteSpace: "nowrap" }}
-                >
-                    Clear
-                </button>
-            )}
-        </div>
-    </div>
-)}
 
 
                                     <div className="col ms-auto d-flex justify-content-end">

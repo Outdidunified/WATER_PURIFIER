@@ -21,6 +21,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
     assignInstallation,
     installationTasks,
     summary,
+    installationCounts,
     selectedFilter,
     handleFilterSelect,
     pageNum,
@@ -169,9 +170,7 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
             <div className="row mb-1">
               <div className="col-12">
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', width: '100%' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleFilterSelect('')}
+                  <div
                     style={{
                       border: 'none',
                       outline: 'none',
@@ -182,21 +181,18 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: selectedFilter === '' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
-                      background: selectedFilter === '' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
-                      color: selectedFilter === '' ? '#ffffff' : '#1b2559',
+                      cursor: 'default',
+                      boxShadow: '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: '#f6f7ff',
+                      color: '#1b2559',
                       textAlign: 'left',
                       width: '100%'
                     }}
                   >
-                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === '' ? 0.9 : 0.65, color: selectedFilter === '' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>All Tasks</span>
-                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === '' ? '#ffffff' : '#1b2559' }}>{summary.total}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleFilterSelect('pending')}
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.65, color: '#1b2559', whiteSpace: 'nowrap' }}>All Tasks</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: '#1b2559' }}>{installationCounts.totalInstallations}</span>
+                  </div>
+                  <div
                     style={{
                       border: 'none',
                       outline: 'none',
@@ -207,21 +203,18 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: selectedFilter === 'pending' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
-                      background: selectedFilter === 'pending' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
-                      color: selectedFilter === 'pending' ? '#ffffff' : '#1b2559',
+                      cursor: 'default',
+                      boxShadow: '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: '#f6f7ff',
+                      color: '#1b2559',
                       textAlign: 'left',
                       width: '100%'
                     }}
                   >
-                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'pending' ? 0.9 : 0.65, color: selectedFilter === 'pending' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>Pending</span>
-                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'pending' ? '#ffffff' : '#1b2559' }}>{summary.pending}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleFilterSelect('inProgress')}
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.65, color: '#1b2559', whiteSpace: 'nowrap' }}>Pending</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: '#1b2559' }}>{installationCounts.pending}</span>
+                  </div>
+                  <div
                     style={{
                       border: 'none',
                       outline: 'none',
@@ -232,21 +225,18 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: selectedFilter === 'inProgress' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
-                      background: selectedFilter === 'inProgress' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
-                      color: selectedFilter === 'inProgress' ? '#ffffff' : '#1b2559',
+                      cursor: 'default',
+                      boxShadow: '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: '#f6f7ff',
+                      color: '#1b2559',
                       textAlign: 'left',
                       width: '100%'
                     }}
                   >
-                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'inProgress' ? 0.9 : 0.65, color: selectedFilter === 'inProgress' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>In Progress</span>
-                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'inProgress' ? '#ffffff' : '#1b2559' }}>{summary.inProgress}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleFilterSelect('completed')}
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.65, color: '#1b2559', whiteSpace: 'nowrap' }}>Assigned</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: '#1b2559' }}>{installationCounts.assigned}</span>
+                  </div>
+                  <div
                     style={{
                       border: 'none',
                       outline: 'none',
@@ -257,21 +247,18 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: selectedFilter === 'completed' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
-                      background: selectedFilter === 'completed' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
-                      color: selectedFilter === 'completed' ? '#ffffff' : '#1b2559',
+                      cursor: 'default',
+                      boxShadow: '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: '#f6f7ff',
+                      color: '#1b2559',
                       textAlign: 'left',
                       width: '100%'
                     }}
                   >
-                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'completed' ? 0.9 : 0.65, color: selectedFilter === 'completed' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>Completed</span>
-                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'completed' ? '#ffffff' : '#1b2559' }}>{summary.completed}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleFilterSelect('unassigned')}
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.65, color: '#1b2559', whiteSpace: 'nowrap' }}>Completed</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: '#1b2559' }}>{installationCounts.completed}</span>
+                  </div>
+                  <div
                     style={{
                       border: 'none',
                       outline: 'none',
@@ -282,21 +269,18 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: selectedFilter === 'unassigned' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
-                      background: selectedFilter === 'unassigned' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
-                      color: selectedFilter === 'unassigned' ? '#ffffff' : '#1b2559',
+                      cursor: 'default',
+                      boxShadow: '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: '#f6f7ff',
+                      color: '#1b2559',
                       textAlign: 'left',
                       width: '100%'
                     }}
                   >
-                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'unassigned' ? 0.9 : 0.65, color: selectedFilter === 'unassigned' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>Unassigned</span>
-                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'unassigned' ? '#ffffff' : '#1b2559' }}>{summary.unassigned}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleFilterSelect('rejected')}
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.65, color: '#1b2559', whiteSpace: 'nowrap' }}>Unassigned</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: '#1b2559' }}>{summary.unassigned}</span>
+                  </div>
+                  <div
                     style={{
                       border: 'none',
                       outline: 'none',
@@ -307,18 +291,17 @@ const ManageInstallations = ({ userInfo, handleLogout }) => {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: selectedFilter === 'rejected' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
-                      background: selectedFilter === 'rejected' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
-                      color: selectedFilter === 'rejected' ? '#ffffff' : '#1b2559',
+                      cursor: 'default',
+                      boxShadow: '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: '#f6f7ff',
+                      color: '#1b2559',
                       textAlign: 'left',
                       width: '100%'
                     }}
                   >
-                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'rejected' ? 0.9 : 0.65, color: selectedFilter === 'rejected' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>Rejected</span>
-                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'rejected' ? '#ffffff' : '#1b2559' }}>{summary.rejected || 0}</span>
-                  </button>
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.65, color: '#1b2559', whiteSpace: 'nowrap' }}>Rejected</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: '#1b2559' }}>{summary.rejected || 0}</span>
+                  </div>
                 </div>
               </div>
             </div>

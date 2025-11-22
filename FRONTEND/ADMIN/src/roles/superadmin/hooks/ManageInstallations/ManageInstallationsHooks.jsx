@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axiosInstance from '../../../../utils/utils';
 import { showErrorAlert, showSuccessAlert } from '../../../../utils/alert';
+import InstallationSearchService from '../../../../services/InstallationSearchService';
 
 const normalizeHistoryEntries = (input) => {
   if (!input) return [];
@@ -136,6 +137,8 @@ const useManageInstallation = (userInfo) => {
     rejected: 0,
   });
 
+  const debouncedSearchRef = useRef(null);
+
   const calculateInstallationSummary = (tasks) => {
     const counts = {
       total: tasks.length,
@@ -174,6 +177,21 @@ const useManageInstallation = (userInfo) => {
     return res.data?.data || [];
   };
 
+  const flattenServiceRecordsData = (items) => {
+    return items.map((item) => {
+      const serviceRecord = item.service_records && item.service_records.length > 0 ? item.service_records[0] : {};
+      return {
+        ...item,
+        task_id: serviceRecord.task_id || item.task_id || '-',
+        task_status: serviceRecord.task_status || serviceRecord.status || item.task_status || 'Pending',
+        assigned_technician_id: serviceRecord.assigned_technician_id || item.assigned_technician_id || '',
+        task_assigned_date: serviceRecord.task_assigned_date || serviceRecord.assigned_date || item.task_assigned_date,
+        pending_reason: serviceRecord.pending_reason || serviceRecord.unassigned_reason || item.pending_reason || '',
+        assignedTechnician: serviceRecord.assignedTechnician || item.assignedTechnician || null,
+      };
+    });
+  };
+
   const fetchInstallationTasks = async (pageNum = 1, pageLimit = 10) => {
     const isSeller = Number(userInfo?.role_id) === 4;
     try {
@@ -189,7 +207,9 @@ const useManageInstallation = (userInfo) => {
         });
       }
       
-      const data = res.data?.data || [];
+      let data = res.data?.data || [];
+      data = flattenServiceRecordsData(data);
+      
       if (res.data?.pagination && res.data.pagination.totalPages) {
         setTotalRecords(res.data.pagination.totalRecords);
         setTotalPages(res.data.pagination.totalPages);
@@ -204,8 +224,29 @@ const useManageInstallation = (userInfo) => {
     }
   };
 
+  const [installationCounts, setInstallationCounts] = useState({
+    totalInstallations: 0,
+    pending: 0,
+    assigned: 0,
+    completed: 0,
+    onHold: 0
+  });
+
+  const fetchInstallationCounts = async () => {
+    try {
+      const isSeller = Number(userInfo?.role_id) === 4;
+      const params = isSeller ? { district: userInfo?.district } : {};
+      const res = await axiosInstance.get('/api/admin/installations/counts', { params });
+      if (res.data.status === 'Success') {
+        setInstallationCounts(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching installation counts:', err);
+    }
+  };
+
   // Main fetchData function
-  const fetchData = useCallback(async (page = pageNum, size = pageSize) => {
+  const fetchData = useCallback(async (page = pageNum, size = pageSize, filterStatus = selectedFilter, searchTerm = searchText) => {
     setIsLoading(true);
     try {
       const isSeller = Number(userInfo?.role_id) === 4;
@@ -214,7 +255,7 @@ const useManageInstallation = (userInfo) => {
       const [techs, ords, tasks] = await Promise.all([
         fetchTechnicians(),
         fetchOrders(),
-        fetchInstallationTasks(page, size),
+        fetchInstallationTasks(page, size, filterStatus, searchTerm),
       ]);
 
       const filteredTechnicians = sellerDistrict
@@ -226,213 +267,9 @@ const useManageInstallation = (userInfo) => {
 
       setTechnicians(filteredTechnicians);
       setOrders(ords);
-      setInstallationTasks(tasks); // ✅ Fixed: set installationTasks from tasks
-
-      const technicianMap = filteredTechnicians.reduce((acc, tech) => {
-        if (tech.service_records && tech.service_records.length > 0) {
-          tech.service_records.forEach((record) => {
-            if (record.technician_device_map_id) {
-              acc[record.technician_device_map_id] = {
-                technician_name: tech.name,
-                technician_email: tech.email,
-                technician_id: tech.technician_id,
-                technician_user_id: tech.user_id,
-                technician_role_id: tech.role_id,
-              };
-            }
-          });
-        }
-        return acc;
-      }, {});
-
-      const orderMap = ords.reduce((acc, order) => {
-        if (order?.wp_device_id) {
-          acc[order.wp_device_id] = order;
-        }
-        return acc;
-      }, {});
-
-      const toValidTimestamp = (value) => {
-        if (!value) return 0;
-        const date = new Date(value);
-        return Number.isNaN(date.getTime()) ? 0 : date.getTime();
-      };
-
-      const recordTimestamp = (record) => {
-        if (!record) return 0;
-        return Math.max(
-          0,
-          toValidTimestamp(record.createdAt),
-          toValidTimestamp(record.created_at),
-          toValidTimestamp(record.assigned_date),
-          toValidTimestamp(record.assignedDate),
-          toValidTimestamp(record.updatedAt),
-          toValidTimestamp(record.updated_at),
-          toValidTimestamp(record.completed_at),
-          toValidTimestamp(record.completedAt),
-          toValidTimestamp(record.createddate),
-          toValidTimestamp(record.created_date)
-        );
-      };
-
-      const mergeServiceRecords = (taskItem, relatedOrder) => {
-        const records = [];
-        if (Array.isArray(taskItem?.service_records)) {
-          records.push(...taskItem.service_records.filter(Boolean));
-        }
-        if (Array.isArray(relatedOrder?.service_records)) {
-          records.push(...relatedOrder.service_records.filter(Boolean));
-        }
-        if (records.length <= 1) {
-          return records;
-        }
-        return records.sort((a, b) => recordTimestamp(b) - recordTimestamp(a));
-      };
-
-      const computeTaskTimestamp = (latestRecord, taskItem, relatedOrder) => {
-        return Math.max(
-          recordTimestamp(latestRecord),
-          toValidTimestamp(taskItem?.task_assigned_date),
-          toValidTimestamp(taskItem?.createdAt),
-          toValidTimestamp(taskItem?.updatedAt),
-          toValidTimestamp(taskItem?.createddate),
-          toValidTimestamp(relatedOrder?.task_assigned_date),
-          toValidTimestamp(relatedOrder?.createdAt),
-          toValidTimestamp(relatedOrder?.updatedAt),
-          toValidTimestamp(relatedOrder?.createddate)
-        );
-      };
-
-      const enrichedTasksWithTimestamp = tasks.map((task) => {
-        const relatedOrder = orderMap[task?.wp_device_id] || null;
-        const serviceRecords = mergeServiceRecords(task, relatedOrder);
-        const primaryRecord =
-          serviceRecords[0] ||
-          (Array.isArray(task?.service_records) && task.service_records[0]) ||
-          (Array.isArray(relatedOrder?.service_records) && relatedOrder.service_records[0]) ||
-          null;
-        const technicianFromMap = primaryRecord?.technician_device_map_id
-          ? technicianMap[primaryRecord.technician_device_map_id]
-          : null;
-
-        const fallbackTechnician =
-          !technicianFromMap && primaryRecord?.assigned_technician_id
-            ? filteredTechnicians.find(
-                (tech) => tech.technician_id === primaryRecord.assigned_technician_id
-              )
-            : null;
-
-        const existingTechnician =
-          task?.assignedTechnician ||
-          task?.technicianDetails ||
-          relatedOrder?.assignedTechnician ||
-          null;
-
-        const normalizedTechnician =
-          technicianFromMap ||
-          fallbackTechnician ||
-          (existingTechnician
-            ? {
-                technician_name:
-                  existingTechnician.technician_name ||
-                  existingTechnician.name ||
-                  existingTechnician.technicianName ||
-                  '',
-                technician_email: existingTechnician.technician_email || existingTechnician.email || '',
-                technician_id: existingTechnician.technician_id || existingTechnician.technicianId || '',
-                technician_user_id:
-                  existingTechnician.technician_user_id || existingTechnician.user_id || '',
-                technician_role_id: existingTechnician.technician_role_id || existingTechnician.role_id || '',
-                technician_phone:
-                  existingTechnician.technician_phone ||
-                  existingTechnician.phone ||
-                  existingTechnician.mobile ||
-                  '',
-              }
-            : null);
-
-        const taskAssignmentHistory = dedupeHistoryEntries(collectAssignmentHistory(task));
-        const orderAssignmentHistory = dedupeHistoryEntries(collectAssignmentHistory(relatedOrder));
-        const mergedAssignmentHistory = dedupeHistoryEntries([
-          ...taskAssignmentHistory,
-          ...orderAssignmentHistory,
-        ]);
-
-        const assignmentTimestamp = (entry) => {
-          const assignedValue =
-            extractAssignedDateValue(entry?.assigned_date) ||
-            extractAssignedDateValue(entry?.assignedDate);
-          if (assignedValue) {
-            return toValidTimestamp(assignedValue);
-          }
-          return 0;
-        };
-
-        const assignmentHistory = mergedAssignmentHistory.length > 0
-          ? mergedAssignmentHistory
-              .map((entry, index) => ({ ...entry, _historyIndex: index }))
-              .sort((a, b) => assignmentTimestamp(b) - assignmentTimestamp(a))
-              .map(({ _historyIndex, ...rest }) => rest)
-          : taskAssignmentHistory.length > 0
-          ? taskAssignmentHistory
-          : orderAssignmentHistory;
-
-        const statusValue = (
-          task?.task_status ||
-          primaryRecord?.task_status ||
-          relatedOrder?.task_status ||
-          ''
-        ).toString();
-        const statusLower = statusValue.toLowerCase();
-        const isAssignable = statusLower ? statusLower !== 'completed' : true;
-
-        const timestamp = computeTaskTimestamp(primaryRecord, task, relatedOrder);
-
-        return {
-          ...(relatedOrder || {}),
-          ...task,
-          task_status: statusValue,
-          pending_reason:
-            task?.pending_reason ||
-            primaryRecord?.pending_reason ||
-            primaryRecord?.pending_reason_text ||
-            '',
-          service_records: serviceRecords,
-          assignment_history: assignmentHistory,
-          task_id: primaryRecord?.task_id || task?.task_id || null,
-          task_assigned_date: primaryRecord?.assigned_date || task?.task_assigned_date || null,
-          task_released_date: primaryRecord?.released_date || task?.task_released_date || null,
-          task_assigned_by: primaryRecord?.assigned_by || task?.task_assigned_by || '',
-          task_released_by: primaryRecord?.released_by || task?.task_released_by || '',
-          task_completed_date: primaryRecord?.completed_at || task?.task_completed_date || null,
-          task_completion_notes: primaryRecord?.remarks || task?.task_completion_notes || '',
-          assignedTechnician: normalizedTechnician,
-          assigned_technician_id:
-            primaryRecord?.assigned_technician_id ||
-            task?.assigned_technician_id ||
-            normalizedTechnician?.technician_id ||
-            null,
-          order_user_id: relatedOrder?.user_id || task?.order_user_id || '',
-          customOrderId: relatedOrder?.customOrderId || task?.customOrderId || '',
-          deliveryAddress: relatedOrder?.deliveryAddress || task?.deliveryAddress || {},
-          modelName: relatedOrder?.modelName || task?.modelName || '',
-          email: relatedOrder?.email || task?.email || '',
-          isAssignable,
-          _timestamp: timestamp,
-        };
-      });
-
-      const enrichedTasks = enrichedTasksWithTimestamp
-        .map(({ _timestamp, ...rest }) => rest);  
-
-      const filteredEnrichedTasks = enrichedTasks.filter((task) => task.task_id && String(task.task_id).trim() !== '' && task.task_id !== '-');
-
-      const dedupedEnrichedList = dedupeTasksByIdentity(filteredEnrichedTasks);
-
-      setEnrichedTaskList(dedupedEnrichedList);
-      setDisplayTasks(dedupedEnrichedList);
-      
-      setSummary(calculateInstallationSummary(dedupedEnrichedList));
+      setInstallationTasks(tasks);
+      setSummary(calculateInstallationSummary(tasks));
+      await fetchInstallationCounts();
     } catch (err) {
       showErrorAlert('Failed to fetch installation data');
       setError('Failed to fetch installation data');
@@ -442,87 +279,50 @@ const useManageInstallation = (userInfo) => {
   }, []);
 
   useEffect(() => {
-    fetchData(pageNum, pageSize);
+    setPageNum(1);
+    fetchData(1, pageSize, selectedFilter, searchText);
+  }, [selectedFilter, searchText]);
+
+  useEffect(() => {
+    fetchData(pageNum, pageSize, selectedFilter, searchText);
   }, [pageNum, pageSize]);
 
   useEffect(() => {
-    setSummary(calculateInstallationSummary(displayTasks));
-  }, [displayTasks]);
-
-  const applyFilters = (filterType, search) => {
-    let filtered = enrichedTaskList;
-
-    if (filterType === 'pending') {
-      filtered = filtered.filter(
-        (task) => (task.task_status || '').toLowerCase() === 'pending'
-      );
-    } else if (filterType === 'inProgress') {
-      filtered = filtered.filter((task) => {
-        const status = (task.task_status || '').toLowerCase();
-        return status === 'in progress' || status === 'in_progress';
-      });
-    } else if (filterType === 'completed') {
-      filtered = filtered.filter(
-        (task) => (task.task_status || '').toLowerCase() === 'completed'
-      );
-    } else if (filterType === 'rejected') {
-      filtered = filtered.filter(
-        (task) => (task.task_status || '').toLowerCase() === 'rejected'
-      );
-    } else if (filterType === 'unassigned') {
-      filtered = filtered.filter(
-        (task) => !task.assigned_technician_id
-      );
-    }
-
-    if (search.trim()) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter((task) => {
-        const deviceId = task.wp_device_id?.toLowerCase() || '';
-        const orderId = task.customOrderId?.toLowerCase() || '';
-        const userId = task.user_id?.toString() || task.order_user_id?.toString() || '';
-        const technicianName =
-          task.assignedTechnician?.technician_name?.toLowerCase() ||
-          task.assignedTechnician?.name?.toLowerCase() ||
-          '';
-        const technicianId =
-          task.assignedTechnician?.technician_id?.toLowerCase() ||
-          task.assigned_technician_id?.toLowerCase() ||
-          '';
-        const customerName = task.deliveryAddress?.name?.toLowerCase() || '';
-        const pendingReason = task.pending_reason?.toLowerCase() || '';
-
-        return (
-          deviceId.includes(searchLower) ||
-          orderId.includes(searchLower) ||
-          userId.includes(searchLower) ||
-          technicianName.includes(searchLower) ||
-          technicianId.includes(searchLower) ||
-          customerName.includes(searchLower) ||
-          pendingReason.includes(searchLower)
-        );
-      });
-    }
-
-    setDisplayTasks(filtered);
-    
-    const calculatedTotalPages = Math.ceil(filtered.length / pageSize) || 1;
-    setTotalPages(calculatedTotalPages);
-    setTotalRecords(filtered.length);
-    
-    setSummary(calculateInstallationSummary(filtered));
-  };
+    setSummary(calculateInstallationSummary(installationTasks));
+  }, [installationTasks]);
 
   const handleFilterSelect = (filterType) => {
     const newFilter = selectedFilter === filterType ? '' : filterType;
     setSelectedFilter(newFilter);
-    applyFilters(newFilter, searchText);
+    setPageNum(1);
+  };
+
+  const performSearch = async (term, page = 1, limit = 10) => {
+    try {
+      setIsLoading(true);
+      const result = await InstallationSearchService.performSearch(term, page, limit);
+      setInstallationTasks(result.data);
+      setPageNum(result.pagination.currentPage);
+      setPageSize(result.pagination.pageSize);
+      setTotalRecords(result.totalCount);
+      setTotalPages(Math.ceil(result.totalCount / limit) || 1);
+    } catch (err) {
+      console.error('Error performing search:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSearchChange = (e) => {
-    const value = e.target.value.toLowerCase();
+    const value = e.target.value;
     setSearchText(value);
-    applyFilters(selectedFilter, value);
+    setPageNum(1);
+    
+    if (!debouncedSearchRef.current) {
+      debouncedSearchRef.current = InstallationSearchService.debounceSearch(performSearch, 300);
+    }
+    
+    debouncedSearchRef.current(value, 1, pageSize);
   };
 
   // Assign new technician
@@ -585,7 +385,7 @@ const useManageInstallation = (userInfo) => {
   };
 
   return {
-    installationTasks: displayTasks,
+    installationTasks,
     technicians,
     isLoading,
     error,
@@ -595,6 +395,7 @@ const useManageInstallation = (userInfo) => {
     reassignInstallation,
     refetch: fetchData,
     summary,
+    installationCounts,
     selectedFilter,
     handleFilterSelect,
     pageNum,

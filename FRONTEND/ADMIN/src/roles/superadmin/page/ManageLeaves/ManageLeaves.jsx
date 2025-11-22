@@ -46,7 +46,7 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
     width: '100%'
   };
 
-  const getCardStyle = (isActive) => ({
+  const getCardStyle = () => ({
     border: 'none',
     outline: 'none',
     borderRadius: '12px',
@@ -56,28 +56,27 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: '10px',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    boxShadow: isActive ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
-    background: isActive ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
-    color: isActive ? '#ffffff' : '#1b2559',
+    cursor: 'default',
+    boxShadow: '0 4px 12px rgba(27, 37, 89, 0.12)',
+    background: '#f6f7ff',
+    color: '#1b2559',
     textAlign: 'left',
     width: '100%'
   });
 
-  const getLabelStyle = (isActive) => ({
+  const getLabelStyle = () => ({
     fontSize: '11px',
     letterSpacing: '0.08em',
     textTransform: 'uppercase',
-    opacity: isActive ? 0.9 : 0.65,
-    color: isActive ? 'rgba(255, 255, 255, 0.9)' : '#1b2559',
+    opacity: 0.65,
+    color: '#1b2559',
     whiteSpace: 'nowrap'
   });
 
-  const getValueStyle = (isActive) => ({
+  const getValueStyle = () => ({
     fontSize: '22px',
     fontWeight: 700,
-    color: isActive ? '#ffffff' : '#1b2559'
+    color: '#1b2559'
   });
 
   const handleApproveLeave = async (leaveId) => {
@@ -215,38 +214,30 @@ const ManageLeaves = ({ userInfo, handleLogout }) => {
             <div className="row mb-1">
               <div className="col-12">
                 <div style={cardGridStyle}>
-                  <button
-                    type="button"
-                    style={getCardStyle(selectedFilter === '')}
-                    onClick={() => handleFilterSelect('')}
+                  <div
+                    style={getCardStyle()}
                   >
-                    <span style={getLabelStyle(selectedFilter === '')}>All Requests</span>
-                    <span style={getValueStyle(selectedFilter === '')}>{summary.total}</span>
-                  </button>
-                  <button
-                    type="button"
-                    style={getCardStyle(selectedFilter === 'requested')}
-                    onClick={() => handleFilterSelect('requested')}
+                    <span style={getLabelStyle()}>All Requests</span>
+                    <span style={getValueStyle()}>{totalRecords}</span>
+                  </div>
+                  <div
+                    style={getCardStyle()}
                   >
-                    <span style={getLabelStyle(selectedFilter === 'requested')}>Pending</span>
-                    <span style={getValueStyle(selectedFilter === 'requested')}>{summary.requested}</span>
-                  </button>
-                  <button
-                    type="button"
-                    style={getCardStyle(selectedFilter === 'approved')}
-                    onClick={() => handleFilterSelect('approved')}
+                    <span style={getLabelStyle()}>Pending</span>
+                    <span style={getValueStyle()}>{summary.requested}</span>
+                  </div>
+                  <div
+                    style={getCardStyle()}
                   >
-                    <span style={getLabelStyle(selectedFilter === 'approved')}>Approved</span>
-                    <span style={getValueStyle(selectedFilter === 'approved')}>{summary.approved}</span>
-                  </button>
-                  <button
-                    type="button"
-                    style={getCardStyle(selectedFilter === 'rejected')}
-                    onClick={() => handleFilterSelect('rejected')}
+                    <span style={getLabelStyle()}>Approved</span>
+                    <span style={getValueStyle()}>{summary.approved}</span>
+                  </div>
+                  <div
+                    style={getCardStyle()}
                   >
-                    <span style={getLabelStyle(selectedFilter === 'rejected')}>Rejected</span>
-                    <span style={getValueStyle(selectedFilter === 'rejected')}>{summary.rejected}</span>
-                  </button>
+                    <span style={getLabelStyle()}>Rejected</span>
+                    <span style={getValueStyle()}>{summary.rejected}</span>
+                  </div>
                 </div>
               </div>
             </div>

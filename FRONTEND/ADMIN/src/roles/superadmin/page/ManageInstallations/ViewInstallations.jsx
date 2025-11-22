@@ -11,6 +11,8 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
   const installationTasks = useViewInstallations();
   const [assignmentHistory, setAssignmentHistory] = useState({});
   const [loadingHistory, setLoadingHistory] = useState({});
+  const [technicianDetails, setTechnicianDetails] = useState({});
+  const [loadingTechnicians, setLoadingTechnicians] = useState({});
 
   const handleBack = () => {
     navigate('/superadmin/ManageInstallations');
@@ -44,12 +46,50 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
     }
   };
 
-  // Fetch assignment history for all tasks when they load
+  const fetchTechnicianDetails = async (technicianId) => {
+    if (!technicianId || loadingTechnicians[technicianId]) return;
+
+    setLoadingTechnicians(prev => ({ ...prev, [technicianId]: true }));
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/api/admin/technician/${technicianId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'Success') {
+          setTechnicianDetails(prev => ({ ...prev, [technicianId]: result.data }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching technician details:', error);
+    } finally {
+      setLoadingTechnicians(prev => ({ ...prev, [technicianId]: false }));
+    }
+  };
+
+  // Fetch assignment history and technician details for all tasks when they load
   useEffect(() => {
     if (installationTasks && installationTasks.length > 0) {
       installationTasks.forEach(task => {
         if (task.task_id && !assignmentHistory[task.task_id] && !loadingHistory[task.task_id]) {
           fetchAssignmentHistory(task.task_id);
+        }
+
+        // Extract technician ID and fetch details
+        const technicianId = task.technician_id ||
+                           task.assigned_technician_id ||
+                           (task.service_records && task.service_records.length > 0 && task.service_records[0].assigned_technician_id) ||
+                           task.technicianId;
+
+        if (technicianId && !technicianDetails[technicianId] && !loadingTechnicians[technicianId]) {
+          fetchTechnicianDetails(technicianId);
         }
       });
     }
@@ -277,21 +317,61 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                   task.subscription_expiry_date ||
                   serviceRecord.subscriptionExpiryDate ||
                   serviceRecord.subscription_expiry_date;
+                const technicianId =
+                  technician.technician_id ||
+                  serviceRecord.assigned_technician_id ||
+                  task.assigned_technician_id ||
+                  task.technician_id ||
+                  task.technicianId;
+
+                // Get technician details from fetched data
+                const fetchedTechnician = technicianDetails[technicianId] || {};
+
+                const technicianName =
+                  fetchedTechnician.technician_name ||
+                  fetchedTechnician.name ||
+                  fetchedTechnician.full_name ||
+                  technician.technician_name ||
+                  technician.name ||
+                  task.assignedTechnician?.name ||
+                  serviceRecord.technician_name ||
+                  task.technician_name ||
+                  task.name ||
+                  task.technician_full_name ||
+                  task.technicianName ||
+                  technicianId; // fallback to ID if no name available
+
                 const technicianPhone =
+                  fetchedTechnician.technician_phone ||
+                  fetchedTechnician.phone ||
+                  fetchedTechnician.mobile ||
+                  fetchedTechnician.contact_number ||
+                  fetchedTechnician.contactNumber ||
                   technician.technician_phone ||
                   technician.phone ||
                   technician.mobile ||
                   technician.contact_number ||
-                  technician.contactNumber;
+                  technician.contactNumber ||
+                  task.assignedTechnician?.phone ||
+                  serviceRecord.phone ||
+                  task.technician_phone ||
+                  task.phone ||
+                  task.technician_phone_number ||
+                  task.technician_mobile;
+
                 const technicianEmail =
+                  fetchedTechnician.technician_email ||
+                  fetchedTechnician.email ||
+                  fetchedTechnician.contact_email ||
+                  fetchedTechnician.contactEmail ||
                   technician.technician_email ||
                   technician.email ||
-                  technician.contactEmail;
-                const technicianId =
-                  technician.technician_id ||
-                  serviceRecord.assigned_technician_id ||
-                  task.assigned_technician_id;
-                const technicianName = technician.technician_name || technician.name;
+                  technician.contactEmail ||
+                  task.assignedTechnician?.email ||
+                  serviceRecord.technician_email ||
+                  task.technician_email ||
+                  task.email ||
+                  task.technician_email_address;
                 const completionNotes =
                   task.task_completion_notes ||
                   serviceRecord.remarks ||
@@ -540,7 +620,7 @@ const ViewInstallations = ({ userInfo, handleLogout }) => {
                               <span className="view-data-label">Technician ID</span><span className="view-data-value">{technicianId || '-'}</span>
                             </div>
                             <div className="col-md-4 view-data-item">
-                              <span className="view-data-label">Customer Email</span><span className="view-data-value">{technicianEmail || '-'}</span>
+                              <span className="view-data-label">Technician Email</span><span className="view-data-value">{technicianEmail || '-'}</span>
                             </div>
                           </div>
 

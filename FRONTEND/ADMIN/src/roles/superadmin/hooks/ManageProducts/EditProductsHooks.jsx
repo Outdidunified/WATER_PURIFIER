@@ -546,6 +546,7 @@ const useEditProducts = (userInfo) => {
     isEditMode,
     durationChanged,
     allDurationsUsed,
+    hasChanges,
   };
 };
 

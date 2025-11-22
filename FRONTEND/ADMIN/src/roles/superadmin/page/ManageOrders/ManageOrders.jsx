@@ -32,6 +32,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
     resolveDeviceId,
     confirmCodPayment,
     calculateOrderSummary,
+    orderCounts,
     selectedFilter,
     handleFilterSelect,
     currentPage,
@@ -52,7 +53,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
     width: '100%'
   };
 
-  const getCardStyle = (isActive) => ({
+  const getCardStyle = () => ({
     border: 'none',
     outline: 'none',
     borderRadius: '12px',
@@ -62,28 +63,27 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: '10px',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    boxShadow: isActive ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
-    background: isActive ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
-    color: isActive ? '#ffffff' : '#1b2559',
+    cursor: 'default',
+    boxShadow: '0 4px 12px rgba(27, 37, 89, 0.12)',
+    background: '#f6f7ff',
+    color: '#1b2559',
     textAlign: 'left',
     width: '100%'
   });
 
-  const getLabelStyle = (isActive) => ({
+  const getLabelStyle = () => ({
     fontSize: '11px',
     letterSpacing: '0.08em',
     textTransform: 'uppercase',
-    opacity: isActive ? 0.9 : 0.65,
-    color: isActive ? 'rgba(255, 255, 255, 0.9)' : '#1b2559',
+    opacity: 0.65,
+    color: '#1b2559',
     whiteSpace: 'nowrap'
   });
 
-  const getValueStyle = (isActive) => ({
+  const getValueStyle = () => ({
     fontSize: '22px',
     fontWeight: 700,
-    color: isActive ? '#ffffff' : '#1b2559'
+    color: '#1b2559'
   });
 
   const [codConfirmation, setCodConfirmation] = useState({});
@@ -247,46 +247,36 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
             <div className="row mb-1" >
               <div className="col-12" style={{ marginBottom: '10px' }}>
                 <div style={{ ...cardGridStyle, marginBottom: '10px' }}>
-                  <button
-                    type="button"
-                    style={getCardStyle(selectedFilter === '')}
-                    onClick={() => handleFilterSelect('')}
+                  <div
+                    style={getCardStyle()}
                   >
-                    <span style={getLabelStyle(selectedFilter === '')}>All Orders</span>
-                    <span style={getValueStyle(selectedFilter === '')}>{orderSummary.totalOrders}</span>
-                  </button>
-                  <button
-                    type="button"
-                    style={getCardStyle(selectedFilter === 'completed')}
-                    onClick={() => handleFilterSelect('completed')}
+                    <span style={getLabelStyle()}>All Orders</span>
+                    <span style={getValueStyle()}>{orderCounts.totalOrders}</span>
+                  </div>
+                  <div
+                    style={getCardStyle()}
                   >
-                    <span style={getLabelStyle(selectedFilter === 'completed')}>Completed</span>
-                    <span style={getValueStyle(selectedFilter === 'completed')}>{orderSummary.completedOrders}</span>
-                  </button>
-                  <button
-                    type="button"
-                    style={getCardStyle(selectedFilter === 'pending')}
-                    onClick={() => handleFilterSelect('pending')}
+                    <span style={getLabelStyle()}>Completed</span>
+                    <span style={getValueStyle()}>{orderCounts.completed}</span>
+                  </div>
+                  <div
+                    style={getCardStyle()}
                   >
-                    <span style={getLabelStyle(selectedFilter === 'pending')}>Pending</span>
-                    <span style={getValueStyle(selectedFilter === 'pending')}>{orderSummary.pendingOrders}</span>
-                  </button>
-                  <button
-                    type="button"
-                    style={getCardStyle(selectedFilter === 'paymentCompleted')}
-                    onClick={() => handleFilterSelect('paymentCompleted')}
+                    <span style={getLabelStyle()}>Pending</span>
+                    <span style={getValueStyle()}>{orderCounts.pending}</span>
+                  </div>
+                  <div
+                    style={getCardStyle()}
                   >
-                    <span style={getLabelStyle(selectedFilter === 'paymentCompleted')}>Payment Done</span>
-                    <span style={getValueStyle(selectedFilter === 'paymentCompleted')}>{orderSummary.paymentCompletedCOD + orderSummary.paymentCompletedOnline}</span>
-                  </button>
-                  <button
-                    type="button"
-                    style={getCardStyle(selectedFilter === 'paymentPending')}
-                    onClick={() => handleFilterSelect('paymentPending')}
+                    <span style={getLabelStyle()}>Payment Done</span>
+                    <span style={getValueStyle()}>{orderCounts.paymentCompleted}</span>
+                  </div>
+                  <div
+                    style={getCardStyle()}
                   >
-                    <span style={getLabelStyle(selectedFilter === 'paymentPending')}>Payment Pending</span>
-                    <span style={getValueStyle(selectedFilter === 'paymentPending')}>{orderSummary.paymentPendingCOD + orderSummary.paymentPendingOnline}</span>
-                  </button>
+                    <span style={getLabelStyle()}>Payment Pending</span>
+                    <span style={getValueStyle()}>{orderCounts.pendingPayment}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -427,7 +417,7 @@ const ManageOrders = ({ userInfo, handleLogout }) => {
                                   <td style={{ padding: '4px 2px', maxWidth: '70px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.selectedDuration?.duration_time_limit}</td>
                                   <td style={{ padding: '4px 4px', maxWidth: '200px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.deliveryAddress?.name}</td>
                                   {/* <td style={{ padding: '4px 2px', maxWidth: '90px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.email || '-'}</td> */}
-                                  <td style={{ padding: '4px 2px', maxWidth: '100px', wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.deliveryAddress?.district}</td>
+                                  <td style={{ padding: '4px 2px',  wordWrap: 'break-word', wordBreak: 'break-word' }}>{order.deliveryAddress?.district}</td>
                                   <td>
                                     <span className={`badge-status badge-${order.orderStatus.toLowerCase()}`}>
                                       {order.orderStatus}

@@ -12,6 +12,13 @@ const useManageRequests = (userInfo) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('');
   const [searchText, setSearchText] = useState('');
+  const [requestCounts, setRequestCounts] = useState({
+    totalRequests: 0,
+    pending: 0,
+    assigned: 0,
+    completed: 0,
+    rejected: 0
+  });
   const [summary, setSummary] = useState({
     total: 0,
     pending: 0,
@@ -63,6 +70,18 @@ const useManageRequests = (userInfo) => {
     const payload = isSeller ? { district: sellerDistrict } : {};
     const res = await axiosInstance.post('/api/admin/FetchInstalledDevicesForRequests', payload);
     return res.data?.data || [];
+  }, [isSeller, sellerDistrict]);
+
+  const fetchRequestCounts = useCallback(async () => {
+    try {
+      const params = isSeller ? { district: sellerDistrict } : {};
+      const res = await axiosInstance.get('/api/admin/manual-requests/counts', { params });
+      if (res.data.status === 'Success') {
+        setRequestCounts(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching request counts:', err);
+    }
   }, [isSeller, sellerDistrict]);
 
   const enrichRequests = useCallback((rawRequests, techs) => {
@@ -129,6 +148,7 @@ const useManageRequests = (userInfo) => {
       Promise.all([
         fetchTechnicians(),
         fetchDevices(),
+        fetchRequestCounts(),
       ]).then(([techs, devs]) => {
         const filteredTechnicians = isSeller && sellerDistrict
           ? techs.filter((tech) => {
@@ -196,7 +216,7 @@ const useManageRequests = (userInfo) => {
       showErrorAlert('Failed to fetch manual requests');
       setIsLoading(false);
     }
-  }, [enrichRequests, fetchDevices, fetchRequests, fetchTechnicians, isSeller, sellerDistrict, calculateRequestSummary]);
+  }, [enrichRequests, fetchDevices, fetchRequests, fetchTechnicians, fetchRequestCounts, isSeller, sellerDistrict, calculateRequestSummary]);
 
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
@@ -323,6 +343,7 @@ const useManageRequests = (userInfo) => {
     reassignManualRequest,
     createManualRequest,
     refetch: fetchData,
+    requestCounts,
     summary,
     selectedFilter,
     handleFilterSelect,

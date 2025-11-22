@@ -213,9 +213,7 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
             <div className="row mb-3">
               <div className="col-12">
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', width: '100%' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleFilterSelect('')}
+                  <div
                     style={{
                       border: 'none',
                       outline: 'none',
@@ -226,21 +224,18 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: selectedFilter === '' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
-                      background: selectedFilter === '' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
-                      color: selectedFilter === '' ? '#ffffff' : '#1b2559',
+                      cursor: 'default',
+                      boxShadow: '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: '#f6f7ff',
+                      color: '#1b2559',
                       textAlign: 'left',
                       width: '100%'
                     }}
                   >
-                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === '' ? 0.9 : 0.65, color: selectedFilter === '' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>All Requests</span>
-                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === '' ? '#ffffff' : '#1b2559' }}>{summary.total}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleFilterSelect('pending')}
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.65, color: '#1b2559', whiteSpace: 'nowrap' }}>All Requests</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: '#1b2559' }}>{totalRecords}</span>
+                  </div>
+                  <div
                     style={{
                       border: 'none',
                       outline: 'none',
@@ -251,21 +246,18 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: selectedFilter === 'pending' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
-                      background: selectedFilter === 'pending' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
-                      color: selectedFilter === 'pending' ? '#ffffff' : '#1b2559',
+                      cursor: 'default',
+                      boxShadow: '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: '#f6f7ff',
+                      color: '#1b2559',
                       textAlign: 'left',
                       width: '100%'
                     }}
                   >
-                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'pending' ? 0.9 : 0.65, color: selectedFilter === 'pending' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>Pending</span>
-                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'pending' ? '#ffffff' : '#1b2559' }}>{summary.pending}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleFilterSelect('completed')}
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.65, color: '#1b2559', whiteSpace: 'nowrap' }}>Pending</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: '#1b2559' }}>{summary.pending}</span>
+                  </div>
+                  <div
                     style={{
                       border: 'none',
                       outline: 'none',
@@ -276,21 +268,18 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: selectedFilter === 'completed' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
-                      background: selectedFilter === 'completed' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
-                      color: selectedFilter === 'completed' ? '#ffffff' : '#1b2559',
+                      cursor: 'default',
+                      boxShadow: '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: '#f6f7ff',
+                      color: '#1b2559',
                       textAlign: 'left',
                       width: '100%'
                     }}
                   >
-                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'completed' ? 0.9 : 0.65, color: selectedFilter === 'completed' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>Completed</span>
-                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'completed' ? '#ffffff' : '#1b2559' }}>{summary.completed}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleFilterSelect('inProgress')}
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.65, color: '#1b2559', whiteSpace: 'nowrap' }}>Completed</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: '#1b2559' }}>{summary.completed}</span>
+                  </div>
+                  <div
                     style={{
                       border: 'none',
                       outline: 'none',
@@ -301,21 +290,18 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: selectedFilter === 'inProgress' ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
-                      background: selectedFilter === 'inProgress' ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
-                      color: selectedFilter === 'inProgress' ? '#ffffff' : '#1b2559',
+                      cursor: 'default',
+                      boxShadow: '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: '#f6f7ff',
+                      color: '#1b2559',
                       textAlign: 'left',
                       width: '100%'
                     }}
                   >
-                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'inProgress' ? 0.9 : 0.65, color: selectedFilter === 'inProgress' ? 'rgba(255, 255, 255, 0.9)' : '#1b2559', whiteSpace: 'nowrap' }}>In Progress</span>
-                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'inProgress' ? '#ffffff' : '#1b2559' }}>{summary.inProgress}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleFilterSelect('rejected')}
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.65, color: '#1b2559', whiteSpace: 'nowrap' }}>In Progress</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: '#1b2559' }}>{summary.inProgress}</span>
+                  </div>
+                  <div
                     style={{
                       border: 'none',
                       outline: 'none',
@@ -326,18 +312,17 @@ const ManageRequests = ({ userInfo, handleLogout }) => {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: selectedFilter === 'rejected' ? '0 10px 20px rgba(220, 53, 69, 0.3)' : '0 4px 12px rgba(220, 53, 69, 0.12)',
-                      background: selectedFilter === 'rejected' ? 'linear-gradient(135deg, #dc3545 0%, #f56565 100%)' : '#fff5f5',
-                      color: selectedFilter === 'rejected' ? '#ffffff' : '#dc3545',
+                      cursor: 'default',
+                      boxShadow: '0 4px 12px rgba(27, 37, 89, 0.12)',
+                      background: '#f6f7ff',
+                      color: '#1b2559',
                       textAlign: 'left',
                       width: '100%'
                     }}
                   >
-                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: selectedFilter === 'rejected' ? 0.9 : 0.65, color: selectedFilter === 'rejected' ? 'rgba(255, 255, 255, 0.9)' : '#dc3545', whiteSpace: 'nowrap' }}>Rejected</span>
-                    <span style={{ fontSize: '22px', fontWeight: 700, color: selectedFilter === 'rejected' ? '#ffffff' : '#dc3545' }}>{summary.rejected}</span>
-                  </button>
+                    <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.65, color: '#1b2559', whiteSpace: 'nowrap' }}>Rejected</span>
+                    <span style={{ fontSize: '22px', fontWeight: 700, color: '#1b2559' }}>{summary.rejected}</span>
+                  </div>
                 </div>
               </div>
             </div>

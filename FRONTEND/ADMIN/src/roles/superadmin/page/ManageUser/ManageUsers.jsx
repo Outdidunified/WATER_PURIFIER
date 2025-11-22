@@ -235,49 +235,16 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
     alignSelf: 'flex-end'
   };
 
-  const getCardStyle = (isActive) => ({
-    border: 'none',
-    outline: 'none',
-    borderRadius: '12px',
-    padding: '12px 14px',
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '10px',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    boxShadow: isActive ? '0 10px 20px rgba(76, 91, 253, 0.3)' : '0 4px 12px rgba(27, 37, 89, 0.12)',
-    background: isActive ? 'linear-gradient(135deg, #4c5bfd 0%, #7c8bff 100%)' : '#f6f7ff',
-    color: isActive ? '#ffffff' : '#1b2559',
-    textAlign: 'left',
-    width: '100%'
-  });
 
-  const getLabelStyle = (isActive) => ({
-    fontSize: '11px',
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
-    opacity: isActive ? 0.9 : 0.65,
-    color: isActive ? 'rgba(255, 255, 255, 0.9)' : '#1b2559',
-    whiteSpace: 'nowrap'
-  });
 
-  const getValueStyle = (isActive) => ({
-    fontSize: '22px',
-    fontWeight: 700,
-    color: isActive ? '#ffffff' : '#1b2559'
-  });
-
-  const handleRoleCardClick = (roleId) => {
-    if (String(selectedRole) === String(roleId)) {
-      resetRoleFilter();
-      return;
+  const isSeller = Number(userInfo?.role_id) === 4;
+  const filteredRoleSummaries = roleSummaries.filter((item) => {
+    if (isSeller) {
+      return item.roleId !== 1 && item.roleId !== 4;
     }
-    handleRoleSelect(roleId);
-  };
-
-  const skeletonCount = Math.max(1, roleSummaries.length || roles.length || 4);
+    return true;
+  });
+  const skeletonCount = Math.max(1, filteredRoleSummaries.length || roles.length || 4);
   const skeletonCards = Array.from({ length: skeletonCount });
   const isCardSkeletonVisible = isLoading && posts.length === 0;
 
@@ -295,9 +262,11 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                 <h3 className="fw-bold">Manage Users</h3>
               </div>
               <div className="col-auto">
-                <button className="btn btn-success" onClick={openAddModal}>
-                  Create User
-                </button>
+                {Number(userInfo?.role_id) !== 4 && (
+                  <button className="btn btn-success" onClick={openAddModal}>
+                    Create User
+                  </button>
+                )}
               </div>
             </div>
 
@@ -313,28 +282,53 @@ const ManageUsers = ({ userInfo, handleLogout }) => {
                     ))
                   ) : (
                     <>
-                      <button
-                        type="button"
-                        style={getCardStyle(selectedRole === '')}
-                        onClick={resetRoleFilter}
+                      <div
+                        style={{
+                          border: 'none',
+                          outline: 'none',
+                          borderRadius: '12px',
+                          padding: '12px 14px',
+                          display: 'flex',
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '10px',
+                          cursor: 'default',
+                          boxShadow: '0 4px 12px rgba(27, 37, 89, 0.12)',
+                          background: '#f6f7ff',
+                          color: '#1b2559',
+                          textAlign: 'left',
+                          width: '100%'
+                        }}
                       >
-                        <span style={getLabelStyle(selectedRole === '')}>All Users</span>
-                        <span style={getValueStyle(selectedRole === '')}>{totalUsers}</span>
-                      </button>
-                      {roleSummaries.map((item) => {
-                        const isActive = String(selectedRole) === String(item.roleId);
-                        return (
-                          <button
-                            type="button"
-                            key={item.roleId}
-                            style={getCardStyle(isActive)}
-                            onClick={() => handleRoleCardClick(item.roleId)}
-                          >
-                            <span style={getLabelStyle(isActive)}>{item.roleName || 'Role'}</span>
-                            <span style={getValueStyle(isActive)}>{item.count}</span>
-                          </button>
-                        );
-                      })}
+                        <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.65, color: '#1b2559', whiteSpace: 'nowrap' }}>All Users</span>
+                        <span style={{ fontSize: '22px', fontWeight: 700, color: '#1b2559' }}>{totalUsers}</span>
+                      </div>
+                      {filteredRoleSummaries.map((item) => (
+                        <div
+                          key={item.roleId}
+                          style={{
+                            border: 'none',
+                            outline: 'none',
+                            borderRadius: '12px',
+                            padding: '12px 14px',
+                            display: 'flex',
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '10px',
+                            cursor: 'default',
+                            boxShadow: '0 4px 12px rgba(27, 37, 89, 0.12)',
+                            background: '#f6f7ff',
+                            color: '#1b2559',
+                            textAlign: 'left',
+                            width: '100%'
+                          }}
+                        >
+                          <span style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.65, color: '#1b2559', whiteSpace: 'nowrap' }}>{item.roleName || 'Role'}</span>
+                          <span style={{ fontSize: '22px', fontWeight: 700, color: '#1b2559' }}>{item.count}</span>
+                        </div>
+                      ))}
                     </>
                   )}
                 </div>

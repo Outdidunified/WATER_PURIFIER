@@ -11,7 +11,6 @@ import Pagination from '../../components/Pagination/Pagination';
 
 const ManageDevice = ({ userInfo, handleLogout }) => {
     const navigate = useNavigate();
-    const [showModelFilter, setShowModelFilter] = useState(false);
 
     const {
         stationData,
@@ -27,11 +26,6 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
         filteredStations,
         models,
         fetchModels,
-        handleModelSelect,
-        resetModelFilter,
-        modelOptions,
-        selectedModel,
-        totalDevices,
         currentPage,
         pageSize,
         totalRecords,
@@ -44,26 +38,6 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
     const handleViewStation = (dataItem) => {
         navigate('/superadmin/ViewManageDevice', { state: { dataItem } });
     };
-
-    const handleSummaryCardClick = () => {
-        setShowModelFilter((prev) => !prev);
-    };
-
-    const handleModelFilterChange = (event) => {
-        const { value } = event.target;
-        if (value === '') {
-            resetModelFilter();
-        } else {
-            handleModelSelect(value);
-        }
-    };
-
-    const handleClearSelection = () => {
-        resetModelFilter();
-    };
-
-    const summaryValue = selectedModel ? filteredStations.length : totalDevices;
-    const summaryLabel = selectedModel ? selectedModel : 'Total Devices';
 
     const summaryCardStyle = {
         display: 'flex',
@@ -132,87 +106,17 @@ const ManageDevice = ({ userInfo, handleLogout }) => {
                                         <h3 className="font-weight-bold mb-0" style={{ fontSize: '22px' }}>Manage Device</h3>
                                     </div>
                                     <div className="col-auto">
-                                        <button
-                                            type="button"
+                                        <div
                                             style={summaryCardStyle}
-                                            onClick={handleSummaryCardClick}
                                         >
                                             <div style={summaryCardContentStyle}>
                                                 <div style={summaryTextStyle}>
-                                                    <span style={summaryLabelStyle}>{summaryLabel}</span>
-                                                    <span style={summaryValueStyle}>{summaryValue}</span>
+                                                    <span style={summaryLabelStyle}>Total Devices</span>
+                                                    <span style={summaryValueStyle}>{totalRecords}</span>
                                                 </div>
                                             </div>
-                                            <i className={`mdi ${showModelFilter ? 'mdi-chevron-up' : 'mdi-chevron-down'}`} style={summaryCaretStyle}></i>
-                                        </button>
+                                        </div>
                                     </div>
-                                   {showModelFilter && (
-    <div className="col-auto">
-        <div 
-            style={{
-                backgroundColor: "#ffffff",
-                borderRadius: "18px",
-                boxShadow: "0 10px 24px rgba(23,36,184,0.12)",
-                padding: "10px 14px",
-                display: "flex",
-                alignItems: "center",
-                gap: "16px",
-                height: "50px"
-            }}
-        >
-
-            {/* LEFT TEXT */}
-            <span 
-                style={{
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    color: "#1b2559",
-                    whiteSpace: "nowrap"
-                }}
-            >
-                Filter by model
-            </span>
-
-            {/* DROPDOWN */}
-            <select
-                className="form-select"
-                value={selectedModel}
-                onChange={handleModelFilterChange}
-                style={{
-                    borderRadius: "12px",
-                    padding: "6px 12px",
-                    borderColor: "#d5dbff",
-                    width: "160px",
-                    whiteSpace: "nowrap"
-                }}
-            >
-                <option value="">All Models</option>
-                {modelOptions.map((option) => (
-                    <option key={option} value={option}>
-                        {option}
-                    </option>
-                ))}
-            </select>
-
-            {/* CLEAR BUTTON */}
-            {selectedModel && (
-                <button
-                    type="button"
-                    className="btn btn-outline-secondary btn-sm"
-                    onClick={handleClearSelection}
-                    style={{
-                        borderRadius: "12px",
-                        padding: "4px 12px",
-                        whiteSpace: "nowrap"
-                    }}
-                >
-                    Clear
-                </button>
-            )}
-
-        </div>
-    </div>
-)}
 
                                     <div className="col ms-auto d-flex flex-column align-items-end gap-2">
                                         <div className="d-flex justify-content-end">

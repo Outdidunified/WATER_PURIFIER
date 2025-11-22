@@ -518,7 +518,7 @@ const authenticate = async (req, res) => {
 
         // Generate JWT token
         const token = jwt.sign(
-            { userId: user._id, role_id: user.role_id },
+            { userId: user._id, role_id: user.role_id, district: user.district },
             JWT_SECRET,
             { expiresIn: '1d' }
         );
@@ -2502,7 +2502,7 @@ const SearchCallRequests = async (req, res) => {
 const GetSearchContactCount = async (req, res) => {
     try {
         const db = await database.connectToDatabase();
-        const collection = db.collection("contacts");
+        const collection = db.collection("contactUs");
         const { search } = req.query;
 
         let query = {};
@@ -2538,7 +2538,7 @@ const SearchContact = async (req, res) => {
     try {
         const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
         const db = await database.connectToDatabase();
-        const collection = db.collection("contacts");
+        const collection = db.collection("contactUs");
 
         const { page, limit, skip } = getPaginationParams(req, 10);
         const { search } = req.query;
@@ -2794,6 +2794,23 @@ const FetchInstallationService = async (req, res) => {
             {
                 $addFields: {
                     email: { $arrayElemAt: ["$user.email", 0] }
+                }
+            },
+
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "service_record.assigned_technician_id",
+                    foreignField: "technician_id",
+                    as: "assignedTechnician"
+                }
+            },
+
+            {
+                $addFields: {
+                    assignedTechnician: {
+                        $arrayElemAt: ["$assignedTechnician", 0]
+                    }
                 }
             },
 
@@ -3374,6 +3391,7 @@ if (
 const FetchSelectInstallationTask = async (req, res) => {
     try {
         const { page, limit, skip } = getPaginationParams(req);
+        const { status, search } = req.body;
         const db = await database.connectToDatabase();
         const ordersCollection = db.collection("orders");
 
@@ -3396,8 +3414,44 @@ const FetchSelectInstallationTask = async (req, res) => {
             ]
         };
 
-        // Count total records
-        const totalCountPipeline = [
+        const buildStatusFilter = (status) => {
+            if (!status) return null;
+            const statusLower = status.toLowerCase();
+            if (statusLower === 'pending') {
+                return { 'service_records.task_status': 'Pending' };
+            } else if (statusLower === 'inprogress' || statusLower === 'in_progress') {
+                return { 'service_records.task_status': { $in: ['In Progress', 'In_Progress', 'in_progress'] } };
+            } else if (statusLower === 'completed') {
+                return { 'service_records.task_status': 'Completed' };
+            } else if (statusLower === 'rejected') {
+                return { 'service_records.task_status': 'Rejected' };
+            } else if (statusLower === 'unassigned') {
+                return { 'service_records.assigned_technician_id': { $in: [null, '', undefined] } };
+            }
+            return null;
+        };
+
+        const buildSearchFilter = (searchTerm) => {
+            if (!searchTerm || !searchTerm.trim()) return null;
+            const searchRegex = { $regex: searchTerm.trim(), $options: 'i' };
+            return {
+                $or: [
+                    { 'service_records.task_id': searchRegex },
+                    { 'service_records.assigned_technician_id': searchRegex },
+                    { wp_device_id: searchRegex },
+                    { customOrderId: searchRegex }
+                ]
+            };
+        };
+
+        const statusFilter = buildStatusFilter(status);
+        const searchFilter = buildSearchFilter(search);
+
+        const filterStage = {};
+        if (statusFilter) Object.assign(filterStage, statusFilter);
+        if (searchFilter) Object.assign(filterStage, searchFilter);
+
+        const countPipeline = [
             { $match: matchStage },
             {
                 $lookup: {
@@ -3429,13 +3483,21 @@ const FetchSelectInstallationTask = async (req, res) => {
                     }
                 }
             },
-            { $count: "total" }
+            {
+                $match: { service_records: { $ne: null } }
+            }
         ];
 
-        const countResult = await ordersCollection.aggregate(totalCountPipeline).toArray();
+        if (Object.keys(filterStage).length > 0) {
+            countPipeline.push({ $match: filterStage });
+        }
+
+        countPipeline.push({ $count: "total" });
+
+        const countResult = await ordersCollection.aggregate(countPipeline).toArray();
         const total = countResult.length > 0 ? countResult[0].total : 0;
 
-        const installations = await ordersCollection.aggregate([
+        const dataPipeline = [
             { $match: matchStage },
             {
                 $lookup: {
@@ -3467,6 +3529,16 @@ const FetchSelectInstallationTask = async (req, res) => {
                     }
                 }
             },
+            {
+                $match: { service_records: { $ne: null } }
+            }
+        ];
+
+        if (Object.keys(filterStage).length > 0) {
+            dataPipeline.push({ $match: filterStage });
+        }
+
+        dataPipeline.push(
             {
                 $lookup: {
                     from: "users",
@@ -3487,14 +3559,31 @@ const FetchSelectInstallationTask = async (req, res) => {
                 }
             },
             {
-                $project: { user: 0 }
+                $lookup: {
+                    from: "users",
+                    localField: "service_records.assigned_technician_id",
+                    foreignField: "technician_id",
+                    as: "assignedTechnician"
+                }
+            },
+            {
+                $addFields: {
+                    assignedTechnician: {
+                        $arrayElemAt: ["$assignedTechnician", 0]
+                    }
+                }
+            },
+            {
+                $project: { user: 0, technicianData: 0 }
             },
             {
                 $sort: { createdAt: -1 }
             },
             { $skip: skip },
             { $limit: limit }
-        ]).toArray();
+        );
+
+        const installations = await ordersCollection.aggregate(dataPipeline).toArray();
 
         return res.status(200).json(formatPaginatedResponse(installations, total, page, limit));
 
@@ -3515,6 +3604,7 @@ const FetchSelectServiceTask = async (req, res) => {
         const db = await database.connectToDatabase();
         const collection = db.collection("service_records");
 
+        // COUNT PIPELINE
         const countPipeline = [
             { $match: { task_type: 2 } },
             {
@@ -3526,26 +3616,78 @@ const FetchSelectServiceTask = async (req, res) => {
                 }
             },
             { $addFields: { order: { $arrayElemAt: ["$order", 0] } } },
-            { $match: { "order.paymentStatus": "Completed" } },
+            {
+                $match: {
+                    $or: [
+                        { "order.paymentStatus": "Completed" },
+                        { order: null }
+                    ]
+                }
+            },
             { $count: "total" }
         ];
 
         const countResult = await collection.aggregate(countPipeline).toArray();
         const total = countResult.length > 0 ? countResult[0].total : 0;
 
+        // MAIN FETCH PIPELINE
         const allServices = await collection.aggregate([
             { $match: { task_type: 2 } },
+            { $addFields: {   wp_device_id: { $ifNull: ["$device_id", "$wp_device_id"] }} },
             {
                 $lookup: {
                     from: "orders",
-                    localField: "device_id",
+                    localField: "wp_device_id",
                     foreignField: "wp_device_id",
                     as: "order"
                 }
             },
             { $addFields: { order: { $arrayElemAt: ["$order", 0] } } },
-            { $match: { "order.paymentStatus": "Completed" } },
+
+            // Updated match condition
+            {
+                $match: {
+                    $or: [
+                        { "order.paymentStatus": "Completed" },
+                        { order: null }
+                    ]
+                }
+            },
+
+            {
+                $lookup: {
+                    from: "users",
+                    let: { technicianId: "$assigned_technician_id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$technician_id", "$$technicianId"] },
+                                        { $eq: ["$role_id", 2] }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    as: "assignedTechnician"
+                }
+            },
+
+            {
+                $addFields: {
+                    assignedTechnician: {
+                        $cond: {
+                            if: { $gt: [{ $size: "$assignedTechnician" }, 0] },
+                            then: { $arrayElemAt: ["$assignedTechnician", 0] },
+                            else: null
+                        }
+                    }
+                }
+            },
+
             { $addFields: { orderDelivery: "$order.deliveryAddress" } },
+
             {
                 $addFields: {
                     addressString: {
@@ -3557,6 +3699,7 @@ const FetchSelectServiceTask = async (req, res) => {
                     }
                 }
             },
+
             {
                 $addFields: {
                     normalizedAddress: {
@@ -3573,6 +3716,7 @@ const FetchSelectServiceTask = async (req, res) => {
                     }
                 }
             },
+
             {
                 $addFields: {
                     address: { $ifNull: ["$normalizedAddress", "$address"] },
@@ -3620,7 +3764,7 @@ const FetchSelectServiceTask = async (req, res) => {
                     }
                 }
             },
-            { $addFields: { wp_device_id: "$device_id" } },
+
             {
                 $project: {
                     device_id: 0,
@@ -3629,24 +3773,26 @@ const FetchSelectServiceTask = async (req, res) => {
                     normalizedAddress: 0
                 }
             },
-            {
-                $sort: { createdAt: -1 }
-            },
+
+            { $sort: { created_date: -1 } },
             { $skip: skip },
             { $limit: limit }
         ]).toArray();
 
-        return res.status(200).json(formatPaginatedResponse(allServices, total, page, limit));
+        return res.status(200).json(
+            formatPaginatedResponse(allServices, total, page, limit)
+        );
 
     } catch (error) {
         console.error("Error in FetchSelectServiceTask:", error);
         logger?.error?.(error);
         return res.status(500).json({
-            status: 'Failed',
-            message: 'Internal Server Error'
+            status: "Failed",
+            message: "Internal Server Error"
         });
     }
 };
+
 
 // Send OTP email
 async function sendEmailService(to, subject, text, html) {
@@ -4419,6 +4565,9 @@ const GetInstallationsByDistrict = async (req, res) => {
             ]
           }
         }
+      },
+      {
+        $match: { service_records: { $ne: null } }
       }
     ];
 
@@ -4462,6 +4611,9 @@ const GetInstallationsByDistrict = async (req, res) => {
             ]
           }
         }
+      },
+      {
+        $match: { service_records: { $ne: null } }
       }
     ];
 
@@ -4490,7 +4642,40 @@ const GetInstallationsByDistrict = async (req, res) => {
         }
       },
       {
-        $project: { user: 0 }
+        $lookup: {
+          from: "users",
+          let: { techId: { $arrayElemAt: ["$service_records.assigned_technician_id", 0] } },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$employee_id", "$$techId"] }
+              }
+            }
+          ],
+          as: "technicianData"
+        }
+      },
+      {
+        $addFields: {
+          assignedTechnician: {
+            $cond: [
+              { $gt: [{ $size: "$technicianData" }, 0] },
+              {
+                technician_id: { $arrayElemAt: ["$technicianData.employee_id", 0] },
+                technician_name: { $arrayElemAt: ["$technicianData.name", 0] },
+                technician_email: { $arrayElemAt: ["$technicianData.email", 0] },
+                technician_phone: { $arrayElemAt: ["$technicianData.phone", 0] },
+                name: { $arrayElemAt: ["$technicianData.name", 0] },
+                email: { $arrayElemAt: ["$technicianData.email", 0] },
+                phone: { $arrayElemAt: ["$technicianData.phone", 0] }
+              },
+              null
+            ]
+          }
+        }
+      },
+      {
+        $project: { user: 0, technicianData: 0 }
       },
       {
         $sort: { createdAt: -1 }
@@ -7393,6 +7578,835 @@ const GetUserCountByDistrict = async (req, res) => {
   }
 };
 
+const GetOrdersCounts = async (req, res) => {
+  try {
+    const { district: districtParam } = req.query;
+    const userRole = req.user?.role_id;
+    const userDistrict = req.user?.district;
+    const db = await database.connectToDatabase();
+    const collection = db.collection('orders');
+
+    let matchStage = {};
+    const isSeller = Number(userRole) === 4;
+    const filterDistrict = isSeller ? userDistrict : districtParam;
+
+    if (filterDistrict) {
+      matchStage = { 'deliveryAddress.district': { $regex: new RegExp(filterDistrict, 'i') } };
+    }
+
+    const counts = await collection.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          pending: {
+            $sum: { $cond: [{ $and: [{ $ne: ['$deliveryCompletionStatus', true] }, { $ne: ['$orderStatus', 'Delivered'] }, { $ne: ['$orderStatus', 'Confirmed'] }] }, 1, 0] }
+          },
+          confirmed: {
+            $sum: { $cond: [{ $eq: ['$orderStatus', 'Confirmed'] }, 1, 0] }
+          },
+          completed: {
+            $sum: { $cond: [{ $or: [{ $eq: ['$deliveryCompletionStatus', true] }, { $eq: ['$orderStatus', 'Delivered'] }] }, 1, 0] }
+          },
+          paymentCompleted: {
+            $sum: { $cond: [{ $eq: ['$paymentStatus', 'Completed'] }, 1, 0] }
+          },
+          pendingPayment: {
+            $sum: { $cond: [{ $eq: ['$paymentStatus', 'Pending'] }, 1, 0] }
+          },
+          cod: {
+            $sum: { $cond: [{ $eq: ['$paymentType', 'COD'] }, 1, 0] }
+          },
+          online: {
+            $sum: { $cond: [{ $eq: ['$paymentType', 'Online'] }, 1, 0] }
+          }
+        }
+      }
+    ]).toArray();
+
+    const data = counts.length > 0 ? counts[0] : {
+      totalOrders: 0,
+      pending: 0,
+      confirmed: 0,
+      completed: 0,
+      paymentCompleted: 0,
+      pendingPayment: 0,
+      cod: 0,
+      online: 0
+    };
+
+    return res.status(200).json({
+      status: 'Success',
+      message: 'Order counts fetched successfully',
+      data
+    });
+
+  } catch (error) {
+    console.error('Error in GetOrdersCounts:', error);
+    logger?.error?.(error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error'
+    });
+  }
+};
+
+const GetInstallationsCounts = async (req, res) => {
+  try {
+    const { district: districtParam } = req.query;
+    const userRole = req.user?.role_id;
+    const userDistrict = req.user?.district;
+    const db = await database.connectToDatabase();
+    const collection = db.collection('service_records');
+
+    let matchStage = { task_type: 1 };
+    const isSeller = Number(userRole) === 4;
+    const filterDistrict = isSeller ? userDistrict : districtParam;
+    
+    if (filterDistrict) {
+      const ordersCollection = db.collection('orders');
+      const deviceIds = await ordersCollection.find({
+        'deliveryAddress.district': { $regex: new RegExp(filterDistrict, 'i') }
+      }).project({ wp_device_id: 1 }).toArray();
+
+      const deviceIdList = deviceIds.map(d => d.wp_device_id);
+      matchStage.wp_device_id = { $in: deviceIdList };
+    }
+
+    const counts = await collection.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: null,
+          totalInstallations: { $sum: 1 },
+          pending: {
+            $sum: { $cond: [{ $eq: ['$task_status', 'Pending'] }, 1, 0] }
+          },
+          assigned: {
+            $sum: { $cond: [{ $ne: ['$assigned_technician_id', null] }, 1, 0] }
+          },
+          completed: {
+            $sum: { $cond: [{ $eq: ['$task_status', 'Completed'] }, 1, 0] }
+          },
+          onHold: {
+            $sum: { $cond: [{ $in: ['$task_status', ['In Progress', 'In_Progress', 'in_progress']] }, 1, 0] }
+          }
+        }
+      }
+    ]).toArray();
+
+    const data = counts.length > 0 ? counts[0] : {
+      totalInstallations: 0,
+      pending: 0,
+      assigned: 0,
+      completed: 0,
+      onHold: 0
+    };
+
+    return res.status(200).json({
+      status: 'Success',
+      message: 'Installation counts fetched successfully',
+      data
+    });
+
+  } catch (error) {
+    console.error('Error in GetInstallationsCounts:', error);
+    logger?.error?.(error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error'
+    });
+  }
+};
+
+const GetServicesCounts = async (req, res) => {
+  try {
+    const { district: districtParam } = req.query;
+    const userRole = req.user?.role_id;
+    const userDistrict = req.user?.district;
+    const db = await database.connectToDatabase();
+    const collection = db.collection('service_records');
+
+    let matchStage = { task_type: 2 };
+    const isSeller = Number(userRole) === 4;
+    const filterDistrict = isSeller ? userDistrict : districtParam;
+    
+    if (filterDistrict) {
+      const ordersCollection = db.collection('orders');
+      const deviceIds = await ordersCollection.find({
+        'deliveryAddress.district': { $regex: new RegExp(filterDistrict, 'i') }
+      }).project({ wp_device_id: 1 }).toArray();
+
+      const deviceIdList = deviceIds.map(d => d.wp_device_id);
+      matchStage.wp_device_id = { $in: deviceIdList };
+    }
+
+    const counts = await collection.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: null,
+          totalServices: { $sum: 1 },
+          pending: {
+            $sum: { $cond: [{ $eq: ['$task_status', 'Pending'] }, 1, 0] }
+          },
+          assigned: {
+            $sum: { $cond: [{ $ne: ['$assigned_technician_id', null] }, 1, 0] }
+          },
+          completed: {
+            $sum: { $cond: [{ $eq: ['$task_status', 'Completed'] }, 1, 0] }
+          },
+          onHold: {
+            $sum: { $cond: [{ $in: ['$task_status', ['In Progress', 'In_Progress', 'in_progress']] }, 1, 0] }
+          }
+        }
+      }
+    ]).toArray();
+
+    const data = counts.length > 0 ? counts[0] : {
+      totalServices: 0,
+      pending: 0,
+      assigned: 0,
+      completed: 0,
+      onHold: 0
+    };
+
+    return res.status(200).json({
+      status: 'Success',
+      message: 'Service counts fetched successfully',
+      data
+    });
+
+  } catch (error) {
+    console.error('Error in GetServicesCounts:', error);
+    logger?.error?.(error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error'
+    });
+  }
+};
+
+const GetManualRequestsCounts = async (req, res) => {
+  try {
+    const { district: districtParam } = req.query;
+    const userRole = req.user?.role_id;
+    const userDistrict = req.user?.district;
+    const db = await database.connectToDatabase();
+    const collection = db.collection('manual_requests');
+
+    let matchStage = {};
+    const isSeller = Number(userRole) === 4;
+    const filterDistrict = isSeller ? userDistrict : districtParam;
+
+    if (filterDistrict) {
+      matchStage = { 'address.district': { $regex: new RegExp(filterDistrict, 'i') } };
+    }
+
+    const counts = await collection.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: null,
+          totalRequests: { $sum: 1 },
+          pending: {
+            $sum: { $cond: [{ $eq: ['$status', 'Pending'] }, 1, 0] }
+          },
+          assigned: {
+            $sum: { $cond: [{ $eq: ['$status', 'Assigned'] }, 1, 0] }
+          },
+          completed: {
+            $sum: { $cond: [{ $eq: ['$status', 'Completed'] }, 1, 0] }
+          },
+          rejected: {
+            $sum: { $cond: [{ $eq: ['$status', 'Rejected'] }, 1, 0] }
+          }
+        }
+      }
+    ]).toArray();
+
+    const data = counts.length > 0 ? counts[0] : {
+      totalRequests: 0,
+      pending: 0,
+      assigned: 0,
+      completed: 0,
+      rejected: 0
+    };
+
+    return res.status(200).json({
+      status: 'Success',
+      message: 'Manual request counts fetched successfully',
+      data
+    });
+
+  } catch (error) {
+    console.error('Error in GetManualRequestsCounts:', error);
+    logger?.error?.(error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error'
+    });
+  }
+};
+
+const GetLeaveRequestsCounts = async (req, res) => {
+  try {
+    const { district: districtParam, technician_id } = req.query;
+    const userRole = req.user?.role_id;
+    const userDistrict = req.user?.district;
+    const db = await database.connectToDatabase();
+    const collection = db.collection('leave_requests');
+
+    let matchStage = {};
+    const isSeller = Number(userRole) === 4;
+    const filterDistrict = isSeller ? userDistrict : districtParam;
+    
+    if (technician_id) {
+      matchStage.technician_id = technician_id;
+    }
+    
+    if (filterDistrict) {
+      const usersCollection = db.collection('users');
+      const technicians = await usersCollection.find({
+        role_id: 2,
+        district: { $regex: new RegExp(filterDistrict, 'i') }
+      }).project({ technician_id: 1 }).toArray();
+
+      const technicianIds = technicians.map(t => t.technician_id);
+      matchStage.technician_id = { $in: technicianIds };
+    }
+
+    const counts = await collection.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: null,
+          totalLeaves: { $sum: 1 },
+          pending: {
+            $sum: { $cond: [{ $eq: ['$status', 'Pending'] }, 1, 0] }
+          },
+          approved: {
+            $sum: { $cond: [{ $eq: ['$status', 'Approved'] }, 1, 0] }
+          },
+          rejected: {
+            $sum: { $cond: [{ $eq: ['$status', 'Rejected'] }, 1, 0] }
+          }
+        }
+      }
+    ]).toArray();
+
+    const data = counts.length > 0 ? counts[0] : {
+      totalLeaves: 0,
+      pending: 0,
+      approved: 0,
+      rejected: 0
+    };
+
+    return res.status(200).json({
+      status: 'Success',
+      message: 'Leave request counts fetched successfully',
+      data
+    });
+
+  } catch (error) {
+    console.error('Error in GetLeaveRequestsCounts:', error);
+    logger?.error?.(error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error'
+    });
+  }
+};
+
+const GetOrdersCountsByDistrict = async (req, res) => {
+  try {
+    const db = await database.connectToDatabase();
+    const collection = db.collection('orders');
+
+    const counts = await collection.aggregate([
+      {
+        $group: {
+          _id: { $toLower: '$deliveryAddress.district' },
+          totalOrders: { $sum: 1 },
+          pending: {
+            $sum: { $cond: [{ $and: [{ $ne: ['$deliveryCompletionStatus', true] }, { $ne: ['$orderStatus', 'Delivered'] }, { $ne: ['$orderStatus', 'Confirmed'] }] }, 1, 0] }
+          },
+          confirmed: {
+            $sum: { $cond: [{ $eq: ['$orderStatus', 'Confirmed'] }, 1, 0] }
+          },
+          completed: {
+            $sum: { $cond: [{ $or: [{ $eq: ['$deliveryCompletionStatus', true] }, { $eq: ['$orderStatus', 'Delivered'] }] }, 1, 0] }
+          },
+          paymentCompleted: {
+            $sum: { $cond: [{ $eq: ['$paymentStatus', 'Completed'] }, 1, 0] }
+          },
+          pendingPayment: {
+            $sum: { $cond: [{ $eq: ['$paymentStatus', 'Pending'] }, 1, 0] }
+          },
+          cod: {
+            $sum: { $cond: [{ $eq: ['$paymentType', 'COD'] }, 1, 0] }
+          },
+          online: {
+            $sum: { $cond: [{ $eq: ['$paymentType', 'Online'] }, 1, 0] }
+          }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]).toArray();
+
+    return res.status(200).json({
+      status: 'Success',
+      message: 'Order counts by district fetched successfully',
+      data: counts
+    });
+
+  } catch (error) {
+    console.error('Error in GetOrdersCountsByDistrict:', error);
+    logger?.error?.(error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error'
+    });
+  }
+};
+
+const GetInstallationsCountsByDistrict = async (req, res) => {
+  try {
+    const db = await database.connectToDatabase();
+    const serviceCollection = db.collection('service_records');
+    const ordersCollection = db.collection('orders');
+
+    const districts = await ordersCollection.aggregate([
+      {
+        $group: {
+          _id: { $toLower: '$deliveryAddress.district' }
+        }
+      }
+    ]).toArray();
+
+    const data = [];
+    for (const districtDoc of districts) {
+      const district = districtDoc._id;
+      const deviceIds = await ordersCollection.find({
+        'deliveryAddress.district': { $regex: new RegExp(district, 'i') }
+      }).project({ wp_device_id: 1 }).toArray();
+
+      const deviceIdList = deviceIds.map(d => d.wp_device_id);
+
+      const counts = await serviceCollection.aggregate([
+        { $match: { task_type: 1, wp_device_id: { $in: deviceIdList } } },
+        {
+          $group: {
+            _id: null,
+            totalInstallations: { $sum: 1 },
+            pending: { $sum: { $cond: [{ $eq: ['$task_status', 'Pending'] }, 1, 0] } },
+            assigned: { $sum: { $cond: [{ $ne: ['$assigned_technician_id', null] }, 1, 0] } },
+            completed: { $sum: { $cond: [{ $eq: ['$task_status', 'Completed'] }, 1, 0] } },
+            onHold: { $sum: { $cond: [{ $in: ['$task_status', ['In Progress', 'In_Progress', 'in_progress']] }, 1, 0] } }
+          }
+        }
+      ]).toArray();
+
+      data.push({
+        district,
+        ...(counts.length > 0 ? counts[0] : {
+          _id: null,
+          totalInstallations: 0,
+          pending: 0,
+          assigned: 0,
+          completed: 0,
+          onHold: 0
+        })
+      });
+    }
+
+    return res.status(200).json({
+      status: 'Success',
+      message: 'Installation counts by district fetched successfully',
+      data
+    });
+
+  } catch (error) {
+    console.error('Error in GetInstallationsCountsByDistrict:', error);
+    logger?.error?.(error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error'
+    });
+  }
+};
+
+const GetServicesCountsByDistrict = async (req, res) => {
+  try {
+    const db = await database.connectToDatabase();
+    const serviceCollection = db.collection('service_records');
+    const ordersCollection = db.collection('orders');
+
+    const districts = await ordersCollection.aggregate([
+      {
+        $group: {
+          _id: { $toLower: '$deliveryAddress.district' }
+        }
+      }
+    ]).toArray();
+
+    const data = [];
+    for (const districtDoc of districts) {
+      const district = districtDoc._id;
+      const deviceIds = await ordersCollection.find({
+        'deliveryAddress.district': { $regex: new RegExp(district, 'i') }
+      }).project({ wp_device_id: 1 }).toArray();
+
+      const deviceIdList = deviceIds.map(d => d.wp_device_id);
+
+      const counts = await serviceCollection.aggregate([
+        { $match: { task_type: 2, wp_device_id: { $in: deviceIdList } } },
+        {
+          $group: {
+            _id: null,
+            totalServices: { $sum: 1 },
+            pending: { $sum: { $cond: [{ $eq: ['$task_status', 'Pending'] }, 1, 0] } },
+            assigned: { $sum: { $cond: [{ $ne: ['$assigned_technician_id', null] }, 1, 0] } },
+            completed: { $sum: { $cond: [{ $eq: ['$task_status', 'Completed'] }, 1, 0] } },
+            onHold: { $sum: { $cond: [{ $in: ['$task_status', ['In Progress', 'In_Progress', 'in_progress']] }, 1, 0] } }
+          }
+        }
+      ]).toArray();
+
+      data.push({
+        district,
+        ...(counts.length > 0 ? counts[0] : {
+          _id: null,
+          totalServices: 0,
+          pending: 0,
+          assigned: 0,
+          completed: 0,
+          onHold: 0
+        })
+      });
+    }
+
+    return res.status(200).json({
+      status: 'Success',
+      message: 'Service counts by district fetched successfully',
+      data
+    });
+
+  } catch (error) {
+    console.error('Error in GetServicesCountsByDistrict:', error);
+    logger?.error?.(error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error'
+    });
+  }
+};
+
+const GetManualRequestsCountsByDistrict = async (req, res) => {
+  try {
+    const db = await database.connectToDatabase();
+    const collection = db.collection('manual_requests');
+
+    const counts = await collection.aggregate([
+      {
+        $group: {
+          _id: { $toLower: '$address.district' },
+          totalRequests: { $sum: 1 },
+          pending: { $sum: { $cond: [{ $eq: ['$status', 'Pending'] }, 1, 0] } },
+          assigned: { $sum: { $cond: [{ $eq: ['$status', 'Assigned'] }, 1, 0] } },
+          completed: { $sum: { $cond: [{ $eq: ['$status', 'Completed'] }, 1, 0] } },
+          rejected: { $sum: { $cond: [{ $eq: ['$status', 'Rejected'] }, 1, 0] } }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]).toArray();
+
+    return res.status(200).json({
+      status: 'Success',
+      message: 'Manual request counts by district fetched successfully',
+      data: counts.map(d => ({ district: d._id, ...d }))
+    });
+
+  } catch (error) {
+    console.error('Error in GetManualRequestsCountsByDistrict:', error);
+    logger?.error?.(error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error'
+    });
+  }
+};
+
+const GetLeaveRequestsCountsByDistrict = async (req, res) => {
+  try {
+    const db = await database.connectToDatabase();
+    const leaveCollection = db.collection('leave_requests');
+    const usersCollection = db.collection('users');
+
+    const techniciansGrouped = await usersCollection.aggregate([
+      { $match: { role_id: 2 } },
+      {
+        $group: {
+          _id: { $toLower: '$district' },
+          technician_ids: { $push: '$technician_id' }
+        }
+      }
+    ]).toArray();
+
+    const data = [];
+    for (const techGroup of techniciansGrouped) {
+      const counts = await leaveCollection.aggregate([
+        { $match: { technician_id: { $in: techGroup.technician_ids } } },
+        {
+          $group: {
+            _id: null,
+            totalLeaves: { $sum: 1 },
+            pending: { $sum: { $cond: [{ $eq: ['$status', 'Pending'] }, 1, 0] } },
+            approved: { $sum: { $cond: [{ $eq: ['$status', 'Approved'] }, 1, 0] } },
+            rejected: { $sum: { $cond: [{ $eq: ['$status', 'Rejected'] }, 1, 0] } }
+          }
+        }
+      ]).toArray();
+
+      data.push({
+        district: techGroup._id,
+        ...(counts.length > 0 ? counts[0] : {
+          _id: null,
+          totalLeaves: 0,
+          pending: 0,
+          approved: 0,
+          rejected: 0
+        })
+      });
+    }
+
+    return res.status(200).json({
+      status: 'Success',
+      message: 'Leave request counts by district fetched successfully',
+      data
+    });
+
+  } catch (error) {
+    console.error('Error in GetLeaveRequestsCountsByDistrict:', error);
+    logger?.error?.(error);
+    return res.status(500).json({
+      status: 'Failed',
+      message: 'Internal Server Error'
+    });
+  }
+};
+
+// GetSearchInstallationsCount - Multi-field search for installations
+const GetSearchInstallationsCount = async (req, res) => {
+  try {
+    const db = await database.connectToDatabase();
+    const collection = db.collection('service_records');
+    const { search } = req.query;
+    const userRole = req.user?.role_id;
+    const userDistrict = req.user?.district;
+
+    let matchStage = { task_type: 1 };
+    
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      matchStage.$or = [
+        { task_id: searchRegex },
+        { wp_device_id: searchRegex },
+        { model: searchRegex },
+        { customer_name: searchRegex },
+        { customer_email: searchRegex },
+        { assigned_technician_name: searchRegex },
+        { assigned_technician_id: searchRegex },
+        { device_name: searchRegex }
+      ];
+    }
+
+    if (Number(userRole) === 4) {
+      const filterDistrict = userDistrict;
+      if (filterDistrict) {
+        const ordersCollection = db.collection('orders');
+        const deviceIds = await ordersCollection.find({
+          'deliveryAddress.district': { $regex: new RegExp(filterDistrict, 'i') }
+        }).project({ wp_device_id: 1 }).toArray();
+        const deviceIdList = deviceIds.map(d => d.wp_device_id);
+        matchStage.wp_device_id = { $in: deviceIdList };
+      }
+    }
+
+    const total = await collection.countDocuments(matchStage);
+
+    return res.status(200).json({
+      status: 'Success',
+      totalRecords: total
+    });
+  } catch (error) {
+    console.error('Error in GetSearchInstallationsCount:', error);
+    logger?.error?.(error);
+    return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+  }
+};
+
+// SearchInstallations - Multi-field search for installations with pagination
+const SearchInstallations = async (req, res) => {
+  try {
+    const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
+    const db = await database.connectToDatabase();
+    const collection = db.collection('service_records');
+    const { page, limit, skip } = getPaginationParams(req, 10);
+    const { search } = req.query;
+    const userRole = req.user?.role_id;
+    const userDistrict = req.user?.district;
+
+    let matchStage = { task_type: 1 };
+    
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      matchStage.$or = [
+        { task_id: searchRegex },
+        { wp_device_id: searchRegex },
+        { model: searchRegex },
+        { customer_name: searchRegex },
+        { customer_email: searchRegex },
+        { assigned_technician_name: searchRegex },
+        { assigned_technician_id: searchRegex },
+        { device_name: searchRegex }
+      ];
+    }
+
+    if (Number(userRole) === 4) {
+      const filterDistrict = userDistrict;
+      if (filterDistrict) {
+        const ordersCollection = db.collection('orders');
+        const deviceIds = await ordersCollection.find({
+          'deliveryAddress.district': { $regex: new RegExp(filterDistrict, 'i') }
+        }).project({ wp_device_id: 1 }).toArray();
+        const deviceIdList = deviceIds.map(d => d.wp_device_id);
+        matchStage.wp_device_id = { $in: deviceIdList };
+      }
+    }
+
+    const installations = await collection
+      .find(matchStage)
+      .sort({ created_date: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+    const total = await collection.countDocuments(matchStage);
+
+    return res.status(200).json(formatPaginatedResponse(installations, total, page, limit));
+  } catch (error) {
+    console.error('Error in SearchInstallations:', error);
+    logger?.error?.(error);
+    return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+  }
+};
+
+// GetSearchServicesCount - Multi-field search for services
+const GetSearchServicesCount = async (req, res) => {
+  try {
+    const db = await database.connectToDatabase();
+    const collection = db.collection('service_records');
+    const { search } = req.query;
+    const userRole = req.user?.role_id;
+    const userDistrict = req.user?.district;
+
+    let matchStage = { task_type: 2 };
+    
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      matchStage.$or = [
+        { task_id: searchRegex },
+        { wp_device_id: searchRegex },
+        { model: searchRegex },
+        { customer_name: searchRegex },
+        { customer_email: searchRegex },
+        { assigned_technician_name: searchRegex },
+        { assigned_technician_id: searchRegex },
+        { device_name: searchRegex }
+      ];
+    }
+
+    if (Number(userRole) === 4) {
+      const filterDistrict = userDistrict;
+      if (filterDistrict) {
+        const ordersCollection = db.collection('orders');
+        const deviceIds = await ordersCollection.find({
+          'deliveryAddress.district': { $regex: new RegExp(filterDistrict, 'i') }
+        }).project({ wp_device_id: 1 }).toArray();
+        const deviceIdList = deviceIds.map(d => d.wp_device_id);
+        matchStage.wp_device_id = { $in: deviceIdList };
+      }
+    }
+
+    const total = await collection.countDocuments(matchStage);
+
+    return res.status(200).json({
+      status: 'Success',
+      totalRecords: total
+    });
+  } catch (error) {
+    console.error('Error in GetSearchServicesCount:', error);
+    logger?.error?.(error);
+    return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+  }
+};
+
+// SearchServices - Multi-field search for services with pagination
+const SearchServices = async (req, res) => {
+  try {
+    const { getPaginationParams, formatPaginatedResponse } = require('../utils/paginationHelper');
+    const db = await database.connectToDatabase();
+    const collection = db.collection('service_records');
+    const { page, limit, skip } = getPaginationParams(req, 10);
+    const { search } = req.query;
+    const userRole = req.user?.role_id;
+    const userDistrict = req.user?.district;
+
+    let matchStage = { task_type: 2 };
+    
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      matchStage.$or = [
+        { task_id: searchRegex },
+        { wp_device_id: searchRegex },
+        { model: searchRegex },
+        { customer_name: searchRegex },
+        { customer_email: searchRegex },
+        { assigned_technician_name: searchRegex },
+        { assigned_technician_id: searchRegex },
+        { device_name: searchRegex }
+      ];
+    }
+
+    if (Number(userRole) === 4) {
+      const filterDistrict = userDistrict;
+      if (filterDistrict) {
+        const ordersCollection = db.collection('orders');
+        const deviceIds = await ordersCollection.find({
+          'deliveryAddress.district': { $regex: new RegExp(filterDistrict, 'i') }
+        }).project({ wp_device_id: 1 }).toArray();
+        const deviceIdList = deviceIds.map(d => d.wp_device_id);
+        matchStage.wp_device_id = { $in: deviceIdList };
+      }
+    }
+
+    const services = await collection
+      .find(matchStage)
+      .sort({ created_date: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+    const total = await collection.countDocuments(matchStage);
+
+    return res.status(200).json(formatPaginatedResponse(services, total, page, limit));
+  } catch (error) {
+    console.error('Error in SearchServices:', error);
+    logger?.error?.(error);
+    return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+  }
+};
+
 // Export controllers
 module.exports = {
     getModules, authenticate, FetchAdminProfile, UpdateAdminProfile, AddProductModels, FetchProductModels, UpdateProductModels, AddDeviceDetails, FetchDeviceDetails,
@@ -7403,8 +8417,11 @@ module.exports = {
     AssignSeller, ReAssignSeller, DeactivateSellerAssignment, FetchEndUserDevices, FetchOrdersByUserId, FetchTechnicianTasksByUserId, GetAnalytics,
     GetAnalyticsByDistrict,GetDistrictsWithSellers,ConfirmCodPayment, UnAssignTask, getAssignmentHistory,
     GetSearchProductsCount, SearchProducts, GetSearchDevicesCount, SearchDevices, GetSearchOrdersCount, SearchOrders,
+    GetSearchInstallationsCount, SearchInstallations, GetSearchServicesCount, SearchServices,
     GetSearchRolesCount, SearchRoles, GetSearchCallRequestsCount, SearchCallRequests, GetSearchContactCount, SearchContact,
-    GetUserCountsByRole, GetUserCountByType, GetUserCountByDistrict
+    GetUserCountsByRole, GetUserCountByType, GetUserCountByDistrict,
+    GetOrdersCounts, GetInstallationsCounts, GetServicesCounts, GetManualRequestsCounts, GetLeaveRequestsCounts,
+    GetOrdersCountsByDistrict, GetInstallationsCountsByDistrict, GetServicesCountsByDistrict, GetManualRequestsCountsByDistrict, GetLeaveRequestsCountsByDistrict
     // UpdateOrdersStatus,
 
 };

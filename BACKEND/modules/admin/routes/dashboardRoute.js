@@ -94,6 +94,14 @@ router.post('/FetchOrders', verifyToken, Controller.FetchOrders);
 router.get('/GetSearchOrdersCount', verifyToken, Controller.GetSearchOrdersCount);
 // Route to SearchOrders
 router.get('/SearchOrders', verifyToken, Controller.SearchOrders);
+// Route to GetSearchInstallationsCount
+router.get('/GetSearchInstallationsCount', verifyToken, Controller.GetSearchInstallationsCount);
+// Route to SearchInstallations
+router.get('/SearchInstallations', verifyToken, Controller.SearchInstallations);
+// Route to GetSearchServicesCount
+router.get('/GetSearchServicesCount', verifyToken, Controller.GetSearchServicesCount);
+// Route to SearchServices
+router.get('/SearchServices', verifyToken, Controller.SearchServices);
 // Route to FetchOrdersByDistrict
 router.post('/FetchOrdersByDistrict', verifyToken, Controller.FetchOrdersByDistrict);
 // Route to FetchOrdersByUserId
@@ -210,6 +218,46 @@ router.get('/users/counts/by-role', verifyToken, Controller.GetUserCountsByRole)
 router.get('/users/counts/by-type', verifyToken, Controller.GetUserCountByType);
 // Get user counts grouped by district
 router.get('/users/counts/by-district', verifyToken, Controller.GetUserCountByDistrict);
+
+// Orders Count API
+// Get order counts by status, payment status, payment type
+router.get('/orders/counts', verifyToken, Controller.GetOrdersCounts);
+
+// Installations Count API
+// Get installation counts by status and district
+router.get('/installations/counts', verifyToken, Controller.GetInstallationsCounts);
+
+// Services Count API
+// Get service counts by status and district
+router.get('/services/counts', verifyToken, Controller.GetServicesCounts);
+
+// Manual Requests Count API
+// Get manual request counts by status and district
+router.get('/requests/counts', verifyToken, Controller.GetManualRequestsCounts);
+
+// Leave Requests Count API
+// Get leave request counts by status, district, and technician_id
+router.get('/leave-requests/counts', verifyToken, Controller.GetLeaveRequestsCounts);
+
+// Orders Count By District API
+// Get order counts grouped by district
+router.get('/orders/counts/by-district', verifyToken, Controller.GetOrdersCountsByDistrict);
+
+// Installations Count By District API
+// Get installation counts grouped by district
+router.get('/installations/counts/by-district', verifyToken, Controller.GetInstallationsCountsByDistrict);
+
+// Services Count By District API
+// Get service counts grouped by district
+router.get('/services/counts/by-district', verifyToken, Controller.GetServicesCountsByDistrict);
+
+// Manual Requests Count By District API
+// Get manual request counts grouped by district
+router.get('/requests/counts/by-district', verifyToken, Controller.GetManualRequestsCountsByDistrict);
+
+// Leave Requests Count By District API
+// Get leave request counts grouped by district
+router.get('/leave-requests/counts/by-district', verifyToken, Controller.GetLeaveRequestsCountsByDistrict);
 
 // 11. Leave Requests Management
 router.use('/', leaveRequestsRoute);
