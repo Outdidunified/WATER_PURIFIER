@@ -5,7 +5,8 @@
     "scripts": {
         "start": "node app.js",
         "test": "jest",
-        "test:watch": "jest --watch"
+        "test:watch": "jest --watch",
+        "create-indexes": "node scripts/createIndexes.js"
     },
     "keywords": [],
     "author": "",

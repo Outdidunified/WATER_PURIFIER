@@ -109,8 +109,10 @@ const ViewProducts = ({ userInfo, handleLogout }) => {
                               product[imgItem.key].startsWith('http') || product[imgItem.key].startsWith('https')
                                 ? product[imgItem.key]
                                 : product[imgItem.key].startsWith('/')
-                                  ? `${import.meta.env.VITE_API_URL}${product[imgItem.key]}`
-                                  : `${import.meta.env.VITE_API_URL}/upload/img/${product[imgItem.key]}`
+                                  // ? `${import.meta.env.VITE_API_URL}${product[imgItem.key]}`
+                                  // : `${import.meta.env.VITE_API_URL}/upload/img/${product[imgItem.key]}`
+                                  ? `${product[imgItem.key]}`
+                                  : `/upload/img/${product[imgItem.key]}`
                             }
                             alt={imgItem.key}
                             style={{

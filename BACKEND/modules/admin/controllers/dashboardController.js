@@ -2770,7 +2770,8 @@ const FetchInstallationService = async (req, res) => {
                             }
                         },
                         { $sort: { task_id: -1 } },
-                        { $limit: 1 }
+                        { $limit: 1 },
+                        { $project: { task_id: 1, assigned_technician_id: 1, task_status: 1, wp_device_id: 1 } }
                     ],
                     as: "service_records"
                 }
@@ -2785,8 +2786,11 @@ const FetchInstallationService = async (req, res) => {
             {
                 $lookup: {
                     from: "users",
-                    localField: "user_id",
-                    foreignField: "user_id",
+                    let: { userId: "$user_id" },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ["$user_id", "$$userId"] } } },
+                        { $project: { email: 1 } }
+                    ],
                     as: "user"
                 }
             },
@@ -2800,8 +2804,11 @@ const FetchInstallationService = async (req, res) => {
             {
                 $lookup: {
                     from: "users",
-                    localField: "service_record.assigned_technician_id",
-                    foreignField: "technician_id",
+                    let: { techId: "$service_record.assigned_technician_id" },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ["$technician_id", "$$techId"] } } },
+                        { $project: { name: 1, email: 1, phone: 1, technician_id: 1, user_id: 1 } }
+                    ],
                     as: "assignedTechnician"
                 }
             },
@@ -4882,207 +4889,209 @@ const FetchInstalledDevicesForRequests = async (req, res) => {
   try {
     const { district } = req.body || {};
     const db = await database.connectToDatabase();
-    const serviceRecordsCollection = db.collection("service_records");
-    const ordersCollection = db.collection("orders");
-    const usersCollection = db.collection("users");
 
-    const installations = await serviceRecordsCollection.find({
-      task_type: 1,
-      task_status: { $regex: /^completed$/i }
-    }).toArray();
+    const serviceRecords = db.collection("service_records");
+    const ordersCol = db.collection("orders");
+    const usersCol = db.collection("users");
+    const deviceDetailsCol = db.collection("device_details");
+    const productModelsCol = db.collection("product_models");
+
+    const normalize = (v) => (v ? String(v).trim().toLowerCase() : "");
+
+    const installations = await serviceRecords
+      .find({ task_type: 1, task_status: { $regex: /^completed$/i } })
+      .project({ task_id: 1, wp_device_id: 1, device_id: 1, task_created_by_user_id: 1, deliveryAddress: 1, address: 1, product: 1, selectedDuration: 1 })
+      .toArray();
 
     if (!installations.length) {
-      return res.status(200).json({ status: 'Success', data: [] });
+      return res.status(200).json({ status: "Success", data: [] });
     }
 
-    const normalizeDeviceKey = (value) => {
-      if (value === null || value === undefined) {
-        return '';
-      }
-      const stringValue = String(value).trim();
-      return stringValue.toLowerCase();
-    };
-
     const deviceIds = installations
-      .map(item => item.wp_device_id || item.device_id)
+      .map((i) => i.wp_device_id || i.device_id)
       .filter(Boolean);
 
-    const manualTasks = deviceIds.length
-      ? await serviceRecordsCollection.find(
+    const [manualTasks, orders, deviceDetails] = await Promise.all([
+      serviceRecords
+        .find(
           {
             task_type: 3,
             $or: [
               { wp_device_id: { $in: deviceIds } },
-              { device_id: { $in: deviceIds } }
-            ]
+              { device_id: { $in: deviceIds } },
+            ],
           },
           { projection: { wp_device_id: 1, device_id: 1, task_status: 1 } }
-        ).toArray()
-      : [];
+        )
+        .toArray(),
 
-    const blockedDeviceIds = new Set();
-    manualTasks.forEach(task => {
-      const status = String(task?.task_status || '').trim().toLowerCase();
-      if (status !== 'completed') {
-        const id = task?.wp_device_id || task?.device_id;
-        const normalized = normalizeDeviceKey(id);
-        if (normalized) {
-          blockedDeviceIds.add(normalized);
-        }
+      ordersCol
+        .find({ wp_device_id: { $in: deviceIds } })
+        .project({ wp_device_id: 1, user_id: 1, customOrderId: 1, _id: 1, deliveryAddress: 1, model_id: 1, productModelId: 1, modelName: 1, modelType: 1, modeltype: 1, selectedDuration: 1 })
+        .toArray(),
+
+      deviceDetailsCol
+        .find({ wp_device_id: { $in: deviceIds } })
+        .project({ wp_device_id: 1, model_id: 1, model_name: 1, model_type: 1, plan_config: 1, mac_id: 1, enter_mac_id: 1, selectedDuration: 1, _id: 1 })
+        .toArray(),
+    ]);
+
+    const blockedDevices = new Set();
+    manualTasks.forEach((t) => {
+      if (normalize(t.task_status) !== "completed") {
+        blockedDevices.add(normalize(t.wp_device_id || t.device_id));
       }
     });
 
-    const orders = deviceIds.length
-      ? await ordersCollection.find({ wp_device_id: { $in: deviceIds } }).toArray()
-      : [];
+    const orderMap = new Map(orders.map((o) => [o.wp_device_id, o]));
+    const detailMap = new Map(deviceDetails.map((d) => [d.wp_device_id, d]));
 
-    const deviceDetailsCollection = db.collection("device_details");
-    const deviceDetails = deviceIds.length
-      ? await deviceDetailsCollection.find({ wp_device_id: { $in: deviceIds } }).toArray()
-      : [];
-
-    // Get product models
-    const modelIds = [...new Set(deviceDetails.map(device => device.model_id).filter(Boolean))];
-    const productModelsCollection = db.collection("product_models");
-    const productModels = await productModelsCollection.find({}).toArray();
-
-    const orderMap = new Map();
-    orders.forEach(order => {
-      if (order?.wp_device_id) {
-        orderMap.set(order.wp_device_id, order);
-      }
+    const modelIds = new Set();
+    deviceDetails.forEach((d) => d.model_id && modelIds.add(String(d.model_id)));
+    orders.forEach((o) => {
+      const mid = o.model_id || o.productModelId;
+      if (mid) modelIds.add(String(mid));
     });
 
-    const deviceDetailMap = new Map();
-    deviceDetails.forEach(detail => {
-      if (detail?.wp_device_id) {
-        deviceDetailMap.set(detail.wp_device_id, detail);
-      }
+    const userIds = new Set();
+    installations.forEach((i) => {
+      if (i.task_created_by_user_id) userIds.add(i.task_created_by_user_id);
+      const o = orderMap.get(i.wp_device_id || i.device_id);
+      if (o?.user_id) userIds.add(o.user_id);
     });
 
-    const userIdsSet = new Set();
-    installations.forEach(item => {
-      if (item.task_created_by_user_id) {
-        userIdsSet.add(item.task_created_by_user_id);
-      }
-      const order = orderMap.get(item.wp_device_id || item.device_id);
-      if (order?.user_id) {
-        userIdsSet.add(order.user_id);
-      }
-    });
+    const [users, productModels] = await Promise.all([
+      usersCol
+        .find({ user_id: { $in: [...userIds] } })
+        .project({ user_id: 1, name: 1, email: 1, phone: 1 })
+        .toArray(),
+      
+      modelIds.size > 0
+        ? productModelsCol
+            .find({
+              $or: [
+                { model_id: { $in: [...modelIds] } },
+                { _id: { $in: [...modelIds].map(id => {
+                    try { return new ObjectId(id); } catch { return null; }
+                  }).filter(Boolean) } },
+              ],
+            })
+            .project({ model_id: 1, _id: 1, id: 1, model_name: 1, modelName: 1, name: 1, model_type: 1, modelType: 1, modeltype: 1 })
+            .toArray()
+        : [],
+    ]);
 
-    const userIds = Array.from(userIdsSet);
-    const users = userIds.length
-      ? await usersCollection.find({ user_id: { $in: userIds } }).toArray()
-      : [];
-    const userMap = new Map();
-    users.forEach(user => {
-      userMap.set(user.user_id, user);
-    });
+    const userMap = new Map(users.map((u) => [u.user_id, u]));
 
     const modelMap = new Map();
-    productModels.forEach(model => {
-      const id = model.model_id || model._id?.toString() || model.id;
-      if (id) {
-        modelMap.set(id, model);
-        // Also set by string version for cross-matching
-        modelMap.set(id.toString(), model);
-      }
+    productModels.forEach((m) => {
+      const id = String(m.model_id || m._id || m.id);
+      modelMap.set(id, m);
     });
 
-    const normalizedDistrict = String(district || '').trim().toLowerCase();
+    const normalizedDistrict = normalize(district);
 
+    // --- Build final records ---
     const devices = installations
-      .map(item => {
-        const deviceId = item.wp_device_id || item.device_id || '';
-        const normalizedDeviceKey = normalizeDeviceKey(deviceId);
-        if (blockedDeviceIds.has(normalizedDeviceKey)) {
-          return null;
-        }
+      .map((i) => {
+        const deviceId = i.wp_device_id || i.device_id;
+        const normKey = normalize(deviceId);
+
+        if (blockedDevices.has(normKey)) return null;
+
         const order = orderMap.get(deviceId) || null;
-        const detail = deviceDetailMap.get(deviceId) || null;
-        const ownerUserId = item.task_created_by_user_id || order?.user_id || null;
-        const owner = ownerUserId !== null ? userMap.get(ownerUserId) || null : null;
-        const addressSource = item.deliveryAddress || item.address || order?.deliveryAddress || {};
-        const normalizedAddress = normalizeDeliveryAddress(addressSource || {});
-        const planConfig = detail?.plan_config || {};
-        const currentPlan =
-          planConfig?.name ||
-          planConfig?.planName ||
-          planConfig?.plan ||
-          planConfig?.totalWaterLimit ||
-          null;
-        const currentPlanEndDate = planConfig?.endDate || null;
-        const currentDuration = resolvePlanDurationFromSources(
-          planConfig,
-          detail?.selectedDuration,
-          order?.selectedDuration,
-          item?.selectedDuration
-        );
-        const macId = detail?.mac_id || detail?.enter_mac_id || null;
+        const detail = detailMap.get(deviceId) || null;
+        const ownerId = i.task_created_by_user_id || order?.user_id || null;
+        const owner = userMap.get(ownerId) || null;
+
+        const addr =
+          i.deliveryAddress ||
+          i.address ||
+          order?.deliveryAddress ||
+          {};
+
+        const normalizedAddr = normalizeDeliveryAddress(addr);
+
+        const plan = detail?.plan_config || {};
         const modelId =
           detail?.model_id ||
           order?.model_id ||
           order?.productModelId ||
           null;
-        const modelName =
-          detail?.model_name ||
-          order?.modelName ||
-          item.product?.model_name ||
-          modelMap.get(modelId)?.model_name ||
-          modelMap.get(modelId)?.modelName ||
-          modelMap.get(modelId)?.name ||
-          null;
-        const modelType =
-          detail?.model_type ||
-          order?.modelType ||
-          order?.modeltype ||
-          modelMap.get(modelId)?.model_type ||
-          modelMap.get(modelId)?.modelType ||
-          modelMap.get(modelId)?.modeltype ||
-          null;
-        const detailId = detail?._id ? detail._id.toString() : null;
+
+        const model = modelId ? modelMap.get(String(modelId)) : null;
 
         return {
-          task_id: item.task_id || null,
+          task_id: i.task_id || null,
           wp_device_id: deviceId,
-          user_id: ownerUserId,
-          customer_name: owner?.name || normalizedAddress?.name || null,
-          customer_email: owner?.email || normalizedAddress?.email || null,
-          customer_phone: owner?.phone || normalizedAddress?.phone || null,
-          district: normalizedAddress.district || '',
-          state: normalizedAddress.state || '',
-          city: normalizedAddress.city || '',
-          deliveryAddress: addressSource || {},
+          user_id: ownerId,
+          customer_name: owner?.name || normalizedAddr?.name || null,
+          customer_email: owner?.email || normalizedAddr?.email || null,
+          customer_phone: owner?.phone || normalizedAddr?.phone || null,
+          district: normalizedAddr.district || "",
+          state: normalizedAddr.state || "",
+          city: normalizedAddr.city || "",
+          deliveryAddress: addr || {},
+
           model_id: modelId,
-          model_name: modelName,
-          model_type: modelType,
-          current_plan: currentPlan,
-          current_plan_end_date: currentPlanEndDate,
-          current_duration: currentDuration,
-          mac_id: macId,
-          device_detail_id: detailId,
+          model_name:
+            detail?.model_name ||
+            order?.modelName ||
+            i.product?.model_name ||
+            model?.model_name ||
+            model?.modelName ||
+            model?.name ||
+            null,
+
+          model_type:
+            detail?.model_type ||
+            order?.modelType ||
+            order?.modeltype ||
+            model?.model_type ||
+            model?.modelType ||
+            model?.modeltype ||
+            null,
+
+          current_plan:
+            plan?.name ||
+            plan?.planName ||
+            plan?.plan ||
+            plan?.totalWaterLimit ||
+            null,
+
+          current_plan_end_date: plan?.endDate || null,
+
+          current_duration: resolvePlanDurationFromSources(
+            plan,
+            detail?.selectedDuration,
+            order?.selectedDuration,
+            i?.selectedDuration
+          ),
+
+          mac_id: detail?.mac_id || detail?.enter_mac_id || null,
+          device_detail_id: detail?._id ? String(detail._id) : null,
+
           customOrderId: order?.customOrderId || null,
-          order_id: order?._id ? order._id.toString() : null
+          order_id: order?._id ? String(order._id) : null,
         };
       })
-      .filter(record => {
-        if (!record) {
-          return false;
-        }
-        if (!normalizedDistrict) {
-          return true;
-        }
-        return record.district && record.district.toLowerCase() === normalizedDistrict;
-      });
+      .filter(Boolean)
+      .filter((d) =>
+        !normalizedDistrict
+          ? true
+          : normalize(d.district) === normalizedDistrict
+      );
 
-    return res.status(200).json({ status: 'Success', data: devices });
+    return res.status(200).json({ status: "Success", data: devices });
   } catch (error) {
-    console.error('Error in FetchInstalledDevicesForRequests:', error);
+    console.error("FetchInstalledDevicesForRequests Error:", error);
     logger?.error?.(error);
-    return res.status(500).json({ status: 'Failed', message: 'Internal Server Error' });
+    return res
+      .status(500)
+      .json({ status: "Failed", message: "Internal Server Error" });
   }
 };
+
 
 const CreateManualRequest = async (req, res) => {
   try {
@@ -6705,31 +6714,49 @@ const GetAnalytics = async (req, res) => {
         };
 
         // ---------------- Summary Counts ----------------
-        const [
-            paymentsTotal,
-            paymentsSuccess,
-            paymentsPending,
-            ordersTotal,
-            ordersSuccess,
-            ordersPending,
-            usersTotal,
-            adminsCount,
-            techniciansCount,
-            endUsersCount,
-            sellersCount
-        ] = await Promise.all([
-            countDocuments(paymentsCollection, {}),
-            countDocuments(paymentsCollection, { paymentStatus: "Completed" }),
-            countDocuments(paymentsCollection, { paymentStatus: "Pending" }),
-            countDocuments(ordersCollection, {}),
-            countDocuments(ordersCollection, { paymentStatus: "Completed" }),
-            countDocuments(ordersCollection, { paymentStatus: "Pending" }),
-            countDocuments(usersCollection, { role_id: { $in: [2, 3, 4] } }),
-            countDocuments(usersCollection, { role_id: 1 }),
-            countDocuments(usersCollection, { role_id: 2 }),
-            countDocuments(usersCollection, { role_id: 3 }),
-            countDocuments(usersCollection, { role_id: 4 })
+        const [paymentStats, orderStats, userStats] = await Promise.all([
+            paymentsCollection.aggregate([
+                {
+                    $facet: {
+                        total: [{ $count: "count" }],
+                        completed: [{ $match: { paymentStatus: "Completed" } }, { $count: "count" }],
+                        pending: [{ $match: { paymentStatus: "Pending" } }, { $count: "count" }]
+                    }
+                }
+            ]).toArray(),
+            ordersCollection.aggregate([
+                {
+                    $facet: {
+                        total: [{ $count: "count" }],
+                        completed: [{ $match: { paymentStatus: "Completed" } }, { $count: "count" }],
+                        pending: [{ $match: { paymentStatus: "Pending" } }, { $count: "count" }]
+                    }
+                }
+            ]).toArray(),
+            usersCollection.aggregate([
+                {
+                    $facet: {
+                        total: [{ $match: { role_id: { $in: [2, 3, 4] } } }, { $count: "count" }],
+                        admin: [{ $match: { role_id: 1 } }, { $count: "count" }],
+                        technician: [{ $match: { role_id: 2 } }, { $count: "count" }],
+                        endUser: [{ $match: { role_id: 3 } }, { $count: "count" }],
+                        seller: [{ $match: { role_id: 4 } }, { $count: "count" }]
+                    }
+                }
+            ]).toArray()
         ]);
+
+        const paymentsTotal = paymentStats[0]?.total[0]?.count || 0;
+        const paymentsSuccess = paymentStats[0]?.completed[0]?.count || 0;
+        const paymentsPending = paymentStats[0]?.pending[0]?.count || 0;
+        const ordersTotal = orderStats[0]?.total[0]?.count || 0;
+        const ordersSuccess = orderStats[0]?.completed[0]?.count || 0;
+        const ordersPending = orderStats[0]?.pending[0]?.count || 0;
+        const usersTotal = userStats[0]?.total[0]?.count || 0;
+        const adminsCount = userStats[0]?.admin[0]?.count || 0;
+        const techniciansCount = userStats[0]?.technician[0]?.count || 0;
+        const endUsersCount = userStats[0]?.endUser[0]?.count || 0;
+        const sellersCount = userStats[0]?.seller[0]?.count || 0;
 
         // ---------------- Timelines ----------------
         const paymentsTimeline = {
@@ -7014,23 +7041,54 @@ const GetAnalyticsByDistrict = async (req, res) => {
     };
 
     // ---------------- Summary counts ----------------
-    const [
-      paymentsTotal, paymentsSuccess, paymentsPending,
-      ordersTotal, ordersSuccess, ordersPending,
-      usersTotal, adminsCount, techniciansCount, endUsersCount, sellersCount
-    ] = await Promise.all([
-      countPaymentsByDistrict({}),
-      countPaymentsByDistrict({ paymentStatus: 'Completed' }),
-      countPaymentsByDistrict({ paymentStatus: 'Pending' }),
-      ordersCollection.countDocuments({ 'deliveryAddress.district': districtRegex }),
-      ordersCollection.countDocuments({ 'deliveryAddress.district': districtRegex, paymentStatus: 'Completed' }),
-      ordersCollection.countDocuments({ 'deliveryAddress.district': districtRegex, paymentStatus: 'Pending' }),
-      usersCollection.countDocuments({ district: districtRegex }),
-      usersCollection.countDocuments({ district: districtRegex, role_id: 1 }),
-      usersCollection.countDocuments({ district: districtRegex, role_id: 2 }),
-      usersCollection.countDocuments({ district: districtRegex, role_id: 3 }),
-      usersCollection.countDocuments({ district: districtRegex, role_id: 4 })
+    const [paymentStats, orderStats, userStats] = await Promise.all([
+      paymentsCollection.aggregate([
+        { $lookup: { from: 'orders', localField: 'orderId', foreignField: '_id', as: 'order' } },
+        { $addFields: { order: { $arrayElemAt: ['$order', 0] } } },
+        { $match: { 'order.deliveryAddress.district': districtRegex } },
+        {
+          $facet: {
+            total: [{ $count: "count" }],
+            completed: [{ $match: { paymentStatus: 'Completed' } }, { $count: "count" }],
+            pending: [{ $match: { paymentStatus: 'Pending' } }, { $count: "count" }]
+          }
+        }
+      ]).toArray(),
+      ordersCollection.aggregate([
+        { $match: { 'deliveryAddress.district': districtRegex } },
+        {
+          $facet: {
+            total: [{ $count: "count" }],
+            completed: [{ $match: { paymentStatus: 'Completed' } }, { $count: "count" }],
+            pending: [{ $match: { paymentStatus: 'Pending' } }, { $count: "count" }]
+          }
+        }
+      ]).toArray(),
+      usersCollection.aggregate([
+        { $match: { district: districtRegex } },
+        {
+          $facet: {
+            total: [{ $count: "count" }],
+            admin: [{ $match: { role_id: 1 } }, { $count: "count" }],
+            technician: [{ $match: { role_id: 2 } }, { $count: "count" }],
+            endUser: [{ $match: { role_id: 3 } }, { $count: "count" }],
+            seller: [{ $match: { role_id: 4 } }, { $count: "count" }]
+          }
+        }
+      ]).toArray()
     ]);
+
+    const paymentsTotal = paymentStats[0]?.total[0]?.count || 0;
+    const paymentsSuccess = paymentStats[0]?.completed[0]?.count || 0;
+    const paymentsPending = paymentStats[0]?.pending[0]?.count || 0;
+    const ordersTotal = orderStats[0]?.total[0]?.count || 0;
+    const ordersSuccess = orderStats[0]?.completed[0]?.count || 0;
+    const ordersPending = orderStats[0]?.pending[0]?.count || 0;
+    const usersTotal = userStats[0]?.total[0]?.count || 0;
+    const adminsCount = userStats[0]?.admin[0]?.count || 0;
+    const techniciansCount = userStats[0]?.technician[0]?.count || 0;
+    const endUsersCount = userStats[0]?.endUser[0]?.count || 0;
+    const sellersCount = userStats[0]?.seller[0]?.count || 0;
 
     // ---------------- Timelines ----------------
     const paymentsTodayRaw = await groupPaymentsTimelineByDistrict({ $gte: startOfToday }, { $hour: '$createdAt' }, 'hour');
