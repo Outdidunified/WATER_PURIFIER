@@ -76,8 +76,10 @@ const UpdateDeliveryStatusModal = ({ isOpen, orderId, currentStatus, onClose, on
 
       console.log('Updating delivery status for order:', orderId);
       
+      const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "";
+      
       const response = await fetch(
-        `/api/api/website/orders/${orderId}/update-delivery-status`,
+        `${API_BASE_URL}/api/website/orders/${orderId}/update-delivery-status`,
         {
           method: 'POST',
           headers: {
