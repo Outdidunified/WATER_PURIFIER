@@ -885,7 +885,13 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                         <div className="text-center mb-3">
                                                             <h2 style={{ color: '#0d6efd' }}>Select Model</h2>
                                                         </div>
-                                                        <ul className="nav nav-tabs flex-wrap" style={{ justifyContent: 'center' }}>
+                                                        <ul className="nav nav-tabs flex-wrap"
+                                                            style={{
+                                                                maxHeight: '350px',
+                                                                overflowY: 'auto',
+                                                                overflowX: 'hidden',
+                                                                paddingRight: '5px', justifyContent: 'center'
+                                                            }}>
                                                             <li className="nav-item">
                                                                 <button
                                                                     className={`nav-link text-center ${selectedModelIndex === -1 ? 'active' : ''}`}
@@ -939,9 +945,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                     </li>
                                                                 );
                                                             })}
-
                                                         </ul>
-
                                                     </div>
                                                 </div>
 
