@@ -1,10 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import useLogin from "../hooks/useLogin";
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { useNavigate } from "react-router-dom";
 
 const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
+
+    const navigate = useNavigate();
+
+    // If user already logged in → block access to /auth
+    useEffect(() => {
+        if (token) {
+            navigate("/", { replace: true }); // remove /auth from history
+        }
+    }, [token]);
+
     const { step, setStep, phone, setPhone, otp, setOtp, name, setName, password, setPassword, emailID, setEmailID, city, setCity,
         district, setDistrict, state, setState, pincode, setPincode, country, setCountry,
         addressLine1, setAddressLine1, addressLine2, setAddressLine2,
@@ -98,8 +109,8 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                         style={{
                                             display: "flex",
                                             flexDirection: "column",
-                                            alignItems: "center",    
-                                            justifyContent: "center", 
+                                            alignItems: "center",
+                                            justifyContent: "center",
                                             width: "100%",
                                         }}
                                     >
@@ -119,7 +130,7 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                         {/* Password + Eye — 60% width */}
                                         <div style={{
                                             position: 'relative',
-                                            width: "60%"           
+                                            width: "60%"
                                         }}>
                                             <input
                                                 type={isPasswordVisible ? "text" : "password"}
@@ -241,9 +252,9 @@ const Login = ({ userInfo, handleLogout, token, handleLogin }) => {
                                         onChange={(e) => setEmailID(e.target.value)}
                                         required
                                     />
-                                    <div style={{ position: 'relative'}}>
+                                    <div style={{ position: 'relative' }}>
                                         <input
-                                            type={isPasswordVisible ? "text" : "password"} 
+                                            type={isPasswordVisible ? "text" : "password"}
                                             placeholder="4 Digit Password"
                                             style={{ ...commonInputStyle, flex: 1 }}
                                             value={password}
