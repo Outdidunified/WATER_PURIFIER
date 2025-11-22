@@ -125,9 +125,15 @@ const OrderItem = React.memo(function OrderItem({ payment, order, index, expande
                         </div>
                     )}
 
-                    <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', width: '110%' }}>
+                    <div style={{
+                        display: 'flex',
+                        gap: 20,
+                        alignItems: 'flex-start',
+                        width: '100%',
+                        flexWrap: 'wrap',
+                    }}>
                         {/* Left */}
-                        <div style={{ width: 600 }}>
+                        <div style={{ flex: '1 1 350px', minWidth: '300px' }}>
                             <div style={{ borderTop: '1px solid #0d6efd', padding: 20, backgroundColor: '#fff', borderRadius: 10 }}>
                                 <h5 style={{ color: '#0d6efd', fontWeight: 700, fontSize: 16, borderBottom: '2px solid #0d6efd', display: 'inline-block', marginBottom: 12 }}>Plan & Payment Details</h5>
                                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -155,7 +161,7 @@ const OrderItem = React.memo(function OrderItem({ payment, order, index, expande
                         </div>
 
                         {/* Right */}
-                        <div style={{ width: 620 }}>
+                        <div style={{ flex: '1 1 350px', minWidth: '300px' }}>
                             <div style={{ borderTop: '1px solid #0d6efd', padding: 20, backgroundColor: '#fff', borderRadius: 10 }}>
                                 <h5 style={{ color: '#0d6efd', fontWeight: 700, fontSize: 16, borderBottom: '2px solid #0d6efd', display: 'inline-block', marginBottom: 12 }}>Delivery Address</h5>
                                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
