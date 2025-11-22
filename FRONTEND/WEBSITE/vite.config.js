@@ -9,13 +9,14 @@ export default defineConfig({
         strictPort: true,
         proxy: {
             '/api': {
-                target: 'http://192.168.0.5:5001',
+                target: process.env.VITE_API_URL || 'http://192.168.0.5:5001',
                 changeOrigin: true,
             },
             '/upload': {
-                target: 'http://192.168.0.5:5001',
+                // target: 'http://192.168.0.5:5001',
+                target: process.env.VITE_API_URL || 'http://192.168.0.5:5001',
                 changeOrigin: true,
             },
         },
     },
-}); 
+});

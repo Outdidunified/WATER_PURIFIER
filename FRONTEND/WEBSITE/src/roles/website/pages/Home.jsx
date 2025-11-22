@@ -9,6 +9,8 @@ import { getDistricts } from "india-state-district";
 import { Modal, Button } from "react-bootstrap";
 
 const Home = ({ userInfo, token, handleLogout }) => {
+    const API_BASE_URL = import.meta.env.VITE_API_URL;
+
     const durationRef = useRef(null);
     const scrollRef = useRef(null);
     let scrollInterval;
@@ -78,7 +80,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
             hasFetched.current = true;
             setLoading(true);
             try {
-                const response = await axios.get('/api/website/products/productswithplan');
+                const response = await axios.get(`${API_BASE_URL}/api/website/products/productswithplan`);
                 const productArray = response.data?.data || [];
                 const filteredProducts = productArray.filter(p => p.status === true);
                 setProducts(filteredProducts);
@@ -309,7 +311,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
             const token = sessionStorage.getItem("WebToken");
 
-            const res = await fetch("/api/website/orders/orderplace", {
+            const res = await fetch(`${API_BASE_URL}/api/website/orders/orderplace`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -376,7 +378,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                     });
 
                     try {
-                        const verifyRes = await fetch("/api/website/orders/orderverify", {
+                        const verifyRes = await fetch(`${API_BASE_URL}/api/website/orders/orderverify`, {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
@@ -416,7 +418,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                 },
                 modal: {
                     ondismiss: async () => {
-                        await fetch("/api/website/orders/ordercancel", {
+                        await fetch(`${API_BASE_URL}/api/website/orders/ordercancel`, {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
@@ -516,7 +518,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
         }
 
         try {
-            const response = await fetch("/api/website/contact/submitcontact", {
+            const response = await fetch(`${API_BASE_URL}/api/website/contact/submitcontact`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, email, subject, message }),
@@ -568,7 +570,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
             hasGetDistrictsWithSellers.current = true;
 
             try {
-                const response = await axios.get("/api/admin/GetDistrictsWithSellers");
+                const response = await axios.get(`${API_BASE_URL}/api/admin/GetDistrictsWithSellers`);
                 if (response.data?.status === "Success" && Array.isArray(response.data.data)) {
                     setDistricts(response.data.data);
                 } else {
@@ -945,6 +947,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
 
                                                 <div className="col-lg-6 col-12 text-center" style={{ padding: '20px' }}>
                                                     <img
+                                                        // src={`${API_BASE_URL}/upload/img/${mainImage || products[selectedModelIndex]?.main_img}`}
                                                         src={`/upload/img/${mainImage || products[selectedModelIndex]?.main_img}`}
                                                         alt="Main Product"
                                                         className="img-fluid mb-3"
@@ -964,6 +967,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                                 <img
                                                                     key={num}
                                                                     src={`/upload/img/${subImg}`}
+                                                                    // src={`${API_BASE_URL}/upload/img/${subImg}`}
                                                                     alt={`Sub ${num}`}
                                                                     className="rounded"
                                                                     style={{
@@ -980,6 +984,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                         {products[selectedModelIndex]?.main_img && (
                                                             <img
                                                                 src={`/upload/img/${products[selectedModelIndex].main_img}`}
+                                                                // src={`${API_BASE_URL}/upload/img/${products[selectedModelIndex].main_img}`}
                                                                 alt="Main Preview"
                                                                 className="rounded"
                                                                 style={{
@@ -1132,6 +1137,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                                             >
                                                                 <img
                                                                     src={`/upload/img/${product.main_img}`}
+                                                                    // src={`${API_BASE_URL}/upload/img/${product.main_img}`}
                                                                     alt={product.model_name}
                                                                     className="card-img-top"
                                                                     style={{
@@ -2042,6 +2048,7 @@ const Home = ({ userInfo, token, handleLogout }) => {
                                 <p style={{ padding: '20px' }}>
                                     <a
                                         href={`/upload/pdf/${products[selectedModelIndex].product_specifications}`}
+                                        // href={`${API_BASE_URL}/upload/pdf/${products[selectedModelIndex].product_specifications}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="btn btn-primary mb-2"

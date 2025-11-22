@@ -8,6 +8,8 @@ import { State } from "country-state-city";
 import { Modal, Button } from "react-bootstrap";
 
 const Recharge = ({ userInfo, token, handleLogout }) => {
+    const API_BASE_URL = import.meta.env.VITE_API_URL;
+
     const durationRef = useRef(null);
     const scrollRef = useRef(null);
     let scrollInterval;
@@ -36,7 +38,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
             hasFetched.current = true;
             setLoading(true);
             try {
-                const response = await axios.get('/api/website/products/productswithplan');
+                const response = await axios.get(`${API_BASE_URL}/api/website/products/productswithplan`);
                 const productArray = response.data?.data || [];
                 const filteredProducts = productArray.filter(p => p.status === true);
                 setProducts(filteredProducts);
@@ -183,7 +185,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
 
             const token = sessionStorage.getItem("WebToken");
 
-            const res = await fetch("/api/website/orders/renewsubscription", {
+            const res = await fetch(`${API_BASE_URL}/api/website/orders/renewsubscription`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -221,7 +223,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                     });
 
                     try {
-                        const verifyRes = await fetch("/api/website/orders/orderverify", {
+                        const verifyRes = await fetch(`${API_BASE_URL}/api/website/orders/orderverify`, {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
@@ -251,7 +253,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                 },
                 modal: {
                     ondismiss: async () => {
-                        await fetch("/api/website/orders/ordercancel", {
+                        await fetch(`${API_BASE_URL}/api/website/orders/ordercancel`, {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
@@ -377,7 +379,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
 
             try {
                 const response = await axios.get(
-                    `/api/website/orders/userdevices/${userInfo.user_id}`
+                    `${API_BASE_URL}/api/website/orders/userdevices/${userInfo.user_id}`
                 );
 
                 const devicesObj = response.data?.devices || {};
@@ -641,6 +643,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                     {selectedProductByModelId?.main_img ? (
                                                         <img
                                                             src={`/upload/img/${selectedProductByModelId.main_img}`}
+                                                            // src={`${API_BASE_URL}/upload/img/${selectedProductByModelId.main_img}`}
                                                             alt={selectedProductByModelId.model_name || "Product"}
                                                             className="img-fluid mb-3"
                                                             style={{
@@ -663,6 +666,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                 <img
                                                                     key={num}
                                                                     src={`/upload/img/${subImg}`}
+                                                                    // src={`${API_BASE_URL}/upload/img/${subImg}`}
                                                                     alt={`Sub ${num}`}
                                                                     className="rounded"
                                                                     style={{
@@ -679,6 +683,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
 
                                                         {selectedProductByModelId?.main_img && (
                                                             <img
+                                                                // src={`${API_BASE_URL}/upload/img/${selectedProductByModelId.main_img}`}
                                                                 src={`/upload/img/${selectedProductByModelId.main_img}`}
                                                                 alt="Main Preview"
                                                                 className="rounded"
@@ -770,6 +775,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                                     >
                                                                         <img
                                                                             src={`/upload/img/${product.main_img}`}
+                                                                            // src={`${API_BASE_URL}/upload/img/${product.main_img}`}
                                                                             alt={product.model_name}
                                                                             className="card-img-top"
                                                                             style={{

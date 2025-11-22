@@ -5,6 +5,8 @@ import { Country, State, City } from "country-state-city";
 import { getDistricts } from "india-state-district";
 
 const useLogin = (handleLogin) => {
+    const API_BASE_URL = import.meta.env.VITE_API_URL;
+
     const [step, setStep] = useState("login"); // login, otp, register
     const [phone, setPhone] = useState("");
     const [otp, setOtp] = useState("");
@@ -115,7 +117,7 @@ const useLogin = (handleLogin) => {
 
         setLoading(true);
         try {
-            const res = await fetch("/api/website/auth/email", {
+            const res = await fetch(`${API_BASE_URL}/api/website/auth/email`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: emailID, password: parseInt(password), role_id: 3 }),
@@ -149,7 +151,7 @@ const useLogin = (handleLogin) => {
         }
         setLoading(true);
         try {
-            const res = await fetch("/api/login", {
+            const res = await fetch(`${API_BASE_URL}/api/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ phone })
@@ -171,7 +173,7 @@ const useLogin = (handleLogin) => {
     const handleVerifyOtp = async () => {
         setLoadingVotp(true);
         try {
-            const res = await fetch("/api/website/auth/verify-otp", {
+            const res = await fetch(`${API_BASE_URL}/api/website/auth/verify-otp`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: emailID, otp, role_id: 3 })
@@ -204,7 +206,7 @@ const useLogin = (handleLogin) => {
 
         setLoadingReg(true);
         try {
-            const res = await fetch("/api/website/auth/register", {
+            const res = await fetch(`${API_BASE_URL}/api/website/auth/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

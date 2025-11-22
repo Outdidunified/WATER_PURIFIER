@@ -3,6 +3,8 @@ import { useState } from "react";
 import Swal from 'sweetalert2';
 
 const useContact = () => {
+    const API_BASE_URL = import.meta.env.VITE_API_URL;
+
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -32,7 +34,7 @@ const useContact = () => {
         }
 
         try {
-            const response = await fetch("/api/website/contact/submitcontact", {
+            const response = await fetch(`${API_BASE_URL}/api/website/contact/submitcontact`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, email, subject, message }),

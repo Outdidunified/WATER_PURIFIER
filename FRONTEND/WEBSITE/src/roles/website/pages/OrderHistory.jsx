@@ -5,7 +5,7 @@ import axios from "axios";
 
 // Lazy-load OrderItem for optimization
 const LazyOrderItem = React.lazy(() => Promise.resolve({
-    default: React.memo(function OrderItem({ payment, order, index, expanded, onToggleExpand, onDownloadInvoice }) {
+    default: React.memo(function OrderItem({ payment, order, index, expanded, onToggleExpand, onDownloadInvoice, API_BASE_URL }) {
         const address = order?.deliveryAddress || {};
         const selectedPlan = order?.selectedPlan || {};
         const selectedDuration = order?.selectedDuration || {};
@@ -45,6 +45,7 @@ const LazyOrderItem = React.lazy(() => Promise.resolve({
                             <img
                                 className="product-thumb"
                                 src={`/upload/img/${order?.main_image || order?.product_model_images?.main_img}`}
+                                // src={`${API_BASE_URL}/upload/img/${order?.main_image || order?.product_model_images?.main_img}`}
                                 alt={order?.modelName || 'product'}
                                 loading="lazy"
                                 decoding="async"
@@ -215,6 +216,9 @@ const getStatusStyle = (status) => {
 };
 
 export default function OrderHistory({ userInfo, token, handleLogout }) {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "";
+
+
     const [paymentHistory, setPaymentHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -255,7 +259,7 @@ export default function OrderHistory({ userInfo, token, handleLogout }) {
 
         try {
             const body = { user_id: userInfo.user_id, page: pageToFetch, limit };
-            const resp = await axios.post("/api/website/products/fetchpaymenthistory", body, {
+            const resp = await axios.post(`${API_BASE_URL}/api/website/products/fetchpaymenthistory`, body, {
                 headers: { Authorization: `Bearer ${token}` },
                 signal: controller.signal
             });
@@ -321,7 +325,7 @@ export default function OrderHistory({ userInfo, token, handleLogout }) {
 
     const handleDownloadInvoice = useCallback(async (orderId) => {
         try {
-            const url = `/api/website/orders/${orderId}/invoice`;
+            const url = `${API_BASE_URL}/api/website/orders/${orderId}/invoice`;
             const response = await axios.get(url, { responseType: 'blob', headers: { Authorization: `Bearer ${token}` } });
             const blob = new Blob([response.data], { type: 'application/pdf' });
             const link = document.createElement('a');
@@ -400,6 +404,7 @@ export default function OrderHistory({ userInfo, token, handleLogout }) {
                                                     expanded={isExpanded}
                                                     onToggleExpand={toggleExpand}
                                                     onDownloadInvoice={handleDownloadInvoice}
+                                                    API_BASE_URL={API_BASE_URL}
                                                 />
                                             </Suspense>
                                         );

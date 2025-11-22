@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Routes, Route } from "react-router-dom";
 import Home from "../roles/website/pages/Home";
-import ProductList from "../roles/website/pages/ProductList";
 import About from "../roles/website/pages/About";
 import Blog from "../roles/website/pages/Blog";
 import FAQs from "../roles/website/pages/FAQs";
@@ -100,7 +99,6 @@ const WebsiteRoutes = () => {
             <Routes>
                 <Route path="/" element={<Home userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
                 <Route path="/recharge" element={<Recharge userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
-                <Route path="/product-list" element={<ProductList userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
                 <Route path="/about" element={<About userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
                 <Route path="/blog" element={<Blog userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
                 <Route path="/faqs" element={<FAQs userInfo={userInfo} token={token} handleLogout={handleLogout} />} />
