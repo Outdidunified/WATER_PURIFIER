@@ -100,7 +100,7 @@ mqttClient.on('connect', () => console.log('Connected to MQTT broker'));
 // Start Server with Database Connection
 connectToDatabase()
     .then(async () => {
-        httpServer.listen(HTTP_PORT, () => {
+        httpServer.listen(HTTP_PORT, "0.0.0.0", () => {
             const logMessage = `HTTP Server listening on port ${HTTP_PORT}`;
             console.log(logMessage);
             logger.info(logMessage);

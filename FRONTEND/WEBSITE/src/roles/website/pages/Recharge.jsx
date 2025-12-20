@@ -382,11 +382,15 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                     `${API_BASE_URL}/api/website/orders/userdevices/${userInfo.user_id}`
                 );
 
-                const devicesObj = response.data?.devices || {};
-                // Convert object to array
-                const devicesArr = Object.keys(devicesObj).flatMap(model => devicesObj[model]);
-
-                setFetchedOrders(devicesArr);
+                if (response.data?.status === "failure") {
+                    setFetchedOrders([]);
+                    setErrorFetchedOrders(response.data?.message || "No devices found");
+                } else {
+                    const devicesObj = response.data?.devices || {};
+                    // Convert object to array
+                    const devicesArr = Object.keys(devicesObj).flatMap(model => devicesObj[model]);
+                    setFetchedOrders(devicesArr);
+                }
             } catch (err) {
                 setErrorFetchedOrders(err.message || "Something went wrong");
             } finally {
@@ -541,7 +545,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                                 </div>
                                             </div>
                                         </div>
-                                        {!showAllModels && (
+                                        {fetchedOrders.length > 0 && !showAllModels && (
                                             <div className="row mt-4 align-items-start">
                                                 <div className="col-lg-6 col-12" style={{ padding: '20px' }}>
                                                     <div className="d-flex justify-content-center flex-column align-items-center section-title">
@@ -715,7 +719,7 @@ const Recharge = ({ userInfo, token, handleLogout }) => {
                                             </div>
                                         )}
 
-                                        {showAllModels && (
+                                        {fetchedOrders.length > 0 && showAllModels && (
                                             <div className="row" style={{ padding: '20px' }}>
                                                 <div className="section-title text-center" style={{ paddingBottom: '10px' }}>
                                                     <h2>Select Model</h2>
